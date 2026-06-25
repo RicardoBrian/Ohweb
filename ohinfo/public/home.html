@@ -283,10 +283,11 @@
   window._renderApps(); // initial greeting render
 
   document.getElementById('loadingOverlay').style.display = 'flex';
-  const docId = `${student.schoolId}_${student.grade}-${student.class}`;
+  const docId = `${student.schoolId}_g${student.grade}_c${student.class}`;
   getDoc(doc(db, 'appSettings', docId)).then(snap => {
     const settings = snap.exists() ? snap.data() : {};
-    enabledApps = Object.keys(APP_META).filter(id => settings[id]);
+    const apps = settings.apps || {};
+    enabledApps = Object.keys(APP_META).filter(id => apps[id]);
     window._renderApps();
   }).catch(e => {
     document.getElementById('appGrid').innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><p>오류: ${e.message}</p></div>`;

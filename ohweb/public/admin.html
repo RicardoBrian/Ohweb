@@ -1171,14 +1171,14 @@
     showLoading(true);
     try {
       // 학급 목록 결정
-      const grades = grade ? [grade] : ['1학년','2학년','3학년'];
-      const classes = cls ? [cls] : ['1반','2반','3반','4반','5반'];
+      const grades = grade ? [grade] : ['1','2','3'];
+      const classes = cls ? [cls] : ['1','2','3','4','5'];
       const combos = [];
       grades.forEach(g => classes.forEach(c => combos.push({ grade: g, class: c })));
 
       // 설정 로드
       const settingDocs = await Promise.all(combos.map(combo => {
-        const docId = `${schoolId}_${combo.grade}_${combo.class}`;
+        const docId = `${schoolId}_g${combo.grade}_c${combo.class}`;
         return getDoc(doc(db, 'appSettings', docId)).then(d => ({
           ...combo, docId,
           apps: d.exists() ? (d.data().apps || {}) : {}
@@ -1187,7 +1187,7 @@
 
       area.innerHTML = settingDocs.map(s => `
         <div class="card" id="card_${s.docId}">
-          <h2><span class="icon">📚</span> ${s.grade} ${s.class}</h2>
+          <h2><span class="icon">📚</span> ${s.grade}학년 ${s.class}반</h2>
           <div class="app-grid">
             ${APPS.map(app => `
               <div class="app-card">
