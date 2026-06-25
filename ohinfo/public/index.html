@@ -417,10 +417,14 @@
       const snap = await getDocs(query(collection(db, 'students'),
         where('schoolId', '==', schoolId),
         where('grade', '==', grade),
-        where('class', '==', cls),
-        orderBy('number')
+        where('class', '==', cls)
       ));
-      snap.docs.forEach(d => {
+      const sorted = snap.docs.slice().sort((a, b) => {
+        const n1 = parseInt(a.data().number) || 0;
+        const n2 = parseInt(b.data().number) || 0;
+        return n1 - n2;
+      });
+      sorted.forEach(d => {
         const num = d.data().number;
         const name = d.data().name;
         const opt = document.createElement('option');
