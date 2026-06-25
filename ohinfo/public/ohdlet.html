@@ -76,7 +76,9 @@
       padding: 0 20px; height: var(--nav-h);
       display: flex; align-items: center; gap: 8px;
     }
-    .nav-right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+    .nav-end { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-shrink: 0; }
+    .nav-admin { flex-shrink: 0; }
+    @media (max-width: 520px) { .nav-admin { display: none; } }
     .nav-logo {
       cursor: pointer;
       font-size: 1.1rem; font-weight: 900; letter-spacing: -0.02em;
@@ -118,7 +120,6 @@
       flex-direction: column; padding: 20px 24px; gap: 14px;
     }
     .mobile-menu.open { display: flex; }
-    @media (max-width: 600px) { .hamburger { display: flex; } .nav-right { display: none; } }
 
     /* ── 버튼 ── */
     .btn {
@@ -219,10 +220,24 @@
     .field label { display: block; font-size: 0.72rem; font-weight: 700; color: var(--sub); margin-bottom: 5px; letter-spacing: 0.05em; text-transform: uppercase; }
 
     /* ── 스텝 1 ── */
-    .step1-wrap { display: flex; align-items: center; justify-content: center; min-height: calc(100vh - var(--nav-h)); }
-    .select-card { width: 100%; max-width: 400px; background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border); border-radius: 24px; padding: 36px; box-shadow: var(--highlight), var(--shadow-md); }
-    .select-card h1 { font-size: 1.5rem; font-weight: 800; margin-bottom: 28px; text-align: center; }
-    .session-badge { background: var(--accent-light); border: 1px solid rgba(42,92,230,0.2); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 18px; font-size: 0.88rem; font-weight: 600; color: var(--accent); }
+    .step1-wrap { display: flex; align-items: center; justify-content: center; min-height: calc(100vh - var(--nav-h)); padding: 24px 16px; }
+    .step1-inner { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 14px; }
+    .s1-profile-card {
+      background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-card); border-radius: var(--radius);
+      padding: 22px 24px; box-shadow: var(--highlight), var(--shadow);
+      display: flex; align-items: center; gap: 16px;
+    }
+    .s1-photo { width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), #7c4dff); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 1.4rem; flex-shrink: 0; overflow: hidden; border: 2px solid var(--border-card); }
+    .s1-photo img { width: 100%; height: 100%; object-fit: cover; }
+    .s1-name { font-size: 1.05rem; font-weight: 800; }
+    .s1-meta { font-size: 0.8rem; color: var(--sub); margin-top: 3px; font-weight: 600; line-height: 1.5; white-space: pre-line; }
+    .s1-class-card {
+      background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-card); border-radius: var(--radius);
+      padding: 18px 20px; box-shadow: var(--highlight), var(--shadow);
+    }
+    .s1-class-label { font-size: 0.7rem; font-weight: 700; color: var(--sub); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px; }
 
     /* ── PC 레이아웃 (사이드바 + 메인) ── */
     .board-layout {
@@ -477,7 +492,8 @@
 
 <nav class="nav">
   <div class="nav-logo" onclick="navLogoClick()">ohinfo</div>
-  <div class="nav-right">
+  <button class="btn ghost nav-admin" onclick="toggleAdmin()">관리</button>
+  <div class="nav-end">
     <div class="lang-globe" id="langGlobe">
       <button class="lang-globe-btn" onclick="toggleLangDD()" title="언어">🌐</button>
       <div class="lang-globe-dd hidden" id="langGlobeDD" onclick="event.stopPropagation()">
@@ -487,21 +503,17 @@
         <div class="lang-globe-item" onclick="setLanguage('en');closeLangDD()"><span>English</span><span class="check" id="lck-en"></span></div>
       </div>
     </div>
-    <button class="btn ghost" onclick="toggleAdmin()">관리</button>
+    <div class="nav-user" id="navUser" onclick="toggleUserMenu()">
+      <div class="nav-avatar" id="navAvatar"></div>
+      <div class="nav-user-name" id="navUserName"></div>
+      <div class="user-dropdown hidden" id="userDropdown" onclick="event.stopPropagation()">
+        <div class="user-dropdown-item" onclick="openMyPage()">👤 마이페이지</div>
+        <div class="user-dropdown-sep"></div>
+        <div class="user-dropdown-item danger" onclick="logout()">🚪 로그아웃</div>
+      </div>
+    </div>
     <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
   </div>
-  <div class="nav-user" id="navUser" onclick="toggleUserMenu()">
-    <div class="nav-avatar" id="navAvatar"></div>
-    <div class="nav-user-name" id="navUserName"></div>
-    <div class="user-dropdown hidden" id="userDropdown" onclick="event.stopPropagation()">
-      <div class="user-dropdown-item" onclick="openMyPage()">👤 마이페이지</div>
-      <div class="user-dropdown-sep"></div>
-      <div class="user-dropdown-item danger" onclick="logout()">🚪 로그아웃</div>
-    </div>
-  </div>
-  <button class="hamburger" onclick="toggleMobileMenu()">
-    <span></span><span></span><span></span>
-  </button>
 </nav>
 
 <div id="mobileMenu" class="mobile-menu">
@@ -523,10 +535,16 @@
   <!-- 스텝 1: 학급 선택 -->
   <div id="step1">
     <div class="step1-wrap">
-      <div class="select-card">
-        <h1>정보 게시판</h1>
-        <div class="session-badge" id="sessionBadge"></div>
-        <div class="field" style="margin-bottom:24px;"><label>수업</label>
+      <div class="step1-inner">
+        <div class="s1-profile-card">
+          <div class="s1-photo" id="s1Photo"></div>
+          <div>
+            <div class="s1-name" id="s1Name"></div>
+            <div class="s1-meta" id="s1Meta"></div>
+          </div>
+        </div>
+        <div class="s1-class-card">
+          <div class="s1-class-label" id="ui-class-label">수업 선택</div>
           <select class="inp" id="classList"><option>수업을 선택하세요</option></select>
         </div>
         <button class="btn accent full" id="ui-enter-btn" onclick="startBoard()">입장하기</button>
@@ -1312,7 +1330,14 @@
   }
 
   window.onload = () => {
-    document.getElementById('sessionBadge').innerText = `${SESSION.name} · ${SESSION.grade} ${SESSION.group}`;
+    // profile card in step1
+    const s1Photo = document.getElementById('s1Photo');
+    if (s1Photo) {
+      if (_mpStudent.photoUrl) { s1Photo.innerHTML = `<img src="${_mpStudent.photoUrl}">`; }
+      else { s1Photo.innerText = (SESSION.name||'?')[0]; }
+    }
+    const s1Name = document.getElementById('s1Name'); if (s1Name) s1Name.innerText = SESSION.name;
+    const s1Meta = document.getElementById('s1Meta'); if (s1Meta) s1Meta.innerText = `${_mpStudent.schoolName||''}\n${SESSION.grade}학년 ${SESSION.group}반 · ${SESSION.num}번`;
     buildKeyboard(); bindKeyboardTargets(); updateClassList(); setLanguage(currentLang);
     fillSession();
   };
