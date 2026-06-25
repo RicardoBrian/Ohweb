@@ -5,6 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>시험 — ohinfo</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
   <style>
     :root {
       --glass: rgba(255,255,255,0.28);
@@ -190,6 +194,16 @@
     }
     .run-result.error { color: #f87171; }
     .run-result.ok    { color: #86efac; }
+    /* CodeMirror 오버라이드 */
+    .CodeMirror { font-family: 'Courier New', Courier, monospace; font-size: 0.88rem; height: auto; min-height: 160px; border-radius: var(--radius-sm); border: 1px solid var(--border-card); background: rgba(15,20,40,0.92); color: #e8efff; line-height: 1.6; }
+    .CodeMirror-focused { border-color: rgba(42,92,230,0.5); box-shadow: 0 0 0 3px rgba(42,92,230,0.15); }
+    .CodeMirror-scroll { min-height: 160px; }
+    .CodeMirror-gutters { background: rgba(15,20,40,0.95); border-right: 1px solid rgba(255,255,255,0.1); }
+    .CodeMirror-linenumber { color: #556; }
+    .cm-s-default .cm-keyword { color: #c792ea; } .cm-s-default .cm-string { color: #a5d6a7; } .cm-s-default .cm-number { color: #f78c6c; } .cm-s-default .cm-comment { color: #546e7a; font-style: italic; } .cm-s-default .cm-def { color: #82aaff; } .cm-s-default .cm-builtin { color: #ffcb6b; }
+    .stdin-box { margin-top: 8px; }
+    .stdin-box label { font-size: 0.75rem; color: var(--sub); font-weight: 700; display: block; margin-bottom: 4px; }
+    .stdin-input { font-family: 'Courier New', monospace; font-size: 0.82rem; background: rgba(15,20,40,0.6); color: #e8efff; border: 1px solid var(--border-card); border-radius: var(--radius-sm); padding: 8px 10px; width: 100%; box-sizing: border-box; resize: vertical; min-height: 36px; }
     .tc-box { margin-top: 10px; padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-card); background: var(--glass); font-size: 0.82rem; color: var(--sub); }
     .tc-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 6px; }
     .tc-label { font-weight: 700; min-width: 60px; color: var(--accent); }
@@ -324,6 +338,7 @@ let currentExam = null;
 let questions = [];
 let answers = {};     // qIdx → { value, lang }
 let codeAnswers = {}; // qIdx → { code, lang }
+const cmInstances = {};
 let alertCount = 0;
 let timerInterval = null;
 let remainSec = 0;
@@ -404,18 +419,52 @@ async function loadMyExams() {
         if (es.exists()) examTitles[eid] = es.data().title || eid;
       } catch(e) {}
     }));
-    area.innerHTML = assignments.map(a => `
-      <div style="border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:background 0.15s;"
-        onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''"
-        onclick="enterExamDirect('${a.id}')">
+    // Check submission status for each assignment
+    const submittedMap = {};
+    await Promise.all(assignments.map(async a => {
+      try {
+        const progSnap = await getDoc(doc(db,'exam_progress',`${a.id}_${SESSION.id}`));
+        if (progSnap.exists()) submittedMap[a.id] = progSnap.data();
+      } catch(e) {}
+    }));
+
+    area.innerHTML = assignments.map(a => {
+      const prog = submittedMap[a.id];
+      const isDone = prog?.status === 'submitted';
+      return `<div style="border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;">
         <div style="font-weight:700;font-size:0.95rem;">${examTitles[a.examId]||a.examId}</div>
-        <div style="font-size:0.78rem;color:var(--sub);margin-top:3px;">코드: ${a.code} · ${SESSION.grade}학년 ${SESSION.cls}반</div>
-      </div>`).join('');
+        <div style="font-size:0.78rem;color:var(--sub);margin-top:3px;">${SESSION.grade}학년 ${SESSION.cls}반 대상</div>
+        ${isDone
+          ? `<div style="margin-top:8px;display:flex;align-items:center;gap:8px;"><span style="color:#22c55e;font-weight:700;font-size:0.85rem;">✓ 제출완료</span><span style="color:var(--sub);font-size:0.82rem;">${prog.totalScore??'?'}/${prog.totalPoints??'?'}점</span><button class="btn ghost sm" onclick="showMyResult('${a.id}')" style="margin-left:auto;font-size:0.8rem;">결과 보기</button></div>`
+          : `<button class="btn accent sm" onclick="enterExamDirect('${a.id}')" style="margin-top:8px;font-size:0.85rem;">코드로 입장 →</button>`
+        }
+      </div>`;
+    }).join('');
   } catch(e) {
     area.innerHTML = `<div style="color:#ef4444;font-size:0.82rem;">${e.message}</div>`;
   }
 }
 loadMyExams();
+
+window.showMyResult = async (asId) => {
+  showLoading(true);
+  try {
+    const progSnap = await getDoc(doc(db,'exam_progress',`${asId}_${SESSION.id}`));
+    if (!progSnap.exists()) { alert('결과를 찾을 수 없습니다.'); showLoading(false); return; }
+    const prog = progSnap.data();
+    // Load result items
+    const resultsSnap = await getDocs(query(collection(db,'exam_results'),
+      where('asId','==',asId), where('studentId','==',SESSION.id)));
+    const items = resultsSnap.docs.map(d=>d.data()).sort((a,b)=>(a.qIdx||0)-(b.qIdx||0));
+    showLoading(false);
+    // Reuse showResult
+    const resultItems = items.map(r=>({
+      qIdx: r.qIdx||0, title: r.title||`Q${(r.qIdx||0)+1}`,
+      value: r.value||'', score: r.score||0, maxScore: r.maxScore||0, feedback: r.feedback||''
+    }));
+    showResult(prog.totalScore||0, prog.totalPoints||0, resultItems);
+  } catch(e) { alert('오류: '+e.message); showLoading(false); }
+};
 
 // ── 탭 이탈 감지 ──
 document.addEventListener('visibilitychange', () => {
@@ -501,13 +550,13 @@ async function startExamFromAs(asDoc, errEl) {
 }
 
 // ── 목록에서 직접 입장 ──
-window.enterExamDirect = async (asId) => {
-  showLoading(true);
-  try {
-    const asDoc = await getDoc(doc(db, 'exam_assignments', asId));
-    if (!asDoc.exists()) { alert('배정 정보를 찾을 수 없습니다.'); showLoading(false); return; }
-    await startExamFromAs(asDoc, null);
-  } catch(e) { alert('오류: ' + e.message); showLoading(false); }
+window.enterExamDirect = (asId, code) => {
+  const input = document.getElementById('examCode');
+  if (input) {
+    input.value = '';
+    input.focus();
+    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
 };
 
 // ── 코드 직접 입장 ──
@@ -575,6 +624,7 @@ async function loadPyodide() {
 function renderQuestions() {
   const wrap = document.getElementById('questionsWrap');
   wrap.innerHTML = questions.map((q, i) => renderQuestion(q, i)).join('');
+  requestAnimationFrame(() => initCodeEditors());
   // 기존 답 복원
   questions.forEach((q, i) => {
     if (q.type === 'mc') {
@@ -626,6 +676,37 @@ function getDefaultCode(q, lang) {
 
 const typeLabels = { mc: { ko:'객관식', zh:'选择题', ru:'Тест', en:'MCQ' }, sa: { ko:'단답형', zh:'简答题', ru:'Ответ', en:'Short' }, code: { ko:'코딩', zh:'编程', ru:'Код', en:'Code' } };
 
+function initCodeEditors() {
+  questions.forEach((q, i) => {
+    if (q.type !== 'code') return;
+    const ta = document.getElementById(`code_${i}`);
+    if (!ta || cmInstances[i]) return;
+    const cm = CodeMirror.fromTextArea(ta, {
+      mode: 'python',
+      lineNumbers: true,
+      indentUnit: 4,
+      tabSize: 4,
+      indentWithTabs: false,
+      autoCloseBrackets: true,
+      extraKeys: {
+        'Tab': cm => cm.execCommand('indentMore'),
+        'Shift-Tab': cm => cm.execCommand('indentLess'),
+        'Enter': (cm) => {
+          const cursor = cm.getCursor();
+          const line = cm.getLine(cursor.line);
+          const indent = line.match(/^(\s*)/)[1];
+          const extraIndent = line.trimEnd().endsWith(':') ? '    ' : '';
+          cm.replaceSelection('\n' + indent + extraIndent, 'end');
+        }
+      }
+    });
+    cm.on('change', () => saveCode(i, cm.getValue()));
+    cmInstances[i] = cm;
+    // restore saved answer
+    if (codeAnswers[i]?.code) cm.setValue(codeAnswers[i].code);
+  });
+}
+
 function renderQuestion(q, i) {
   const num = `Q${i+1}`;
   const typeLabel = typeLabels[q.type]?.[currentLang] || q.type;
@@ -657,8 +738,12 @@ function renderQuestion(q, i) {
       <div class="code-meta">
         <span style="font-size:0.82rem;font-weight:700;color:var(--sub);">Python</span>
       </div>
-      <textarea class="code-editor inp" id="code_${i}" rows="8" spellcheck="false" oninput="saveCode(${i},this.value)">${getDefaultCode(q, currentLang)}</textarea>
-      <button class="btn run-btn" style="margin-top:8px;" onclick="runCode(${i})" ${pyodide?'':'disabled'}>
+      <textarea class="code-editor" id="code_${i}" spellcheck="false">${escHtml(getDefaultCode(q, currentLang))}</textarea>
+      <div class="stdin-box">
+        <label>표준 입력 (stdin) — 테스트 입력값</label>
+        <textarea class="stdin-input" id="stdin_${i}" placeholder="입력이 필요한 경우 여기에 입력값을 적으세요&#10;예: 3 5" rows="2"></textarea>
+      </div>
+      <button class="btn run-btn" id="runBtn_${i}" style="margin-top:8px;" onclick="runCode(${i})" ${pyodide?'':'disabled'}>
         ${UI[currentLang].run} ▶
       </button>
       <div id="runResult_${i}" class="run-result" style="display:none;"></div>
@@ -706,32 +791,32 @@ function updateProgress() {
 
 // ── 코드 실행 ──
 window.runCode = async (idx) => {
-  const codeEl = document.getElementById(`code_${idx}`);
+  const cm = cmInstances[idx];
   const resultEl = document.getElementById(`runResult_${idx}`);
-  const btn = codeEl.parentElement.querySelector('.run-btn');
+  const btn = document.getElementById(`runBtn_${idx}`);
   if (!pyodide) { resultEl.style.display='block'; resultEl.className='run-result error'; resultEl.innerText='Pyodide 로딩 중...'; return; }
-  const code = codeEl.value;
+  const code = cm ? cm.getValue() : (document.getElementById(`code_${idx}`)?.value || '');
+  const stdinVal = document.getElementById(`stdin_${idx}`)?.value || '';
   btn.innerText = UI[currentLang].running;
   btn.disabled = true;
   resultEl.style.display = 'block';
   resultEl.className = 'run-result';
   resultEl.innerText = '실행 중...';
   try {
-    let output = '';
     pyodide.runPython(`
 import sys, io as _io
 _buf = _io.StringIO()
 sys.stdout = _buf
-sys.stdin = _io.StringIO('')
+sys.stdin = _io.StringIO(${JSON.stringify(stdinVal)})
 `);
     await pyodide.runPythonAsync(code);
     pyodide.runPython(`sys.stdout = sys.__stdout__\nsys.stdin = sys.__stdin__`);
-    output = pyodide.runPython(`_buf.getvalue()`);
+    const output = pyodide.runPython(`_buf.getvalue()`);
     resultEl.className = 'run-result ok';
     resultEl.innerText = output || '(출력 없음)';
     saveCode(idx, code);
   } catch(e) {
-    pyodide.runPython(`import sys; sys.stdout = sys.__stdout__; sys.stdin = sys.__stdin__`);
+    try { pyodide.runPython(`import sys; sys.stdout = sys.__stdout__; sys.stdin = sys.__stdin__`); } catch(e2) {}
     resultEl.className = 'run-result error';
     resultEl.innerText = String(e);
   }
@@ -785,7 +870,8 @@ window.submitExam = async (isAuto = false) => {
         else { feedback = `오답 (정답: ${correct})`; }
 
       } else if (q.type === 'code') {
-        const code = codeAnswers[i]?.code || '';
+        const cm = cmInstances[i];
+        const code = cm ? cm.getValue() : (codeAnswers[i]?.code || '');
         value = code;
         // 테스트케이스 실행
         if (pyodide && q.testCases?.length) {
