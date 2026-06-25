@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>패들릿 — ohinfo</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <style>
+    :root {
+      --glass: rgba(255,255,255,0.28);
+      --glass-strong: rgba(255,255,255,0.42);
+      --glass-nav: rgba(255,255,255,0.3);
+      --border: rgba(255,255,255,0.6);
+      --border-card: rgba(255,255,255,0.48);
+      --highlight: inset 0 1px 0 rgba(255,255,255,0.7);
+      --text: #1a1f2e;
+      --sub: #7a849a;
+      --accent: #2a5ce6;
+      --accent-light: rgba(42,92,230,0.12);
+      --blur: blur(28px);
+      --shadow: 0 4px 20px rgba(60,80,160,0.1);
+      --shadow-md: 0 8px 32px rgba(60,80,160,0.18);
+      --radius: 18px;
+      --radius-sm: 11px;
+      --nav-h: 58px;
+      --sidebar-w: 300px;
+    }
+    body.dark {
+      --glass: rgba(255,255,255,0.07);
+      --glass-strong: rgba(255,255,255,0.11);
+      --glass-nav: rgba(10,12,25,0.65);
+      --border: rgba(255,255,255,0.14);
+      --border-card: rgba(255,255,255,0.1);
+      --highlight: inset 0 1px 0 rgba(255,255,255,0.1);
+      --text: #dde2f0;
+      --sub: #525a70;
+      --accent: #4f8df7;
+      --accent-light: rgba(79,141,247,0.15);
+      --shadow: 0 4px 20px rgba(0,0,0,0.45);
+      --shadow-md: 0 8px 32px rgba(0,0,0,0.55);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background:
+        radial-gradient(ellipse at 15% 20%, #b8caff 0%, transparent 50%),
+        radial-gradient(ellipse at 85% 10%, #d4b8ff 0%, transparent 45%),
+        radial-gradient(ellipse at 60% 80%, #b8e0ff 0%, transparent 50%),
+        radial-gradient(ellipse at 5%  90%, #c8d4ff 0%, transparent 40%),
+        #cdd8ff;
+      background-attachment: fixed;
+      color: var(--text);
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 16px; line-height: 1.7; min-height: 100vh;
+    }
+    body.dark {
+      background:
+        radial-gradient(ellipse at 15% 20%, #1a2050 0%, transparent 50%),
+        radial-gradient(ellipse at 85% 10%, #1e1040 0%, transparent 45%),
+        radial-gradient(ellipse at 60% 80%, #0d1a35 0%, transparent 50%),
+        #080c1a;
+      background-attachment: fixed;
+    }
+    .hidden { display: none !important; }
+    .nav {
+      position: sticky; top: 0; z-index: 200;
+      background: var(--glass-nav);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 1px 0 rgba(255,255,255,0.35), var(--shadow);
+      padding: 0 28px; height: var(--nav-h);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .nav-left, .nav-right { display: flex; align-items: center; gap: 8px; }
+    .nav-brand {
+      font-size: 1.15rem; font-weight: 900; letter-spacing: -0.03em; cursor: pointer;
+      background: linear-gradient(135deg, var(--accent), #7c4dff);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 4px; background: none; border: none; }
+    .hamburger span { display: block; width: 22px; height: 2px; background: var(--text); border-radius: 2px; }
+    .mobile-menu {
+      display: none; position: fixed; inset: var(--nav-h) 0 0 0; z-index: 190;
+      background: var(--glass-nav); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border-top: 1px solid var(--border);
+      flex-direction: column; padding: 20px 24px; gap: 14px;
+    }
+    .mobile-menu.open { display: flex; }
+    @media (max-width: 600px) { .hamburger { display: flex; } .nav-right { display: none; } }
+    .btn {
+      font-family: inherit; font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; border-radius: 50px;
+      padding: 7px 18px; border: 1px solid var(--border);
+      background: var(--glass); color: var(--text);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight), var(--shadow);
+      transition: background 0.2s, box-shadow 0.2s, transform 0.15s; white-space: nowrap;
+    }
+    .btn:hover { background: var(--glass-strong); box-shadow: var(--highlight), var(--shadow-md); }
+    .btn:active { transform: scale(0.96); }
+    .btn.accent { background: rgba(42,92,230,0.82); border-color: rgba(100,140,255,0.5); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 20px rgba(42,92,230,0.35); }
+    .btn.accent:hover { background: rgba(42,92,230,0.95); }
+    .btn.ghost { border-color: transparent; background: transparent; box-shadow: none; }
+    .btn.ghost:hover { background: var(--glass); box-shadow: var(--highlight); }
+    .btn.full { width: 100%; padding: 14px; font-size: 1rem; border-radius: var(--radius); }
+    .btn.danger { color: #ef4444; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.08); box-shadow: none; }
+    .lang-btn { padding: 5px 13px; font-size: 0.8rem; }
+    .lang-btn.active { background: rgba(42,92,230,0.82); border-color: rgba(100,140,255,0.5); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 2px 10px rgba(42,92,230,0.3); }
+    .dark-toggle {
+      width: 42px; height: 24px; border-radius: 50px;
+      background: var(--glass); border: 1px solid var(--border);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight); cursor: pointer; position: relative; transition: 0.3s; flex-shrink: 0;
+    }
+    body.dark .dark-toggle { background: rgba(42,92,230,0.6); border-color: rgba(100,140,255,0.4); }
+    .dark-toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.2); transition: transform 0.3s; }
+    body.dark .dark-toggle::after { transform: translateX(18px); }
+    .inp {
+      width: 100%; padding: 11px 14px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border-card);
+      background: var(--glass); color: var(--text);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight); font-family: inherit; font-size: 0.95rem; outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .inp::placeholder { color: var(--sub); }
+    .inp:focus { border-color: rgba(42,92,230,0.55); box-shadow: var(--highlight), 0 0 0 3px rgba(42,92,230,0.15); }
+    textarea.inp { resize: vertical; min-height: 90px; line-height: 1.65; }
+    select.inp { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+    .field { margin-bottom: 11px; }
+    .field label { display: block; font-size: 0.72rem; font-weight: 700; color: var(--sub); margin-bottom: 5px; letter-spacing: 0.05em; text-transform: uppercase; }
+    .step1-wrap { display: flex; align-items: center; justify-content: center; min-height: calc(100vh - var(--nav-h)); }
+    .select-card { width: 100%; max-width: 400px; background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border); border-radius: 24px; padding: 36px; box-shadow: var(--highlight), var(--shadow-md); }
+    .select-card h1 { font-size: 1.5rem; font-weight: 800; margin-bottom: 28px; text-align: center; }
+    .board-layout { display: block; max-width: 1440px; margin: 0 auto; padding: 0 24px 80px; }
+    @media (min-width: 1024px) {
+      .board-layout { display: grid; grid-template-columns: var(--sidebar-w) 1fr; gap: 0; padding: 0 32px 60px; align-items: start; }
+      .board-sidebar { position: sticky; top: var(--nav-h); max-height: calc(100vh - var(--nav-h)); overflow-y: auto; padding: 28px 24px 28px 0; scrollbar-width: none; }
+      .board-sidebar::-webkit-scrollbar { display: none; }
+      .board-main { padding: 28px 0 60px 32px; border-left: 1px solid var(--border-card); min-height: calc(100vh - var(--nav-h)); }
+      .sidebar-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 4px; }
+      .sidebar-desc { font-size: 0.85rem; color: var(--sub); margin-bottom: 20px; line-height: 1.5; }
+      .sidebar-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+      .board-header-mobile { display: none; }
+      .grid-board { column-count: 3; column-gap: 16px; }
+    }
+    @media (max-width: 1023px) {
+      .board-sidebar { padding: 20px 0 0; }
+      .board-main { padding: 0; }
+      .sidebar-title { display: none; } .sidebar-desc { display: none; } .sidebar-meta { display: none; }
+      .board-header-mobile { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding: 20px 0 14px; flex-wrap: wrap; }
+      .board-title { font-size: 1.5rem; font-weight: 800; line-height: 1.2; }
+      .board-desc { font-size: 0.88rem; color: var(--sub); margin-top: 4px; }
+      .grid-board { column-count: 2; column-gap: 16px; }
+    }
+    @media (max-width: 600px) { .board-layout { padding: 0 16px 80px; } .grid-board { column-count: 1; } }
+    .form-card { background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border); border-radius: 20px; padding: 20px; margin-bottom: 16px; box-shadow: var(--highlight), var(--shadow); }
+    .form-row { display: grid; grid-template-columns: 70px 1fr 96px; gap: 7px; margin-bottom: 8px; }
+    @media (max-width: 500px) { .form-row { grid-template-columns: 1fr 1fr; } .form-row > *:last-child { grid-column: span 2; } }
+    .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; }
+    .search-wrap { position: relative; flex: 1; }
+    .search-wrap .inp { padding-left: 38px; border-radius: 50px; }
+    .search-icon { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--sub); font-size: 0.9rem; pointer-events: none; }
+    .sort-group { display: flex; border: 1px solid var(--border); border-radius: 50px; overflow: hidden; backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); background: var(--glass); box-shadow: var(--highlight); }
+    .sort-group button { border: none; padding: 7px 16px; font-size: 0.82rem; background: transparent; color: var(--sub); font-weight: 600; cursor: pointer; font-family: inherit; transition: 0.2s; }
+    .sort-group button.active { background: rgba(42,92,230,0.8); color: #fff; border-radius: 50px; }
+    .upload-box { border: 1.5px dashed var(--border-card); border-radius: var(--radius-sm); padding: 12px; text-align: center; cursor: pointer; color: var(--sub); font-size: 0.82rem; transition: 0.2s; margin-bottom: 10px; background: var(--glass); }
+    .upload-box:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+    .preview-container { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+    .preview-item { position: relative; width: 48px; height: 48px; }
+    .preview-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; border: 1px solid var(--border-card); }
+    .preview-item .del-btn { position: absolute; top: -5px; right: -5px; background: #ef4444; color: #fff; border: none; border-radius: 50%; width: 16px; height: 16px; font-size: 9px; cursor: pointer; line-height: 16px; }
+    .post-card {
+      break-inside: avoid; page-break-inside: avoid;
+      display: inline-block; width: 100%;
+      background: var(--glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-card); border-radius: var(--radius); padding: 20px;
+      margin-bottom: 16px; box-shadow: var(--highlight), var(--shadow);
+      transition: box-shadow 0.25s, transform 0.25s;
+      opacity: 0; transform: translateY(14px); position: relative;
+    }
+    .post-card.visible { opacity: 1; transform: translateY(0); transition: opacity 0.35s ease, transform 0.35s ease, box-shadow 0.25s; }
+    .post-card:hover { box-shadow: var(--highlight), var(--shadow-md); transform: translateY(-3px); }
+    .post-card.pinned-card { border-color: rgba(42,92,230,0.45); }
+    .pin-badge { font-size: 0.68rem; font-weight: 700; color: var(--accent); margin-bottom: 6px; display: inline-block; letter-spacing: 0.03em; }
+    .teacher-card { border-left: 3px solid var(--accent) !important; column-span: all; margin-bottom: 16px; }
+    .teacher-card .post-sub { font-size: 0.82rem; font-weight: 700; color: var(--accent); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6px; }
+    .post-sub { font-size: 0.97rem; font-weight: 700; margin-bottom: 5px; white-space: pre-wrap; word-break: break-all; line-height: 1.45; }
+    .post-msg { font-size: 0.87rem; color: var(--sub); white-space: pre-wrap; word-break: break-all; line-height: 1.7; }
+    .post-msg a { color: var(--accent); text-decoration: underline; }
+    .img-slider { position: relative; margin-top: 12px; border-radius: var(--radius-sm); overflow: hidden; background: var(--glass); }
+    .slides-track { display: flex; transition: transform 0.32s cubic-bezier(0.4,0,0.2,1); will-change: transform; }
+    .slides-track img { width: 100%; flex-shrink: 0; aspect-ratio: 4/3; object-fit: cover; cursor: zoom-in; display: block; }
+    .slider-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.35); border: none; color: #fff; width: 26px; height: 26px; border-radius: 50%; cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; transition: 0.15s; }
+    .slider-btn:hover { background: rgba(0,0,0,0.6); }
+    .slider-prev { left: 7px; } .slider-next { right: 7px; }
+    .slider-dots { display: flex; justify-content: center; gap: 4px; padding: 6px 0 2px; }
+    .s-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--sub); opacity: 0.35; cursor: pointer; transition: 0.2s; }
+    .s-dot.active { opacity: 1; background: var(--accent); width: 14px; border-radius: 3px; }
+    .post-meta { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-card); margin-top: 12px; padding-top: 9px; flex-wrap: wrap; gap: 6px; }
+    .like-area { display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 3px 8px; border-radius: 50px; font-size: 0.8rem; transition: background 0.15s; user-select: none; color: var(--sub); }
+    .like-area:hover { background: var(--glass-strong); }
+    .like-area.voted { color: #ef4444; }
+    @keyframes heartBeat { 0%,100%{transform:scale(1);}30%{transform:scale(1.4);}60%{transform:scale(1.1);} }
+    .like-area.animate { animation: heartBeat 0.35s ease; }
+    .action-links { display: flex; gap: 12px; font-size: 0.78rem; opacity: 0; transition: opacity 0.2s; }
+    .post-card:hover .action-links { opacity: 1; }
+    .action-links a { cursor: pointer; color: var(--sub); font-weight: 600; transition: color 0.15s; }
+    .action-links a:hover { color: var(--text); }
+    .action-links .del-link:hover { color: #ef4444; }
+    .action-links .pin-link.is-pinned { color: var(--accent); }
+    .post-byline { font-size: 0.7rem; color: var(--sub); opacity: 0.7; text-align: right; margin-top: 7px; }
+    .skeleton { background: linear-gradient(90deg, var(--border-card) 25%, rgba(255,255,255,0.4) 50%, var(--border-card) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 6px; }
+    @keyframes shimmer { 0%{background-position:200% 0;}100%{background-position:-200% 0;} }
+    .skel-card { break-inside: avoid; display: inline-block; width: 100%; background: var(--glass); backdrop-filter: var(--blur); border: 1px solid var(--border-card); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+    .skel-line { height: 12px; margin-bottom: 8px; }
+    .skel-img { height: 110px; margin: 10px 0; border-radius: var(--radius-sm); }
+    .sidebar-refresh { font-size: 0.78rem; color: var(--sub); cursor: pointer; background: none; border: none; font-family: inherit; padding: 0; transition: color 0.15s; }
+    .sidebar-refresh:hover { color: var(--text); }
+    #loadingOverlay { position: fixed; inset: 0; z-index: 9000; display: none; justify-content: center; align-items: center; background: rgba(190,205,255,0.3); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+    body.dark #loadingOverlay { background: rgba(0,0,0,0.5); }
+    .spinner { width: 36px; height: 36px; border-radius: 50%; border: 3px solid var(--border); border-top-color: var(--accent); animation: spin 0.75s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .img-modal { position: fixed; inset: 0; z-index: 9500; display: none; justify-content: center; align-items: center; background: rgba(0,0,0,0.88); cursor: zoom-out; }
+    .img-modal-inner { position: relative; display: flex; align-items: center; gap: 14px; }
+    .img-modal img { max-width: 88vw; max-height: 88vh; border-radius: var(--radius); display: block; cursor: default; }
+    .modal-nav { background: rgba(255,255,255,0.12); border: none; color: #fff; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; transition: background 0.15s; flex-shrink: 0; }
+    .modal-nav:hover { background: rgba(255,255,255,0.25); }
+    .pw-overlay { position: fixed; inset: 0; z-index: 9000; display: none; justify-content: center; align-items: center; background: rgba(0,0,0,0.45); backdrop-filter: blur(8px); }
+    .pw-overlay.show { display: flex; }
+    .pw-box { background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border); border-radius: 20px; padding: 28px; width: 100%; max-width: 340px; box-shadow: var(--highlight), var(--shadow-md); }
+    .pw-box p { font-weight: 700; margin-bottom: 14px; }
+    .pw-box .inp { margin-bottom: 14px; }
+    .pw-actions { display: flex; gap: 8px; justify-content: flex-end; }
+    .popup-overlay { position: fixed; inset: 0; z-index: 8000; display: none; justify-content: center; align-items: center; background: rgba(0,0,0,0.45); backdrop-filter: blur(8px); }
+    .popup-overlay.show { display: flex; }
+    .popup-box { background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border); border-radius: 22px; padding: 32px; max-width: 420px; width: 90%; box-shadow: var(--highlight), var(--shadow-md); text-align: center; }
+    .popup-box h2 { font-size: 1.05rem; font-weight: 800; margin-bottom: 12px; }
+    .popup-msg { font-size: 0.92rem; color: var(--sub); line-height: 1.75; white-space: pre-wrap; word-break: break-all; margin-bottom: 22px; }
+    .admin-wrap { max-width: 1440px; margin: 0 auto; padding: 0 32px 60px; }
+    @media (max-width: 600px) { .admin-wrap { padding: 0 16px 60px; } }
+    .admin-panel { background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border); border-radius: 22px; padding: 28px; margin-top: 20px; box-shadow: var(--highlight), var(--shadow); max-width: 680px; }
+    .admin-panel h2 { font-size: 1rem; font-weight: 800; margin-bottom: 20px; }
+    .edit-banner { background: var(--accent-light); border: 1px solid rgba(42,92,230,0.2); border-radius: var(--radius-sm); padding: 12px 16px; font-size: 0.88rem; font-weight: 700; color: var(--accent); margin-bottom: 14px; }
+    .checkbox-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: var(--glass); padding: 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-card); margin-bottom: 12px; }
+    .checkbox-grid hr { grid-column: span 3; border: none; border-top: 1px solid var(--border-card); }
+    .checkbox-grid label { display: flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 600; cursor: pointer; }
+    .status-pill { border-radius: 50px; padding: 4px 12px; font-weight: 700; font-size: 0.78rem; cursor: pointer; border: 1px solid; font-family: inherit; transition: 0.15s; }
+    .status-pill.on { color: var(--accent); background: var(--accent-light); border-color: rgba(42,92,230,0.3); }
+    .status-pill.off { color: #ef4444; background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.25); }
+    .admin-item { display: flex; justify-content: space-between; align-items: center; padding: 11px 14px; background: var(--glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border-card); border-radius: var(--radius-sm); margin-bottom: 8px; flex-wrap: wrap; gap: 8px; }
+    .divider { border: none; border-top: 1px solid var(--border-card); margin: 18px 0; }
+  </style>
+</head>
+<body>
+
+<div id="loadingOverlay"><div class="spinner"></div></div>
+
+<div id="imageModal" class="img-modal" onclick="handleModalClick(event)">
+  <div class="img-modal-inner" onclick="event.stopPropagation()">
+    <button class="modal-nav" id="modalPrev" onclick="modalNav(-1)">‹</button>
+    <img id="modalImg" src="" alt="">
+    <button class="modal-nav" id="modalNext" onclick="modalNav(1)">›</button>
+  </div>
+</div>
+
+<div id="pwOverlay" class="pw-overlay">
+  <div class="pw-box">
+    <p id="pwLabel">비밀번호</p>
+    <input class="inp" id="pwInput" type="password" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')pwConfirm()">
+    <div class="pw-actions">
+      <button class="btn ghost" onclick="pwCancel()">취소</button>
+      <button class="btn accent" onclick="pwConfirm()">확인</button>
+    </div>
+  </div>
+</div>
+
+<div id="popupOverlay" class="popup-overlay">
+  <div class="popup-box">
+    <h2>공지사항</h2>
+    <div id="popupMsg" class="popup-msg"></div>
+    <button class="btn accent" onclick="closePopup()">확인</button>
+  </div>
+</div>
+
+<nav class="nav">
+  <div class="nav-left">
+    <div class="nav-brand" onclick="goHome()">ohinfo</div>
+  </div>
+  <div class="nav-right">
+    <button class="btn lang-btn active" id="btn-ko" onclick="setLanguage('ko')">한</button>
+    <button class="btn lang-btn" id="btn-zh" onclick="setLanguage('zh')">中</button>
+    <button class="btn lang-btn" id="btn-ru" onclick="setLanguage('ru')">РУ</button>
+    <button class="btn ghost" onclick="goHome()">홈</button>
+    <button class="btn ghost" onclick="toggleAdmin()">관리</button>
+    <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
+  </div>
+  <button class="hamburger" onclick="toggleMobileMenu()"><span></span><span></span><span></span></button>
+</nav>
+
+<div id="mobileMenu" class="mobile-menu">
+  <button class="btn ghost" onclick="goHome();closeMobileMenu()">홈</button>
+  <button class="btn ghost" onclick="toggleAdmin();closeMobileMenu()">관리</button>
+  <div style="display:flex;gap:8px;">
+    <button class="btn lang-btn" id="m-btn-ko" onclick="setLanguage('ko');closeMobileMenu()">한</button>
+    <button class="btn lang-btn" id="m-btn-zh" onclick="setLanguage('zh');closeMobileMenu()">中</button>
+    <button class="btn lang-btn" id="m-btn-ru" onclick="setLanguage('ru');closeMobileMenu()">РУ</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span style="font-size:0.85rem;font-weight:600;color:var(--sub);">다크모드</span>
+    <button class="dark-toggle" onclick="toggleDark()"></button>
+  </div>
+</div>
+
+<div id="app">
+  <div id="step1">
+    <div class="step1-wrap">
+      <div class="select-card">
+        <h1>📌 패들릿</h1>
+        <div class="field"><label>학년</label>
+          <select class="inp" id="grade" onchange="updateClassList()">
+            <option>1학년</option><option>2학년</option><option>3학년</option>
+          </select>
+        </div>
+        <div class="field"><label>반</label>
+          <select class="inp" id="group" onchange="updateClassList()">
+            <option>1반</option><option>2반</option><option>3반</option><option>4반</option><option>5반</option>
+          </select>
+        </div>
+        <div class="field" style="margin-bottom:24px;"><label>수업</label>
+          <select class="inp" id="classList"><option>수업을 선택하세요</option></select>
+        </div>
+        <button class="btn accent full" id="ui-enter-btn" onclick="startBoard()">입장하기</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="step2" class="hidden">
+    <div class="board-layout">
+      <aside class="board-sidebar">
+        <div class="sidebar-title" id="sidebarTitle"></div>
+        <div class="sidebar-desc" id="sidebarDesc"></div>
+        <div class="sidebar-meta">
+          <button class="sidebar-refresh" onclick="manualRefresh()">↻ 새로고침</button>
+        </div>
+        <div class="board-header-mobile">
+          <div>
+            <div id="boardTitle" class="board-title"></div>
+            <div id="boardDesc" class="board-desc"></div>
+          </div>
+          <button class="btn" onclick="manualRefresh()">새로고침</button>
+        </div>
+        <div class="form-card">
+          <form id="postForm" onsubmit="submitPost(event)">
+            <div class="form-row">
+              <input class="inp" id="p_num" placeholder="번호" required>
+              <input class="inp" id="p_name" placeholder="이름" required>
+              <input class="inp" id="p_pw_display" type="password" placeholder="비번" required>
+            </div>
+            <input class="inp" id="p_sub" placeholder="제목" required style="margin-bottom:7px;">
+            <textarea class="inp" id="p_msg" rows="4" placeholder="내용" required style="margin-bottom:9px;"></textarea>
+            <div class="upload-box" id="ui-upload-label" onclick="document.getElementById('fileInput').click()">
+              이미지 첨부 (클릭 또는 Ctrl+V, 최대 4장)
+              <div id="previewArea" class="preview-container"></div>
+            </div>
+            <input type="file" id="fileInput" class="hidden" accept="image/*" multiple onchange="handleFiles(this.files)">
+            <button id="subBtn" type="submit" class="btn accent full">게시물 등록</button>
+            <button id="cancelEditBtn" type="button" class="btn full hidden" style="margin-top:7px;" onclick="cancelEdit()">수정 취소</button>
+          </form>
+        </div>
+        <div style="text-align:center;padding:4px 0 8px;">
+          <button class="btn ghost" style="font-size:0.8rem;" onclick="goHome()">← 처음으로</button>
+        </div>
+      </aside>
+      <main class="board-main">
+        <div class="toolbar">
+          <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input class="inp" id="searchInput" type="text" placeholder="검색..." oninput="filterPosts()">
+          </div>
+          <div class="sort-group">
+            <button id="sortNew" class="active" onclick="setSort('new')">최신순</button>
+            <button id="sortLike" onclick="setSort('like')">인기순</button>
+          </div>
+        </div>
+        <div id="display" class="grid-board"></div>
+      </main>
+    </div>
+  </div>
+
+  <div id="adminPanel" class="hidden">
+    <div class="admin-wrap">
+      <div class="admin-panel">
+        <h2>수업 관리</h2>
+        <div id="adm_edit_info" class="edit-banner hidden"></div>
+        <input type="hidden" id="adm_docId">
+        <div class="checkbox-grid" id="adm_target_area">
+          <label><input type="checkbox" class="adm-g" value="1학년"> 1학년</label>
+          <label><input type="checkbox" class="adm-g" value="2학년"> 2학년</label>
+          <label><input type="checkbox" class="adm-g" value="3학년"> 3학년</label>
+          <hr>
+          <label><input type="checkbox" class="adm-b" value="1반"> 1반</label>
+          <label><input type="checkbox" class="adm-b" value="2반"> 2반</label>
+          <label><input type="checkbox" class="adm-b" value="3반"> 3반</label>
+          <label><input type="checkbox" class="adm-b" value="4반"> 4반</label>
+          <label><input type="checkbox" class="adm-b" value="5반"> 5반</label>
+        </div>
+        <div class="field"><label>수업명</label><input class="inp" id="adm_name" placeholder="수업명"></div>
+        <div class="field"><label>설명</label><textarea class="inp" id="adm_desc" rows="2" placeholder="수업 상세 설명"></textarea></div>
+        <div class="field"><label>선생님 안내</label><textarea class="inp" id="adm_ex" rows="2" placeholder="게시판 최상단 고정 안내"></textarea></div>
+        <div class="field" style="margin-bottom:18px;"><label>공지 팝업</label><textarea class="inp" id="adm_popup" rows="2" placeholder="입장 시 팝업 (비워두면 미표시)"></textarea></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;">
+          <button class="btn accent" onclick="saveAdminClass()">저장</button>
+          <button id="adm_cancel_btn" class="btn hidden" onclick="resetAdminForm()">취소</button>
+        </div>
+        <hr class="divider">
+        <div id="adminList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const MASTER_PW = "9600";
+  let currentLang = 'ko';
+  let imgList = [];
+  let currentPosts = [];
+  let currentExample = '';
+  let currentSort = 'new';
+  let pwResolveCallback = null;
+  let modalImgList = [], modalImgIndex = 0;
+  let f_mode = 'add', f_postId = '', f_grade = '', f_group = '', f_class = '';
+
+  const uiText = {
+    ko: { opt:"수업을 선택하세요", enter:"입장하기", submit:"게시물 등록", edit_finish:"수정 완료" },
+    zh: { opt:"请选择课程", enter:"进入", submit:"发布", edit_finish:"完成修改" },
+    ru: { opt:"Выберите урок", enter:"Войти", submit:"Опубликовать", edit_finish:"Изм.завершено" }
+  };
+
+  function fmtTime(ts) {
+    const date = ts?.toDate ? ts.toDate() : new Date(ts || Date.now());
+    const diff = (Date.now() - date) / 1000;
+    if (diff < 60) return '방금';
+    if (diff < 3600) return `${Math.floor(diff/60)}분 전`;
+    if (diff < 86400) return `${Math.floor(diff/3600)}시간 전`;
+    return `${date.getMonth()+1}/${date.getDate()}`;
+  }
+
+  function fmtMsg(text) {
+    if (!text) return '';
+    let s = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return s.replace(/(https?:\/\/[^\s]+)/g,'<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>');
+  }
+
+  function toggleDark() { document.body.classList.toggle('dark'); localStorage.setItem('dark', document.body.classList.contains('dark')? '1':'0'); }
+  if (localStorage.getItem('dark')==='1') document.body.classList.add('dark');
+  function toggleMobileMenu() { document.getElementById('mobileMenu').classList.toggle('open'); }
+  function closeMobileMenu() { document.getElementById('mobileMenu').classList.remove('open'); }
+  function toggleLoading(show) { document.getElementById('loadingOverlay').style.display = show ? 'flex':'none'; }
+
+  function openModal(imgs,idx) { modalImgList=imgs; modalImgIndex=idx; document.getElementById('modalImg').src=imgs[idx]; document.getElementById('modalPrev').style.display=imgs.length>1?'flex':'none'; document.getElementById('modalNext').style.display=imgs.length>1?'flex':'none'; document.getElementById('imageModal').style.display='flex'; }
+  function handleModalClick(e) { if(e.target===document.getElementById('imageModal'))closeModal(); }
+  function closeModal() { document.getElementById('imageModal').style.display='none'; }
+  function modalNav(dir) { modalImgIndex=(modalImgIndex+dir+modalImgList.length)%modalImgList.length; document.getElementById('modalImg').src=modalImgList[modalImgIndex]; }
+  document.addEventListener('keydown',e=>{ if(document.getElementById('imageModal').style.display==='flex'){if(e.key==='ArrowLeft')modalNav(-1);if(e.key==='ArrowRight')modalNav(1);if(e.key==='Escape')closeModal();} if(document.getElementById('pwOverlay').classList.contains('show')&&e.key==='Escape')pwCancel(); });
+
+  function showPopup(msg) { if(!msg)return; const key='popup_'+f_class; if(sessionStorage.getItem(key))return; sessionStorage.setItem(key,'1'); document.getElementById('popupMsg').innerText=msg; document.getElementById('popupOverlay').classList.add('show'); }
+  function closePopup() { document.getElementById('popupOverlay').classList.remove('show'); }
+
+  function askPassword(label) { return new Promise(resolve=>{ pwResolveCallback=resolve; document.getElementById('pwLabel').innerText=label||'비밀번호'; document.getElementById('pwInput').value=''; document.getElementById('pwOverlay').classList.add('show'); setTimeout(()=>document.getElementById('pwInput').focus(),100); }); }
+  function pwConfirm() { const v=document.getElementById('pwInput').value; document.getElementById('pwOverlay').classList.remove('show'); if(pwResolveCallback){pwResolveCallback(v);pwResolveCallback=null;} }
+  function pwCancel() { document.getElementById('pwOverlay').classList.remove('show'); if(pwResolveCallback){pwResolveCallback(null);pwResolveCallback=null;} }
+
+  function setLanguage(lang) {
+    currentLang=lang;
+    ['ko','zh','ru'].forEach(l=>{ document.getElementById('btn-'+l)?.classList.toggle('active',l===lang); document.getElementById('m-btn-'+l)?.classList.toggle('active',l===lang); });
+    document.getElementById('ui-enter-btn').innerText=uiText[lang].enter;
+    document.getElementById('subBtn').innerText=f_mode==='edit'?uiText[lang].edit_finish:uiText[lang].submit;
+    updateClassList();
+  }
+
+  function goHome() { document.getElementById('step2').classList.add('hidden'); document.getElementById('step1').classList.remove('hidden'); document.getElementById('adminPanel').classList.add('hidden'); cancelEdit(); window.scrollTo(0,0); }
+  function toggleAdmin() { askPassword('관리자 비밀번호').then(pw=>{ if(pw!==MASTER_PW)return; document.getElementById('adminPanel').classList.toggle('hidden'); if(!document.getElementById('adminPanel').classList.contains('hidden')){loadAdminList();window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});} }); }
+
+  function startBoard() {
+    const cls=document.getElementById('classList').value;
+    if(cls.includes('선택')||cls===uiText[currentLang].opt)return;
+    f_mode='add'; f_postId='';
+    f_grade=document.getElementById('grade').value;
+    f_group=document.getElementById('group').value;
+    f_class=cls;
+    document.getElementById('step1').classList.add('hidden');
+    document.getElementById('step2').classList.remove('hidden');
+    manualRefresh();
+  }
+
+  function showSkeleton() { document.getElementById('display').innerHTML=Array(6).fill(`<div class="skel-card"><div class="skeleton skel-line" style="width:55%;"></div><div class="skeleton skel-line" style="width:85%;"></div><div class="skeleton skel-line" style="width:70%;"></div><div class="skeleton skel-img"></div></div>`).join(''); }
+
+  function setSort(type) { currentSort=type; document.getElementById('sortNew').classList.toggle('active',type==='new'); document.getElementById('sortLike').classList.toggle('active',type==='like'); render(currentExample,sortedPosts()); }
+  function sortedPosts() { const p=[...currentPosts]; if(currentSort==='like')p.sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||b.likes-a.likes); return p; }
+  function filterPosts() { const q=document.getElementById('searchInput').value.trim().toLowerCase(); if(!q){render(currentExample,sortedPosts());return;} const f=sortedPosts().filter(p=>(p.subject||'').toLowerCase().includes(q)||(p.message||'').toLowerCase().includes(q)||(p.name||'').toLowerCase().includes(q)); render(currentExample,f,true); }
+
+  function render(ex,posts,isFiltered) {
+    const display=document.getElementById('display'); let html='';
+    if(ex&&!isFiltered) html+=`<div class="post-card teacher-card visible"><div class="post-sub">선생님 안내</div><div class="post-msg">${fmtMsg(ex)}</div></div>`;
+    if(!posts.length){display.innerHTML=html+`<div style="text-align:center;padding:48px 0;color:var(--sub);font-size:0.92rem;">게시물이 없습니다.</div>`;return;}
+    posts.forEach(p=>{
+      const hasLiked=localStorage.getItem('voted_'+p.id);
+      html+=`<div class="post-card ${p.pinned?'pinned-card':''}" data-id="${p.id}">
+        ${p.pinned?'<div class="pin-badge">📌 고정</div>':''}
+        <div class="post-sub">${p.subject}</div>
+        <div class="post-msg">${fmtMsg(p.message)}</div>
+        ${buildSlider(p.imgs,p.id)}
+        <div class="post-meta">
+          <div class="like-area ${hasLiked?'voted':''}" onclick="toggleLikeUI('${p.id}',this)">
+            <span>❤</span><span class="like-count" style="font-weight:700;">${p.likes||0}</span>
+          </div>
+          <div class="action-links">
+            <a class="pin-link ${p.pinned?'is-pinned':''}" onclick="handlePinClick('${p.id}')">핀</a>
+            <a onclick="handleEditClick('${p.id}')">수정</a>
+            <a class="del-link" onclick="openDelete('${p.id}')">삭제</a>
+          </div>
+        </div>
+        <div class="post-byline">${p.name}(${p.num}) · ${p.time}</div>
+      </div>`;
+    });
+    display.innerHTML=html;
+    const obs=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target);}});},{threshold:0.05});
+    display.querySelectorAll('.post-card:not(.teacher-card):not(.visible)').forEach(c=>obs.observe(c));
+  }
+
+  function buildSlider(imgs,pid) {
+    if(!imgs||!imgs.length)return'';
+    if(imgs.length===1)return`<div class="img-slider"><div class="slides-track"><img src="${imgs[0]}" onclick="openModal(['${imgs[0]}'],0)" loading="lazy"></div></div>`;
+    const slides=imgs.map((s,i)=>`<img src="${s}" onclick="openModal(${JSON.stringify(imgs)},${i})" loading="lazy">`).join('');
+    const dots=imgs.map((_,i)=>`<span class="s-dot ${i===0?'active':''}" onclick="slideTo('${pid}',${i})"></span>`).join('');
+    return`<div class="img-slider" id="slider_${pid}"><div class="slides-track" id="track_${pid}">${slides}</div><button class="slider-btn slider-prev" onclick="slidePrev('${pid}',${imgs.length})">‹</button><button class="slider-btn slider-next" onclick="slideNext('${pid}',${imgs.length})">›</button><div class="slider-dots">${dots}</div></div>`;
+  }
+  const sliderIdx={};
+  function slideTo(id,idx){sliderIdx[id]=idx;const t=document.getElementById('track_'+id);if(!t)return;t.style.transform=`translateX(-${idx*100}%)`;document.querySelectorAll(`#slider_${id} .s-dot`).forEach((d,i)=>d.classList.toggle('active',i===idx));}
+  function slideNext(id,len){slideTo(id,((sliderIdx[id]||0)+1)%len);}
+  function slidePrev(id,len){slideTo(id,((sliderIdx[id]||0)-1+len)%len);}
+  let touchX=null;
+  document.addEventListener('touchstart',e=>{touchX=e.touches[0].clientX;},{passive:true});
+  document.addEventListener('touchend',e=>{if(touchX===null)return;const dx=e.changedTouches[0].clientX-touchX;if(Math.abs(dx)<40){touchX=null;return;}const slider=e.target.closest('.img-slider');if(!slider){touchX=null;return;}const id=slider.id.replace('slider_','');const track=document.getElementById('track_'+id);if(!track){touchX=null;return;}const len=track.children.length;dx<0?slideNext(id,len):slidePrev(id,len);touchX=null;},{passive:true});
+
+  function toggleLikeUI(id,el){const hasLiked=localStorage.getItem('voted_'+id);const cnt=el.querySelector('.like-count');let cur=parseInt(cnt.innerText);el.classList.add('animate');setTimeout(()=>el.classList.remove('animate'),350);if(hasLiked){cnt.innerText=Math.max(0,cur-1);el.classList.remove('voted');localStorage.removeItem('voted_'+id);fbToggleLike(id,true).catch(()=>{});}else{cnt.innerText=cur+1;el.classList.add('voted');localStorage.setItem('voted_'+id,'1');fbToggleLike(id,false).catch(()=>{});}}
+
+  function handleFiles(files){Array.from(files).forEach(file=>{if(imgList.length>=4)return;const r=new FileReader();r.onload=e=>{const img=new Image();img.onload=()=>{const c=document.createElement('canvas');const max=480;let w=img.width,h=img.height;if(w>max||h>max){if(w>h){h*=max/w;w=max;}else{w*=max/h;h=max;}}c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);imgList.push(c.toDataURL('image/jpeg',0.55));updatePreview();};img.src=e.target.result;};r.readAsDataURL(file);});}
+  function updatePreview(){document.getElementById('previewArea').innerHTML=imgList.map((s,i)=>`<div class="preview-item"><img src="${s}"><button type="button" class="del-btn" onclick="removeImg(${i})">×</button></div>`).join('');}
+  function removeImg(i){imgList.splice(i,1);updatePreview();}
+  window.addEventListener('paste',e=>{if(document.getElementById('step2').classList.contains('hidden'))return;const items=(e.clipboardData||e.originalEvent.clipboardData).items;for(let item of items){if(item.type.startsWith('image/'))handleFiles([item.getAsFile()]);}});
+
+  function cancelEdit(){document.getElementById('postForm').reset();f_mode='add';f_postId='';imgList=[];updatePreview();document.getElementById('subBtn').innerText=uiText[currentLang].submit;document.getElementById('subBtn').disabled=false;document.getElementById('cancelEditBtn').classList.add('hidden');}
+
+  window.onload=()=>{ updateClassList(); setLanguage('ko'); };
+</script>
+
+<script type="module">
+  import { db } from './firebase-config.js';
+  import {
+    collection, getDocs, addDoc, updateDoc, deleteDoc,
+    query, where, doc, serverTimestamp, increment, getDoc
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  // ── 수업 목록 로드 ──
+  window.updateClassList = async () => {
+    const grade = document.getElementById('grade').value;
+    const group = document.getElementById('group').value;
+    const ng = v => String(v||'').replace(/학년/g,'').trim();
+    const nc = v => String(v||'').replace(/반/g,'').trim();
+    try {
+      const snap = await getDocs(collection(db, 'paddlet_classes'));
+      const classes = snap.docs
+        .map(d => ({id:d.id,...d.data()}))
+        .filter(c => c.status==='ON' &&
+          (c.grades||[]).some(g => ng(g)===ng(grade)) &&
+          (c.groups||[]).some(g => nc(g)===nc(group)));
+      const sel = document.getElementById('classList');
+      const optText = uiText[currentLang]?.opt || '수업을 선택하세요';
+      sel.innerHTML = `<option>${optText}</option>` + classes.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
+    } catch(e) { console.error(e); }
+  };
+
+  // ── 게시글 로드 ──
+  window.manualRefresh = async () => {
+    showSkeleton();
+    try {
+      // 수업 정보
+      const classSnap = await getDocs(query(collection(db,'paddlet_classes'), where('name','==',f_class)));
+      const classData = classSnap.docs[0]?.data() || {};
+      const title = classData.name || f_class;
+      const desc = classData.desc || '';
+      const example = classData.ex || '';
+      const popup = classData.popup || '';
+
+      document.getElementById('boardTitle').innerText = title;
+      document.getElementById('boardDesc').innerText = desc;
+      document.getElementById('sidebarTitle').innerText = title;
+      document.getElementById('sidebarDesc').innerText = desc;
+
+      // 게시글 (classTitle만 where — 나머지는 클라이언트 필터)
+      const postsSnap = await getDocs(query(collection(db,'paddlet_posts'), where('classTitle','==',f_class)));
+      const ng = v => String(v||'').replace(/학년/g,'').trim();
+      const nc = v => String(v||'').replace(/반/g,'').trim();
+      currentPosts = postsSnap.docs
+        .map(d => {const data=d.data(); return {id:d.id,...data,time:fmtTime(data.createdAt),likes:data.likes||0};})
+        .filter(p => ng(p.grade)===ng(f_grade) && nc(p.group)===nc(f_group))
+        .sort((a,b)=>{
+          if(a.pinned&&!b.pinned)return-1; if(!a.pinned&&b.pinned)return 1;
+          return (b.createdAt?.toMillis?.()??0)-(a.createdAt?.toMillis?.()??0);
+        });
+      currentExample = example;
+      render(example, sortedPosts());
+      if(popup) showPopup(popup);
+    } catch(e) {
+      document.getElementById('display').innerHTML=`<div style="text-align:center;padding:48px 0;color:var(--sub);">오류: ${e.message}</div>`;
+    }
+  };
+
+  // ── 게시글 등록/수정 ──
+  window.submitPost = async (event) => {
+    event.preventDefault(); toggleLoading(true); document.getElementById('subBtn').disabled=true;
+    const num=document.getElementById('p_num').value;
+    const name=document.getElementById('p_name').value;
+    const password=document.getElementById('p_pw_display').value;
+    const subject=document.getElementById('p_sub').value;
+    const message=document.getElementById('p_msg').value;
+    try {
+      if(f_mode==='edit') {
+        const ref=doc(db,'paddlet_posts',f_postId);
+        const snap=await getDoc(ref);
+        if(!snap.exists()||snap.data().password!==password){alert('비밀번호가 올바르지 않습니다.');toggleLoading(false);document.getElementById('subBtn').disabled=false;return;}
+        await updateDoc(ref,{subject,message,origSub:subject,origMsg:message,imgs:imgList,updatedAt:serverTimestamp()});
+      } else {
+        await addDoc(collection(db,'paddlet_posts'),{classTitle:f_class,grade:f_grade,group:f_group,num,name,password,subject,message,origSub:subject,origMsg:message,imgs:imgList,likes:0,pinned:false,createdAt:serverTimestamp()});
+      }
+      document.getElementById('postForm').reset(); cancelEdit();
+      await window.manualRefresh();
+      setTimeout(()=>{const first=document.querySelector('.grid-board .post-card:not(.teacher-card)');if(first)first.scrollIntoView({behavior:'smooth',block:'center'});},150);
+    } catch(e) { alert('오류: '+e.message); document.getElementById('subBtn').disabled=false; }
+    toggleLoading(false);
+  };
+
+  // ── 수정 버튼 ──
+  window.handleEditClick = async (postId) => {
+    const post=currentPosts.find(p=>p.id===postId); if(!post)return;
+    const pw=await askPassword('비밀번호'); if(!pw)return;
+    if(post.password!==pw){alert('비밀번호가 올바르지 않습니다.');return;}
+    f_mode='edit'; f_postId=post.id;
+    document.getElementById('p_name').value=post.name;
+    document.getElementById('p_num').value=post.num;
+    document.getElementById('p_sub').value=post.origSub||post.subject;
+    document.getElementById('p_msg').value=post.origMsg||post.message;
+    document.getElementById('p_pw_display').value=pw;
+    imgList=Array.isArray(post.imgs)?[...post.imgs]:[];
+    updatePreview();
+    document.getElementById('subBtn').innerText=uiText[currentLang].edit_finish;
+    document.getElementById('cancelEditBtn').classList.remove('hidden');
+    document.querySelector('.board-sidebar').scrollIntoView({behavior:'smooth',block:'start'});
+  };
+
+  // ── 삭제 버튼 ──
+  window.openDelete = async (id) => {
+    const pw=await askPassword('비밀번호'); if(!pw)return;
+    const post=currentPosts.find(p=>p.id===id); if(!post)return;
+    if(post.password!==pw && pw!==MASTER_PW){alert('비밀번호가 올바르지 않습니다.');return;}
+    toggleLoading(true);
+    try { await deleteDoc(doc(db,'paddlet_posts',id)); await window.manualRefresh(); }
+    catch(e){alert('오류: '+e.message);}
+    toggleLoading(false);
+  };
+
+  // ── 좋아요 ──
+  window.fbToggleLike = async (postId, isCancel) => {
+    await updateDoc(doc(db,'paddlet_posts',postId),{likes:increment(isCancel?-1:1)});
+  };
+
+  // ── 핀 ──
+  window.handlePinClick = async (postId) => {
+    const pw=await askPassword('관리자 비밀번호'); if(pw!==MASTER_PW)return;
+    const post=currentPosts.find(p=>p.id===postId); if(!post)return;
+    const isPinned=!post.pinned;
+    try { await updateDoc(doc(db,'paddlet_posts',postId),{pinned:isPinned}); post.pinned=isPinned; render(currentExample,sortedPosts()); }
+    catch(e){alert('오류: '+e.message);}
+  };
+
+  // ── 관리자: 수업 목록 ──
+  window.loadAdminList = async () => {
+    const snap = await getDocs(collection(db,'paddlet_classes'));
+    const list = snap.docs.map(d=>({id:d.id,...d.data()}));
+    document.getElementById('adminList').innerHTML = list.map(c=>`
+      <div class="admin-item">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <select onchange="toggleClassStatus('${c.id}',this.value)" class="status-pill ${c.status==='ON'?'on':'off'}">
+            <option value="ON" ${c.status==='ON'?'selected':''}>ON</option>
+            <option value="OFF" ${c.status==='OFF'?'selected':''}>OFF</option>
+          </select>
+          <span style="font-size:0.88rem;">${(c.grades||[]).join('·')} ${(c.groups||[]).join('·')} — <b>${c.name}</b></span>
+        </div>
+        <div style="display:flex;gap:12px;">
+          <a onclick='editAdminUI(${JSON.stringify({...c}).replace(/'/g,"&#39;")})' style="font-size:0.82rem;font-weight:700;color:var(--accent);cursor:pointer;">수정</a>
+          <a onclick="delAdminClass('${c.id}')" style="font-size:0.82rem;font-weight:700;color:#ef4444;cursor:pointer;">삭제</a>
+        </div>
+      </div>`).join('');
+  };
+
+  window.toggleClassStatus = async (docId, status) => {
+    toggleLoading(true);
+    await updateDoc(doc(db,'paddlet_classes',docId),{status});
+    await window.loadAdminList(); await window.updateClassList(); toggleLoading(false);
+  };
+
+  window.editAdminUI = (c) => {
+    document.getElementById('adm_docId').value=c.id;
+    document.getElementById('adm_name').value=c.name;
+    document.getElementById('adm_desc').value=c.desc||'';
+    document.getElementById('adm_ex').value=c.ex||'';
+    document.getElementById('adm_popup').value=c.popup||'';
+    document.querySelectorAll('.adm-g').forEach(i=>i.checked=(c.grades||[]).includes(i.value));
+    document.querySelectorAll('.adm-b').forEach(i=>i.checked=(c.groups||[]).includes(i.value));
+    document.getElementById('adm_target_area').classList.remove('hidden');
+    const info=document.getElementById('adm_edit_info');
+    info.classList.remove('hidden'); info.innerText=`수정 중: ${c.name}`;
+    document.getElementById('adm_cancel_btn').classList.remove('hidden');
+    window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
+  };
+
+  window.saveAdminClass = async () => {
+    const docId=document.getElementById('adm_docId').value;
+    const grades=[...document.querySelectorAll('.adm-g:checked')].map(i=>i.value);
+    const groups=[...document.querySelectorAll('.adm-b:checked')].map(i=>i.value);
+    if(!grades.length||!groups.length){alert('학년과 반을 각각 최소 하나씩 선택해주세요.');return;}
+    const name=document.getElementById('adm_name').value.trim();
+    if(!name){alert('수업명을 입력하세요.');return;}
+    const data={name,desc:document.getElementById('adm_desc').value,ex:document.getElementById('adm_ex').value,popup:document.getElementById('adm_popup').value,grades,groups,status:'ON'};
+    toggleLoading(true);
+    try {
+      if(docId) await updateDoc(doc(db,'paddlet_classes',docId),data);
+      else await addDoc(collection(db,'paddlet_classes'),{...data,createdAt:serverTimestamp()});
+      alert('저장되었습니다.'); resetAdminForm(); await window.loadAdminList(); await window.updateClassList();
+    } catch(e){alert('오류: '+e.message);}
+    toggleLoading(false);
+  };
+
+  window.delAdminClass = async (docId) => {
+    if(!confirm('삭제하시겠습니까?'))return;
+    toggleLoading(true);
+    await deleteDoc(doc(db,'paddlet_classes',docId));
+    await window.loadAdminList(); toggleLoading(false);
+  };
+
+  window.resetAdminForm = () => {
+    document.getElementById('adm_docId').value='';
+    document.getElementById('adm_name').value='';
+    document.getElementById('adm_desc').value='';
+    document.getElementById('adm_ex').value='';
+    document.getElementById('adm_popup').value='';
+    document.querySelectorAll('#adm_target_area input[type=checkbox]').forEach(i=>i.checked=false);
+    document.getElementById('adm_edit_info').classList.add('hidden');
+    document.getElementById('adm_cancel_btn').classList.add('hidden');
+  };
+</script>
+</body>
+</html>
