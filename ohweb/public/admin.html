@@ -1946,72 +1946,101 @@
   };
 
   // ── 채점 모달 ──
+  function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
   window.gradeStudent = async (asId, studentId, progDocId) => {
     showLoading(true);
     try {
-      // exam_results 조회: asId+studentId 또는 asId만으로 fallback
       let resultsSnap = await getDocs(query(collection(db,'exam_results'),
         where('asId','==',asId), where('studentId','==',studentId)));
       let items = resultsSnap.docs.map(d=>({docId:d.id,...d.data()}))
         .sort((a,b)=>(a.qIdx||0)-(b.qIdx||0));
       showLoading(false);
 
-      const modal = document.createElement('div');
-      modal.style.cssText = 'position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);padding:16px;';
-      const inner = document.createElement('div');
-      inner.style.cssText = 'background:var(--glass-strong);backdrop-filter:var(--blur);border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:600px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:var(--shadow-md);';
+      const isDark = document.body.classList.contains('dark');
+      const bg = isDark ? '#1a1f2e' : '#ffffff';
+      const fg = isDark ? '#dde2f0' : '#1a1f2e';
+      const sub = isDark ? '#7a849a' : '#7a849a';
+      const border = isDark ? '#2a3050' : '#e2e8f0';
+      const answerBg = isDark ? '#0d1020' : '#f8faff';
+      const inputBg = isDark ? '#13172a' : '#f1f5ff';
 
-      const progDoc = items[0] || {};
-      const name = progDoc.name || progDocId;
+      const modal = document.createElement('div');
+      modal.id = 'gradeModal';
+      modal.style.cssText = `position:fixed;inset:0;z-index:9000;display:flex;align-items:flex-start;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);padding:20px;overflow-y:auto;`;
+      const inner = document.createElement('div');
+      inner.style.cssText = `background:${bg};border-radius:20px;padding:28px;max-width:640px;width:100%;margin:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);color:${fg};font-family:inherit;`;
+
+      const progData = items[0] || {};
+      const name = progData.name || progDocId.split('_')[1] || progDocId;
+
+      const typeLabel = { mc:'객관식', sa:'주관식', code:'코딩' };
+      const autoScore = { mc: true, sa: true, code: false };
+
       inner.innerHTML = `
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-          <h3 style="font-size:1rem;font-weight:800;">${name} 채점</h3>
-          <button class="btn ghost sm" onclick="this.closest('[style*=fixed]').remove()">✕ 닫기</button>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+          <div>
+            <div style="font-size:1.05rem;font-weight:900;color:${fg};">${escHtml(name)} 채점</div>
+            <div style="font-size:0.78rem;color:${sub};margin-top:2px;">${progData.grade||'-'}학년 ${progData.class||'-'}반 ${progData.num||'-'}번</div>
+          </div>
+          <button onclick="document.getElementById('gradeModal').remove()" style="background:none;border:1px solid ${border};border-radius:50px;padding:6px 14px;cursor:pointer;font-size:0.82rem;color:${fg};">✕ 닫기</button>
         </div>
-        ${items.length === 0 ? '<div style="color:var(--sub);text-align:center;padding:32px;">제출 데이터가 없습니다.</div>' :
-          items.map((r,ri) => `
-            <div style="border:1px solid var(--border-card);border-radius:var(--radius-sm);padding:12px;margin-bottom:10px;">
-              <div style="font-size:0.78rem;font-weight:700;color:var(--sub);margin-bottom:4px;">Q${(r.qIdx||ri)+1} · ${r.type||''}</div>
-              <div style="font-size:0.85rem;font-weight:700;margin-bottom:6px;">${escHtml(r.title||'')}</div>
-              <div style="background:var(--glass);border-radius:8px;padding:8px 12px;font-size:0.83rem;margin-bottom:8px;white-space:pre-wrap;word-break:break-all;">${escHtml(r.value||'(미답)')}</div>
-              <div style="font-size:0.78rem;color:var(--sub);margin-bottom:6px;">자동채점: ${escHtml(r.feedback||'-')}</div>
-              <div style="display:flex;align-items:center;gap:8px;">
-                <label style="font-size:0.78rem;font-weight:700;color:var(--sub);">점수:</label>
-                <input type="number" class="inp" value="${r.score||0}" min="0" max="${r.maxScore||0}" data-docid="${r.docId}" data-max="${r.maxScore||0}"
-                  style="width:70px;padding:4px 8px;font-size:0.85rem;" id="gscore_${ri}">
-                <span style="font-size:0.78rem;color:var(--sub);">/ ${r.maxScore||0}점</span>
-              </div>
-            </div>`).join('')}
-        <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end;">
-          <button class="btn ghost sm" onclick="this.closest('[style*=fixed]').remove()">취소</button>
-          <button class="btn accent sm" onclick="saveGrades('${progDocId}',${items.length})">저장</button>
+        ${items.length === 0
+          ? `<div style="text-align:center;padding:40px;color:${sub};">제출 데이터가 없습니다.</div>`
+          : items.map((r,ri) => {
+            const isAuto = autoScore[r.type];
+            return `
+              <div style="border:1px solid ${border};border-radius:14px;padding:16px;margin-bottom:14px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                  <span style="font-size:0.72rem;font-weight:800;background:${r.type==='code'?'rgba(124,77,255,0.15)':r.type==='sa'?'rgba(34,197,94,0.12)':'rgba(42,92,230,0.12)'};color:${r.type==='code'?'#7c4dff':r.type==='sa'?'#22c55e':'#2a5ce6'};padding:2px 10px;border-radius:50px;">${typeLabel[r.type]||r.type}</span>
+                  <span style="font-size:0.82rem;font-weight:700;color:${fg};">Q${(r.qIdx||ri)+1}. ${escHtml(r.title||'')}</span>
+                </div>
+                <div style="background:${answerBg};border-radius:10px;padding:10px 14px;font-size:0.85rem;margin-bottom:10px;white-space:pre-wrap;word-break:break-all;border:1px solid ${border};min-height:36px;color:${fg};">${escHtml(r.value||'(미답)')}</div>
+                ${isAuto ? `<div style="font-size:0.78rem;color:${sub};margin-bottom:10px;">자동채점: <strong style="color:${r.feedback==='정답'?'#22c55e':'#ef4444'}">${escHtml(r.feedback||'-')}</strong></div>` : ''}
+                <div style="display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;">
+                  <div style="display:flex;align-items:center;gap:6px;white-space:nowrap;">
+                    <label style="font-size:0.78rem;font-weight:700;color:${sub};">점수</label>
+                    <input type="number" value="${r.score||0}" min="0" max="${r.maxScore||0}" data-docid="${r.docId}" data-max="${r.maxScore||0}"
+                      id="gscore_${ri}" style="width:64px;padding:5px 8px;border:1px solid ${border};border-radius:8px;background:${inputBg};color:${fg};font-size:0.88rem;font-weight:700;text-align:center;">
+                    <span style="font-size:0.78rem;color:${sub};">/ ${r.maxScore||0}점</span>
+                  </div>
+                  <div>
+                    <textarea id="gfeedback_${ri}" data-docid="${r.docId}" rows="2"
+                      placeholder="피드백 입력 (선택사항)"
+                      style="width:100%;padding:6px 10px;border:1px solid ${border};border-radius:8px;background:${inputBg};color:${fg};font-size:0.82rem;resize:vertical;">${escHtml(r.feedback && !isAuto ? r.feedback : '')}</textarea>
+                  </div>
+                </div>
+              </div>`;
+          }).join('')}
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
+          <button onclick="document.getElementById('gradeModal').remove()" style="background:none;border:1px solid ${border};border-radius:50px;padding:8px 20px;cursor:pointer;font-size:0.85rem;font-weight:600;color:${fg};">취소</button>
+          <button onclick="saveGrades('${progDocId}',${items.length})" style="background:#2a5ce6;border:none;border-radius:50px;padding:8px 20px;cursor:pointer;font-size:0.85rem;font-weight:700;color:#fff;">저장</button>
         </div>`;
       modal.appendChild(inner);
       document.body.appendChild(modal);
     } catch(e) { toast('오류: '+e.message, 'error'); showLoading(false); }
   };
 
-  function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
   window.saveGrades = async (progDocId, count) => {
     showLoading(true);
     try {
       const batch = writeBatch(db);
-      let total = 0;
-      let totalPoints = 0;
+      let total = 0, totalPoints = 0;
       for (let i = 0; i < count; i++) {
-        const inp = document.getElementById('gscore_'+i);
-        if (!inp) continue;
-        const docId = inp.dataset.docid;
-        const score = parseInt(inp.value) || 0;
-        const max = parseInt(inp.dataset.max) || 0;
+        const scoreInp = document.getElementById('gscore_'+i);
+        const fbInp = document.getElementById('gfeedback_'+i);
+        if (!scoreInp) continue;
+        const docId = scoreInp.dataset.docid;
+        const score = parseInt(scoreInp.value) || 0;
+        const max = parseInt(scoreInp.dataset.max) || 0;
+        const feedback = fbInp?.value?.trim() || '';
         total += score; totalPoints += max;
-        if (docId) batch.update(doc(db,'exam_results',docId), { score });
+        if (docId) batch.update(doc(db,'exam_results',docId), { score, feedback });
       }
       batch.update(doc(db,'exam_progress',progDocId), { totalScore: total, totalPoints });
       await batch.commit();
       toast('채점 저장 완료', 'success');
-      document.querySelectorAll('[style*=fixed]').forEach(el => { if (el.style.zIndex >= 9000) el.remove(); });
+      document.getElementById('gradeModal')?.remove();
       await loadResults();
     } catch(e) { toast('저장 오류: '+e.message, 'error'); }
     showLoading(false);
@@ -2024,10 +2053,7 @@
     showLoading(true);
     try {
       const qSnap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId)));
-      const missing = qSnap.docs.filter(d => {
-        const q = d.data();
-        return !q.titleZh && !q.contentZh;
-      });
+      const missing = qSnap.docs.filter(d => !d.data().titleEn);
       if (!missing.length) { toast('모든 문제에 번역이 있습니다.', 'success'); showLoading(false); return; }
       for (const qDoc of missing) {
         const q = qDoc.data();

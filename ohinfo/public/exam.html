@@ -615,6 +615,7 @@ window.enterExam = async () => {
 function startExamUI() {
   document.getElementById('step0').classList.add('hidden');
   document.getElementById('step1').classList.add('hidden');
+  document.getElementById('step3').classList.add('hidden');
   document.getElementById('step2').classList.remove('hidden');
   document.getElementById('examTitle').innerText = currentExam.title || '';
   document.getElementById('examSubInfo').innerText = `${SESSION.grade}학년 ${SESSION.cls}반 · ${SESSION.name} · ${questions.length}문항`;
@@ -957,7 +958,7 @@ _result = _buf.getvalue().strip()
 };
 
 function showResult(score, total, items) {
-  document.getElementById('step2').classList.add('hidden');
+  ['step0','step1','step2'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
   document.getElementById('step3').classList.remove('hidden');
   document.getElementById('timerBadge').classList.add('hidden');
   const pct = total > 0 ? Math.round(score / total * 100) : 0;
