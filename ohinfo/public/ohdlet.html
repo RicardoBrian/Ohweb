@@ -318,12 +318,12 @@
         <h1>📌 패들릿</h1>
         <div class="field"><label>학년</label>
           <select class="inp" id="grade" onchange="updateClassList()">
-            <option>1학년</option><option>2학년</option><option>3학년</option>
+            <option value="1">1학년</option><option value="2">2학년</option><option value="3">3학년</option>
           </select>
         </div>
         <div class="field"><label>반</label>
           <select class="inp" id="group" onchange="updateClassList()">
-            <option>1반</option><option>2반</option><option>3반</option><option>4반</option><option>5반</option>
+            <option value="1">1반</option><option value="2">2반</option><option value="3">3반</option><option value="4">4반</option><option value="5">5반</option>
           </select>
         </div>
         <div class="field" style="margin-bottom:24px;"><label>수업</label>
@@ -394,15 +394,15 @@
         <div id="adm_edit_info" class="edit-banner hidden"></div>
         <input type="hidden" id="adm_docId">
         <div class="checkbox-grid" id="adm_target_area">
-          <label><input type="checkbox" class="adm-g" value="1학년"> 1학년</label>
-          <label><input type="checkbox" class="adm-g" value="2학년"> 2학년</label>
-          <label><input type="checkbox" class="adm-g" value="3학년"> 3학년</label>
+          <label><input type="checkbox" class="adm-g" value="1"> 1학년</label>
+          <label><input type="checkbox" class="adm-g" value="2"> 2학년</label>
+          <label><input type="checkbox" class="adm-g" value="3"> 3학년</label>
           <hr>
-          <label><input type="checkbox" class="adm-b" value="1반"> 1반</label>
-          <label><input type="checkbox" class="adm-b" value="2반"> 2반</label>
-          <label><input type="checkbox" class="adm-b" value="3반"> 3반</label>
-          <label><input type="checkbox" class="adm-b" value="4반"> 4반</label>
-          <label><input type="checkbox" class="adm-b" value="5반"> 5반</label>
+          <label><input type="checkbox" class="adm-b" value="1"> 1반</label>
+          <label><input type="checkbox" class="adm-b" value="2"> 2반</label>
+          <label><input type="checkbox" class="adm-b" value="3"> 3반</label>
+          <label><input type="checkbox" class="adm-b" value="4"> 4반</label>
+          <label><input type="checkbox" class="adm-b" value="5"> 5반</label>
         </div>
         <div class="field"><label>수업명</label><input class="inp" id="adm_name" placeholder="수업명"></div>
         <div class="field"><label>설명</label><textarea class="inp" id="adm_desc" rows="2" placeholder="수업 상세 설명"></textarea></div>
@@ -566,8 +566,7 @@
   window.updateClassList = async () => {
     const grade = document.getElementById('grade').value;
     const group = document.getElementById('group').value;
-    const ng = v => String(v||'').replace(/학년|년급|년/g,'').trim();
-    const nc = v => String(v||'').replace(/반|班|кл\./g,'').trim();
+    const nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
     try {
       const snap = await getDocs(collection(db, 'paddlet_classes'));
       const all = snap.docs.map(d => ({id:d.id,...d.data()}));
@@ -577,8 +576,8 @@
         const statusOk = c.status==='ON' || c.status===true || c.status==='on';
         const gs = c.grades||[];
         const bs = c.groups||[];
-        const gradeOk = gs.length===0 || gs.some(g => ng(g)===ng(grade));
-        const groupOk = bs.length===0 || bs.some(g => nc(g)===nc(group));
+        const gradeOk = gs.length===0 || gs.some(g => nv(g)===nv(grade));
+        const groupOk = bs.length===0 || bs.some(g => nv(g)===nv(group));
         console.log(`  ${c.name}: status=${c.status}(${statusOk}), grades=${JSON.stringify(gs)}(${gradeOk}), groups=${JSON.stringify(bs)}(${groupOk})`);
         return statusOk && gradeOk && groupOk;
       });

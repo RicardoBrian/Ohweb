@@ -291,17 +291,17 @@
         <div class="field">
           <label data-t="grade">학년</label>
           <select class="inp" id="loginGrade">
-            <option data-t-grade="1">1학년</option>
-            <option data-t-grade="2">2학년</option>
-            <option data-t-grade="3">3학년</option>
+            <option value="1" data-t-grade="1">1학년</option>
+            <option value="2" data-t-grade="2">2학년</option>
+            <option value="3" data-t-grade="3">3학년</option>
           </select>
         </div>
         <div class="field">
           <label data-t="class">반</label>
           <select class="inp" id="loginClass">
-            <option data-t-class="1">1반</option><option data-t-class="2">2반</option>
-            <option data-t-class="3">3반</option><option data-t-class="4">4반</option>
-            <option data-t-class="5">5반</option>
+            <option value="1" data-t-class="1">1반</option><option value="2" data-t-class="2">2반</option>
+            <option value="3" data-t-class="3">3반</option><option value="4" data-t-class="4">4반</option>
+            <option value="5" data-t-class="5">5반</option>
           </select>
         </div>
         <div class="field">
@@ -330,17 +330,17 @@
           <div class="field">
             <label data-t="grade">학년</label>
             <select class="inp" id="joinGrade">
-              <option data-t-grade="1">1학년</option>
-              <option data-t-grade="2">2학년</option>
-              <option data-t-grade="3">3학년</option>
+              <option value="1" data-t-grade="1">1학년</option>
+              <option value="2" data-t-grade="2">2학년</option>
+              <option value="3" data-t-grade="3">3학년</option>
             </select>
           </div>
           <div class="field">
             <label data-t="class">반</label>
             <select class="inp" id="joinClass">
-              <option data-t-class="1">1반</option><option data-t-class="2">2반</option>
-              <option data-t-class="3">3반</option><option data-t-class="4">4반</option>
-              <option data-t-class="5">5반</option>
+              <option value="1" data-t-class="1">1반</option><option value="2" data-t-class="2">2반</option>
+              <option value="3" data-t-class="3">3반</option><option value="4" data-t-class="4">4반</option>
+              <option value="5" data-t-class="5">5반</option>
             </select>
           </div>
         </div>
@@ -534,21 +534,20 @@
     const t = T[lang];
     sel.innerHTML = `<option value="">${t.selectNum}</option>`;
     if (!schoolId || !grade || !cls) return;
-    const ng = v => String(v||'').replace(/학년/g,'').trim();
-    const nc = v => String(v||'').replace(/반/g,'').trim();
+    const nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
     try {
       const snap = await getDocs(query(collection(db, 'students'),
         where('schoolId', '==', schoolId)
       ));
       snap.docs
-        .filter(d => { const s = d.data(); return ng(s.grade)===ng(grade) && nc(s.class)===nc(cls); })
+        .filter(d => { const s = d.data(); return nv(s.grade)===nv(grade) && nv(s.class)===nv(cls); })
         .slice()
         .sort((a,b) => (parseInt(a.data().number)||0) - (parseInt(b.data().number)||0))
         .forEach(d => {
-          const { number, name } = d.data();
+          const { number } = d.data();
           const opt = document.createElement('option');
           opt.value = number;
-          opt.innerText = `${number}번 ${name}`;
+          opt.innerText = `${number}번`;
           sel.appendChild(opt);
         });
     } catch(e) { /* 빈 목록 유지 */ }
@@ -585,11 +584,10 @@
         where('schoolId', '==', schoolId),
         where('number', '==', number)
       ));
-      const ng = v => String(v||'').replace(/학년/g,'').trim();
-      const nc = v => String(v||'').replace(/반/g,'').trim();
+      const nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
       const match = snap.docs.find(d => {
         const s = d.data();
-        return ng(s.grade) === ng(grade) && nc(s.class) === nc(cls);
+        return nv(s.grade) === nv(grade) && nv(s.class) === nv(cls);
       });
       if (!match) { err.innerText = t.errNotFound; load(false); return; }
       const data = match.data();
@@ -621,11 +619,10 @@
         where('schoolId', '==', schoolId),
         where('number', '==', number)
       ));
+      const nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
       const match = snap.docs.find(d => {
         const s = d.data();
-        const ng = v => String(v||'').replace(/학년/g,'').trim();
-        const nc = v => String(v||'').replace(/반/g,'').trim();
-        return ng(s.grade) === ng(grade) && nc(s.class) === nc(cls) && s.name === name;
+        return nv(s.grade) === nv(grade) && nv(s.class) === nv(cls) && s.name === name;
       });
       if (!match) { err.innerText = t.errNoMatch; load(false); return; }
       const data = match.data();

@@ -464,12 +464,12 @@
         <label>학년</label>
         <select class="inp" id="filterGrade" onchange="loadStudents()">
           <option value="">전체</option>
-          <option>1학년</option><option>2학년</option><option>3학년</option>
+          <option value="1">1학년</option><option value="2">2학년</option><option value="3">3학년</option>
         </select>
         <label>반</label>
         <select class="inp" id="filterClass" onchange="loadStudents()">
           <option value="">전체</option>
-          <option>1반</option><option>2반</option><option>3반</option><option>4반</option><option>5반</option>
+          <option value="1">1반</option><option value="2">2반</option><option value="3">3반</option><option value="4">4반</option><option value="5">5반</option>
         </select>
       </div>
       <div id="studentList"><div class="empty-state"><div class="empty-icon">👥</div>학생이 없습니다.</div></div>
@@ -491,12 +491,12 @@
         <label>학년</label>
         <select class="inp" id="appGrade" onchange="loadAppSettings()">
           <option value="">전체</option>
-          <option>1학년</option><option>2학년</option><option>3학년</option>
+          <option value="1">1학년</option><option value="2">2학년</option><option value="3">3학년</option>
         </select>
         <label>반</label>
         <select class="inp" id="appClass" onchange="loadAppSettings()">
           <option value="">전체</option>
-          <option>1반</option><option>2반</option><option>3반</option><option>4반</option><option>5반</option>
+          <option value="1">1반</option><option value="2">2반</option><option value="3">3반</option><option value="4">4반</option><option value="5">5반</option>
         </select>
       </div>
     </div>
@@ -725,10 +725,9 @@
     let students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
     // 클라이언트 필터 (DB값이 "1" 또는 "1학년" 형태 모두 대응)
-    const ng = v => String(v||'').replace(/학년/g,'').trim();
-    const nc = v => String(v||'').replace(/반/g,'').trim();
-    if (grade) students = students.filter(s => ng(s.grade) === ng(grade));
-    if (cls)   students = students.filter(s => nc(s.class) === nc(cls));
+    const nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
+    if (grade) students = students.filter(s => nv(s.grade) === nv(grade));
+    if (cls)   students = students.filter(s => nv(s.class) === nv(cls));
 
     // 학년→반→번호 정렬
     students.sort((a,b) => {
