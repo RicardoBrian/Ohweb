@@ -559,14 +559,15 @@
   const _st = JSON.parse(sessionStorage.getItem('ohinfo_student') || 'null');
   if (!_st) { window.location.href = 'index.html'; }
   const SESSION = {
-    grade: (_st?.grade || '') + '학년',
-    group: (_st?.class || '') + '반',
+    id: _st?.id || '',
+    grade: String(_st?.grade || ''),
+    group: String(_st?.class || ''),
     name: _st?.name || '',
     num: String(_st?.number || '')
   };
 
   // ── 상태 ──
-  let currentLang = 'ko';
+  let currentLang = localStorage.getItem('ohinfo_lang') || 'ko';
   let imgList = [];
   let currentPosts = [];
   let currentExample = '';
@@ -575,20 +576,36 @@
   let modalImgList = [];
   let modalImgIndex = 0;
   const MASTER_PW = "9600";
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbx42-pDTOFvNEX8UhuVAfdCzWDPDjwGNi4YN1Jp-6BK_YyIQQYoIGwIV0ifk6eMFiuZ/exec';
 
   const uiText = {
     ko: { opt:"수업을 선택하세요", enter:"입장하기", submit:"게시물 등록", edit_finish:"수정 완료" },
     zh: { opt:"请选择课程", enter:"进入", submit:"发布", edit_finish:"完成修改" },
-    ru: { opt:"Выберите урок", enter:"Войти", submit:"Опубликовать", edit_finish:"Изм.завершено" }
+    ru: { opt:"Выберите урок", enter:"Войти", submit:"Опубликовать", edit_finish:"Изм.завершено" },
+    en: { opt:"Select class", enter:"Enter", submit:"Post", edit_finish:"Save edit" }
   };
 
-  // ── API ──
-  async function callApi(fn, params) {
-    const res = await fetch('/api', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({fn,...params}) });
-    const json = await res.json();
-    if (!json.ok) throw new Error(json.error || '서버 오류');
-    return json.result;
+  // ── GAS API (JSONP) ──
+  function gasGet(params) {
+    return new Promise((resolve, reject) => {
+      const cb = '_cb' + Date.now();
+      const url = GAS_URL + '?' + new URLSearchParams({...params, callback: cb});
+      const s = document.createElement('script');
+      window[cb] = d => { delete window[cb]; s.remove(); resolve(d); };
+      s.onerror = reject; s.src = url; document.head.appendChild(s);
+    });
   }
+  function gasPost(body) {
+    return new Promise((resolve, reject) => {
+      const cb = '_cb' + Date.now();
+      const url = GAS_URL + '?' + new URLSearchParams({ action: body.action, payload: JSON.stringify(body), callback: cb });
+      const s = document.createElement('script');
+      window[cb] = d => { delete window[cb]; s.remove(); resolve(d); };
+      s.onerror = reject; s.src = url; document.head.appendChild(s);
+    });
+  }
+
+  function langSfx(l) { return ({ko:'Ko',zh:'Zh',ru:'Ru',en:'En'})[l] || 'Ko'; }
 
   // ── 러시아어 가상키보드 ──
   const RU_ROWS = [
@@ -710,9 +727,10 @@
   function setLanguage(lang) {
     const refreshing = !document.getElementById('step2').classList.contains('hidden');
     currentLang = lang;
+    localStorage.setItem('ohinfo_lang', lang);
     ['ko','zh','ru'].forEach(l => { document.getElementById('btn-'+l)?.classList.toggle('active',l===lang); document.getElementById('m-btn-'+l)?.classList.toggle('active',l===lang); });
-    document.getElementById('ui-enter-btn').innerText = uiText[lang].enter;
-    document.getElementById('subBtn').innerText = getHidden('f_mode') === 'edit' ? uiText[lang].edit_finish : uiText[lang].submit;
+    document.getElementById('ui-enter-btn').innerText = uiText[lang]?.enter || uiText.ko.enter;
+    document.getElementById('subBtn').innerText = getHidden('f_mode') === 'edit' ? (uiText[lang]?.edit_finish||uiText.ko.edit_finish) : (uiText[lang]?.submit||uiText.ko.submit);
     if (lang !== 'ru') closeKeyboard();
     updateClassList();
     if (refreshing) manualRefresh();
@@ -722,8 +740,12 @@
   function setHidden(id, val) { let el = document.getElementById(id); if (!el) { el = document.createElement('input'); el.type='hidden'; el.id=id; document.body.appendChild(el); } el.value = val; }
 
   function updateClassList() {
-    callApi('getInitData', { grade: SESSION.grade, group: SESSION.group })
-      .then(data => { const sel = document.getElementById('classList'); sel.innerHTML = `<option>${uiText[currentLang].opt}</option>`; (data.classList||[]).forEach(c => sel.innerHTML += `<option>${c.name}</option>`); }).catch(()=>{});
+    gasGet({action:'getClasses', grade:SESSION.grade, group:SESSION.group})
+      .then(data => {
+        const sel = document.getElementById('classList');
+        sel.innerHTML = `<option>${uiText[currentLang]?.opt||uiText.ko.opt}</option>`;
+        (data.classes||[]).forEach(c => sel.innerHTML += `<option value="${c.name}">${c.name}</option>`);
+      }).catch(()=>{});
   }
 
   function goHome() { document.getElementById('step2').classList.add('hidden'); document.getElementById('step1').classList.remove('hidden'); document.getElementById('adminPanel').classList.add('hidden'); cancelEdit(); closeKeyboard(); window.scrollTo(0,0); }
@@ -732,7 +754,8 @@
 
   function startBoard() {
     const cls = document.getElementById('classList').value;
-    if (cls.includes('선택')) return;
+    const opt = uiText[currentLang]?.opt || uiText.ko.opt;
+    if (cls === opt || !cls) return;
     setHidden('f_mode','add'); setHidden('f_postId','');
     setHidden('f_grade', SESSION.grade);
     setHidden('f_group', SESSION.group);
@@ -746,19 +769,31 @@
     document.getElementById('display').innerHTML = Array(6).fill(`<div class="skel-card"><div class="skeleton skel-line" style="width:55%;"></div><div class="skeleton skel-line" style="width:85%;"></div><div class="skeleton skel-line" style="width:70%;"></div><div class="skeleton skel-img"></div></div>`).join('');
   }
 
-  function manualRefresh() {
+  async function manualRefresh() {
     showSkeleton();
-    callApi('getPosts', { classTitle:getHidden('f_class'), grade:getHidden('f_grade'), group:getHidden('f_group'), targetLang:currentLang })
-      .then(data => {
-        document.getElementById('boardTitle').innerText = data.title;
-        document.getElementById('boardDesc').innerText = data.desc;
-        document.getElementById('sidebarTitle').innerText = data.title;
-        document.getElementById('sidebarDesc').innerText = data.desc;
-        currentPosts = data.posts; currentExample = data.example;
-        render(data.example, sortedPosts());
-        if (data.popup) showPopup(data.popup);
-      })
-      .catch(() => { document.getElementById('display').innerHTML = ''; });
+    try {
+      const classTitle = getHidden('f_class');
+      const [clsData, postsData] = await Promise.all([
+        gasGet({action:'getClassByTitle', title:classTitle}),
+        gasGet({action:'getPosts', classTitle})
+      ]);
+      const cls = clsData.cls || {};
+      const sfx = langSfx(currentLang);
+      const example = cls['ex'+sfx] || cls.ex || '';
+      document.getElementById('boardTitle').innerText = cls.name || classTitle;
+      document.getElementById('boardDesc').innerText = cls.desc || '';
+      document.getElementById('sidebarTitle').innerText = cls.name || classTitle;
+      document.getElementById('sidebarDesc').innerText = cls.desc || '';
+      currentPosts = (postsData.posts||[]).map(p => ({
+        ...p,
+        subject: p['sub'+sfx] || p.subKo || '',
+        message: p['msg'+sfx] || p.msgKo || '',
+        time: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : ''
+      }));
+      currentExample = example;
+      render(example, sortedPosts());
+      if (cls.popup) showPopup(cls.popup);
+    } catch(e) { document.getElementById('display').innerHTML = ''; }
   }
 
   function setSort(type) { currentSort = type; document.getElementById('sortNew').classList.toggle('active', type==='new'); document.getElementById('sortLike').classList.toggle('active', type==='like'); render(currentExample, sortedPosts()); }
@@ -814,9 +849,9 @@
   document.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; }, {passive:true});
   document.addEventListener('touchend', e => { if (touchX===null)return; const dx=e.changedTouches[0].clientX-touchX; if(Math.abs(dx)<40){touchX=null;return;} const slider=e.target.closest('.img-slider'); if(!slider){touchX=null;return;} const id=slider.id.replace('slider_',''); const track=document.getElementById('track_'+id); if(!track){touchX=null;return;} const len=track.children.length; dx<0?slideNext(id,len):slidePrev(id,len); touchX=null; }, {passive:true});
 
-  function toggleLikeUI(id,el) { const hasLiked=localStorage.getItem('voted_'+id); const cnt=el.querySelector('.like-count'); let cur=parseInt(cnt.innerText); el.classList.add('animate'); setTimeout(()=>el.classList.remove('animate'),350); if(hasLiked){cnt.innerText=Math.max(0,cur-1);el.classList.remove('voted');localStorage.removeItem('voted_'+id);callApi('toggleLike',{postId:id,isCancel:true}).catch(()=>{});}else{cnt.innerText=cur+1;el.classList.add('voted');localStorage.setItem('voted_'+id,'1');callApi('toggleLike',{postId:id,isCancel:false}).catch(()=>{});} }
+  function toggleLikeUI(id,el) { const hasLiked=localStorage.getItem('voted_'+id); const cnt=el.querySelector('.like-count'); let cur=parseInt(cnt.innerText); el.classList.add('animate'); setTimeout(()=>el.classList.remove('animate'),350); if(hasLiked){cnt.innerText=Math.max(0,cur-1);el.classList.remove('voted');localStorage.removeItem('voted_'+id);gasPost({action:'likePost',id,delta:-1}).catch(()=>{});}else{cnt.innerText=cur+1;el.classList.add('voted');localStorage.setItem('voted_'+id,'1');gasPost({action:'likePost',id,delta:1}).catch(()=>{});} }
 
-  async function handlePinClick(postId) { const pw=await askPassword('관리자 비밀번호'); if(pw!==MASTER_PW)return; const post=currentPosts.find(p=>p.id===postId); if(!post)return; const isPinned=!post.pinned; callApi('togglePin',{pw:MASTER_PW,postId,isPinned}).then(()=>{post.pinned=isPinned;render(currentExample,sortedPosts());}).catch(err=>alert(err.message)); }
+  async function handlePinClick(postId) { const pw=await askPassword('관리자 비밀번호'); if(pw!==MASTER_PW)return; const post=currentPosts.find(p=>p.id===postId); if(!post)return; const isPinned=!post.pinned; gasPost({action:'pinPost',id:postId,isPinned}).then(()=>{post.pinned=isPinned;render(currentExample,sortedPosts());}).catch(err=>alert(err.message)); }
 
   function handleFiles(files) { Array.from(files).forEach(file=>{if(imgList.length>=4)return;const r=new FileReader();r.onload=e=>{const img=new Image();img.onload=()=>{const c=document.createElement('canvas');const max=500;let w=img.width,h=img.height;if(w>max||h>max){if(w>h){h*=max/w;w=max;}else{w*=max/h;h=max;}}c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);imgList.push(c.toDataURL('image/jpeg',0.6));updatePreview();};img.src=e.target.result;};r.readAsDataURL(file);}); }
   function updatePreview(){document.getElementById('previewArea').innerHTML=imgList.map((s,i)=>`<div class="preview-item"><img src="${s}"><button type="button" class="del-btn" onclick="removeImg(${i})">×</button></div>`).join('');}
@@ -825,19 +860,53 @@
 
   async function submitPost(event) {
     event.preventDefault(); toggleLoading(true); document.getElementById('subBtn').disabled=true;
-    const params={mode:getHidden('f_mode'),postId:getHidden('f_postId'),targetLang:currentLang,grade:getHidden('f_grade'),group:getHidden('f_group'),classTitle:getHidden('f_class'),num:document.getElementById('p_num').value,name:document.getElementById('p_name').value,password:document.getElementById('p_pw_display').value,subject:document.getElementById('p_sub').value,message:document.getElementById('p_msg').value,combinedImageData:imgList.join('|')};
-    callApi('processForm',params).then(data=>{currentPosts=data.posts;currentExample=data.example;render(data.example,sortedPosts());document.getElementById('postForm').reset();fillSession();cancelEdit();toggleLoading(false);setTimeout(()=>{const first=document.querySelector('.grid-board .post-card:not(.teacher-card)');if(first)first.scrollIntoView({behavior:'smooth',block:'center'});},150);}).catch(err=>{alert(err.message);document.getElementById('subBtn').disabled=false;toggleLoading(false);});
+    const mode = getHidden('f_mode');
+    const sub = document.getElementById('p_sub').value;
+    const msg = document.getElementById('p_msg').value;
+    try {
+      let res;
+      if (mode === 'edit') {
+        res = await gasPost({action:'editPost', id:getHidden('f_postId'), studentId:SESSION.id, sub, msg, srcLang:currentLang, imgs:imgList});
+      } else {
+        res = await gasPost({action:'addPost', classTitle:getHidden('f_class'), grade:getHidden('f_grade'), group:getHidden('f_group'), num:document.getElementById('p_num').value, name:document.getElementById('p_name').value, studentId:SESSION.id, sub, msg, srcLang:currentLang, imgs:imgList});
+      }
+      if (res.error) throw new Error(res.error);
+      await manualRefresh();
+      document.getElementById('postForm').reset(); fillSession(); cancelEdit();
+      setTimeout(()=>{const first=document.querySelector('.grid-board .post-card:not(.teacher-card)');if(first)first.scrollIntoView({behavior:'smooth',block:'center'});},150);
+    } catch(err) { alert(err.message); document.getElementById('subBtn').disabled=false; }
+    toggleLoading(false);
   }
 
-  async function handleEditClick(postId) { const post=currentPosts.find(p=>p.id===postId);if(!post)return;const pw=await askPassword('비밀번호');if(!pw)return;setHidden('f_mode','edit');setHidden('f_postId',post.id);document.getElementById('p_name').value=post.name;document.getElementById('p_num').value=post.num;document.getElementById('p_sub').value=post.origSub;document.getElementById('p_msg').value=post.origMsg;document.getElementById('p_pw_display').value=pw;imgList=post.origImgs?post.origImgs.split('|'):[];updatePreview();document.getElementById('subBtn').innerText=uiText[currentLang].edit_finish;document.getElementById('cancelEditBtn').classList.remove('hidden');document.querySelector('.board-sidebar').scrollIntoView({behavior:'smooth',block:'start'}); }
-  function cancelEdit(){document.getElementById('postForm').reset();fillSession();setHidden('f_mode','add');setHidden('f_postId','');imgList=[];updatePreview();document.getElementById('subBtn').innerText=uiText[currentLang].submit;document.getElementById('subBtn').disabled=false;document.getElementById('cancelEditBtn').classList.add('hidden');}
-  async function openDelete(id){const pw=await askPassword('비밀번호');if(!pw)return;toggleLoading(true);callApi('processForm',{mode:'delete',postId:id,password:pw,classTitle:getHidden('f_class'),grade:getHidden('f_grade'),group:getHidden('f_group'),targetLang:currentLang}).then(data=>{currentPosts=data.posts;currentExample=data.example;render(data.example,sortedPosts());toggleLoading(false);}).catch(err=>{alert(err.message);toggleLoading(false);});}
+  async function handleEditClick(postId) {
+    const post = currentPosts.find(p=>p.id===postId); if(!post) return;
+    if (String(post.studentId) !== String(SESSION.id)) { alert('본인 게시물만 수정할 수 있습니다.'); return; }
+    const sfx = langSfx(post.srcLang || currentLang);
+    setHidden('f_mode','edit'); setHidden('f_postId',post.id);
+    document.getElementById('p_name').value = post.name;
+    document.getElementById('p_num').value = post.num;
+    document.getElementById('p_sub').value = post['sub'+sfx] || '';
+    document.getElementById('p_msg').value = post['msg'+sfx] || '';
+    imgList = Array.isArray(post.imgs) ? [...post.imgs] : [];
+    updatePreview();
+    document.getElementById('subBtn').innerText = uiText[currentLang]?.edit_finish||uiText.ko.edit_finish;
+    document.getElementById('cancelEditBtn').classList.remove('hidden');
+    document.querySelector('.board-sidebar').scrollIntoView({behavior:'smooth',block:'start'});
+  }
+  function cancelEdit(){document.getElementById('postForm').reset();fillSession();setHidden('f_mode','add');setHidden('f_postId','');imgList=[];updatePreview();document.getElementById('subBtn').innerText=uiText[currentLang]?.submit||uiText.ko.submit;document.getElementById('subBtn').disabled=false;document.getElementById('cancelEditBtn').classList.add('hidden');}
+  async function openDelete(id){
+    const pw=await askPassword('비밀번호');if(!pw)return;
+    toggleLoading(true);
+    const res=await gasPost({action:'deletePost',id,studentId:SESSION.id});
+    if(res.error){alert(res.error);toggleLoading(false);return;}
+    await manualRefresh();toggleLoading(false);
+  }
 
-  function loadAdminList(){callApi('getSettingsList',{pw:MASTER_PW}).then(list=>{document.getElementById('adminList').innerHTML=list.map(c=>`<div class="admin-item"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><select onchange="toggleClassStatus(${c.row},this.value)" class="status-pill ${c.status==='ON'?'on':'off'}"><option value="ON" ${c.status==='ON'?'selected':''}>ON</option><option value="OFF" ${c.status==='OFF'?'selected':''}>OFF</option></select><span style="font-size:0.88rem;">${c.grade} ${c.group} — <b>${c.name}</b></span></div><div style="display:flex;gap:12px;"><a onclick='editAdminUI(${JSON.stringify(c)})' style="font-size:0.82rem;font-weight:700;color:var(--accent);cursor:pointer;">수정</a><a onclick="delAdminClass(${c.row})" style="font-size:0.82rem;font-weight:700;color:#ef4444;cursor:pointer;">삭제</a></div></div>`).join('');}).catch(()=>{});}
-  function toggleClassStatus(row,status){toggleLoading(true);callApi('updateClassStatus',{pw:MASTER_PW,row,newStatus:status}).then(()=>{loadAdminList();updateClassList();toggleLoading(false);}).catch(()=>toggleLoading(false));}
-  function editAdminUI(c){document.getElementById('adm_row').value=c.row;document.getElementById('adm_grade_hidden').value=c.grade;document.getElementById('adm_group_hidden').value=c.group;document.getElementById('adm_name').value=c.name;document.getElementById('adm_desc').value=c.desc;document.getElementById('adm_ex').value=c.ex;document.getElementById('adm_popup').value=c.popup||'';document.getElementById('adm_target_area').classList.add('hidden');const info=document.getElementById('adm_edit_info');info.classList.remove('hidden');info.innerText=`수정 중: [${c.grade} ${c.group}] ${c.name}`;document.getElementById('adm_cancel_btn').classList.remove('hidden');window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});}
-  function saveAdminClass(){const rowId=document.getElementById('adm_row').value;let targets=[],sG='',sGr='';if(rowId){sG=document.getElementById('adm_grade_hidden').value;sGr=document.getElementById('adm_group_hidden').value;}else{const gL=[...document.querySelectorAll('.adm-g:checked')].map(i=>i.value);const bL=[...document.querySelectorAll('.adm-b:checked')].map(i=>i.value);if(!gL.length||!bL.length){alert('학년과 반을 각각 최소 하나씩 선택해주세요.');return;}gL.forEach(g=>bL.forEach(b=>targets.push({grade:g,group:b})));}toggleLoading(true);callApi('addClass',{adminPw:MASTER_PW,classInfo:{row:rowId,name:document.getElementById('adm_name').value,desc:document.getElementById('adm_desc').value,ex:document.getElementById('adm_ex').value,popup:document.getElementById('adm_popup').value,status:'',targetClasses:targets,grade:sG,group:sGr}}).then(()=>{alert('저장되었습니다.');resetAdminForm();loadAdminList();updateClassList();toggleLoading(false);}).catch(err=>{alert(err.message);toggleLoading(false);});}
-  function delAdminClass(r){if(!confirm('삭제하시겠습니까?'))return;toggleLoading(true);callApi('deleteClass',{pw:MASTER_PW,row:r}).then(()=>{loadAdminList();toggleLoading(false);}).catch(()=>toggleLoading(false));}
+  function loadAdminList(){gasGet({action:'getClasses'}).then(data=>{const list=data.classes||[];document.getElementById('adminList').innerHTML=list.map(c=>`<div class="admin-item"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><select onchange="toggleClassStatus('${c.id}',this.value)" class="status-pill ${c.status==='ON'?'on':'off'}"><option value="ON" ${c.status==='ON'?'selected':''}>ON</option><option value="OFF" ${c.status==='OFF'?'selected':''}>OFF</option></select><span style="font-size:0.88rem;">${c.grades.join(',')}학년 ${c.groups.join(',')}반 — <b>${c.name}</b></span></div><div style="display:flex;gap:12px;"><a onclick='editAdminUI(${JSON.stringify(c)})' style="font-size:0.82rem;font-weight:700;color:var(--accent);cursor:pointer;">수정</a><a onclick="delAdminClass('${c.id}')" style="font-size:0.82rem;font-weight:700;color:#ef4444;cursor:pointer;">삭제</a></div></div>`).join('');}).catch(()=>{});}
+  function toggleClassStatus(id,status){toggleLoading(true);gasPost({action:'toggleClassStatus',id,status}).then(()=>{loadAdminList();updateClassList();toggleLoading(false);}).catch(()=>toggleLoading(false));}
+  function editAdminUI(c){document.getElementById('adm_row').value=c.id;document.getElementById('adm_grade_hidden').value=(c.grades||[]).join(',');document.getElementById('adm_group_hidden').value=(c.groups||[]).join(',');document.getElementById('adm_name').value=c.name;document.getElementById('adm_desc').value=c.desc||'';document.getElementById('adm_ex').value=c.ex||'';document.getElementById('adm_popup').value=c.popup||'';document.getElementById('adm_target_area').classList.add('hidden');const info=document.getElementById('adm_edit_info');info.classList.remove('hidden');info.innerText=`수정 중: [${(c.grades||[]).join(',')}학년 ${(c.groups||[]).join(',')}반] ${c.name}`;document.getElementById('adm_cancel_btn').classList.remove('hidden');window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});}
+  function saveAdminClass(){const classId=document.getElementById('adm_row').value;const name=document.getElementById('adm_name').value;const desc=document.getElementById('adm_desc').value;const ex=document.getElementById('adm_ex').value;const popup=document.getElementById('adm_popup').value;if(classId){const grades=document.getElementById('adm_grade_hidden').value.split(',').filter(Boolean);const groups=document.getElementById('adm_group_hidden').value.split(',').filter(Boolean);toggleLoading(true);gasPost({action:'updateClass',id:classId,grades,groups,name,desc,ex,popup}).then(()=>{alert('저장되었습니다.');resetAdminForm();loadAdminList();updateClassList();toggleLoading(false);}).catch(err=>{alert(err.message);toggleLoading(false);});}else{const gL=[...document.querySelectorAll('.adm-g:checked')].map(i=>i.value.replace('학년',''));const bL=[...document.querySelectorAll('.adm-b:checked')].map(i=>i.value.replace('반',''));if(!gL.length||!bL.length){alert('학년과 반을 각각 최소 하나씩 선택해주세요.');return;}toggleLoading(true);gasPost({action:'addClass',grades:gL,groups:bL,name,desc,ex,popup}).then(()=>{alert('저장되었습니다.');resetAdminForm();loadAdminList();updateClassList();toggleLoading(false);}).catch(err=>{alert(err.message);toggleLoading(false);});}}
+  function delAdminClass(id){if(!confirm('삭제하시겠습니까?'))return;toggleLoading(true);gasPost({action:'deleteClass',id}).then(()=>{loadAdminList();toggleLoading(false);}).catch(()=>toggleLoading(false));}
   function resetAdminForm(){['adm_row','adm_grade_hidden','adm_group_hidden','adm_name','adm_desc','adm_ex','adm_popup'].forEach(id=>document.getElementById(id).value='');document.querySelectorAll('#adm_target_area input').forEach(i=>i.checked=false);document.getElementById('adm_target_area').classList.remove('hidden');document.getElementById('adm_edit_info').classList.add('hidden');document.getElementById('adm_cancel_btn').classList.add('hidden');}
 
   function fillSession() {
