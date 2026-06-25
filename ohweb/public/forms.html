@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>설문폼 관리</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <style>
+    :root {
+      --glass: rgba(255,255,255,0.28); --glass-strong: rgba(255,255,255,0.42);
+      --glass-nav: rgba(255,255,255,0.3); --border: rgba(255,255,255,0.6);
+      --border-card: rgba(255,255,255,0.48); --highlight: inset 0 1px 0 rgba(255,255,255,0.7);
+      --text: #1a1f2e; --sub: #7a849a; --accent: #2a5ce6;
+      --accent-light: rgba(42,92,230,0.12); --blur: blur(28px);
+      --shadow: 0 4px 20px rgba(60,80,160,0.1); --shadow-md: 0 8px 32px rgba(60,80,160,0.18);
+      --radius: 18px; --radius-sm: 11px; --nav-h: 58px;
+    }
+    body.dark {
+      --glass: rgba(255,255,255,0.07); --glass-strong: rgba(255,255,255,0.11);
+      --glass-nav: rgba(10,12,25,0.65); --border: rgba(255,255,255,0.14);
+      --border-card: rgba(255,255,255,0.1); --highlight: inset 0 1px 0 rgba(255,255,255,0.1);
+      --text: #dde2f0; --sub: #525a70; --accent: #4f8df7;
+      --accent-light: rgba(79,141,247,0.15); --shadow: 0 4px 20px rgba(0,0,0,0.45);
+      --shadow-md: 0 8px 32px rgba(0,0,0,0.55);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: radial-gradient(ellipse at 15% 20%, #b8caff 0%, transparent 50%),
+        radial-gradient(ellipse at 85% 10%, #d4b8ff 0%, transparent 45%),
+        radial-gradient(ellipse at 60% 80%, #b8e0ff 0%, transparent 50%), #cdd8ff;
+      background-attachment: fixed; color: var(--text);
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 16px; line-height: 1.7; min-height: 100vh;
+    }
+    body.dark {
+      background: radial-gradient(ellipse at 15% 20%, #1a2050 0%, transparent 50%),
+        radial-gradient(ellipse at 85% 10%, #1e1040 0%, transparent 45%),
+        radial-gradient(ellipse at 60% 80%, #0d1a35 0%, transparent 50%), #080c1a;
+      background-attachment: fixed;
+    }
+    .hidden { display: none !important; }
+    /* NAV */
+    .nav {
+      position: sticky; top: 0; z-index: 200;
+      background: var(--glass-nav); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 1px 0 rgba(255,255,255,0.35), var(--shadow);
+      padding: 0 20px; height: var(--nav-h);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .nav-brand {
+      font-size: 1.1rem; font-weight: 900; letter-spacing: -0.02em;
+      background: linear-gradient(135deg, var(--accent), #7c4dff);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      white-space: nowrap; flex-shrink: 0; cursor: pointer; text-decoration: none;
+    }
+    .nav-title { font-weight: 800; font-size: 0.95rem; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dark-toggle {
+      width: 42px; height: 24px; border-radius: 50px;
+      background: var(--glass); border: 1px solid var(--border);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight); cursor: pointer; position: relative; transition: 0.3s; flex-shrink: 0;
+    }
+    body.dark .dark-toggle { background: rgba(42,92,230,0.6); border-color: rgba(100,140,255,0.4); }
+    .dark-toggle::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.2); transition: transform 0.3s;
+    }
+    body.dark .dark-toggle::after { transform: translateX(18px); }
+    /* LAYOUT */
+    .wrap { max-width: 800px; margin: 0 auto; padding: 32px 20px 80px; }
+    @media (max-width: 600px) { .wrap { padding: 18px 14px 80px; } }
+    /* CARD */
+    .card {
+      background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border); border-radius: 22px; padding: 24px;
+      margin-bottom: 16px; box-shadow: var(--highlight), var(--shadow);
+    }
+    @media (max-width: 600px) { .card { padding: 18px 16px; border-radius: 16px; } }
+    /* INP */
+    .inp {
+      width: 100%; padding: 10px 14px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border-card); background: var(--glass); color: var(--text);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--highlight);
+      font-family: inherit; font-size: 0.93rem; outline: none; transition: border-color 0.2s;
+    }
+    .inp::placeholder { color: var(--sub); }
+    .inp:focus { border-color: rgba(42,92,230,0.5); box-shadow: var(--highlight), 0 0 0 3px rgba(42,92,230,0.13); }
+    textarea.inp { resize: vertical; min-height: 72px; line-height: 1.6; }
+    select.inp {
+      cursor: pointer; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;
+    }
+    .field { margin-bottom: 12px; }
+    .field > label { display: block; font-size: 0.71rem; font-weight: 700; color: var(--sub); margin-bottom: 5px; letter-spacing: 0.05em; text-transform: uppercase; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 480px) { .field-row { grid-template-columns: 1fr; } }
+    /* BTN */
+    .btn {
+      font-family: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; border-radius: 50px;
+      padding: 8px 20px; border: 1px solid var(--border); background: var(--glass); color: var(--text);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight), var(--shadow); transition: background 0.2s, transform 0.15s; white-space: nowrap;
+    }
+    .btn:hover { background: var(--glass-strong); }
+    .btn:active { transform: scale(0.96); }
+    .btn.accent {
+      background: rgba(42,92,230,0.82); border-color: rgba(100,140,255,0.5); color: #fff;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 20px rgba(42,92,230,0.35);
+    }
+    .btn.accent:hover { background: rgba(42,92,230,0.95); }
+    .btn.danger { color: #ef4444; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.08); box-shadow: none; }
+    .btn.ghost { border-color: transparent; background: transparent; box-shadow: none; }
+    .btn.ghost:hover { background: var(--glass); }
+    .btn.sm { padding: 5px 13px; font-size: 0.78rem; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; align-items: center; }
+
+    /* PAGE TABS */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* FORM LIST */
+    .form-list-item {
+      display: flex; align-items: center; gap: 12px;
+      background: var(--glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-card); border-radius: var(--radius-sm);
+      padding: 14px 16px; margin-bottom: 8px; cursor: pointer;
+      transition: background 0.2s; flex-wrap: wrap;
+    }
+    .form-list-item:hover { background: var(--glass-strong); }
+    .form-list-item .fi-title { font-weight: 700; font-size: 0.95rem; flex: 1; min-width: 120px; }
+    .form-list-item .fi-meta { font-size: 0.75rem; color: var(--sub); white-space: nowrap; }
+    .fi-badge {
+      font-size: 0.7rem; font-weight: 700; padding: 2px 9px; border-radius: 50px;
+    }
+    .fi-badge.open { background: rgba(34,197,94,0.15); color: #15803d; border: 1px solid rgba(34,197,94,0.3); }
+    .fi-badge.closed { background: rgba(239,68,68,0.1); color: #b91c1c; border: 1px solid rgba(239,68,68,0.2); }
+    .fi-badge.draft { background: rgba(100,100,100,0.1); color: var(--sub); border: 1px solid var(--border-card); }
+
+    /* FORM BUILDER */
+    .builder-header { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+    .builder-meta { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 4px; }
+    .toggle-row { display: flex; align-items: center; gap: 10px; }
+    .toggle-label { font-size: 0.83rem; font-weight: 600; color: var(--sub); }
+    .sw { position: relative; width: 38px; height: 22px; flex-shrink: 0; }
+    .sw input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .sw-track {
+      position: absolute; inset: 0; border-radius: 50px; cursor: pointer;
+      background: var(--border); transition: background 0.2s;
+    }
+    .sw-track::after {
+      content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px;
+      border-radius: 50%; background: #fff; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .sw input:checked + .sw-track { background: var(--accent); }
+    .sw input:checked + .sw-track::after { transform: translateX(16px); }
+
+    /* SECTION */
+    .section-block {
+      border: 1px solid var(--border-card); border-radius: var(--radius);
+      margin-bottom: 14px; overflow: hidden;
+    }
+    .section-header {
+      background: var(--glass); padding: 12px 16px; display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid var(--border-card);
+    }
+    .section-header input { flex: 1; background: transparent; border: none; outline: none; font-family: inherit; font-weight: 700; font-size: 0.95rem; color: var(--text); }
+    .section-body { padding: 14px 16px; }
+
+    /* QUESTION CARD */
+    .q-card {
+      background: var(--glass); border: 1px solid var(--border-card);
+      border-radius: var(--radius-sm); margin-bottom: 10px; padding: 14px 16px;
+      position: relative;
+    }
+    .q-card.dragging { opacity: 0.5; }
+    .q-top { display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+    .q-text { flex: 1; min-width: 180px; }
+    .q-type-sel { width: 150px; flex-shrink: 0; font-size: 0.82rem; padding: 7px 10px; }
+    @media (max-width: 500px) { .q-type-sel { width: 100%; } }
+    .q-required { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--sub); flex-shrink: 0; }
+    .q-points-wrap { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--sub); flex-shrink: 0; }
+    .q-points-inp { width: 56px; text-align: center; padding: 5px 6px; font-size: 0.82rem; }
+    .q-img-wrap { margin-bottom: 8px; }
+    .q-img-preview { max-width: 180px; max-height: 100px; border-radius: 8px; object-fit: cover; margin-top: 4px; }
+    .q-opts { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+    .q-opt-row { display: flex; align-items: center; gap: 6px; }
+    .q-opt-row input.opt-text { flex: 1; }
+    .q-opt-icon { font-size: 0.9rem; color: var(--sub); flex-shrink: 0; width: 18px; text-align: center; }
+    .q-answer-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 0.82rem; }
+    .q-answer-label { color: var(--sub); font-weight: 600; flex-shrink: 0; }
+    .q-drag-handle { cursor: grab; color: var(--sub); font-size: 1.1rem; flex-shrink: 0; }
+    .add-opt-btn { font-size: 0.78rem; color: var(--accent); background: none; border: none; cursor: pointer; font-family: inherit; font-weight: 600; padding: 2px 0; }
+    .add-opt-btn:hover { text-decoration: underline; }
+    .q-del { position: absolute; top: 10px; right: 12px; }
+
+    /* RESULTS */
+    .res-q { margin-bottom: 28px; }
+    .res-q-title { font-weight: 700; font-size: 0.97rem; margin-bottom: 12px; }
+    .res-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; font-size: 0.82rem; }
+    .res-bar-label { min-width: 120px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .res-bar-track { flex: 1; height: 14px; background: var(--glass); border-radius: 50px; overflow: hidden; border: 1px solid var(--border-card); }
+    .res-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #7c4dff); border-radius: 50px; transition: width 0.5s; }
+    .res-bar-pct { min-width: 38px; text-align: right; color: var(--sub); }
+    .res-texts { max-height: 260px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+    .res-text-item { background: var(--glass); border: 1px solid var(--border-card); border-radius: 8px; padding: 7px 12px; font-size: 0.84rem; }
+    .res-summary { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+    .res-stat { background: var(--glass); border: 1px solid var(--border-card); border-radius: var(--radius-sm); padding: 10px 18px; text-align: center; }
+    .res-stat-num { font-size: 1.5rem; font-weight: 900; color: var(--accent); }
+    .res-stat-label { font-size: 0.72rem; color: var(--sub); font-weight: 600; }
+    .res-tabs { display: flex; gap: 4px; margin-bottom: 20px; flex-wrap: wrap; }
+    .res-tab {
+      font-family: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer; border-radius: 50px;
+      padding: 6px 14px; border: 1px solid var(--border-card); background: var(--glass); color: var(--sub);
+    }
+    .res-tab.active { background: var(--accent); color: #fff; border-color: transparent; }
+    .res-respondent-row {
+      display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;
+      background: var(--glass); border: 1px solid var(--border-card); border-radius: 8px;
+      padding: 8px 14px; margin-bottom: 6px; font-size: 0.82rem; cursor: pointer;
+    }
+    .res-respondent-row:hover { background: var(--glass-strong); }
+    .resp-detail { background: var(--glass); border: 1px solid var(--border-card); border-radius: var(--radius-sm); padding: 14px; margin-top: 8px; }
+
+    /* PIE CHART */
+    .chart-wrap { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-bottom: 12px; }
+    .pie-svg { width: 90px; height: 90px; flex-shrink: 0; }
+    .chart-legend { display: flex; flex-direction: column; gap: 4px; font-size: 0.78rem; }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+    /* SHARE PANEL */
+    .share-box { display: flex; gap: 8px; align-items: center; }
+    .share-link { flex: 1; font-size: 0.8rem; color: var(--sub); word-break: break-all; padding: 8px 12px; background: var(--glass); border: 1px solid var(--border-card); border-radius: var(--radius-sm); }
+
+    /* LOADING */
+    #loadingOverlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.25); z-index: 9999;
+      display: none; align-items: center; justify-content: center;
+    }
+    .spinner {
+      width: 44px; height: 44px; border-radius: 50%;
+      border: 4px solid rgba(255,255,255,0.25); border-top-color: #fff; animation: spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .page-title { font-size: 1.15rem; font-weight: 900; margin-bottom: 18px; }
+    .empty-msg { text-align: center; padding: 40px 0; color: var(--sub); font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+<div id="loadingOverlay"><div class="spinner"></div></div>
+
+<nav class="nav">
+  <a class="nav-brand" href="admin.html">ohweb</a>
+  <div class="nav-title" id="navTitle">📋 설문폼</div>
+  <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
+    <button class="btn sm ghost" id="navBackBtn" onclick="showList()" style="display:none;">← 목록</button>
+    <button class="dark-toggle" onclick="toggleDark()"></button>
+  </div>
+</nav>
+
+<div class="wrap">
+  <!-- 목록 페이지 -->
+  <div class="page active" id="pageList">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+      <div class="page-title" style="margin:0;">📋 설문폼 목록</div>
+      <button class="btn accent" onclick="showBuilder()">+ 새 폼 만들기</button>
+    </div>
+    <div id="formList"><div class="empty-msg">폼이 없습니다. 새로 만들어보세요.</div></div>
+  </div>
+
+  <!-- 빌더 페이지 -->
+  <div class="page" id="pageBuilder">
+    <div class="card builder-header">
+      <div class="field"><label>폼 제목</label><input class="inp" id="fTitle" placeholder="설문지 제목"></div>
+      <div class="field"><label>설명 (선택)</label><textarea class="inp" id="fDesc" rows="2" placeholder="설문지 설명"></textarea></div>
+      <div class="builder-meta">
+        <div class="field-row" style="flex:1;min-width:260px;">
+          <div class="field" style="margin:0;">
+            <label>마감일시 (선택)</label>
+            <input class="inp" id="fDeadline" type="datetime-local">
+          </div>
+          <div class="field" style="margin:0;">
+            <label>상태</label>
+            <select class="inp" id="fStatus">
+              <option value="open">공개 (응답 가능)</option>
+              <option value="closed">마감</option>
+              <option value="draft">초안</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:10px;">
+        <div class="toggle-row">
+          <label class="sw"><input type="checkbox" id="fPublic"><span class="sw-track"></span></label>
+          <span class="toggle-label">🔓 비로그인 응답 허용</span>
+        </div>
+        <div class="toggle-row">
+          <label class="sw"><input type="checkbox" id="fOnce"><span class="sw-track"></span></label>
+          <span class="toggle-label">✋ 1인 1회 제한 (학생 로그인 필요)</span>
+        </div>
+        <div class="toggle-row">
+          <label class="sw"><input type="checkbox" id="fQuiz"><span class="sw-track"></span></label>
+          <span class="toggle-label">🎯 퀴즈 모드 (자동 채점)</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="sectionsWrap"></div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px;">
+      <button class="btn ghost" onclick="addSection()">+ 섹션 추가</button>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn accent" onclick="saveForm()" id="saveFormBtn">저장</button>
+      <button class="btn" onclick="showList()">취소</button>
+      <div id="saveMsg" style="font-size:0.82rem;color:var(--sub);"></div>
+    </div>
+  </div>
+
+  <!-- 결과 페이지 -->
+  <div class="page" id="pageResults">
+    <div style="display:flex;gap:10px;align-items:center;margin-bottom:18px;flex-wrap:wrap;">
+      <div>
+        <div class="page-title" style="margin:0;" id="resFormTitle"></div>
+        <div style="font-size:0.8rem;color:var(--sub);" id="resFormMeta"></div>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn sm accent" onclick="exportCsv()">CSV 내보내기</button>
+        <button class="btn sm" onclick="showEditor()">폼 수정</button>
+      </div>
+    </div>
+    <div class="res-summary" id="resSummary"></div>
+    <div class="res-tabs" id="resTabs">
+      <button class="res-tab active" onclick="showResTab('summary')">요약</button>
+      <button class="res-tab" onclick="showResTab('individual')">개별 응답</button>
+    </div>
+    <div id="resContent"></div>
+  </div>
+</div>
+
+<script type="module">
+import { db } from './firebase-config.js';
+import {
+  collection, query, orderBy, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, doc, serverTimestamp, where
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+// ── 유틸 ──
+function toggleDark() { document.body.classList.toggle('dark'); localStorage.setItem('dark', document.body.classList.contains('dark') ? '1' : '0'); }
+if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
+window.toggleDark = toggleDark;
+function showLoading(v) { document.getElementById('loadingOverlay').style.display = v ? 'flex' : 'none'; }
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+const TYPE_LABELS = { mc:'객관식', checkbox:'체크박스', short:'주관식', dropdown:'드롭다운' };
+const COLORS = ['#4f8df7','#7c4dff','#22c55e','#f59e0b','#ef4444','#06b6d4','#ec4899','#84cc16'];
+
+// ── 상태 ──
+let currentFormId = null;
+let sections = []; // [{id, title, questions:[{id,type,text,options,required,points,answer,imageUrl}]}]
+let currentFormData = null;
+let responses = [];
+let resTabMode = 'summary';
+
+// ── 페이지 전환 ──
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.getElementById('navBackBtn').style.display = id === 'pageList' ? 'none' : '';
+}
+window.showList = () => { currentFormId = null; sections = []; showPage('pageList'); loadFormList(); };
+
+window.showBuilder = (formId) => {
+  currentFormId = formId || null;
+  sections = [];
+  document.getElementById('navTitle').innerText = formId ? '📝 폼 수정' : '📝 새 폼 만들기';
+  document.getElementById('fTitle').value = '';
+  document.getElementById('fDesc').value = '';
+  document.getElementById('fDeadline').value = '';
+  document.getElementById('fStatus').value = 'open';
+  document.getElementById('fPublic').checked = false;
+  document.getElementById('fOnce').checked = true;
+  document.getElementById('fQuiz').checked = false;
+  document.getElementById('sectionsWrap').innerHTML = '';
+  document.getElementById('saveMsg').innerText = '';
+  if (formId) {
+    showLoading(true);
+    getDoc(doc(db,'forms',formId)).then(snap => {
+      showLoading(false);
+      if (!snap.exists()) return;
+      const d = snap.data();
+      document.getElementById('fTitle').value = d.title || '';
+      document.getElementById('fDesc').value = d.description || '';
+      if (d.deadline) document.getElementById('fDeadline').value = new Date(d.deadline.toDate ? d.deadline.toDate() : d.deadline).toISOString().slice(0,16);
+      document.getElementById('fStatus').value = d.status || 'open';
+      document.getElementById('fPublic').checked = !!d.isPublic;
+      document.getElementById('fOnce').checked = d.limitOnce !== false;
+      document.getElementById('fQuiz').checked = !!d.isQuiz;
+      sections = d.sections ? JSON.parse(JSON.stringify(d.sections)) : [];
+      renderSections();
+    }).catch(e => { showLoading(false); alert(e.message); });
+  } else {
+    sections = [{ id: uid(), title: '섹션 1', questions: [] }];
+    renderSections();
+  }
+  showPage('pageBuilder');
+};
+
+window.showEditor = () => { if (currentFormId) showBuilder(currentFormId); };
+
+// ── ID 생성 ──
+function uid() { return Math.random().toString(36).slice(2,10); }
+
+// ── 폼 목록 ──
+async function loadFormList() {
+  showLoading(true);
+  try {
+    const snap = await getDocs(query(collection(db,'forms'), orderBy('createdAt','desc')));
+    const forms = snap.docs.map(d => ({id:d.id,...d.data()}));
+    const el = document.getElementById('formList');
+    if (!forms.length) { el.innerHTML = '<div class="empty-msg">폼이 없습니다. 새로 만들어보세요.</div>'; showLoading(false); return; }
+    el.innerHTML = forms.map(f => {
+      const statusBadge = f.status === 'open' ? '<span class="fi-badge open">공개</span>' : f.status === 'closed' ? '<span class="fi-badge closed">마감</span>' : '<span class="fi-badge draft">초안</span>';
+      const dl = f.deadline ? `마감: ${new Date(f.deadline.toDate ? f.deadline.toDate() : f.deadline).toLocaleDateString()}` : '';
+      const quiz = f.isQuiz ? ' · 🎯퀴즈' : '';
+      const pub = f.isPublic ? ' · 🔓공개' : '';
+      return `<div class="form-list-item" onclick="openFormResults('${f.id}')">
+        <div class="fi-title">${escHtml(f.title||'(제목 없음)')}</div>
+        ${statusBadge}
+        <div class="fi-meta">${dl}${quiz}${pub}</div>
+        <div style="display:flex;gap:6px;margin-left:auto;" onclick="event.stopPropagation()">
+          <button class="btn sm" onclick="showBuilder('${f.id}')">수정</button>
+          <button class="btn sm danger" onclick="deleteForm('${f.id}')">삭제</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) { alert(e.message); }
+  showLoading(false);
+}
+
+window.deleteForm = async (id) => {
+  if (!confirm('폼을 삭제하시겠습니까? 응답도 모두 삭제됩니다.')) return;
+  showLoading(true);
+  try {
+    // delete responses
+    const rSnap = await getDocs(query(collection(db,'form_responses'), where('formId','==',id)));
+    await Promise.all(rSnap.docs.map(d => deleteDoc(doc(db,'form_responses',d.id))));
+    await deleteDoc(doc(db,'forms',id));
+    await loadFormList();
+  } catch(e) { alert(e.message); }
+  showLoading(false);
+};
+
+// ── 섹션 렌더 ──
+function renderSections() {
+  const wrap = document.getElementById('sectionsWrap');
+  wrap.innerHTML = sections.map((sec, si) => `
+    <div class="section-block" id="sec_${sec.id}">
+      <div class="section-header">
+        <span style="font-size:0.85rem;color:var(--sub);flex-shrink:0;">섹션 ${si+1}</span>
+        <input value="${escHtml(sec.title)}" placeholder="섹션 제목" oninput="updateSectionTitle('${sec.id}',this.value)" style="flex:1;background:transparent;border:none;outline:none;font-family:inherit;font-weight:700;font-size:0.95rem;color:var(--text);">
+        ${sections.length > 1 ? `<button class="btn sm ghost danger" onclick="deleteSection('${sec.id}')">섹션 삭제</button>` : ''}
+      </div>
+      <div class="section-body" id="secBody_${sec.id}">
+        ${sec.questions.map((q,qi) => renderQuestion(q, sec.id, qi)).join('')}
+        <button class="btn ghost" style="font-size:0.82rem;margin-top:6px;" onclick="addQuestion('${sec.id}')">+ 질문 추가</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderQuestion(q, secId, qi) {
+  const isQuiz = document.getElementById('fQuiz').checked;
+  const hasOpts = ['mc','checkbox','dropdown'].includes(q.type);
+  const optIcons = { mc: '◉', checkbox: '☑', dropdown: `${qi+1}.` };
+
+  const optsHtml = hasOpts ? `
+    <div class="q-opts" id="opts_${q.id}">
+      ${(q.options||[]).map((o,oi) => `
+        <div class="q-opt-row">
+          <span class="q-opt-icon">${q.type==='mc'?'◉':q.type==='checkbox'?'☑':(oi+1)+'.'}  </span>
+          <input class="inp opt-text" value="${escHtml(o)}" placeholder="옵션 ${oi+1}" oninput="updateOption('${q.id}','${secId}',${oi},this.value)">
+          ${(q.options||[]).length>1?`<button class="btn sm ghost danger" onclick="removeOption('${q.id}','${secId}',${oi})">✕</button>`:''}
+        </div>
+      `).join('')}
+    </div>
+    <button class="add-opt-btn" onclick="addOption('${q.id}','${secId}')">+ 옵션 추가</button>
+  ` : '';
+
+  const answerHtml = isQuiz && hasOpts ? `
+    <div class="q-answer-row">
+      <span class="q-answer-label">정답:</span>
+      <select class="inp" style="width:auto;flex:1;font-size:0.82rem;padding:5px 10px;" onchange="updateQField('${q.id}','${secId}','answer',this.value)">
+        <option value="">-- 정답 선택 --</option>
+        ${(q.options||[]).map((o,oi)=>`<option value="${oi}" ${String(q.answer)===String(oi)?'selected':''}>${escHtml(o)}</option>`).join('')}
+      </select>
+    </div>
+  ` : isQuiz && q.type==='short' ? `
+    <div class="q-answer-row">
+      <span class="q-answer-label">정답:</span>
+      <input class="inp" style="flex:1;" placeholder="정답 텍스트" value="${escHtml(q.answer||'')}" oninput="updateQField('${q.id}','${secId}','answer',this.value)">
+    </div>
+  ` : '';
+
+  const imgHtml = q.imageUrl ? `<div class="q-img-wrap"><img class="q-img-preview" src="${q.imageUrl}"><button class="btn sm danger" onclick="removeQImage('${q.id}','${secId}')" style="margin-top:4px;display:block;">이미지 삭제</button></div>` :
+    `<div class="q-img-wrap"><input type="file" accept="image/*" style="display:none;" id="imgInp_${q.id}" onchange="onQImage(this,'${q.id}','${secId}')"><button class="btn sm ghost" onclick="document.getElementById('imgInp_${q.id}').click()">🖼 이미지 추가</button></div>`;
+
+  return `
+    <div class="q-card" id="qc_${q.id}">
+      <button class="btn sm ghost danger q-del" onclick="deleteQuestion('${q.id}','${secId}')">✕</button>
+      <div class="q-top">
+        <input class="inp q-text" value="${escHtml(q.text||'')}" placeholder="질문 내용" oninput="updateQField('${q.id}','${secId}','text',this.value)">
+        <select class="inp q-type-sel" onchange="changeQType('${q.id}','${secId}',this.value)">
+          ${Object.entries(TYPE_LABELS).map(([v,l])=>`<option value="${v}" ${q.type===v?'selected':''}>${l}</option>`).join('')}
+        </select>
+      </div>
+      ${imgHtml}
+      ${optsHtml}
+      ${answerHtml}
+      <div style="display:flex;gap:16px;align-items:center;margin-top:8px;flex-wrap:wrap;">
+        <label class="q-required" style="cursor:pointer;">
+          <input type="checkbox" ${q.required?'checked':''} onchange="updateQField('${q.id}','${secId}','required',this.checked)">
+          <span>필수</span>
+        </label>
+        ${isQuiz ? `<div class="q-points-wrap"><span>점수:</span><input class="inp q-points-inp" type="number" min="0" value="${q.points||0}" oninput="updateQField('${q.id}','${secId}','points',parseInt(this.value)||0)"></div>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+// ── 섹션/질문 조작 ──
+window.addSection = () => {
+  sections.push({ id: uid(), title: `섹션 ${sections.length+1}`, questions: [] });
+  renderSections();
+};
+window.deleteSection = (secId) => {
+  if (!confirm('섹션을 삭제하시겠습니까?')) return;
+  sections = sections.filter(s => s.id !== secId);
+  renderSections();
+};
+window.updateSectionTitle = (secId, val) => { const s = sections.find(s=>s.id===secId); if (s) s.title = val; };
+
+window.addQuestion = (secId) => {
+  const sec = sections.find(s=>s.id===secId);
+  if (!sec) return;
+  sec.questions.push({ id: uid(), type: 'mc', text: '', options: [''], required: false, points: 0, answer: '', imageUrl: '' });
+  renderSections();
+};
+window.deleteQuestion = (qId, secId) => {
+  const sec = sections.find(s=>s.id===secId);
+  if (!sec) return;
+  sec.questions = sec.questions.filter(q=>q.id!==qId);
+  renderSections();
+};
+window.changeQType = (qId, secId, type) => {
+  const sec = sections.find(s=>s.id===secId);
+  const q = sec?.questions.find(q=>q.id===qId);
+  if (!q) return;
+  q.type = type;
+  if (['mc','checkbox','dropdown'].includes(type) && (!q.options || !q.options.length)) q.options = [''];
+  renderSections();
+};
+window.updateQField = (qId, secId, field, val) => {
+  const sec = sections.find(s=>s.id===secId);
+  const q = sec?.questions.find(q=>q.id===qId);
+  if (q) { q[field] = val; if (field==='points'||field==='required'||field==='answer') return; }
+};
+window.addOption = (qId, secId) => {
+  const sec = sections.find(s=>s.id===secId);
+  const q = sec?.questions.find(q=>q.id===qId);
+  if (!q) return;
+  q.options = [...(q.options||[]), ''];
+  renderSections();
+};
+window.removeOption = (qId, secId, idx) => {
+  const sec = sections.find(s=>s.id===secId);
+  const q = sec?.questions.find(q=>q.id===qId);
+  if (!q) return;
+  q.options = q.options.filter((_,i)=>i!==idx);
+  renderSections();
+};
+window.updateOption = (qId, secId, idx, val) => {
+  const sec = sections.find(s=>s.id===secId);
+  const q = sec?.questions.find(q=>q.id===qId);
+  if (q && q.options) q.options[idx] = val;
+};
+window.onQImage = (input, qId, secId) => {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX = 600; let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) { if (w > h) { h *= MAX/w; w = MAX; } else { w *= MAX/h; h = MAX; } }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const sec = sections.find(s=>s.id===secId);
+      const q = sec?.questions.find(q=>q.id===qId);
+      if (q) { q.imageUrl = canvas.toDataURL('image/jpeg', 0.75); renderSections(); }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+};
+window.removeQImage = (qId, secId) => {
+  const sec = sections.find(s=>s.id===secId);
+  const q = sec?.questions.find(q=>q.id===qId);
+  if (q) { q.imageUrl = ''; renderSections(); }
+};
+
+// 퀴즈 모드 토글 시 재렌더
+document.getElementById('fQuiz').addEventListener('change', renderSections);
+
+// ── 폼 저장 ──
+window.saveForm = async () => {
+  const title = document.getElementById('fTitle').value.trim();
+  if (!title) { alert('제목을 입력하세요.'); return; }
+  // sync current input values into sections data
+  sections.forEach(sec => {
+    sec.questions.forEach(q => {
+      const textEl = document.querySelector(`#qc_${q.id} .q-text`); if (textEl) q.text = textEl.value;
+      if (q.options) {
+        q.options = q.options.map((_, i) => {
+          const el = document.querySelector(`#opts_${q.id} .q-opt-row:nth-child(${i+1}) .opt-text`);
+          return el ? el.value : _;
+        });
+      }
+    });
+  });
+  const deadlineVal = document.getElementById('fDeadline').value;
+  const data = {
+    title,
+    description: document.getElementById('fDesc').value.trim(),
+    status: document.getElementById('fStatus').value,
+    isPublic: document.getElementById('fPublic').checked,
+    limitOnce: document.getElementById('fOnce').checked,
+    isQuiz: document.getElementById('fQuiz').checked,
+    deadline: deadlineVal ? new Date(deadlineVal) : null,
+    sections,
+    updatedAt: serverTimestamp(),
+  };
+  showLoading(true);
+  const msgEl = document.getElementById('saveMsg');
+  try {
+    if (currentFormId) {
+      await updateDoc(doc(db,'forms',currentFormId), data);
+    } else {
+      data.createdAt = serverTimestamp();
+      const ref = await addDoc(collection(db,'forms'), data);
+      currentFormId = ref.id;
+    }
+    msgEl.innerText = '✓ 저장되었습니다.';
+    setTimeout(() => { msgEl.innerText = ''; }, 2000);
+  } catch(e) { alert(e.message); }
+  showLoading(false);
+};
+
+// ── 결과 조회 ──
+window.openFormResults = async (formId) => {
+  showLoading(true);
+  try {
+    const formSnap = await getDoc(doc(db,'forms',formId));
+    if (!formSnap.exists()) { showLoading(false); return; }
+    currentFormId = formId;
+    currentFormData = { id: formId, ...formSnap.data() };
+    const rSnap = await getDocs(query(collection(db,'form_responses'), where('formId','==',formId), orderBy('submittedAt','desc')));
+    responses = rSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    document.getElementById('navTitle').innerText = '📊 결과 보기';
+    document.getElementById('resFormTitle').innerText = currentFormData.title || '(제목 없음)';
+    document.getElementById('resFormMeta').innerText = `응답 ${responses.length}개 · ${currentFormData.isQuiz?'퀴즈모드':'일반'} · ${currentFormData.isPublic?'비로그인 허용':'학생 전용'}`;
+    renderResSummaryStats();
+    showResTab('summary');
+    showPage('pageResults');
+  } catch(e) { alert(e.message); }
+  showLoading(false);
+};
+
+function renderResSummaryStats() {
+  const quiz = currentFormData.isQuiz;
+  let avgScore = '-';
+  if (quiz && responses.length) {
+    const total = responses.reduce((s,r) => s + (r.totalScore||0), 0);
+    avgScore = (total / responses.length).toFixed(1);
+  }
+  document.getElementById('resSummary').innerHTML = `
+    <div class="res-stat"><div class="res-stat-num">${responses.length}</div><div class="res-stat-label">총 응답</div></div>
+    ${quiz ? `<div class="res-stat"><div class="res-stat-num">${avgScore}</div><div class="res-stat-label">평균 점수</div></div>` : ''}
+  `;
+}
+
+window.showResTab = (tab) => {
+  resTabMode = tab;
+  document.querySelectorAll('.res-tab').forEach(t => t.classList.toggle('active', t.onclick.toString().includes(tab)));
+  const content = document.getElementById('resContent');
+  if (tab === 'summary') renderResSummaryContent(content);
+  else renderResIndividual(content);
+};
+
+function renderResSummaryContent(el) {
+  if (!responses.length) { el.innerHTML = '<div class="empty-msg">아직 응답이 없습니다.</div>'; return; }
+  const allQ = currentFormData.sections?.flatMap(s => s.questions) || [];
+  el.innerHTML = allQ.map(q => {
+    const answers = responses.map(r => r.answers?.[q.id]).filter(a => a !== undefined && a !== null && a !== '');
+    if (!answers.length) return `<div class="res-q"><div class="res-q-title">${escHtml(q.text||'(질문)')}</div><div style="color:var(--sub);font-size:0.82rem;">응답 없음</div></div>`;
+    if (['mc','dropdown'].includes(q.type)) {
+      const counts = {};
+      (q.options||[]).forEach(o => counts[o] = 0);
+      answers.forEach(a => { const o = q.options?.[a]; if (o !== undefined) counts[o] = (counts[o]||0) + 1; });
+      const total = answers.length;
+      const entries = Object.entries(counts);
+      const pieSlices = buildPie(entries.map(([,c])=>c), COLORS);
+      return `<div class="res-q card">
+        <div class="res-q-title">${escHtml(q.text||'(질문)')} <span style="font-size:0.75rem;color:var(--sub);">(${total}개 응답)</span></div>
+        <div class="chart-wrap">${pieSlices}<div class="chart-legend">${entries.map(([l,c],i)=>`<div class="legend-item"><span class="legend-dot" style="background:${COLORS[i%COLORS.length]}"></span><span>${escHtml(l)}: ${c}개 (${total?Math.round(c/total*100):0}%)</span></div>`).join('')}</div></div>
+        ${entries.map(([l,c],i)=>`<div class="res-bar-row"><div class="res-bar-label">${escHtml(l)}</div><div class="res-bar-track"><div class="res-bar-fill" style="width:${total?Math.round(c/total*100):0}%;background:${COLORS[i%COLORS.length]};"></div></div><div class="res-bar-pct">${total?Math.round(c/total*100):0}%</div></div>`).join('')}
+      </div>`;
+    }
+    if (q.type === 'checkbox') {
+      const counts = {};
+      (q.options||[]).forEach(o => counts[o] = 0);
+      answers.forEach(arr => { (Array.isArray(arr)?arr:[arr]).forEach(idx => { const o = q.options?.[idx]; if (o !== undefined) counts[o] = (counts[o]||0) + 1; }); });
+      const total = answers.length;
+      return `<div class="res-q card">
+        <div class="res-q-title">${escHtml(q.text||'(질문)')} <span style="font-size:0.75rem;color:var(--sub);">(${total}개 응답)</span></div>
+        ${Object.entries(counts).map(([l,c],i)=>`<div class="res-bar-row"><div class="res-bar-label">${escHtml(l)}</div><div class="res-bar-track"><div class="res-bar-fill" style="width:${total?Math.round(c/total*100):0}%;background:${COLORS[i%COLORS.length]};"></div></div><div class="res-bar-pct">${c}개</div></div>`).join('')}
+      </div>`;
+    }
+    // short answer
+    return `<div class="res-q card">
+      <div class="res-q-title">${escHtml(q.text||'(질문)')} <span style="font-size:0.75rem;color:var(--sub);">(${answers.length}개 응답)</span></div>
+      <div class="res-texts">${answers.map(a=>`<div class="res-text-item">${escHtml(String(a))}</div>`).join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+function buildPie(counts, colors) {
+  const total = counts.reduce((a,b)=>a+b,0); if (!total) return '';
+  let acc = 0;
+  const slices = counts.map((c, i) => {
+    const pct = c / total;
+    const start = acc * 2 * Math.PI - Math.PI/2;
+    acc += pct;
+    const end = acc * 2 * Math.PI - Math.PI/2;
+    const x1 = 45 + 40*Math.cos(start), y1 = 45 + 40*Math.sin(start);
+    const x2 = 45 + 40*Math.cos(end), y2 = 45 + 40*Math.sin(end);
+    const large = pct > 0.5 ? 1 : 0;
+    return `<path d="M45,45 L${x1},${y1} A40,40 0 ${large},1 ${x2},${y2} Z" fill="${colors[i%colors.length]}"/>`;
+  });
+  return `<svg class="pie-svg" viewBox="0 0 90 90">${slices.join('')}</svg>`;
+}
+
+function renderResIndividual(el) {
+  if (!responses.length) { el.innerHTML = '<div class="empty-msg">아직 응답이 없습니다.</div>'; return; }
+  const allQ = currentFormData.sections?.flatMap(s => s.questions) || [];
+  el.innerHTML = responses.map((r, i) => {
+    const name = r.studentName || r.studentId || '익명';
+    const time = r.submittedAt ? new Date(r.submittedAt.toDate ? r.submittedAt.toDate() : r.submittedAt).toLocaleString() : '';
+    const scoreStr = currentFormData.isQuiz ? ` · ${r.totalScore??'?'}/${r.totalPoints??'?'}점` : '';
+    return `<div class="res-respondent-row" onclick="toggleRespDetail('resp_${i}')">
+      <div><b>${escHtml(name)}</b> <span style="color:var(--sub);font-size:0.78rem;">${time}${scoreStr}</span></div>
+      <span style="color:var(--sub);">▾</span>
+    </div>
+    <div class="resp-detail hidden" id="resp_${i}">
+      ${allQ.map(q => {
+        const a = r.answers?.[q.id];
+        let display = '';
+        if (['mc','dropdown'].includes(q.type)) display = a !== undefined ? escHtml(q.options?.[a] || a) : '(미응답)';
+        else if (q.type === 'checkbox') display = Array.isArray(a) ? a.map(idx => escHtml(q.options?.[idx]||idx)).join(', ') : '(미응답)';
+        else display = escHtml(String(a||'(미응답)'));
+        const feedback = currentFormData.isQuiz ? (() => {
+          let corr = false;
+          if (['mc','dropdown'].includes(q.type)) corr = String(a) === String(q.answer);
+          else if (q.type==='short') corr = (a||'').toLowerCase().trim() === (q.answer||'').toLowerCase().trim();
+          return corr ? ' <span style="color:#22c55e;font-weight:700;">✓ 정답</span>' : q.answer !== undefined && q.answer !== '' ? ` <span style="color:#ef4444;font-weight:700;">✗ 오답</span>` : '';
+        })() : '';
+        return `<div style="margin-bottom:8px;"><div style="font-size:0.78rem;color:var(--sub);font-weight:600;">${escHtml(q.text||'(질문)')}</div><div style="font-size:0.88rem;">${display}${feedback}</div></div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+}
+
+window.toggleRespDetail = (id) => {
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle('hidden');
+};
+
+// ── CSV 내보내기 ──
+window.exportCsv = () => {
+  if (!responses.length) { alert('응답이 없습니다.'); return; }
+  const allQ = currentFormData.sections?.flatMap(s => s.questions) || [];
+  const headers = ['제출자', '제출시각', ...allQ.map(q => q.text||'(질문)')];
+  if (currentFormData.isQuiz) headers.push('점수');
+  const rows = responses.map(r => {
+    const name = r.studentName || r.studentId || '익명';
+    const time = r.submittedAt ? new Date(r.submittedAt.toDate ? r.submittedAt.toDate() : r.submittedAt).toLocaleString() : '';
+    const cols = [name, time, ...allQ.map(q => {
+      const a = r.answers?.[q.id];
+      if (['mc','dropdown'].includes(q.type)) return q.options?.[a] || a || '';
+      if (q.type==='checkbox') return Array.isArray(a) ? a.map(i=>q.options?.[i]||i).join('/') : '';
+      return String(a||'');
+    })];
+    if (currentFormData.isQuiz) cols.push(`${r.totalScore??''}/${r.totalPoints??''}`);
+    return cols;
+  });
+  const csvContent = [headers, ...rows].map(row => row.map(c => `"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['﻿'+csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `${currentFormData.title||'form'}_responses.csv`;
+  a.click(); URL.revokeObjectURL(url);
+};
+
+// ── 초기화 ──
+loadFormList();
+</script>
+</body>
+</html>
