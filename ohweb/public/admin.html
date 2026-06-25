@@ -602,15 +602,6 @@
       <div id="adminList"><div class="empty-state"><div class="empty-icon">📌</div>등록된 수업이 없습니다.</div></div>
     </div>
 
-    <div class="card">
-      <h2><span class="icon">🌐</span> 기존 콘텐츠 번역 (일괄)</h2>
-      <p style="font-size:0.85rem;color:var(--sub);margin-bottom:14px;">기존 게시글 및 수업 안내를 DeepL로 번역합니다. 시간이 걸릴 수 있습니다.</p>
-      <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;margin-bottom:12px;cursor:pointer;">
-        <input type="checkbox" id="forceRetranslate"> <span>전체 강제 재번역 (이미 번역된 것도 포함)</span>
-      </label>
-      <div id="migrateProgress" style="font-size:0.85rem;color:var(--sub);margin-bottom:10px;"></div>
-      <button class="btn accent sm" id="migrateBtn" onclick="migratePosts()">번역 시작</button>
-    </div>
   </div>
 
   <!-- 시험 관리 섹션 -->
@@ -1388,7 +1379,7 @@
   }
 
   window.loadAdminList = async () => {
-    const data = await gasGet({action:'getClasses'});
+    const data = await gasGet({action:'getClasses', includeOff:'true'});
     const list = data.classes || [];
     const el = document.getElementById('adminList');
     if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📌</div>등록된 수업이 없습니다.</div>'; return; }
