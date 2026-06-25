@@ -479,10 +479,10 @@
         <!-- 글쓰기 폼 (양쪽 공통) -->
         <div class="form-card">
           <form id="postForm" onsubmit="submitPost(event)">
-            <div class="form-row">
-              <input class="inp ru-target" id="p_num" placeholder="번호" required>
-              <input class="inp ru-target" id="p_name" placeholder="이름" required>
-              <input class="inp" id="p_pw_display" type="password" placeholder="비번" required>
+            <div class="form-row hidden">
+              <input class="inp ru-target" id="p_num" placeholder="번호">
+              <input class="inp ru-target" id="p_name" placeholder="이름">
+              <input class="inp" id="p_pw_display" type="password" placeholder="비번">
             </div>
             <input class="inp ru-target" id="p_sub" placeholder="제목" required style="margin-bottom:7px;">
             <textarea class="inp ru-target" id="p_msg" rows="4" placeholder="내용" required style="margin-bottom:9px;"></textarea>
@@ -820,8 +820,7 @@
           </div>
           <div class="action-links">
             <a class="pin-link ${p.pinned?'is-pinned':''}" onclick="handlePinClick('${p.id}')">핀</a>
-            <a onclick="handleEditClick('${p.id}')">수정</a>
-            <a class="del-link" onclick="openDelete('${p.id}')">삭제</a>
+            ${!p._readonly && String(p.studentId)===String(SESSION.id) ? `<a onclick="handleEditClick('${p.id}')">수정</a><a class="del-link" onclick="openDelete('${p.id}')">삭제</a>` : ''}
           </div>
         </div>
         <div class="post-byline">${p.name}(${p.num}) · ${p.time}</div>
@@ -895,7 +894,7 @@
   }
   function cancelEdit(){document.getElementById('postForm').reset();fillSession();setHidden('f_mode','add');setHidden('f_postId','');imgList=[];updatePreview();document.getElementById('subBtn').innerText=uiText[currentLang]?.submit||uiText.ko.submit;document.getElementById('subBtn').disabled=false;document.getElementById('cancelEditBtn').classList.add('hidden');}
   async function openDelete(id){
-    const pw=await askPassword('비밀번호');if(!pw)return;
+    if(!confirm('게시물을 삭제하시겠습니까?'))return;
     toggleLoading(true);
     const res=await gasPost({action:'deletePost',id,studentId:SESSION.id});
     if(res.error){alert(res.error);toggleLoading(false);return;}
