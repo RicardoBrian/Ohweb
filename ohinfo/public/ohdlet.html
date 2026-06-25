@@ -492,15 +492,27 @@
   // ── Apps Script URL ──
   const GAS_URL = 'https://script.google.com/macros/s/AKfycbx42-pDTOFvNEX8UhuVAfdCzWDPDjwGNi4YN1Jp-6BK_YyIQQYoIGwIV0ifk6eMFiuZ/exec';
 
-  async function gasGet(params) {
-    const url = GAS_URL + '?' + new URLSearchParams(params);
-    const res = await fetch(url);
-    return res.json();
+  function gasGet(params) {
+    return new Promise((resolve, reject) => {
+      const cb = '_cb' + Date.now();
+      const url = GAS_URL + '?' + new URLSearchParams({...params, callback: cb});
+      const s = document.createElement('script');
+      window[cb] = d => { delete window[cb]; s.remove(); resolve(d); };
+      s.onerror = reject;
+      s.src = url;
+      document.head.appendChild(s);
+    });
   }
-  async function gasPost(body) {
-    const url = GAS_URL + '?' + new URLSearchParams({ action: body.action, payload: JSON.stringify(body) });
-    const res = await fetch(url);
-    return res.json();
+  function gasPost(body) {
+    return new Promise((resolve, reject) => {
+      const cb = '_cb' + Date.now();
+      const url = GAS_URL + '?' + new URLSearchParams({ action: body.action, payload: JSON.stringify(body), callback: cb });
+      const s = document.createElement('script');
+      window[cb] = d => { delete window[cb]; s.remove(); resolve(d); };
+      s.onerror = reject;
+      s.src = url;
+      document.head.appendChild(s);
+    });
   }
 
   // ── 러시아어 가상키보드 ──
