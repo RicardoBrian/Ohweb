@@ -802,13 +802,10 @@
   function sortedPosts() { const p = [...currentPosts]; if (currentSort === 'like') p.sort((a,b) => (b.pinned?1:0)-(a.pinned?1:0) || b.likes-a.likes); return p; }
   function filterPosts() {
     const q = document.getElementById('searchInput').value.trim().toLowerCase();
-    if (!q) { render(currentExample, sortedPosts()); return; }
-    const f = sortedPosts().filter(p =>
-      (p.subject||p.subKo||'').toLowerCase().includes(q) ||
-      (p.message||p.msgKo||'').toLowerCase().includes(q) ||
-      (p.name||'').toLowerCase().includes(q)
-    );
-    render(currentExample, f, true);
+    document.querySelectorAll('#display .post-card:not(.teacher-card)').forEach(card => {
+      const text = (card.dataset.search || '').toLowerCase();
+      card.style.display = (!q || text.includes(q)) ? '' : 'none';
+    });
   }
 
   function render(ex, posts, isFiltered) {
@@ -820,7 +817,8 @@
     if (!posts.length) { display.innerHTML = html + `<div style="text-align:center;padding:48px 0;color:var(--sub);font-size:0.92rem;">게시물이 없습니다.</div>`; return; }
     posts.forEach((p) => {
       const hasLiked = localStorage.getItem('voted_'+p.id);
-      html += `<div class="post-card ${p.pinned?'pinned-card':''}" data-id="${p.id}">
+      const _srch = [p.subject,p.subKo,p.message,p.msgKo,p.name].filter(Boolean).join(' ').replace(/"/g,'&quot;');
+      html += `<div class="post-card ${p.pinned?'pinned-card':''}" data-id="${p.id}" data-search="${_srch}">
         ${p.pinned ? '<div class="pin-badge">📌 고정</div>' : ''}
         <div class="post-sub">${p.subject}</div>
         <div class="post-msg">${fmtMsg(p.message)}</div>

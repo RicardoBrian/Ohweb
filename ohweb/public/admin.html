@@ -437,7 +437,7 @@
       <div class="upload-zone" id="uploadZone" onclick="document.getElementById('csvFile').click()">
         <div class="upload-icon">📄</div>
         <p>CSV 파일을 클릭하여 업로드</p>
-        <small>열 순서: 학교, 학년, 반, 번호, 이름 (첫 행은 헤더로 자동 처리)</small>
+        <small>열 순서: 학년, 반, 번호, 이름 (첫 행은 헤더로 자동 처리)</small>
       </div>
       <input type="file" id="csvFile" accept=".csv" class="hidden" onchange="handleCSV(this)">
 
@@ -451,7 +451,7 @@
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>학교</th><th>학년</th><th>반</th><th>번호</th><th>이름</th></tr></thead>
+            <thead><tr><th>학년</th><th>반</th><th>번호</th><th>이름</th></tr></thead>
             <tbody id="csvTable"></tbody>
           </table>
         </div>
@@ -462,24 +462,16 @@
       <h2><span class="icon">➕</span> 학생 개별 추가</h2>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
         <div>
-          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">학교</label>
-          <select class="inp" id="addSchool" style="width:100%;"></select>
-        </div>
-        <div>
           <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">이름</label>
           <input class="inp" id="addName" type="text" placeholder="이름" style="width:100%;">
         </div>
         <div>
-          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">학년</label>
-          <select class="inp" id="addGrade" style="width:100%;">
-            <option value="1">1학년</option><option value="2">2학년</option><option value="3">3학년</option>
-          </select>
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">학년 <small style="font-weight:400;">(숫자 또는 학교명)</small></label>
+          <input class="inp" id="addGrade" type="text" placeholder="예: 1 또는 관산중" style="width:100%;">
         </div>
         <div>
           <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">반</label>
-          <select class="inp" id="addClass" style="width:100%;">
-            <option value="1">1반</option><option value="2">2반</option><option value="3">3반</option><option value="4">4반</option><option value="5">5반</option>
-          </select>
+          <input class="inp" id="addClass" type="text" placeholder="예: 3" style="width:100%;">
         </div>
         <div>
           <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">번호</label>
@@ -493,18 +485,10 @@
     <div class="card">
       <h2><span class="icon">👥</span> 학생 목록</h2>
       <div class="select-controls">
-        <label>학교</label>
-        <select class="inp" id="filterSchool" onchange="loadStudents()"><option value="">전체</option></select>
         <label>학년</label>
-        <select class="inp" id="filterGrade" onchange="loadStudents()">
-          <option value="">전체</option>
-          <option value="1">1학년</option><option value="2">2학년</option><option value="3">3학년</option>
-        </select>
+        <input class="inp" id="filterGrade" type="text" placeholder="전체" oninput="loadStudents()" style="width:90px;">
         <label>반</label>
-        <select class="inp" id="filterClass" onchange="loadStudents()">
-          <option value="">전체</option>
-          <option value="1">1반</option><option value="2">2반</option><option value="3">3반</option><option value="4">4반</option><option value="5">5반</option>
-        </select>
+        <input class="inp" id="filterClass" type="text" placeholder="전체" oninput="loadStudents()" style="width:70px;">
       </div>
       <div id="studentList"><div class="empty-state"><div class="empty-icon">👥</div>학생이 없습니다.</div></div>
     </div>
@@ -1026,17 +1010,17 @@
       const text = e.target.result;
       const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
       // 첫 행 헤더 감지 (학교|school|학년 등 포함 시)
-      const start = /학교|school|학년|번호/i.test(lines[0]) ? 1 : 0;
+      const start = /학년|번호|이름/i.test(lines[0]) ? 1 : 0;
       csvData = lines.slice(start).map(line => {
         const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
-        // 컬럼 순서: 학교, 학년, 반, 번호, 이름
-        return { schoolName: cols[0]||'', grade: cols[1]||'', class: cols[2]||'', number: cols[3]||'', name: cols[4]||'' };
-      }).filter(r => r.name && r.schoolName);
+        // 컬럼 순서: 학년, 반, 번호, 이름
+        return { grade: cols[0]||'', class: cols[1]||'', number: cols[2]||'', name: cols[3]||'' };
+      }).filter(r => r.name);
 
       document.getElementById('csvPreviewInfo').innerText = `${csvData.length}명 미리보기`;
       document.getElementById('csvTable').innerHTML = csvData.slice(0, 20).map(r =>
-        `<tr><td>${r.schoolName}</td><td>${r.grade}</td><td>${r.class}</td><td>${r.number}</td><td>${r.name}</td></tr>`
-      ).join('') + (csvData.length > 20 ? `<tr><td colspan="5" style="text-align:center;color:var(--sub);font-size:0.8rem;">... 외 ${csvData.length - 20}명</td></tr>` : '');
+        `<tr><td>${r.grade}</td><td>${r.class}</td><td>${r.number}</td><td>${r.name}</td></tr>`
+      ).join('') + (csvData.length > 20 ? `<tr><td colspan="4" style="text-align:center;color:var(--sub);font-size:0.8rem;">... 외 ${csvData.length - 20}명</td></tr>` : '');
       document.getElementById('csvPreview').classList.remove('hidden');
     };
     reader.readAsText(file, 'UTF-8');
@@ -1050,21 +1034,13 @@
 
   window.uploadCSV = async () => {
     if (!csvData.length) return;
-    // 학교 이름 → schoolId 매핑
-    const schoolMap = {};
-    schools.forEach(s => { schoolMap[s.name] = s.id; });
-    const unknown = [...new Set(csvData.map(r => r.schoolName))].filter(n => !schoolMap[n]);
-    if (unknown.length) { toast(`등록되지 않은 학교: ${unknown.join(', ')}`, 'error'); return; }
-
     showLoading(true);
     try {
       const batch = writeBatch(db);
       csvData.forEach(r => {
-        const schoolId = schoolMap[r.schoolName];
         const ref = doc(collection(db, 'students'));
         batch.set(ref, {
           name: r.name, grade: r.grade, class: r.class, number: r.number,
-          schoolId, schoolName: r.schoolName,
           registered: false, password: null,
           createdAt: serverTimestamp()
         });
@@ -1081,16 +1057,10 @@
 
   // ── 학생 목록 ──
   window.loadStudents = async () => {
-    const schoolId = document.getElementById('filterSchool').value;
-    const grade    = document.getElementById('filterGrade').value;
-    const cls      = document.getElementById('filterClass').value;
+    const grade    = document.getElementById('filterGrade').value.trim();
+    const cls      = document.getElementById('filterClass').value.trim();
 
-    // schoolId 하나만 서버 필터 → 나머지는 클라이언트 필터 (인덱스 불필요)
-    let q = collection(db, 'students');
-    const constraints = [];
-    if (schoolId) constraints.push(where('schoolId', '==', schoolId));
-
-    const snap = await getDocs(constraints.length ? query(q, ...constraints) : q);
+    const snap = await getDocs(collection(db, 'students'));
     let students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
     // 클라이언트 필터 (DB값이 "1" 또는 "1학년" 형태 모두 대응)
@@ -1116,11 +1086,10 @@
       <div style="margin-bottom:10px; font-size:0.82rem; color:var(--sub); font-weight:700;">${students.length}명</div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>학교</th><th>학년</th><th>반</th><th>번호</th><th>이름</th><th></th></tr></thead>
+          <thead><tr><th>학년</th><th>반</th><th>번호</th><th>이름</th><th></th></tr></thead>
           <tbody>
             ${students.map(s => `
               <tr>
-                <td style="font-size:0.82rem;color:var(--sub);">${s.schoolName||''}</td>
                 <td>${s.grade||''}</td>
                 <td>${s.class||''}</td>
                 <td>${s.number||''}</td>
@@ -1141,7 +1110,6 @@
         await deleteDoc(doc(db, 'students', id));
         toast('삭제되었습니다.', 'success');
         await loadStudents();
-        await loadSchools();
       } catch (e) {
         toast('오류: ' + e.message, 'error');
       }
@@ -1151,27 +1119,26 @@
 
   // ── 학생 개별 추가 ──
   window.addStudent = async () => {
-    const schoolId = document.getElementById('addSchool').value;
     const name = document.getElementById('addName').value.trim();
-    const grade = document.getElementById('addGrade').value;
-    const cls = document.getElementById('addClass').value;
+    const grade = document.getElementById('addGrade').value.trim();
+    const cls = document.getElementById('addClass').value.trim();
     const number = document.getElementById('addNumber').value.trim();
     const err = document.getElementById('addStudentErr');
     err.innerText = '';
-    if (!schoolId) { err.innerText = '학교를 선택하세요.'; return; }
-    if (!name)     { err.innerText = '이름을 입력하세요.'; return; }
-    if (!number)   { err.innerText = '번호를 입력하세요.'; return; }
-    const school = schools.find(s => s.id === schoolId);
+    if (!name)   { err.innerText = '이름을 입력하세요.'; return; }
+    if (!grade)  { err.innerText = '학년을 입력하세요.'; return; }
+    if (!number) { err.innerText = '번호를 입력하세요.'; return; }
     showLoading(true);
     try {
       await addDoc(collection(db, 'students'), {
-        schoolId, schoolName: school?.name || '',
         grade, class: cls, number, name,
         registered: false, password: null,
         createdAt: serverTimestamp()
       });
       toast(`${name} 추가 완료!`, 'success');
       document.getElementById('addName').value = '';
+      document.getElementById('addGrade').value = '';
+      document.getElementById('addClass').value = '';
       document.getElementById('addNumber').value = '';
       await loadStudents();
     } catch(e) { err.innerText = '오류: ' + e.message; }
@@ -1375,6 +1342,14 @@
     });
   }
 
+  let _adminGradeFilter = 'all';
+  window.setAdminGradeTab = (g) => {
+    _adminGradeFilter = g;
+    document.querySelectorAll('.adm-grade-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.g === g));
+    document.querySelectorAll('.adm-grade-group').forEach(el => {
+      el.style.display = (g === 'all' || el.dataset.g === g) ? '' : 'none';
+    });
+  };
   window.loadAdminList = async () => {
     const data = await gasGet({action:'getClasses', includeOff:'true'});
     const list = data.classes || [];
@@ -1391,7 +1366,7 @@
       <div class="list-item">
         <div>
           <div class="list-item-name">📌 ${c.name}</div>
-          <div class="list-item-sub">${(c.grades||[]).map(g=>g+'학년').join('·')} / ${(c.groups||[]).map(g=>g+'반').join('·')}</div>
+          <div class="list-item-sub">${(c.grades||[]).map(g=>g+'학년').join('·')} / ${(c.groups||[]).map(g=>g+'반').join('·')} <span style="font-size:0.75rem;padding:2px 7px;border-radius:6px;font-weight:700;background:${c.status==='ON'?'rgba(34,197,94,0.15)':'rgba(239,68,68,0.12)'};color:${c.status==='ON'?'#16a34a':'#ef4444'}">${c.status}</span></div>
         </div>
         <div class="list-item-actions" style="display:flex;align-items:center;gap:8px;">
           <select onchange="toggleClassStatus('${c.id}',this.value)" style="font-size:0.78rem;padding:4px 8px;border-radius:8px;border:1.5px solid var(--border-card);background:var(--glass);cursor:pointer;font-weight:700;color:${c.status==='ON'?'#22c55e':'#ef4444'}">
@@ -1403,10 +1378,15 @@
         </div>
       </div>`;
     const orderedKeys = [...gradeOrder.filter(g => groups[g]), ...(groups['기타'] ? ['기타'] : [])];
-    el.innerHTML = orderedKeys.map(g => `
-      <div style="margin-bottom:4px;margin-top:12px;font-size:0.8rem;font-weight:700;color:var(--sub);padding:0 2px;">${g === '기타' ? '기타' : g+'학년'}</div>
-      ${groups[g].map(renderItem).join('')}
-    `).join('');
+    const tabKeys = ['all', ...orderedKeys];
+    const tabLabels = {all:'전체', '1':'1학년', '2':'2학년', '3':'3학년', '기타':'기타'};
+    const tabs = tabKeys.map(g => `<button class="adm-grade-tab btn ghost sm${_adminGradeFilter===g?' active':''}" data-g="${g}" onclick="setAdminGradeTab('${g}')" style="margin-right:4px;margin-bottom:8px;">${tabLabels[g]||g}</button>`).join('');
+    const content = orderedKeys.map(g => `
+      <div class="adm-grade-group" data-g="${g}" style="${_adminGradeFilter!=='all'&&_adminGradeFilter!==g?'display:none':''}">
+        <div style="margin-bottom:4px;margin-top:4px;font-size:0.8rem;font-weight:700;color:var(--sub);padding:0 2px;">${tabLabels[g]||g}</div>
+        ${groups[g].map(renderItem).join('')}
+      </div>`).join('');
+    el.innerHTML = `<div style="margin-bottom:4px;">${tabs}</div>${content}`;
   };
 
   window.saveAdminClass = async () => {
