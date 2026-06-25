@@ -437,7 +437,7 @@
       <div class="upload-zone" id="uploadZone" onclick="document.getElementById('csvFile').click()">
         <div class="upload-icon">📄</div>
         <p>CSV 파일을 클릭하여 업로드</p>
-        <small>열 순서: 학년, 반, 번호, 이름 (첫 행은 헤더로 자동 처리)</small>
+        <small>열 순서: 학교, 학년, 반, 번호, 이름 (첫 행은 헤더로 자동 처리)</small>
       </div>
       <input type="file" id="csvFile" accept=".csv" class="hidden" onchange="handleCSV(this)">
 
@@ -451,7 +451,7 @@
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>학년</th><th>반</th><th>번호</th><th>이름</th></tr></thead>
+            <thead><tr><th>학교</th><th>학년</th><th>반</th><th>번호</th><th>이름</th></tr></thead>
             <tbody id="csvTable"></tbody>
           </table>
         </div>
@@ -461,13 +461,17 @@
     <div class="card">
       <h2><span class="icon">➕</span> 학생 개별 추가</h2>
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+        <div style="grid-column:1/-1;">
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">학교</label>
+          <input class="inp" id="addSchoolName" type="text" placeholder="예: 관산중학교" style="width:100%;">
+        </div>
         <div>
           <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">이름</label>
           <input class="inp" id="addName" type="text" placeholder="이름" style="width:100%;">
         </div>
         <div>
-          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">학년 <small style="font-weight:400;">(숫자 또는 학교명)</small></label>
-          <input class="inp" id="addGrade" type="text" placeholder="예: 1 또는 관산중" style="width:100%;">
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">학년</label>
+          <input class="inp" id="addGrade" type="text" placeholder="예: 1" style="width:100%;">
         </div>
         <div>
           <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">반</label>
@@ -485,6 +489,8 @@
     <div class="card">
       <h2><span class="icon">👥</span> 학생 목록</h2>
       <div class="select-controls">
+        <label>학교</label>
+        <input class="inp" id="filterSchool" type="text" placeholder="전체" oninput="loadStudents()" style="width:110px;">
         <label>학년</label>
         <input class="inp" id="filterGrade" type="text" placeholder="전체" oninput="loadStudents()" style="width:90px;">
         <label>반</label>
@@ -1011,17 +1017,17 @@
       const text = e.target.result;
       const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
       // 첫 행 헤더 감지 (학교|school|학년 등 포함 시)
-      const start = /학년|번호|이름/i.test(lines[0]) ? 1 : 0;
+      const start = /학교|학년|번호|이름/i.test(lines[0]) ? 1 : 0;
       csvData = lines.slice(start).map(line => {
         const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
-        // 컬럼 순서: 학년, 반, 번호, 이름
-        return { grade: cols[0]||'', class: cols[1]||'', number: cols[2]||'', name: cols[3]||'' };
+        // 컬럼 순서: 학교, 학년, 반, 번호, 이름
+        return { schoolName: cols[0]||'', grade: cols[1]||'', class: cols[2]||'', number: cols[3]||'', name: cols[4]||'' };
       }).filter(r => r.name);
 
       document.getElementById('csvPreviewInfo').innerText = `${csvData.length}명 미리보기`;
       document.getElementById('csvTable').innerHTML = csvData.slice(0, 20).map(r =>
-        `<tr><td>${r.grade}</td><td>${r.class}</td><td>${r.number}</td><td>${r.name}</td></tr>`
-      ).join('') + (csvData.length > 20 ? `<tr><td colspan="4" style="text-align:center;color:var(--sub);font-size:0.8rem;">... 외 ${csvData.length - 20}명</td></tr>` : '');
+        `<tr><td>${r.schoolName}</td><td>${r.grade}</td><td>${r.class}</td><td>${r.number}</td><td>${r.name}</td></tr>`
+      ).join('') + (csvData.length > 20 ? `<tr><td colspan="5" style="text-align:center;color:var(--sub);font-size:0.8rem;">... 외 ${csvData.length - 20}명</td></tr>` : '');
       document.getElementById('csvPreview').classList.remove('hidden');
     };
     reader.readAsText(file, 'UTF-8');
@@ -1041,7 +1047,7 @@
       csvData.forEach(r => {
         const ref = doc(collection(db, 'students'));
         batch.set(ref, {
-          name: r.name, grade: r.grade, class: r.class, number: r.number,
+          name: r.name, schoolName: r.schoolName||'', grade: r.grade, class: r.class, number: r.number,
           registered: false, password: null,
           createdAt: serverTimestamp()
         });
@@ -1058,6 +1064,7 @@
 
   // ── 학생 목록 ──
   window.loadStudents = async () => {
+    const school   = document.getElementById('filterSchool').value.trim();
     const grade    = document.getElementById('filterGrade').value.trim();
     const cls      = document.getElementById('filterClass').value.trim();
 
@@ -1066,6 +1073,7 @@
 
     // 클라이언트 필터 (DB값이 "1" 또는 "1학년" 형태 모두 대응)
     const nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
+    if (school) students = students.filter(s => (s.schoolName||'').includes(school));
     if (grade) students = students.filter(s => nv(s.grade) === nv(grade));
     if (cls)   students = students.filter(s => nv(s.class) === nv(cls));
 
@@ -1087,10 +1095,11 @@
       <div style="margin-bottom:10px; font-size:0.82rem; color:var(--sub); font-weight:700;">${students.length}명</div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>학년</th><th>반</th><th>번호</th><th>이름</th><th></th></tr></thead>
+          <thead><tr><th>학교</th><th>학년</th><th>반</th><th>번호</th><th>이름</th><th></th></tr></thead>
           <tbody>
             ${students.map(s => `
               <tr>
+                <td>${s.schoolName||''}</td>
                 <td>${s.grade||''}</td>
                 <td>${s.class||''}</td>
                 <td>${s.number||''}</td>
@@ -1317,31 +1326,7 @@
     btn.disabled = false;
   };
 
-  // ── 패들릿 수업 관리 (GAS / Sheets) ──
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbyRdzjvK0vmVh9lEmwCdKoR_NvxXIOXPYpaSA1Wnir-77JTVChBL5rbJAJJk10B_cev/exec';
-  let _gasSeq = 0;
-  function gasGet(params) {
-    return new Promise((resolve, reject) => {
-      const cb = '_cb' + (++_gasSeq);
-      const url = GAS_URL + '?' + new URLSearchParams({...params, callback: cb});
-      const s = document.createElement('script');
-      window[cb] = d => { delete window[cb]; s.remove(); resolve(d); };
-      s.onerror = reject;
-      s.src = url;
-      document.head.appendChild(s);
-    });
-  }
-  function gasPost(body) {
-    return new Promise((resolve, reject) => {
-      const cb = '_cb' + (++_gasSeq);
-      const url = GAS_URL + '?' + new URLSearchParams({ action: body.action, payload: JSON.stringify(body), callback: cb });
-      const s = document.createElement('script');
-      window[cb] = d => { delete window[cb]; s.remove(); resolve(d); };
-      s.onerror = reject;
-      s.src = url;
-      document.head.appendChild(s);
-    });
-  }
+  // ── 패들릿 수업 관리 (Firestore) ──
 
   let _adminGradeFilter = 'all';
   window.setAdminGradeTab = (g) => {
@@ -1352,8 +1337,8 @@
     });
   };
   window.loadAdminList = async () => {
-    const data = await gasGet({action:'getClasses', includeOff:'true'});
-    const list = data.classes || [];
+    const data = await getDocs(query(collection(db, 'classes'), orderBy('createdAt', 'asc')));
+    const list = data.docs.map(d => ({ id: d.id, ...d.data() }));
     const el = document.getElementById('adminList');
     if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📌</div>등록된 수업이 없습니다.</div>'; return; }
     const gradeOrder = ['1','2','3'];
@@ -1367,7 +1352,7 @@
       <div class="list-item">
         <div>
           <div class="list-item-name">📌 ${c.name}</div>
-          <div class="list-item-sub">${(c.grades||[]).map(g=>g+'학년').join('·')} / ${(c.groups||[]).map(g=>g+'반').join('·')} <span style="font-size:0.75rem;padding:2px 7px;border-radius:6px;font-weight:700;background:${c.status==='ON'?'rgba(34,197,94,0.15)':'rgba(239,68,68,0.12)'};color:${c.status==='ON'?'#16a34a':'#ef4444'}">${c.status}</span></div>
+          <div class="list-item-sub">${c.grade}학년 / ${c.group}반 <span style="font-size:0.75rem;padding:2px 7px;border-radius:6px;font-weight:700;background:${c.status==='ON'?'rgba(34,197,94,0.15)':'rgba(239,68,68,0.12)'};color:${c.status==='ON'?'#16a34a':'#ef4444'}">${c.status}</span></div>
         </div>
         <div class="list-item-actions" style="display:flex;align-items:center;gap:8px;">
           <select onchange="toggleClassStatus('${c.id}',this.value)" style="font-size:0.78rem;padding:4px 8px;border-radius:8px;border:1.5px solid var(--border-card);background:var(--glass);cursor:pointer;font-weight:700;color:${c.status==='ON'?'#22c55e':'#ef4444'}">
@@ -1392,26 +1377,51 @@
 
   window.saveAdminClass = async () => {
     const id = document.getElementById('adm_docId').value;
-    const grades = [...document.querySelectorAll('.adm-g:checked')].map(i=>i.value);
-    const groups = [...document.querySelectorAll('.adm-b:checked')].map(i=>i.value);
+    const grades = [...document.querySelectorAll('.adm-g:checked')].map(i => i.value);
+    const groups = [...document.querySelectorAll('.adm-b:checked')].map(i => i.value);
     const name = document.getElementById('adm_name').value.trim();
+    const desc = document.getElementById('adm_desc').value;
+    const ex = document.getElementById('adm_ex').value;
+    const popup = document.getElementById('adm_popup').value;
+
     if (!name) { toast('수업명을 입력하세요.', 'error'); return; }
-    if (!grades.length || !groups.length) { toast('학년과 반을 각각 하나 이상 선택하세요.', 'error'); return; }
-    const payload = { name, desc: document.getElementById('adm_desc').value, ex: document.getElementById('adm_ex').value, popup: document.getElementById('adm_popup').value, grades, groups };
+
     showLoading(true);
     try {
-      if (id) await gasPost({action:'updateClass', id, ...payload});
-      else await gasPost({action:'addClass', ...payload});
+      if (id) {
+        // Update existing — single doc
+        const gradeVal = grades[0] ? grades[0].replace('학년','') : '';
+        const groupVal = groups[0] ? groups[0].replace('반','') : '';
+        await updateDoc(doc(db, 'classes', id), { name, grade: gradeVal, group: groupVal, desc, ex, popup });
+      } else {
+        if (!grades.length || !groups.length) { toast('학년과 반을 선택하세요.', 'error'); showLoading(false); return; }
+        // Add new — one doc per grade×group combo
+        const batch = writeBatch(db);
+        grades.forEach(g => {
+          groups.forEach(b => {
+            const ref = doc(collection(db, 'classes'));
+            batch.set(ref, {
+              name,
+              grade: g.replace('학년',''),
+              group: b.replace('반',''),
+              desc, ex, popup,
+              status: 'ON',
+              createdAt: serverTimestamp()
+            });
+          });
+        });
+        await batch.commit();
+      }
       toast('저장되었습니다.', 'success');
       window.resetAdminForm();
       await window.loadAdminList();
-    } catch(e) { toast('오류: '+e.message, 'error'); }
+    } catch(e) { toast('오류: ' + e.message, 'error'); }
     showLoading(false);
   };
 
   window.toggleClassStatus = async (id, status) => {
     showLoading(true);
-    await gasPost({action:'toggleClassStatus', id, status});
+    await updateDoc(doc(db, 'classes', id), { status });
     await window.loadAdminList();
     showLoading(false);
   };
@@ -1422,8 +1432,9 @@
     document.getElementById('adm_desc').value = c.desc||'';
     document.getElementById('adm_ex').value = c.ex||'';
     document.getElementById('adm_popup').value = c.popup||'';
-    document.querySelectorAll('.adm-g').forEach(i => i.checked=(c.grades||[]).includes(i.value));
-    document.querySelectorAll('.adm-b').forEach(i => i.checked=(c.groups||[]).includes(i.value));
+    // c.grade and c.group are plain strings like "1","2","3"
+    document.querySelectorAll('.adm-g').forEach(i => i.checked = (i.value === (c.grade||'') + '학년'));
+    document.querySelectorAll('.adm-b').forEach(i => i.checked = (i.value === (c.group||'') + '반'));
     const info = document.getElementById('adm_edit_info');
     info.style.display='block'; info.innerText=`수정 중: ${c.name}`;
     document.getElementById('adm_cancel_btn').classList.remove('hidden');
@@ -1432,7 +1443,7 @@
   window.delAdminClass = (id) => {
     confirmDialog('수업 삭제', '이 수업을 삭제하시겠습니까?', async () => {
       showLoading(true);
-      await gasPost({action:'deleteClass', id});
+      await deleteDoc(doc(db, 'classes', id));
       await window.loadAdminList();
       showLoading(false);
     });
