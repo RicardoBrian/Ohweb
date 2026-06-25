@@ -118,7 +118,7 @@
       -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
     .logo p { font-size: 0.85rem; color: var(--sub); margin-top: 4px; font-weight: 600; }
-    .lang-bar { display: flex; gap: 6px; margin-top: 12px; }
+    .lang-bar { display: flex; gap: 8px; margin-top: 12px; }
     .lang-btn {
       font-family: inherit; font-size: 0.75rem; font-weight: 700; cursor: pointer;
       border-radius: 50px; padding: 4px 12px;
@@ -126,6 +126,25 @@
       transition: 0.2s;
     }
     .lang-btn.active { background: rgba(42,92,230,0.82); color: #fff; border-color: transparent; }
+
+    /* ── 언어 선택 카드 (폼 상단) ── */
+    .lang-card {
+      background: var(--glass); border: 1px solid var(--border-card);
+      border-radius: var(--radius-sm); padding: 16px 18px; margin-bottom: 22px;
+    }
+    .lang-card-label {
+      font-size: 0.7rem; font-weight: 700; color: var(--sub);
+      letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 10px;
+    }
+    .lang-card .lang-btns { display: flex; gap: 8px; }
+    .lang-card .lang-btn {
+      flex: 1; padding: 10px 4px; font-size: 0.88rem; text-align: center;
+      border-radius: 10px;
+    }
+    .lang-card .lang-btn.active {
+      background: rgba(42,92,230,0.82); color: #fff; border-color: transparent;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 12px rgba(42,92,230,0.3);
+    }
 
     .tab-bar {
       display: flex; gap: 4px;
@@ -269,11 +288,15 @@
     <div class="logo">
       <h1>ohinfo</h1>
       <p data-t="subtitle">학생 정보 포털</p>
-      <div class="lang-bar">
-        <button class="lang-btn active" id="lang-ko" onclick="setLang('ko')">한</button>
-        <button class="lang-btn" id="lang-zh" onclick="setLang('zh')">中</button>
-        <button class="lang-btn" id="lang-ru" onclick="setLang('ru')">РУ</button>
-        <button class="lang-btn" id="lang-en" onclick="setLang('en')">EN</button>
+    </div>
+
+    <div class="lang-card">
+      <div class="lang-card-label" id="langCardLabel">언어 선택</div>
+      <div class="lang-btns">
+        <button class="lang-btn active" id="lang-ko" onclick="setLang('ko')">한국어</button>
+        <button class="lang-btn" id="lang-zh" onclick="setLang('zh')">中文</button>
+        <button class="lang-btn" id="lang-ru" onclick="setLang('ru')">Рус</button>
+        <button class="lang-btn" id="lang-en" onclick="setLang('en')">English</button>
       </div>
     </div>
 
@@ -518,6 +541,9 @@
     const subEl = document.getElementById('brandSub'); if (subEl) subEl.innerText = b.sub;
     const ftEl = document.getElementById('brandFooter'); if (ftEl) ftEl.innerText = b.footer;
     document.querySelectorAll('[data-ba]').forEach(el => { const v = b.apps[el.dataset.ba]; if (v) el.innerText = v; });
+    // 언어 선택 카드 레이블
+    const langLabels = { ko:'언어 선택', zh:'选择语言', ru:'Выбор языка', en:'Select Language' };
+    const langLabelEl = document.getElementById('langCardLabel'); if (langLabelEl) langLabelEl.innerText = langLabels[lang];
     // 언어 버튼
     ['ko','zh','ru','en'].forEach(l => document.getElementById('lang-'+l).classList.toggle('active', l === lang));
   }
