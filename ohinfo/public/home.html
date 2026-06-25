@@ -112,20 +112,100 @@
       background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.2); transition: transform 0.3s;
     }
     body.dark .dark-toggle::after { transform: translateX(18px); }
-    .btn-logout {
-      font-family: inherit; font-size: 0.78rem; font-weight: 700;
-      cursor: pointer; border-radius: 50px; padding: 6px 14px;
-      border: 1px solid var(--border-card); background: var(--glass); color: var(--sub);
-      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
-      box-shadow: var(--highlight); transition: 0.2s; white-space: nowrap;
-    }
-    .btn-logout:hover { color: var(--text); background: var(--glass-strong); }
+    .nav-user { cursor: pointer; position: relative; user-select: none; }
+    .nav-user:hover { background: var(--glass-strong); }
     @media (max-width: 520px) {
       .nav { padding: 0 14px; gap: 6px; }
       .nav-user-name { display: none; }
       .nav-user { padding: 4px; }
-      .btn-logout { padding: 6px 10px; font-size: 0.72rem; }
     }
+
+    /* ── 유저 드롭다운 ── */
+    .user-dropdown {
+      position: absolute; top: calc(100% + 8px); right: 0;
+      min-width: 160px;
+      background: var(--glass-strong);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-card); border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-md); z-index: 300; overflow: hidden;
+    }
+    .user-dropdown-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px; font-size: 0.88rem; font-weight: 700;
+      cursor: pointer; color: var(--text); transition: 0.15s;
+    }
+    .user-dropdown-item:hover { background: var(--accent-light); }
+    .user-dropdown-item.danger { color: #ef4444; }
+    .user-dropdown-sep { height: 1px; background: var(--border-card); margin: 0 10px; }
+
+    /* ── 마이페이지 모달 ── */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 500;
+      background: rgba(0,0,0,0.35); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-card {
+      background: var(--glass-strong);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-card); border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
+      width: 100%; max-width: 360px; padding: 28px 26px 22px;
+      position: relative;
+    }
+    .modal-title { font-size: 1.1rem; font-weight: 900; letter-spacing: -0.02em; margin-bottom: 20px; }
+    .modal-close {
+      position: absolute; top: 14px; right: 14px;
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--glass); border: 1px solid var(--border-card);
+      cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center;
+      color: var(--sub); transition: 0.15s;
+    }
+    .modal-close:hover { background: var(--glass-strong); }
+    .photo-section { text-align: center; margin-bottom: 22px; }
+    .photo-preview {
+      width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 10px;
+      background: linear-gradient(135deg, var(--accent), #7c4dff);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-weight: 800; font-size: 1.6rem;
+      overflow: hidden; border: 2px solid var(--border-card);
+    }
+    .photo-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .btn-photo-change {
+      font-family: inherit; font-size: 0.8rem; font-weight: 700;
+      cursor: pointer; border-radius: 50px; padding: 6px 16px;
+      border: 1px solid var(--border-card); background: var(--glass); color: var(--sub);
+      transition: 0.2s;
+    }
+    .btn-photo-change:hover { background: var(--glass-strong); color: var(--text); }
+    .modal-section { margin-bottom: 14px; }
+    .modal-section-label {
+      font-size: 0.7rem; font-weight: 700; color: var(--sub);
+      letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px;
+    }
+    .modal-inp {
+      width: 100%; padding: 10px 13px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border-card);
+      background: var(--glass); color: var(--text);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      font-family: inherit; font-size: 0.92rem; outline: none; margin-bottom: 7px;
+      transition: border-color 0.2s;
+    }
+    .modal-inp:last-of-type { margin-bottom: 0; }
+    .modal-inp:focus { border-color: rgba(42,92,230,0.55); }
+    .modal-inp::placeholder { color: var(--sub); }
+    .btn-modal-save {
+      width: 100%; padding: 12px; border-radius: var(--radius);
+      border: 1px solid rgba(100,140,255,0.5);
+      background: rgba(42,92,230,0.82); color: #fff;
+      font-family: inherit; font-size: 0.95rem; font-weight: 700; cursor: pointer;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 16px rgba(42,92,230,0.3);
+      transition: background 0.2s; margin-top: 14px;
+    }
+    .btn-modal-save:hover { background: rgba(42,92,230,0.95); }
+    .btn-modal-save:disabled { opacity: 0.6; cursor: not-allowed; }
+    .modal-msg { font-size: 0.82rem; font-weight: 600; margin-top: 10px; text-align: center; min-height: 18px; }
+    .modal-msg.ok { color: #22c55e; }
+    .modal-msg.err { color: #ef4444; }
 
     .wrap { max-width: 800px; margin: 0 auto; padding: 36px 22px 80px; }
     @media (max-width: 600px) { .wrap { padding: 22px 14px 60px; } }
@@ -199,12 +279,16 @@
     <button class="lang-btn" id="lang-en" onclick="setLang('en')">EN</button>
   </div>
   <div class="nav-right">
-    <div class="nav-user">
+    <div class="nav-user" id="navUser" onclick="toggleUserMenu()">
       <div class="nav-avatar" id="navAvatar"></div>
       <div class="nav-user-name" id="navName"></div>
+      <div class="user-dropdown hidden" id="userDropdown" onclick="event.stopPropagation()">
+        <div class="user-dropdown-item" onclick="openMyPage()" id="dropMyPage">👤 마이페이지</div>
+        <div class="user-dropdown-sep"></div>
+        <div class="user-dropdown-item danger" onclick="logout()" id="dropLogout">로그아웃</div>
+      </div>
     </div>
     <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
-    <button class="btn-logout" id="logoutBtn" onclick="logout()">로그아웃</button>
   </div>
 </nav>
 
@@ -217,18 +301,66 @@
   <div class="app-grid" id="appGrid"></div>
 </div>
 
+<!-- 마이페이지 모달 -->
+<div class="modal-overlay hidden" id="myPageOverlay" onclick="closeMyPage()">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeMyPage()">✕</button>
+    <div class="modal-title" id="mpTitle">마이페이지</div>
+
+    <div class="photo-section">
+      <div class="photo-preview" id="mpPhotoPreview"></div>
+      <input type="file" id="mpPhotoInput" accept="image/*" style="display:none" onchange="onPhotoChange(this)">
+      <button class="btn-photo-change" onclick="document.getElementById('mpPhotoInput').click()" id="mpPhotoBtn">사진 변경</button>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-section-label" id="mpPwLabel">비밀번호 변경</div>
+      <input class="modal-inp" id="mpCurPw" type="password" placeholder="현재 비밀번호">
+      <input class="modal-inp" id="mpNewPw" type="password" placeholder="새 비밀번호 (4자 이상)">
+      <input class="modal-inp" id="mpNewPw2" type="password" placeholder="새 비밀번호 확인" onkeydown="if(event.key==='Enter')saveMyPage()">
+    </div>
+
+    <button class="btn-modal-save" onclick="saveMyPage()" id="mpSaveBtn">저장</button>
+    <div class="modal-msg" id="mpMsg"></div>
+  </div>
+</div>
+
 <script>
   const TH = {
-    ko: { appsLabel:'공개된 앱', logout:'로그아웃', greeting: n => `안녕하세요, ${n}님 👋`,
+    ko: { appsLabel:'공개된 앱', logout:'로그아웃', mypage:'마이페이지',
+      mpTitle:'마이페이지', mpPhotoBtn:'사진 변경', mpPwLabel:'비밀번호 변경',
+      mpCurPw:'현재 비밀번호', mpNewPw:'새 비밀번호 (4자 이상)', mpNewPw2:'새 비밀번호 확인',
+      mpSave:'저장', mpErrCurPw:'현재 비밀번호를 입력하세요.', mpErrWrongPw:'현재 비밀번호가 올바르지 않습니다.',
+      mpErrShort:'새 비밀번호는 4자 이상이어야 합니다.', mpErrMismatch:'새 비밀번호가 일치하지 않습니다.',
+      mpErrNone:'변경할 내용이 없습니다.', mpOk:'저장되었습니다.',
+      greeting: n => `안녕하세요, ${n}님 👋`,
       apps: { ohdlet:{name:'패들릿',desc:'칠판 공유 공간'}, submit:{name:'과제제출',desc:'과제를 제출하세요'}, exam:{name:'시험',desc:'온라인 시험'}, form:{name:'설문실습',desc:'설문 및 실습'} },
       empty:'현재 공개된 앱이 없습니다.', emptySub:'선생님이 앱을 공개하면 여기에 표시됩니다.' },
-    zh: { appsLabel:'已开放的应用', logout:'退出', greeting: n => `你好，${n} 👋`,
+    zh: { appsLabel:'已开放的应用', logout:'退出', mypage:'我的页面',
+      mpTitle:'我的页面', mpPhotoBtn:'更换头像', mpPwLabel:'修改密码',
+      mpCurPw:'当前密码', mpNewPw:'新密码 (至少4位)', mpNewPw2:'确认新密码',
+      mpSave:'保存', mpErrCurPw:'请输入当前密码。', mpErrWrongPw:'当前密码不正确。',
+      mpErrShort:'新密码至少需要4位。', mpErrMismatch:'两次输入的密码不一致。',
+      mpErrNone:'没有可更改的内容。', mpOk:'保存成功。',
+      greeting: n => `你好，${n} 👋`,
       apps: { ohdlet:{name:'共享白板',desc:'共享黑板空间'}, submit:{name:'作业提交',desc:'提交作业'}, exam:{name:'考试',desc:'在线考试'}, form:{name:'问卷练习',desc:'问卷和练习'} },
       empty:'目前没有开放的应用。', emptySub:'老师开放应用后将显示在这里。' },
-    ru: { appsLabel:'Доступные приложения', logout:'Выйти', greeting: n => `Привет, ${n} 👋`,
+    ru: { appsLabel:'Доступные приложения', logout:'Выйти', mypage:'Мой профиль',
+      mpTitle:'Мой профиль', mpPhotoBtn:'Сменить фото', mpPwLabel:'Изменить пароль',
+      mpCurPw:'Текущий пароль', mpNewPw:'Новый пароль (мин. 4 символа)', mpNewPw2:'Подтвердить новый пароль',
+      mpSave:'Сохранить', mpErrCurPw:'Введите текущий пароль.', mpErrWrongPw:'Неверный текущий пароль.',
+      mpErrShort:'Новый пароль должен содержать не менее 4 символов.', mpErrMismatch:'Пароли не совпадают.',
+      mpErrNone:'Нет изменений для сохранения.', mpOk:'Сохранено.',
+      greeting: n => `Привет, ${n} 👋`,
       apps: { ohdlet:{name:'Паддлет',desc:'Общая доска'}, submit:{name:'Задания',desc:'Сдать задание'}, exam:{name:'Тест',desc:'Онлайн тест'}, form:{name:'Опрос',desc:'Опросы и практика'} },
       empty:'Приложений пока нет.', emptySub:'Когда учитель откроет приложения, они появятся здесь.' },
-    en: { appsLabel:'Available Apps', logout:'Logout', greeting: n => `Hello, ${n} 👋`,
+    en: { appsLabel:'Available Apps', logout:'Logout', mypage:'My Page',
+      mpTitle:'My Page', mpPhotoBtn:'Change Photo', mpPwLabel:'Change Password',
+      mpCurPw:'Current password', mpNewPw:'New password (min. 4 chars)', mpNewPw2:'Confirm new password',
+      mpSave:'Save', mpErrCurPw:'Please enter your current password.', mpErrWrongPw:'Current password is incorrect.',
+      mpErrShort:'New password must be at least 4 characters.', mpErrMismatch:'Passwords do not match.',
+      mpErrNone:'Nothing to change.', mpOk:'Saved successfully.',
+      greeting: n => `Hello, ${n} 👋`,
       apps: { ohdlet:{name:'Paddlet',desc:'Shared board space'}, submit:{name:'Assignments',desc:'Submit your work'}, exam:{name:'Exam',desc:'Online exam'}, form:{name:'Survey',desc:'Surveys and practice'} },
       empty:'No apps available.', emptySub:'Apps shared by your teacher will appear here.' },
   };
@@ -237,8 +369,25 @@
     const t = TH[homeLang];
     const appsLabelEl = document.getElementById('appsLabel');
     if (appsLabelEl) appsLabelEl.innerText = t.appsLabel;
-    const logoutEl = document.getElementById('logoutBtn');
-    if (logoutEl) logoutEl.innerText = t.logout;
+    const dropLogout = document.getElementById('dropLogout');
+    if (dropLogout) dropLogout.innerHTML = '🚪 ' + t.logout;
+    const dropMyPage = document.getElementById('dropMyPage');
+    if (dropMyPage) dropMyPage.innerHTML = '👤 ' + t.mypage;
+    // mypage modal
+    ['mpTitle','mpPhotoBtn','mpPwLabel','mpSaveBtn'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (id === 'mpTitle') el.innerText = t.mpTitle;
+      else if (id === 'mpPhotoBtn') el.innerText = t.mpPhotoBtn;
+      else if (id === 'mpPwLabel') el.innerText = t.mpPwLabel;
+      else if (id === 'mpSaveBtn') el.innerText = t.mpSave;
+    });
+    const mpCurPw = document.getElementById('mpCurPw');
+    if (mpCurPw) mpCurPw.placeholder = t.mpCurPw;
+    const mpNewPw = document.getElementById('mpNewPw');
+    if (mpNewPw) mpNewPw.placeholder = t.mpNewPw;
+    const mpNewPw2 = document.getElementById('mpNewPw2');
+    if (mpNewPw2) mpNewPw2.placeholder = t.mpNewPw2;
     ['ko','zh','ru','en'].forEach(l => { const b = document.getElementById('lang-'+l); if(b) b.classList.toggle('active', l===homeLang); });
     // re-render app grid if already rendered
     if (window._renderApps) window._renderApps();
@@ -248,7 +397,7 @@
 </script>
 <script type="module">
   import { db } from './firebase-config.js';
-  import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   const raw = sessionStorage.getItem('ohinfo_student');
   if (!raw) { window.location.href = 'index.html'; }
@@ -260,6 +409,105 @@
   };
   if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
   window.logout = () => { sessionStorage.removeItem('ohinfo_student'); window.location.href = 'index.html'; };
+
+  // ── 유저 드롭다운 ──
+  window.toggleUserMenu = () => {
+    document.getElementById('userDropdown').classList.toggle('hidden');
+  };
+  document.addEventListener('click', e => {
+    const navUser = document.getElementById('navUser');
+    if (navUser && !navUser.contains(e.target)) {
+      document.getElementById('userDropdown').classList.add('hidden');
+    }
+  });
+
+  // ── 아바타 렌더 (사진 or 이니셜) ──
+  function renderAvatar(el, s) {
+    if (s.photoUrl) {
+      el.innerHTML = `<img src="${s.photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+    } else {
+      el.innerText = s.name[0];
+    }
+  }
+
+  // ── 마이페이지 ──
+  let _mpPhotoB64 = null;
+
+  window.openMyPage = () => {
+    document.getElementById('userDropdown').classList.add('hidden');
+    _mpPhotoB64 = null;
+    const prev = document.getElementById('mpPhotoPreview');
+    if (student.photoUrl) {
+      prev.innerHTML = `<img src="${student.photoUrl}">`;
+    } else {
+      prev.innerText = student.name[0];
+    }
+    ['mpCurPw','mpNewPw','mpNewPw2'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('mpMsg').innerText = '';
+    document.getElementById('mpMsg').className = 'modal-msg';
+    document.getElementById('myPageOverlay').classList.remove('hidden');
+  };
+
+  window.closeMyPage = () => {
+    document.getElementById('myPageOverlay').classList.add('hidden');
+  };
+
+  window.onPhotoChange = (input) => {
+    if (!input.files || !input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX = 200;
+        let w = img.width, h = img.height;
+        if (w > h) { if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; } }
+        else { if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; } }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        _mpPhotoB64 = canvas.toDataURL('image/jpeg', 0.8);
+        document.getElementById('mpPhotoPreview').innerHTML = `<img src="${_mpPhotoB64}">`;
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(input.files[0]);
+  };
+
+  window.saveMyPage = async () => {
+    const t = TH[homeLang];
+    const msgEl = document.getElementById('mpMsg');
+    msgEl.className = 'modal-msg'; msgEl.innerText = '';
+    const curPw = document.getElementById('mpCurPw').value;
+    const newPw = document.getElementById('mpNewPw').value;
+    const newPw2 = document.getElementById('mpNewPw2').value;
+    const updates = {};
+
+    if (_mpPhotoB64) updates.photoUrl = _mpPhotoB64;
+
+    if (newPw || curPw) {
+      if (!curPw) { msgEl.className='modal-msg err'; msgEl.innerText=t.mpErrCurPw; return; }
+      if (curPw !== student.password) { msgEl.className='modal-msg err'; msgEl.innerText=t.mpErrWrongPw; return; }
+      if (newPw.length < 4) { msgEl.className='modal-msg err'; msgEl.innerText=t.mpErrShort; return; }
+      if (newPw !== newPw2) { msgEl.className='modal-msg err'; msgEl.innerText=t.mpErrMismatch; return; }
+      updates.password = newPw;
+    }
+
+    if (!Object.keys(updates).length) { msgEl.className='modal-msg err'; msgEl.innerText=t.mpErrNone; return; }
+
+    const saveBtn = document.getElementById('mpSaveBtn');
+    saveBtn.disabled = true;
+    try {
+      await updateDoc(doc(db, 'students', student.id), updates);
+      Object.assign(student, updates);
+      sessionStorage.setItem('ohinfo_student', JSON.stringify(student));
+      renderAvatar(document.getElementById('navAvatar'), student);
+      msgEl.className = 'modal-msg ok'; msgEl.innerText = t.mpOk;
+      setTimeout(() => closeMyPage(), 1300);
+    } catch(e) {
+      msgEl.className = 'modal-msg err'; msgEl.innerText = '오류: ' + e.message;
+    }
+    saveBtn.disabled = false;
+  };
 
   const APP_META = {
     ohdlet: { emoji: '📌', cls: 'icon-ohdlet', href: 'ohdlet.html' },
@@ -289,7 +537,7 @@
     if (greetEl) greetEl.innerHTML = t.greeting(`<span>${student.name}</span>`);
   };
 
-  document.getElementById('navAvatar').innerText = student.name[0];
+  renderAvatar(document.getElementById('navAvatar'), student);
   document.getElementById('navName').innerText = student.name;
   document.getElementById('greetSub').innerText = `${student.schoolName || ''} · ${student.grade} ${student.class}`;
   window._renderApps(); // initial greeting render
