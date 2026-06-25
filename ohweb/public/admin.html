@@ -457,6 +457,38 @@
     </div>
 
     <div class="card">
+      <h2><span class="icon">➕</span> 학생 개별 추가</h2>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+        <div>
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">학교</label>
+          <select class="inp" id="addSchool" style="width:100%;"></select>
+        </div>
+        <div>
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">이름</label>
+          <input class="inp" id="addName" type="text" placeholder="이름" style="width:100%;">
+        </div>
+        <div>
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">학년</label>
+          <select class="inp" id="addGrade" style="width:100%;">
+            <option value="1">1학년</option><option value="2">2학년</option><option value="3">3학년</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">반</label>
+          <select class="inp" id="addClass" style="width:100%;">
+            <option value="1">1반</option><option value="2">2반</option><option value="3">3반</option><option value="4">4반</option><option value="5">5반</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">번호</label>
+          <input class="inp" id="addNumber" type="number" min="1" placeholder="번호" style="width:100%;">
+        </div>
+      </div>
+      <button class="btn accent sm" onclick="addStudent()">추가</button>
+      <div id="addStudentErr" style="font-size:0.82rem;color:#ef4444;margin-top:8px;"></div>
+    </div>
+
+    <div class="card">
       <h2><span class="icon">👥</span> 학생 목록</h2>
       <div class="select-controls">
         <label>학교</label>
@@ -614,6 +646,8 @@
       const first = el.querySelector('option')?.outerHTML || '';
       el.innerHTML = first + opts;
     });
+    const addSchoolEl = document.getElementById('addSchool');
+    addSchoolEl.innerHTML = '<option value="">학교 선택</option>' + opts;
   }
 
   window.addSchool = async () => {
@@ -778,6 +812,35 @@
       }
       showLoading(false);
     });
+  };
+
+  // ── 학생 개별 추가 ──
+  window.addStudent = async () => {
+    const schoolId = document.getElementById('addSchool').value;
+    const name = document.getElementById('addName').value.trim();
+    const grade = document.getElementById('addGrade').value;
+    const cls = document.getElementById('addClass').value;
+    const number = document.getElementById('addNumber').value.trim();
+    const err = document.getElementById('addStudentErr');
+    err.innerText = '';
+    if (!schoolId) { err.innerText = '학교를 선택하세요.'; return; }
+    if (!name)     { err.innerText = '이름을 입력하세요.'; return; }
+    if (!number)   { err.innerText = '번호를 입력하세요.'; return; }
+    const school = schools.find(s => s.id === schoolId);
+    showLoading(true);
+    try {
+      await addDoc(collection(db, 'students'), {
+        schoolId, schoolName: school?.name || '',
+        grade, class: cls, number, name,
+        registered: false, password: null,
+        createdAt: serverTimestamp()
+      });
+      toast(`${name} 추가 완료!`, 'success');
+      document.getElementById('addName').value = '';
+      document.getElementById('addNumber').value = '';
+      await loadStudents();
+    } catch(e) { err.innerText = '오류: ' + e.message; }
+    showLoading(false);
   };
 
   // ── 앱 설정 ──
