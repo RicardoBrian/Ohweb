@@ -395,6 +395,18 @@
             <div class="badge-sub" id="badgeSub"></div>
           </div>
         </div>
+        <!-- 프로필 사진 (선택) -->
+        <div class="field">
+          <label data-t="profilePhoto">프로필 사진 (선택)</label>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:6px;">
+            <div id="joinPhotoPreview" style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#7c4dff);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:1.1rem;overflow:hidden;flex-shrink:0;border:1px solid var(--border-card);"></div>
+            <div>
+              <input type="file" id="joinPhotoInput" accept="image/*" style="display:none" onchange="onJoinPhotoChange(this)">
+              <button type="button" class="btn btn-ghost" style="width:auto;padding:8px 18px;margin:0;font-size:0.82rem;" onclick="document.getElementById('joinPhotoInput').click()" data-t="choosePhoto">사진 선택</button>
+              <div style="font-size:0.72rem;color:var(--sub);margin-top:4px;" data-t="photoOptional">선택사항입니다</div>
+            </div>
+          </div>
+        </div>
         <div class="field">
           <label data-t="newPw">새 비밀번호</label>
           <input class="inp" id="joinPw" type="password" data-t-ph="pwPh" placeholder="4자리 이상" oninput="pwStrength()">
@@ -430,6 +442,7 @@
       checkBtn: '학생 확인',
       newPw: '새 비밀번호', pwPh: '4자리 이상',
       confirmPw: '비밀번호 확인', pwConfirmPh: '동일하게 입력',
+      profilePhoto: '프로필 사진 (선택)', choosePhoto: '사진 선택', photoOptional: '선택사항입니다',
       registerBtn: '가입 완료', backBtn: '← 다시 입력',
       errSchool: '학교를 선택하세요.', errNumSelect: '번호를 선택하세요.',
       errPw: '비밀번호를 입력하세요.',
@@ -456,6 +469,7 @@
       checkBtn: '确认学生信息',
       newPw: '新密码', pwPh: '至少4位',
       confirmPw: '确认密码', pwConfirmPh: '再次输入',
+      profilePhoto: '个人头像 (可选)', choosePhoto: '选择图片', photoOptional: '此项为选填',
       registerBtn: '完成注册', backBtn: '← 返回',
       errSchool: '请选择学校。', errNumSelect: '请选择学号。',
       errPw: '请输入密码。',
@@ -482,6 +496,7 @@
       checkBtn: 'Найти ученика',
       newPw: 'Новый пароль', pwPh: 'Минимум 4 символа',
       confirmPw: 'Подтверждение', pwConfirmPh: 'Повторите пароль',
+      profilePhoto: 'Фото профиля (необязательно)', choosePhoto: 'Выбрать фото', photoOptional: 'Необязательно',
       registerBtn: 'Завершить регистрацию', backBtn: '← Назад',
       errSchool: 'Выберите школу.', errNumSelect: 'Выберите номер.',
       errPw: 'Введите пароль.',
@@ -508,6 +523,7 @@
       checkBtn: 'Find Student',
       newPw: 'New Password', pwPh: 'At least 4 characters',
       confirmPw: 'Confirm Password', pwConfirmPh: 'Re-enter password',
+      profilePhoto: 'Profile Photo (optional)', choosePhoto: 'Choose Photo', photoOptional: 'Optional',
       registerBtn: 'Complete Sign Up', backBtn: '← Back',
       errSchool: 'Please select a school.', errNumSelect: 'Please select a number.',
       errPw: 'Please enter your password.',
@@ -686,11 +702,42 @@
       document.getElementById('badgeAvatar').innerText = name[0];
       document.getElementById('badgeName').innerText = `${name} (${number}번)`;
       document.getElementById('badgeSub').innerText = `${data.schoolName || ''} · ${grade} ${cls}`;
+      // reset photo
+      _joinPhotoB64 = null;
+      document.getElementById('joinPhotoInput').value = '';
+      const jprev = document.getElementById('joinPhotoPreview');
+      if (jprev) { jprev.innerHTML = ''; jprev.innerText = name[0]; }
       document.getElementById('joinStep1').classList.add('hidden');
       document.getElementById('joinStep2').classList.remove('hidden');
       setTimeout(() => document.getElementById('joinPw').focus(), 100);
     } catch(e) { err.innerText = '오류: ' + e.message; }
     load(false);
+  };
+
+  let _joinPhotoB64 = null;
+
+  window.onJoinPhotoChange = (input) => {
+    if (!input.files || !input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX = 200;
+        let w = img.width, h = img.height;
+        if (w > h) { if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; } }
+        else { if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; } }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        _joinPhotoB64 = canvas.toDataURL('image/jpeg', 0.8);
+        const prev = document.getElementById('joinPhotoPreview');
+        prev.innerHTML = `<img src="${_joinPhotoB64}" style="width:100%;height:100%;object-fit:cover;">`;
+        // also update badge avatar
+        document.getElementById('badgeAvatar').innerHTML = `<img src="${_joinPhotoB64}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(input.files[0]);
   };
 
   window.pwStrength = () => {
@@ -713,8 +760,10 @@
     if (pw !== pw2)    { err.innerText = t.errPwMismatch; return; }
     load(true);
     try {
-      await updateDoc(doc(db, 'students', foundStudentId), { registered: true, password: pw });
-      foundStudent.registered = true; foundStudent.password = pw;
+      const updates = { registered: true, password: pw };
+      if (_joinPhotoB64) updates.photoUrl = _joinPhotoB64;
+      await updateDoc(doc(db, 'students', foundStudentId), updates);
+      Object.assign(foundStudent, updates);
       sessionStorage.setItem('ohinfo_student', JSON.stringify({ id: foundStudentId, ...foundStudent }));
       window.location.href = 'home.html';
     } catch(e) { err.innerText = '오류: ' + e.message; }
@@ -722,12 +771,15 @@
   };
 
   window.resetJoin = () => {
-    foundStudentId = null; foundStudent = null;
+    foundStudentId = null; foundStudent = null; _joinPhotoB64 = null;
     document.getElementById('joinStep2').classList.add('hidden');
     document.getElementById('joinStep1').classList.remove('hidden');
     document.getElementById('joinErr2').innerText = '';
     document.getElementById('joinPw').value = '';
     document.getElementById('joinPw2').value = '';
+    document.getElementById('joinPhotoInput').value = '';
+    const prev = document.getElementById('joinPhotoPreview');
+    if (prev) prev.innerHTML = '';
   };
 </script>
 </body>
