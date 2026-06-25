@@ -775,7 +775,7 @@
     try {
       const classTitle = getHidden('f_class');
       const [clsData, postsData] = await Promise.all([
-        gasGet({action:'getClassByTitle', title:classTitle}),
+        gasGet({action:'getClassByTitle', title:classTitle, grade:SESSION.grade, group:SESSION.group}),
         gasGet({action:'getPosts', classTitle})
       ]);
       const cls = clsData.cls || {};
