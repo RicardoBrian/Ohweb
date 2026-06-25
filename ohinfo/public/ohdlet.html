@@ -566,19 +566,25 @@
   window.updateClassList = async () => {
     const grade = document.getElementById('grade').value;
     const group = document.getElementById('group').value;
-    const ng = v => String(v||'').replace(/학년/g,'').trim();
-    const nc = v => String(v||'').replace(/반/g,'').trim();
+    const ng = v => String(v||'').replace(/학년|년급|년/g,'').trim();
+    const nc = v => String(v||'').replace(/반|班|кл\./g,'').trim();
     try {
       const snap = await getDocs(collection(db, 'paddlet_classes'));
-      const classes = snap.docs
-        .map(d => ({id:d.id,...d.data()}))
-        .filter(c => c.status==='ON' &&
-          (c.grades||[]).some(g => ng(g)===ng(grade)) &&
-          (c.groups||[]).some(g => nc(g)===nc(group)));
+      const all = snap.docs.map(d => ({id:d.id,...d.data()}));
+      console.log('[paddlet] 전체 클래스:', all.length, all.map(c=>({name:c.name,status:c.status,grades:c.grades,groups:c.groups})));
+      console.log('[paddlet] 현재 학년:', grade, '→', ng(grade), ' / 반:', group, '→', nc(group));
+      const classes = all.filter(c => {
+        const statusOk = c.status==='ON';
+        const gradeOk = (c.grades||[]).some(g => ng(g)===ng(grade));
+        const groupOk = (c.groups||[]).some(g => nc(g)===nc(group));
+        console.log(`  ${c.name}: status=${c.status}(${statusOk}), grades=${JSON.stringify(c.grades)}(${gradeOk}), groups=${JSON.stringify(c.groups)}(${groupOk})`);
+        return statusOk && gradeOk && groupOk;
+      });
       const sel = document.getElementById('classList');
       const optText = uiText[currentLang]?.opt || '수업을 선택하세요';
       sel.innerHTML = `<option>${optText}</option>` + classes.map(c=>`<option value="${c.name}">${c.name}</option>`).join('');
-    } catch(e) { console.error(e); }
+      if(classes.length===0) console.warn('[paddlet] 조건에 맞는 수업 없음');
+    } catch(e) { console.error('[paddlet] updateClassList 오류:', e); }
   };
 
   // ── 게시글 로드 ──
