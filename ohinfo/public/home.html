@@ -284,9 +284,13 @@
 
   document.getElementById('loadingOverlay').style.display = 'flex';
   const docId = `${student.schoolId}_g${student.grade}_c${student.class}`;
+  console.log('[ohinfo] student:', student);
+  console.log('[ohinfo] appSettings docId:', docId);
   getDoc(doc(db, 'appSettings', docId)).then(snap => {
+    console.log('[ohinfo] snap.exists:', snap.exists(), '| data:', snap.exists() ? snap.data() : null);
     const settings = snap.exists() ? snap.data() : {};
     const apps = settings.apps || {};
+    console.log('[ohinfo] apps:', apps, '| enabledApps:', Object.keys(APP_META).filter(id => apps[id]));
     enabledApps = Object.keys(APP_META).filter(id => apps[id]);
     window._renderApps();
   }).catch(e => {
