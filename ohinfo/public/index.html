@@ -9,17 +9,15 @@
     :root {
       --glass: rgba(255,255,255,0.28);
       --glass-strong: rgba(255,255,255,0.45);
-      --glass-nav: rgba(255,255,255,0.3);
       --border: rgba(255,255,255,0.6);
       --border-card: rgba(255,255,255,0.48);
       --highlight: inset 0 1px 0 rgba(255,255,255,0.7);
       --text: #1a1f2e;
       --sub: #7a849a;
       --accent: #2a5ce6;
-      --accent-light: rgba(42,92,230,0.12);
       --blur: blur(28px);
       --shadow: 0 4px 20px rgba(60,80,160,0.1);
-      --shadow-md: 0 8px 32px rgba(60,80,160,0.18);
+      --shadow-md: 0 8px 40px rgba(60,80,160,0.22);
       --radius: 18px;
       --radius-sm: 11px;
     }
@@ -32,8 +30,7 @@
       --text: #dde2f0;
       --sub: #525a70;
       --accent: #4f8df7;
-      --accent-light: rgba(79,141,247,0.15);
-      --shadow-md: 0 8px 32px rgba(0,0,0,0.55);
+      --shadow-md: 0 8px 40px rgba(0,0,0,0.55);
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -48,7 +45,7 @@
       font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
       min-height: 100vh;
       display: flex; align-items: center; justify-content: center;
-      padding: 24px;
+      padding: 32px 24px;
     }
     body.dark {
       background:
@@ -60,38 +57,80 @@
     }
     .hidden { display: none !important; }
 
-    .card {
-      width: 100%; max-width: 420px;
+    /* ── 전체 레이아웃 ── */
+    .page-wrap {
+      display: flex; width: 100%; max-width: 940px;
       background: var(--glass-strong);
       backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
-      border: 1px solid var(--border); border-radius: 26px;
-      padding: 40px 36px;
+      border: 1px solid var(--border); border-radius: 30px;
       box-shadow: var(--highlight), var(--shadow-md);
+      overflow: hidden;
     }
-    @media (max-width: 480px) { .card { padding: 32px 20px; } }
 
-    .logo { text-align: center; margin-bottom: 28px; }
-    .logo h1 {
-      font-size: 2rem; font-weight: 900; letter-spacing: -0.03em;
+    /* ── 왼쪽 브랜딩 패널 (PC 전용) ── */
+    .brand-panel {
+      flex: 1; padding: 56px 48px;
+      display: flex; flex-direction: column; justify-content: space-between;
+      background: linear-gradient(145deg, rgba(42,92,230,0.12), rgba(124,77,255,0.1));
+      border-right: 1px solid var(--border-card);
+    }
+    .brand-logo { font-size: 2.4rem; font-weight: 900; letter-spacing: -0.04em;
       background: linear-gradient(135deg, var(--accent), #7c4dff);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
-    .logo p { font-size: 0.85rem; color: var(--sub); margin-top: 5px; font-weight: 600; }
-    .lang-bar { display: flex; justify-content: center; gap: 6px; margin-top: 10px; }
+    .brand-tagline { font-size: 1.05rem; font-weight: 700; color: var(--text); margin-top: 8px; line-height: 1.5; }
+    .brand-sub { font-size: 0.85rem; color: var(--sub); margin-top: 6px; font-weight: 500; }
+    .brand-apps { display: flex; flex-direction: column; gap: 10px; margin-top: 40px; }
+    .brand-app-item {
+      display: flex; align-items: center; gap: 14px;
+      background: var(--glass); border: 1px solid var(--border-card);
+      border-radius: 14px; padding: 14px 18px;
+      box-shadow: var(--highlight);
+    }
+    .brand-app-icon {
+      width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 1.4rem;
+    }
+    .bai-ohdlet { background: linear-gradient(135deg, #667eea, #764ba2); }
+    .bai-submit { background: linear-gradient(135deg, #f093fb, #f5576c); }
+    .bai-exam   { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+    .bai-form   { background: linear-gradient(135deg, #43e97b, #38f9d7); }
+    .brand-app-name { font-size: 0.88rem; font-weight: 800; }
+    .brand-app-desc { font-size: 0.76rem; color: var(--sub); margin-top: 2px; font-weight: 500; }
+    .brand-footer { font-size: 0.75rem; color: var(--sub); font-weight: 600; }
+
+    @media (max-width: 700px) { .brand-panel { display: none; } }
+
+    /* ── 오른쪽 폼 패널 ── */
+    .form-panel {
+      width: 420px; flex-shrink: 0;
+      padding: 48px 40px;
+    }
+    @media (max-width: 700px) {
+      .page-wrap { border-radius: 26px; }
+      .form-panel { width: 100%; padding: 36px 24px; }
+    }
+
+    .logo { margin-bottom: 28px; }
+    .logo h1 {
+      font-size: 1.9rem; font-weight: 900; letter-spacing: -0.03em;
+      background: linear-gradient(135deg, var(--accent), #7c4dff);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .logo p { font-size: 0.85rem; color: var(--sub); margin-top: 4px; font-weight: 600; }
+    .lang-bar { display: flex; gap: 6px; margin-top: 12px; }
     .lang-btn {
       font-family: inherit; font-size: 0.75rem; font-weight: 700; cursor: pointer;
-      border-radius: 50px; padding: 4px 11px;
+      border-radius: 50px; padding: 4px 12px;
       border: 1px solid var(--border-card); background: var(--glass); color: var(--sub);
       transition: 0.2s;
     }
     .lang-btn.active { background: rgba(42,92,230,0.82); color: #fff; border-color: transparent; }
 
-    /* 탭 */
     .tab-bar {
       display: flex; gap: 4px;
       background: var(--glass); border: 1px solid var(--border-card);
-      border-radius: 50px; padding: 4px;
-      margin-bottom: 24px;
+      border-radius: 50px; padding: 4px; margin-bottom: 24px;
     }
     .tab-btn {
       flex: 1; padding: 9px; border-radius: 50px;
@@ -123,6 +162,7 @@
       background-repeat: no-repeat; background-position: right 13px center; padding-right: 34px;
     }
     .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
 
     .btn {
       width: 100%; padding: 14px; border-radius: var(--radius);
@@ -134,7 +174,11 @@
     }
     .btn:hover { background: rgba(42,92,230,0.95); }
     .btn:active { transform: scale(0.98); }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-ghost {
+      background: transparent; border: 1px solid var(--border-card);
+      color: var(--sub); box-shadow: var(--highlight); margin-top: 6px;
+    }
+    .btn-ghost:hover { background: var(--glass); color: var(--text); }
 
     .pw-strength { display: flex; gap: 4px; margin-top: 6px; }
     .pw-bar { flex: 1; height: 3px; border-radius: 2px; background: var(--border-card); transition: background 0.3s; }
@@ -144,7 +188,6 @@
 
     .err { color: #ef4444; font-size: 0.82rem; font-weight: 600; margin-top: 10px; min-height: 18px; white-space: pre-line; text-align: center; }
 
-    /* 확인된 학생 배지 */
     .student-badge {
       display: flex; align-items: center; gap: 12px;
       background: var(--glass); border: 1px solid var(--border-card);
@@ -192,116 +235,155 @@
 <div id="loadingOverlay"><div class="spinner"></div></div>
 <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
 
-<div class="card">
-  <div class="logo">
-    <h1>ohinfo</h1>
-    <p data-t="subtitle">학생 정보 포털</p>
-    <div class="lang-bar">
-      <button class="lang-btn active" id="lang-ko" onclick="setLang('ko')">한</button>
-      <button class="lang-btn" id="lang-zh" onclick="setLang('zh')">中</button>
-      <button class="lang-btn" id="lang-ru" onclick="setLang('ru')">РУ</button>
-    </div>
-  </div>
-
-  <div class="tab-bar">
-    <button class="tab-btn active" id="tabLogin" onclick="switchTab('login')" data-t="tabLogin">로그인</button>
-    <button class="tab-btn" id="tabJoin" onclick="switchTab('join')" data-t="tabJoin">회원가입</button>
-  </div>
-
-  <!-- ── 로그인 ── -->
-  <div id="loginPanel">
-    <div class="field">
-      <label data-t="school">학교</label>
-      <select class="inp" id="loginSchool"><option value="" data-t-opt="selectSchool">학교 선택...</option></select>
-    </div>
-    <div class="row2">
-      <div class="field">
-        <label data-t="grade">학년</label>
-        <select class="inp" id="loginGrade">
-          <option data-t-grade="1">1학년</option><option data-t-grade="2">2학년</option><option data-t-grade="3">3학년</option>
-        </select>
-      </div>
-      <div class="field">
-        <label data-t="class">반</label>
-        <select class="inp" id="loginClass">
-          <option>1반</option><option>2반</option><option>3반</option><option>4반</option><option>5반</option>
-        </select>
+<div class="page-wrap">
+  <!-- 왼쪽 브랜딩 패널 -->
+  <div class="brand-panel">
+    <div>
+      <div class="brand-logo">ohinfo</div>
+      <div class="brand-tagline" id="brandTagline">학생 정보 포털</div>
+      <div class="brand-sub" id="brandSub">선생님이 공개한 앱을 바로 이용하세요</div>
+      <div class="brand-apps" id="brandApps">
+        <div class="brand-app-item">
+          <div class="brand-app-icon bai-ohdlet">📌</div>
+          <div><div class="brand-app-name" data-ba="ohdlet-name">패들릿</div><div class="brand-app-desc" data-ba="ohdlet-desc">칠판 공유 공간</div></div>
+        </div>
+        <div class="brand-app-item">
+          <div class="brand-app-icon bai-submit">📝</div>
+          <div><div class="brand-app-name" data-ba="submit-name">과제 제출</div><div class="brand-app-desc" data-ba="submit-desc">과제를 제출하세요</div></div>
+        </div>
+        <div class="brand-app-item">
+          <div class="brand-app-icon bai-exam">📋</div>
+          <div><div class="brand-app-name" data-ba="exam-name">시험</div><div class="brand-app-desc" data-ba="exam-desc">온라인 시험</div></div>
+        </div>
+        <div class="brand-app-item">
+          <div class="brand-app-icon bai-form">📊</div>
+          <div><div class="brand-app-name" data-ba="form-name">설문 실습</div><div class="brand-app-desc" data-ba="form-desc">설문 및 실습</div></div>
+        </div>
       </div>
     </div>
-    <div class="field">
-      <label data-t="number">번호</label>
-      <select class="inp" id="loginNumber">
-        <option value="" data-t-opt="selectNum">번호 선택...</option>
-      </select>
-    </div>
-    <div class="field">
-      <label data-t="password">비밀번호</label>
-      <input class="inp" id="loginPw" type="password" placeholder="비밀번호" data-t-ph="password" onkeydown="if(event.key==='Enter')doLogin()">
-    </div>
-    <button class="btn" onclick="doLogin()" data-t="loginBtn">로그인</button>
-    <div class="err" id="loginErr"></div>
+    <div class="brand-footer" id="brandFooter">© ohinfo · 학생용 포털</div>
   </div>
 
-  <!-- ── 회원가입 스텝 1: 학생 확인 ── -->
-  <div id="joinPanel" class="hidden">
-    <div id="joinStep1">
+  <!-- 오른쪽 폼 패널 -->
+  <div class="form-panel">
+    <div class="logo">
+      <h1>ohinfo</h1>
+      <p data-t="subtitle">학생 정보 포털</p>
+      <div class="lang-bar">
+        <button class="lang-btn active" id="lang-ko" onclick="setLang('ko')">한</button>
+        <button class="lang-btn" id="lang-zh" onclick="setLang('zh')">中</button>
+        <button class="lang-btn" id="lang-ru" onclick="setLang('ru')">РУ</button>
+      </div>
+    </div>
+
+    <div class="tab-bar">
+      <button class="tab-btn active" id="tabLogin" onclick="switchTab('login')" data-t="tabLogin">로그인</button>
+      <button class="tab-btn" id="tabJoin" onclick="switchTab('join')" data-t="tabJoin">회원가입</button>
+    </div>
+
+    <!-- 로그인 -->
+    <div id="loginPanel">
       <div class="field">
         <label data-t="school">학교</label>
-        <select class="inp" id="joinSchool"><option value="" data-t-opt="selectSchool">학교 선택...</option></select>
+        <select class="inp" id="loginSchool"><option value="" data-t-opt="selectSchool">학교 선택...</option></select>
       </div>
-      <div class="row2">
+      <div class="row3">
         <div class="field">
           <label data-t="grade">학년</label>
-          <select class="inp" id="joinGrade">
-            <option data-t-grade="1">1학년</option><option data-t-grade="2">2학년</option><option data-t-grade="3">3학년</option>
+          <select class="inp" id="loginGrade">
+            <option data-t-grade="1">1학년</option>
+            <option data-t-grade="2">2학년</option>
+            <option data-t-grade="3">3학년</option>
           </select>
         </div>
         <div class="field">
           <label data-t="class">반</label>
-          <select class="inp" id="joinClass">
-            <option>1반</option><option>2반</option><option>3반</option><option>4반</option><option>5반</option>
+          <select class="inp" id="loginClass">
+            <option data-t-class="1">1반</option><option data-t-class="2">2반</option>
+            <option data-t-class="3">3반</option><option data-t-class="4">4반</option>
+            <option data-t-class="5">5반</option>
+          </select>
+        </div>
+        <div class="field">
+          <label data-t="number">번호</label>
+          <select class="inp" id="loginNumber">
+            <option value="" data-t-opt="selectNum">선택</option>
           </select>
         </div>
       </div>
-      <div class="row2">
-        <div class="field">
-          <label data-t="number">번호</label>
-          <input class="inp" id="joinNumber" placeholder="출석번호" data-t-ph="numPlaceholder" maxlength="5">
-        </div>
-        <div class="field">
-          <label data-t="name">이름</label>
-          <input class="inp" id="joinName" placeholder="홍길동" data-t-ph="namePlaceholder" maxlength="10">
-        </div>
+      <div class="field">
+        <label data-t="password">비밀번호</label>
+        <input class="inp" id="loginPw" type="password" data-t-ph="passwordPh" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')doLogin()">
       </div>
-      <button class="btn" onclick="checkStudent()" data-t="checkBtn">학생 확인</button>
-      <div class="err" id="joinErr1"></div>
+      <button class="btn" onclick="doLogin()" data-t="loginBtn">로그인</button>
+      <div class="err" id="loginErr"></div>
     </div>
 
-    <!-- ── 회원가입 스텝 2: 비밀번호 설정 ── -->
-    <div id="joinStep2" class="hidden">
-      <div class="student-badge">
-        <div class="badge-avatar" id="badgeAvatar"></div>
-        <div>
-          <div class="badge-name" id="badgeName"></div>
-          <div class="badge-sub" id="badgeSub"></div>
+    <!-- 회원가입 스텝 1 -->
+    <div id="joinPanel" class="hidden">
+      <div id="joinStep1">
+        <div class="field">
+          <label data-t="school">학교</label>
+          <select class="inp" id="joinSchool"><option value="" data-t-opt="selectSchool">학교 선택...</option></select>
         </div>
-      </div>
-      <div class="field">
-        <label data-t="newPw">새 비밀번호</label>
-        <input class="inp" id="joinPw" type="password" placeholder="4자리 이상" data-t-ph="pwPlaceholder" oninput="pwStrength()">
-        <div class="pw-strength">
-          <div class="pw-bar" id="bar1"></div>
-          <div class="pw-bar" id="bar2"></div>
-          <div class="pw-bar" id="bar3"></div>
+        <div class="row2">
+          <div class="field">
+            <label data-t="grade">학년</label>
+            <select class="inp" id="joinGrade">
+              <option data-t-grade="1">1학년</option>
+              <option data-t-grade="2">2학년</option>
+              <option data-t-grade="3">3학년</option>
+            </select>
+          </div>
+          <div class="field">
+            <label data-t="class">반</label>
+            <select class="inp" id="joinClass">
+              <option data-t-class="1">1반</option><option data-t-class="2">2반</option>
+              <option data-t-class="3">3반</option><option data-t-class="4">4반</option>
+              <option data-t-class="5">5반</option>
+            </select>
+          </div>
         </div>
+        <div class="row2">
+          <div class="field">
+            <label data-t="number">번호</label>
+            <input class="inp" id="joinNumber" data-t-ph="numPh" placeholder="예: 3" maxlength="5">
+          </div>
+          <div class="field">
+            <label data-t="name">이름</label>
+            <input class="inp" id="joinName" data-t-ph="namePh" placeholder="홍길동" maxlength="10">
+          </div>
+        </div>
+        <button class="btn" onclick="checkStudent()" data-t="checkBtn">학생 확인</button>
+        <div class="err" id="joinErr1"></div>
       </div>
-      <div class="field">
-        <label data-t="confirmPw">비밀번호 확인</label>
-        <input class="inp" id="joinPw2" type="password" placeholder="동일하게 입력" data-t-ph="pwConfirmPlaceholder" onkeydown="if(event.key==='Enter')doRegister()">
+
+      <!-- 회원가입 스텝 2 -->
+      <div id="joinStep2" class="hidden">
+        <div class="student-badge">
+          <div class="badge-avatar" id="badgeAvatar"></div>
+          <div>
+            <div class="badge-name" id="badgeName"></div>
+            <div class="badge-sub" id="badgeSub"></div>
+          </div>
+        </div>
+        <div class="field">
+          <label data-t="newPw">새 비밀번호</label>
+          <input class="inp" id="joinPw" type="password" data-t-ph="pwPh" placeholder="4자리 이상" oninput="pwStrength()">
+          <div class="pw-strength">
+            <div class="pw-bar" id="bar1"></div>
+            <div class="pw-bar" id="bar2"></div>
+            <div class="pw-bar" id="bar3"></div>
+          </div>
+        </div>
+        <div class="field">
+          <label data-t="confirmPw">비밀번호 확인</label>
+          <input class="inp" id="joinPw2" type="password" data-t-ph="pwConfirmPh" placeholder="동일하게 입력" onkeydown="if(event.key==='Enter')doRegister()">
+        </div>
+        <button class="btn" onclick="doRegister()" data-t="registerBtn">가입 완료</button>
+        <button class="btn btn-ghost" onclick="resetJoin()" data-t="backBtn">← 다시 입력</button>
+        <div class="err" id="joinErr2"></div>
       </div>
-      <button class="btn" onclick="doRegister()" data-t="registerBtn">가입 완료</button>
-      <button class="btn" style="background:transparent;border:1px solid var(--border-card);color:var(--sub);box-shadow:var(--highlight);margin-top:6px;" onclick="resetJoin()" data-t="backBtn">← 다시 입력</button>
-      <div class="err" id="joinErr2"></div>
     </div>
   </div>
 </div>
@@ -309,109 +391,148 @@
 <script>
   const T = {
     ko: {
-      subtitle:'학생 정보 포털', tabLogin:'로그인', tabJoin:'회원가입',
-      school:'학교', selectSchool:'학교 선택...', studentNum:'학번', numPlaceholder:'예: 101',
-      password:'비밀번호', loginBtn:'로그인',
-      grade:'학년', class:'반', number:'번호', name:'이름',
-      namePlaceholder:'홍길동', checkBtn:'학생 확인',
-      newPw:'새 비밀번호', pwPlaceholder:'4자리 이상', confirmPw:'비밀번호 확인', pwConfirmPlaceholder:'동일하게 입력',
-      registerBtn:'가입 완료', backBtn:'← 다시 입력',
+      subtitle: '학생 정보 포털',
+      tabLogin: '로그인', tabJoin: '회원가입',
+      school: '학교', selectSchool: '학교 선택...',
+      grade: '학년', class: '반', number: '번호', name: '이름',
       gradeLabel: n => `${n}학년`, classLabel: n => `${n}반`,
-      selectNum:'번호 선택...', errSchool:'학교를 선택하세요.', errNum:'학번을 입력하세요.', errNumSelect:'번호를 선택하세요.', errPw:'비밀번호를 입력하세요.',
-      errNotFound:'학생 정보를 찾을 수 없습니다.', errNotReg:'회원가입이 필요합니다.\n회원가입 탭을 이용하세요.',
-      errWrongPw:'비밀번호가 올바르지 않습니다.', errNumReq:'번호를 입력하세요.', errNameReq:'이름을 입력하세요.',
-      errNoMatch:'일치하는 학생 정보가 없습니다.\n학년·반·번호·이름을 다시 확인하세요.',
-      errAlready:'이미 가입된 학생입니다.\n로그인 탭을 이용하세요.',
-      errPwShort:'비밀번호는 4자리 이상이어야 합니다.', errPwMismatch:'비밀번호가 일치하지 않습니다.',
+      selectNum: '선택',
+      password: '비밀번호', passwordPh: '비밀번호 입력', loginBtn: '로그인',
+      numPh: '예: 3', namePh: '홍길동',
+      checkBtn: '학생 확인',
+      newPw: '새 비밀번호', pwPh: '4자리 이상',
+      confirmPw: '비밀번호 확인', pwConfirmPh: '동일하게 입력',
+      registerBtn: '가입 완료', backBtn: '← 다시 입력',
+      errSchool: '학교를 선택하세요.', errNumSelect: '번호를 선택하세요.',
+      errPw: '비밀번호를 입력하세요.',
+      errNotFound: '학생 정보를 찾을 수 없습니다.',
+      errNotReg: '회원가입이 필요합니다.\n회원가입 탭을 이용하세요.',
+      errWrongPw: '비밀번호가 올바르지 않습니다.',
+      errNumReq: '번호를 입력하세요.', errNameReq: '이름을 입력하세요.',
+      errNoMatch: '일치하는 학생 정보가 없습니다.\n학년·반·번호·이름을 다시 확인하세요.',
+      errAlready: '이미 가입된 학생입니다.\n로그인 탭을 이용하세요.',
+      errPwShort: '비밀번호는 4자리 이상이어야 합니다.',
+      errPwMismatch: '비밀번호가 일치하지 않습니다.',
+      brand: { tagline: '학생 정보 포털', sub: '선생님이 공개한 앱을 바로 이용하세요', footer: '© ohinfo · 학생용 포털',
+        apps: { 'ohdlet-name':'패들릿','ohdlet-desc':'칠판 공유 공간','submit-name':'과제 제출','submit-desc':'과제를 제출하세요','exam-name':'시험','exam-desc':'온라인 시험','form-name':'설문 실습','form-desc':'설문 및 실습' } },
     },
     zh: {
-      subtitle:'学生信息门户', tabLogin:'登录', tabJoin:'注册',
-      school:'学校', selectSchool:'选择学校...', studentNum:'学号', numPlaceholder:'例: 101',
-      password:'密码', loginBtn:'登录',
-      grade:'年级', class:'班级', number:'编号', name:'姓名',
-      namePlaceholder:'姓名', checkBtn:'查询学生',
-      newPw:'新密码', pwPlaceholder:'至少4位', confirmPw:'确认密码', pwConfirmPlaceholder:'再次输入',
-      registerBtn:'完成注册', backBtn:'← 重新输入',
+      subtitle: '学生信息门户',
+      tabLogin: '登录', tabJoin: '注册',
+      school: '学校', selectSchool: '选择学校...',
+      grade: '年级', class: '班', number: '学号', name: '姓名',
       gradeLabel: n => `${n}年级`, classLabel: n => `${n}班`,
-      selectNum:'选择编号...', errSchool:'请选择学校。', errNum:'请输入学号。', errNumSelect:'请选择编号。', errPw:'请输入密码。',
-      errNotFound:'未找到学生信息。', errNotReg:'需要注册。\n请使用注册选项卡。',
-      errWrongPw:'密码不正确。', errNumReq:'请输入编号。', errNameReq:'请输入姓名。',
-      errNoMatch:'未找到匹配的学生信息。\n请重新确认年级·班级·编号·姓名。',
-      errAlready:'该学生已注册。\n请使用登录选项卡。',
-      errPwShort:'密码至少需要4位。', errPwMismatch:'密码不一致。',
+      selectNum: '选择',
+      password: '密码', passwordPh: '输入密码', loginBtn: '登录',
+      numPh: '例: 3', namePh: '张三',
+      checkBtn: '确认学生信息',
+      newPw: '新密码', pwPh: '至少4位',
+      confirmPw: '确认密码', pwConfirmPh: '再次输入',
+      registerBtn: '完成注册', backBtn: '← 返回',
+      errSchool: '请选择学校。', errNumSelect: '请选择学号。',
+      errPw: '请输入密码。',
+      errNotFound: '未找到该学生信息。',
+      errNotReg: '需要先注册。\n请切换到注册选项卡。',
+      errWrongPw: '密码不正确，请重试。',
+      errNumReq: '请输入学号。', errNameReq: '请输入姓名。',
+      errNoMatch: '未找到匹配的学生信息。\n请确认年级、班级、学号和姓名。',
+      errAlready: '该学生已注册。\n请切换到登录选项卡。',
+      errPwShort: '密码至少需要4位。',
+      errPwMismatch: '两次输入的密码不一致。',
+      brand: { tagline: '学生信息门户', sub: '使用老师开放的应用', footer: '© ohinfo · 学生门户',
+        apps: { 'ohdlet-name':'共享白板','ohdlet-desc':'课堂共享空间','submit-name':'作业提交','submit-desc':'在线提交作业','exam-name':'在线考试','exam-desc':'参加在线测试','form-name':'问卷练习','form-desc':'问卷与课堂练习' } },
     },
     ru: {
-      subtitle:'Портал для учеников', tabLogin:'Войти', tabJoin:'Регистрация',
-      school:'Школа', selectSchool:'Выберите школу...', studentNum:'Номер', numPlaceholder:'Пр: 101',
-      password:'Пароль', loginBtn:'Войти',
-      grade:'Класс', class:'Группа', number:'Номер', name:'Имя',
-      namePlaceholder:'Имя', checkBtn:'Найти ученика',
-      newPw:'Новый пароль', pwPlaceholder:'Мин. 4 символа', confirmPw:'Подтвердить пароль', pwConfirmPlaceholder:'Повторите пароль',
-      registerBtn:'Завершить', backBtn:'← Назад',
-      gradeLabel: n => `${n} класс`, classLabel: n => `${n} гр.`,
-      selectNum:'Выберите номер...', errSchool:'Выберите школу.', errNum:'Введите номер.', errNumSelect:'Выберите номер.', errPw:'Введите пароль.',
-      errNotFound:'Ученик не найден.', errNotReg:'Требуется регистрация.\nИспользуйте вкладку регистрации.',
-      errWrongPw:'Неверный пароль.', errNumReq:'Введите номер.', errNameReq:'Введите имя.',
-      errNoMatch:'Ученик не найден.\nПроверьте класс, группу, номер и имя.',
-      errAlready:'Ученик уже зарегистрирован.\nИспользуйте вкладку входа.',
-      errPwShort:'Пароль должен содержать не менее 4 символов.', errPwMismatch:'Пароли не совпадают.',
+      subtitle: 'Портал для учеников',
+      tabLogin: 'Вход', tabJoin: 'Регистрация',
+      school: 'Школа', selectSchool: 'Выберите школу...',
+      grade: 'Год', class: 'Класс', number: '№', name: 'Имя',
+      gradeLabel: n => `${n}-й год`, classLabel: n => `${n} кл.`,
+      selectNum: 'Выбрать',
+      password: 'Пароль', passwordPh: 'Введите пароль', loginBtn: 'Войти',
+      numPh: 'Пр: 3', namePh: 'Иванов И.',
+      checkBtn: 'Найти ученика',
+      newPw: 'Новый пароль', pwPh: 'Минимум 4 символа',
+      confirmPw: 'Подтверждение', pwConfirmPh: 'Повторите пароль',
+      registerBtn: 'Завершить регистрацию', backBtn: '← Назад',
+      errSchool: 'Выберите школу.', errNumSelect: 'Выберите номер.',
+      errPw: 'Введите пароль.',
+      errNotFound: 'Ученик не найден.',
+      errNotReg: 'Необходима регистрация.\nПерейдите на вкладку «Регистрация».',
+      errWrongPw: 'Неверный пароль.',
+      errNumReq: 'Введите номер.', errNameReq: 'Введите имя.',
+      errNoMatch: 'Ученик не найден.\nПроверьте год, класс, номер и имя.',
+      errAlready: 'Ученик уже зарегистрирован.\nПерейдите на вкладку «Вход».',
+      errPwShort: 'Пароль должен содержать не менее 4 символов.',
+      errPwMismatch: 'Пароли не совпадают.',
+      brand: { tagline: 'Портал для учеников', sub: 'Используйте приложения от учителя', footer: '© ohinfo · Ученический портал',
+        apps: { 'ohdlet-name':'Доска','ohdlet-desc':'Общая классная доска','submit-name':'Задания','submit-desc':'Сдача домашних заданий','exam-name':'Тест','exam-desc':'Онлайн-тестирование','form-name':'Опрос','form-desc':'Опросы и практика' } },
     }
   };
+
   let lang = localStorage.getItem('ohinfo_lang') || 'ko';
+
   function applyLang() {
     const t = T[lang];
-    document.querySelectorAll('[data-t]').forEach(el => { if (t[el.dataset.t]) el.innerText = t[el.dataset.t]; });
-    document.querySelectorAll('[data-t-ph]').forEach(el => { if (t[el.dataset.tPh]) el.placeholder = t[el.dataset.tPh]; });
-    // grade options
+    // 텍스트 노드
+    document.querySelectorAll('[data-t]').forEach(el => { if (t[el.dataset.t] !== undefined) el.innerText = t[el.dataset.t]; });
+    // 플레이스홀더
+    document.querySelectorAll('[data-t-ph]').forEach(el => { const k = el.dataset.tPh; if (t[k]) el.placeholder = t[k]; });
+    // 학년 옵션
     document.querySelectorAll('[data-t-grade]').forEach(el => { el.innerText = t.gradeLabel(el.dataset.tGrade); });
-    // class options
-    document.querySelectorAll('#joinClass option').forEach((el, i) => { el.innerText = t.classLabel(i+1); });
-    // school select first option
+    // 반 옵션
+    document.querySelectorAll('[data-t-class]').forEach(el => { el.innerText = t.classLabel(el.dataset.tClass); });
+    // 셀렉트 첫 옵션
     document.querySelectorAll('[data-t-opt="selectSchool"]').forEach(el => { el.innerText = t.selectSchool; });
     document.querySelectorAll('[data-t-opt="selectNum"]').forEach(el => { el.innerText = t.selectNum; });
-    // lang buttons
-    ['ko','zh','ru'].forEach(l => document.getElementById('lang-'+l).classList.toggle('active', l===lang));
+    // 브랜딩 패널
+    const b = t.brand;
+    const tagEl = document.getElementById('brandTagline'); if (tagEl) tagEl.innerText = b.tagline;
+    const subEl = document.getElementById('brandSub'); if (subEl) subEl.innerText = b.sub;
+    const ftEl = document.getElementById('brandFooter'); if (ftEl) ftEl.innerText = b.footer;
+    document.querySelectorAll('[data-ba]').forEach(el => { const v = b.apps[el.dataset.ba]; if (v) el.innerText = v; });
+    // 언어 버튼
+    ['ko','zh','ru'].forEach(l => document.getElementById('lang-'+l).classList.toggle('active', l === lang));
   }
+
   window.setLang = function(l) { lang = l; localStorage.setItem('ohinfo_lang', l); applyLang(); };
-  applyLang();
-</script>
-<script type="module">
-  import { db } from './firebase-config.js';
-  import {
-    collection, getDocs, getDoc, query, where, orderBy, doc, updateDoc
-  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-  let foundStudentId = null;
-  let foundStudent = null;
-
-  const load = v => document.getElementById('loadingOverlay').style.display = v ? 'flex' : 'none';
-
   window.toggleDark = () => {
     document.body.classList.toggle('dark');
     localStorage.setItem('dark', document.body.classList.contains('dark') ? '1' : '0');
   };
   if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
+  applyLang();
+</script>
 
-  // 이미 로그인 중이면 홈으로
+<script type="module">
+  import { db } from './firebase-config.js';
+  import {
+    collection, getDocs, query, where, doc, updateDoc
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  let foundStudentId = null, foundStudent = null;
+  const load = v => document.getElementById('loadingOverlay').style.display = v ? 'flex' : 'none';
+
   if (sessionStorage.getItem('ohinfo_student')) window.location.href = 'home.html';
 
-  // 학교 목록 로드
+  // 학교 목록 — orderBy 없이 가져와서 클라이언트 정렬 (인덱스 불필요)
   async function loadSchools() {
-    const snap = await getDocs(query(collection(db, 'schools'), orderBy('name')));
-    const opts = snap.docs.map(d => `<option value="${d.id}">${d.data().name}</option>`).join('');
+    const snap = await getDocs(collection(db, 'schools'));
+    const sorted = snap.docs.slice().sort((a,b) => a.data().name.localeCompare(b.data().name, 'ko'));
+    const opts = sorted.map(d => `<option value="${d.id}">${d.data().name}</option>`).join('');
     document.getElementById('loginSchool').innerHTML += opts;
     document.getElementById('joinSchool').innerHTML += opts;
   }
   loadSchools();
 
-  // 로그인 번호 목록: 학교+학년+반 선택 시 해당 반 번호 로드
+  // 로그인 번호 목록 동적 로드 — 복합 인덱스 불필요 (equality only)
   async function loadLoginNumbers() {
     const schoolId = document.getElementById('loginSchool').value;
     const grade = document.getElementById('loginGrade').value;
     const cls = document.getElementById('loginClass').value;
     const sel = document.getElementById('loginNumber');
     const t = T[lang];
-    sel.innerHTML = `<option value="">${t.selectNum || '번호 선택...'}</option>`;
+    sel.innerHTML = `<option value="">${t.selectNum}</option>`;
     if (!schoolId) return;
     try {
       const snap = await getDocs(query(collection(db, 'students'),
@@ -419,27 +540,24 @@
         where('grade', '==', grade),
         where('class', '==', cls)
       ));
-      const sorted = snap.docs.slice().sort((a, b) => {
-        const n1 = parseInt(a.data().number) || 0;
-        const n2 = parseInt(b.data().number) || 0;
-        return n1 - n2;
-      });
-      sorted.forEach(d => {
-        const num = d.data().number;
-        const name = d.data().name;
-        const opt = document.createElement('option');
-        opt.value = num;
-        opt.innerText = `${num}번 ${name}`;
-        sel.appendChild(opt);
-      });
-    } catch(e) { /* 결과 없으면 빈 목록 유지 */ }
+      snap.docs
+        .slice()
+        .sort((a,b) => (parseInt(a.data().number)||0) - (parseInt(b.data().number)||0))
+        .forEach(d => {
+          const { number, name } = d.data();
+          const opt = document.createElement('option');
+          opt.value = number;
+          opt.innerText = `${number}번 ${name}`;
+          sel.appendChild(opt);
+        });
+    } catch(e) { /* 빈 목록 유지 */ }
   }
   ['loginSchool','loginGrade','loginClass'].forEach(id =>
     document.getElementById(id).addEventListener('change', loadLoginNumbers)
   );
 
   // 탭 전환
-  window.switchTab = (tab) => {
+  window.switchTab = tab => {
     const isLogin = tab === 'login';
     document.getElementById('tabLogin').classList.toggle('active', isLogin);
     document.getElementById('tabJoin').classList.toggle('active', !isLogin);
@@ -447,7 +565,7 @@
     document.getElementById('joinPanel').classList.toggle('hidden', isLogin);
   };
 
-  // ── 로그인 ──
+  // 로그인
   window.doLogin = async () => {
     const schoolId = document.getElementById('loginSchool').value;
     const grade = document.getElementById('loginGrade').value;
@@ -458,9 +576,8 @@
     err.innerText = '';
     const t = T[lang];
     if (!schoolId) { err.innerText = t.errSchool; return; }
-    if (!number) { err.innerText = t.errNumSelect; return; }
-    if (!pw) { err.innerText = t.errPw; return; }
-
+    if (!number)   { err.innerText = t.errNumSelect; return; }
+    if (!pw)       { err.innerText = t.errPw; return; }
     load(true);
     try {
       const snap = await getDocs(query(collection(db, 'students'),
@@ -479,7 +596,7 @@
     load(false);
   };
 
-  // ── 회원가입: 학생 확인 ──
+  // 회원가입: 학생 확인
   window.checkStudent = async () => {
     const schoolId = document.getElementById('joinSchool').value;
     const grade = document.getElementById('joinGrade').value;
@@ -490,9 +607,8 @@
     err.innerText = '';
     const t = T[lang];
     if (!schoolId) { err.innerText = t.errSchool; return; }
-    if (!number) { err.innerText = t.errNumReq; return; }
-    if (!name) { err.innerText = t.errNameReq; return; }
-
+    if (!number)   { err.innerText = t.errNumReq; return; }
+    if (!name)     { err.innerText = t.errNameReq; return; }
     load(true);
     try {
       const snap = await getDocs(query(collection(db, 'students'),
@@ -507,7 +623,6 @@
       if (data.registered) { err.innerText = t.errAlready; load(false); return; }
       foundStudentId = snap.docs[0].id;
       foundStudent = data;
-
       document.getElementById('badgeAvatar').innerText = name[0];
       document.getElementById('badgeName').innerText = `${name} (${number}번)`;
       document.getElementById('badgeSub').innerText = `${data.schoolName || ''} · ${grade} ${cls}`;
@@ -518,7 +633,6 @@
     load(false);
   };
 
-  // 비밀번호 강도
   window.pwStrength = () => {
     const pw = document.getElementById('joinPw').value;
     const bars = ['bar1','bar2','bar3'].map(id => document.getElementById(id));
@@ -529,7 +643,6 @@
     else bars.forEach(b => b.classList.add('strong'));
   };
 
-  // ── 회원가입 완료 ──
   window.doRegister = async () => {
     const pw = document.getElementById('joinPw').value;
     const pw2 = document.getElementById('joinPw2').value;
@@ -537,13 +650,11 @@
     err.innerText = '';
     const t = T[lang];
     if (pw.length < 4) { err.innerText = t.errPwShort; return; }
-    if (pw !== pw2) { err.innerText = t.errPwMismatch; return; }
-
+    if (pw !== pw2)    { err.innerText = t.errPwMismatch; return; }
     load(true);
     try {
       await updateDoc(doc(db, 'students', foundStudentId), { registered: true, password: pw });
-      foundStudent.registered = true;
-      foundStudent.password = pw;
+      foundStudent.registered = true; foundStudent.password = pw;
       sessionStorage.setItem('ohinfo_student', JSON.stringify({ id: foundStudentId, ...foundStudent }));
       window.location.href = 'home.html';
     } catch(e) { err.innerText = '오류: ' + e.message; }

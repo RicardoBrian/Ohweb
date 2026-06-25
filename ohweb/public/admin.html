@@ -721,10 +721,18 @@
     if (schoolId) constraints.push(where('schoolId', '==', schoolId));
     if (grade)    constraints.push(where('grade', '==', grade));
     if (cls)      constraints.push(where('class', '==', cls));
-    constraints.push(orderBy('name'));
 
     const snap = await getDocs(query(q, ...constraints));
-    const students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    // 클라이언트에서 학년→반→번호 순 정렬 (인덱스 불필요)
+    const students = snap.docs
+      .map(d => ({ id: d.id, ...d.data() }))
+      .sort((a,b) => {
+        const g = (a.grade||'').localeCompare(b.grade||'', 'ko');
+        if (g !== 0) return g;
+        const c = (a.class||'').localeCompare(b.class||'', 'ko');
+        if (c !== 0) return c;
+        return (parseInt(a.number)||0) - (parseInt(b.number)||0);
+      });
 
     const el = document.getElementById('studentList');
     if (!students.length) {
