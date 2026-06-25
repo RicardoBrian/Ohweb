@@ -574,10 +574,12 @@
       console.log('[paddlet] 전체 클래스:', all.length, all.map(c=>({name:c.name,status:c.status,grades:c.grades,groups:c.groups})));
       console.log('[paddlet] 현재 학년:', grade, '→', ng(grade), ' / 반:', group, '→', nc(group));
       const classes = all.filter(c => {
-        const statusOk = c.status==='ON';
-        const gradeOk = (c.grades||[]).some(g => ng(g)===ng(grade));
-        const groupOk = (c.groups||[]).some(g => nc(g)===nc(group));
-        console.log(`  ${c.name}: status=${c.status}(${statusOk}), grades=${JSON.stringify(c.grades)}(${gradeOk}), groups=${JSON.stringify(c.groups)}(${groupOk})`);
+        const statusOk = c.status==='ON' || c.status===true || c.status==='on';
+        const gs = c.grades||[];
+        const bs = c.groups||[];
+        const gradeOk = gs.length===0 || gs.some(g => ng(g)===ng(grade));
+        const groupOk = bs.length===0 || bs.some(g => nc(g)===nc(group));
+        console.log(`  ${c.name}: status=${c.status}(${statusOk}), grades=${JSON.stringify(gs)}(${gradeOk}), groups=${JSON.stringify(bs)}(${groupOk})`);
         return statusOk && gradeOk && groupOk;
       });
       const sel = document.getElementById('classList');
@@ -697,9 +699,9 @@
     document.getElementById('adminList').innerHTML = list.map(c=>`
       <div class="admin-item">
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          <select onchange="toggleClassStatus('${c.id}',this.value)" class="status-pill ${c.status==='ON'?'on':'off'}">
-            <option value="ON" ${c.status==='ON'?'selected':''}>ON</option>
-            <option value="OFF" ${c.status==='OFF'?'selected':''}>OFF</option>
+          <select onchange="toggleClassStatus('${c.id}',this.value)" class="status-pill ${(c.status==='ON'||c.status===true)?'on':'off'}">
+            <option value="ON" ${(c.status==='ON'||c.status===true)?'selected':''}>ON</option>
+            <option value="OFF" ${(c.status==='OFF'||c.status===false)?'selected':''}>OFF</option>
           </select>
           <span style="font-size:0.88rem;">${(c.grades||[]).join('·')} ${(c.groups||[]).join('·')} — <b>${c.name}</b></span>
         </div>
