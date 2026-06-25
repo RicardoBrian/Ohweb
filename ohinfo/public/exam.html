@@ -313,7 +313,7 @@ if (!_st.id) { window.location.href = 'index.html'; }
 const SESSION = { id: _st.id||'', name: _st.name||'', grade: _st.grade||'', cls: _st.class||'', num: _st.number||'', schoolId: _st.schoolId||'' };
 
 // ── 상태 ──
-let currentLang = 'ko';
+let currentLang = localStorage.getItem('ohinfo_lang') || 'ko';
 let currentAssignment = null;
 let currentExam = null;
 let questions = [];
@@ -782,7 +782,7 @@ function showResult(score, total, items) {
 
 // ── 초기화 ──
 function init() {
-  applyLangUI();
+  setLang(currentLang);
 }
 init();
 

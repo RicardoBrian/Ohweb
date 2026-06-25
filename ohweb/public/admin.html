@@ -888,9 +888,39 @@
   let schools = [];
   let csvData = [];
   let confirmCallback = null;
+  let _appStudents = [];   // 앱설정용 학생 캐시
+
+  // 학년/반 정규화 + appSettings 키 (home.html과 동일 규칙)
+  const nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
+  const appKey = (school, grade, cls) => `${String(school||'').replace(/\//g,'_')}__g${nv(grade)}__c${nv(cls)}`;
 
   // ── 유틸 ──
   function showLoading(v) { document.getElementById('loadingOverlay').style.display = v ? 'flex' : 'none'; }
+
+  // ── 번역 (Netlify Function 경유) ──
+  async function translateTexts(texts, targetLang) {
+    const res = await fetch('/.netlify/functions/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texts, targetLang, sourceLang: 'ko' })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error || !data.translations) throw new Error(data.error || `HTTP ${res.status}`);
+    return data.translations.map(t => t.text);
+  }
+  // desc/ex 를 zh/ru/en 으로 번역해 {descZh,descRu,descEn,exZh,exRu,exEn} 반환 (실패 시 빈 값)
+  async function translateClassFields(desc, ex) {
+    const out = { descZh:'', descRu:'', descEn:'', exZh:'', exRu:'', exEn:'' };
+    if (!desc && !ex) return out;
+    const langs = [['zh-cn','Zh'], ['ru','Ru'], ['en','En']];
+    try {
+      await Promise.all(langs.map(async ([code, sfx]) => {
+        const [d, e] = await translateTexts([desc || '', ex || ''], code);
+        out['desc'+sfx] = d || ''; out['ex'+sfx] = e || '';
+      }));
+    } catch (err) { console.error('translateClassFields:', err); }
+    return out;
+  }
 
   function toast(msg, type = '') {
     const el = document.getElementById('toast');
@@ -965,15 +995,10 @@
   }
 
   function populateSchoolSelects() {
+    // appSchool 은 등록된 학생의 학교명으로 채움(loadAppStudents). addSchool 은 자유텍스트로 대체됨.
     const opts = schools.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-    ['appSchool'].forEach(id => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      const first = el.querySelector('option')?.outerHTML || '';
-      el.innerHTML = first + opts;
-    });
     const addSchoolEl = document.getElementById('addSchool');
-    addSchoolEl.innerHTML = '<option value="">학교 선택</option>' + opts;
+    if (addSchoolEl) addSchoolEl.innerHTML = '<option value="">학교 선택</option>' + opts;
   }
 
   window.addSchool = async () => {
@@ -1158,28 +1183,54 @@
   };
 
   // ── 앱 설정 ──
+  // 학생 데이터 기반으로 학교 드롭다운 채우기 (등록된 학생의 학교명 = 자유텍스트)
+  window.loadAppStudents = async () => {
+    const snap = await getDocs(collection(db, 'students'));
+    _appStudents = snap.docs.map(d => d.data());
+    const names = [...new Set(_appStudents.map(s => (s.schoolName||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ko'));
+    const sel = document.getElementById('appSchool');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">학교 선택</option>' + names.map(n => `<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('');
+    if (cur && names.includes(cur)) sel.value = cur;
+  };
+
   window.loadAppSettings = async () => {
-    const schoolId = document.getElementById('appSchool').value;
+    const schoolName = document.getElementById('appSchool').value;
     const grade = document.getElementById('appGrade').value;
     const cls = document.getElementById('appClass').value;
     const area = document.getElementById('appSettingsArea');
 
-    if (!schoolId) {
+    if (!schoolName) {
       area.innerHTML = '<div class="empty-state"><div class="empty-icon">📱</div>학교를 선택하세요.</div>';
       return;
     }
 
     showLoading(true);
     try {
-      // 학급 목록 결정
-      const grades = grade ? [grade] : ['1','2','3'];
-      const classes = cls ? [cls] : ['1','2','3','4','5'];
+      // 해당 학교 학생들의 실제 (학년·반) 조합만 추출 (없는 학급은 안 보이게)
+      const seen = new Set();
       const combos = [];
-      grades.forEach(g => classes.forEach(c => combos.push({ grade: g, class: c })));
+      _appStudents
+        .filter(s => (s.schoolName||'').trim() === schoolName)
+        .forEach(s => {
+          const g = nv(s.grade), c = nv(s.class);
+          if (!g || !c) return;
+          if (grade && nv(grade) !== g) return;
+          if (cls && nv(cls) !== c) return;
+          const k = g + '|' + c;
+          if (!seen.has(k)) { seen.add(k); combos.push({ grade: g, class: c }); }
+        });
+      combos.sort((a,b) => (parseInt(a.grade)||0)-(parseInt(b.grade)||0) || (parseInt(a.class)||0)-(parseInt(b.class)||0));
 
-      // 설정 로드
+      if (!combos.length) {
+        area.innerHTML = '<div class="empty-state"><div class="empty-icon">👥</div>이 학교에 등록된 학급(학생)이 없습니다.</div>';
+        showLoading(false);
+        return;
+      }
+
+      const schEnc = encodeURIComponent(schoolName);
       const settingDocs = await Promise.all(combos.map(combo => {
-        const docId = `${schoolId}_g${combo.grade}_c${combo.class}`;
+        const docId = appKey(schoolName, combo.grade, combo.class);
         return getDoc(doc(db, 'appSettings', docId)).then(d => ({
           ...combo, docId,
           apps: d.exists() ? (d.data().apps || {}) : {}
@@ -1196,7 +1247,7 @@
                 <div class="app-card-id">${app.id}</div>
                 <label class="toggle" title="${app.name} 공개">
                   <input type="checkbox" ${s.apps[app.id] ? 'checked' : ''}
-                    onchange="saveAppSetting('${s.docId}','${schoolId}','${s.grade}','${s.class}','${app.id}',this.checked)">
+                    onchange="saveAppSetting('${s.docId}','${schEnc}','${s.grade}','${s.class}','${app.id}',this.checked)">
                   <div class="toggle-track"></div>
                 </label>
               </div>
@@ -1214,13 +1265,14 @@
     showLoading(false);
   };
 
-  window.saveAppSetting = async (docId, schoolId, grade, cls, appId, enabled) => {
+  window.saveAppSetting = async (docId, schoolEnc, grade, cls, appId, enabled) => {
     try {
+      const schoolName = decodeURIComponent(schoolEnc);
       const ref = doc(db, 'appSettings', docId);
       const snap = await getDoc(ref);
       const apps = snap.exists() ? (snap.data().apps || {}) : {};
       apps[appId] = enabled;
-      await setDoc(ref, { schoolId, grade, class: cls, apps }, { merge: true });
+      await setDoc(ref, { schoolName, grade, class: cls, apps }, { merge: true });
       toast(`${appId} ${enabled ? '공개' : '비공개'} 설정 저장`, 'success');
     } catch (e) {
       toast('저장 오류: ' + e.message, 'error');
@@ -1394,11 +1446,13 @@
 
     showLoading(true);
     try {
+      // 수업 설명/안내 자동 번역 (zh/ru/en)
+      const tr = await translateClassFields(desc, ex);
       if (id) {
         // Update existing — single doc
         const gradeVal = grades[0] ? grades[0].replace('학년','') : '';
         const groupVal = groups[0] ? groups[0].replace('반','') : '';
-        await updateDoc(doc(db, 'classes', id), { name, grade: gradeVal, group: groupVal, desc, ex, popup });
+        await updateDoc(doc(db, 'classes', id), { name, grade: gradeVal, group: groupVal, desc, ex, popup, ...tr });
       } else {
         if (!grades.length || !groups.length) { toast('학년과 반을 선택하세요.', 'error'); showLoading(false); return; }
         // Add new — one doc per grade×group combo
@@ -1411,6 +1465,7 @@
               grade: g.replace('학년',''),
               group: b.replace('반',''),
               desc, ex, popup,
+              ...tr,
               status: 'ON',
               createdAt: serverTimestamp()
             });
@@ -1439,8 +1494,8 @@
     document.getElementById('adm_ex').value = c.ex||'';
     document.getElementById('adm_popup').value = c.popup||'';
     // c.grade and c.group are plain strings like "1","2","3"
-    document.querySelectorAll('.adm-g').forEach(i => i.checked = (i.value === (c.grade||'') + '학년'));
-    document.querySelectorAll('.adm-b').forEach(i => i.checked = (i.value === (c.group||'') + '반'));
+    document.querySelectorAll('.adm-g').forEach(i => i.checked = (nv(i.value) === nv(c.grade||'')));
+    document.querySelectorAll('.adm-b').forEach(i => i.checked = (nv(i.value) === nv(c.group||'')));
     const info = document.getElementById('adm_edit_info');
     info.style.display='block'; info.innerText=`수정 중: ${c.name}`;
     document.getElementById('adm_cancel_btn').classList.remove('hidden');
@@ -1472,6 +1527,7 @@
     origShowSection(name);
     if (name === 'paddlet') window.loadAdminList();
     if (name === 'exam') initExamSection();
+    if (name === 'apps') window.loadAppStudents();
   };
 
   // ── 시험 관리 ──
