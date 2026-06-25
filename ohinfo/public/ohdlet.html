@@ -566,10 +566,11 @@
   // ── 세션 체크 ──
   const _st = JSON.parse(sessionStorage.getItem('ohinfo_student') || 'null');
   if (!_st) { window.location.href = 'index.html'; }
+  const _nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
   const SESSION = {
     id: _st?.id || '',
-    grade: String(_st?.grade || ''),
-    group: String(_st?.class || ''),
+    grade: _nv(_st?.grade || ''),
+    group: _nv(_st?.class || ''),
     name: _st?.name || '',
     num: String(_st?.number || '')
   };
@@ -597,7 +598,7 @@
     const res = await fetch('/.netlify/functions/translate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ texts, targetLang, sourceLang: 'KO' })
+      body: JSON.stringify({ texts, targetLang, sourceLang: 'ko' })
     });
     const data = await res.json();
     if (!res.ok || data.error || !data.translations) throw new Error(data.error || data.message || `HTTP ${res.status}`);
@@ -606,9 +607,9 @@
 
   async function translatePost(subKo, msgKo) {
     const [zhRes, ruRes, enRes] = await Promise.all([
-      deepl([subKo, msgKo], 'ZH'),
-      deepl([subKo, msgKo], 'RU'),
-      deepl([subKo, msgKo], 'EN-US')
+      deepl([subKo, msgKo], 'zh-cn'),
+      deepl([subKo, msgKo], 'ru'),
+      deepl([subKo, msgKo], 'en')
     ]);
     return {
       subZh: zhRes[0] || '', msgZh: zhRes[1] || '',
