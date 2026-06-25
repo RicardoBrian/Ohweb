@@ -595,11 +595,14 @@
   const DEEPL_KEY = 'cf131ad1-2cd2-455b-8915-dd32ddfce706:fx';
   const DEEPL_URL = 'https://api-free.deepl.com/v2/translate';
   async function deepl(texts, targetLang) {
+    const body = new URLSearchParams({ auth_key: DEEPL_KEY, source_lang: 'KO', target_lang: targetLang });
+    texts.forEach(t => body.append('text', t));
     const res = await fetch(DEEPL_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `DeepL-Auth-Key ${DEEPL_KEY}` },
-      body: JSON.stringify({ text: texts, source_lang: 'KO', target_lang: targetLang })
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString()
     });
+    if (!res.ok) throw new Error(`DeepL ${res.status}`);
     const data = await res.json();
     return (data.translations || []).map(t => t.text);
   }
@@ -936,10 +939,11 @@
     const msgLang = sfx !== 'Ko' ? msg : '';
 
     try {
-      // 번역 (한국어로 입력된 경우만 / 아니면 해당 언어 필드에 저장)
+      // 번역 (실패해도 게시물 저장은 계속)
       let translations = { subZh:'', msgZh:'', subRu:'', msgRu:'', subEn:'', msgEn:'' };
       if (srcLang === 'ko' && (sub || msg)) {
-        translations = await translatePost(sub, msg);
+        try { translations = await translatePost(sub, msg); }
+        catch(te) { console.warn('번역 실패 (저장은 계속):', te.message); }
       }
 
       const subKoFinal = srcLang === 'ko' ? sub : '';
