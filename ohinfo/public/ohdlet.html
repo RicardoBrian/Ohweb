@@ -868,8 +868,9 @@
       </div>`;
     });
     display.innerHTML = html;
-    const obs = new IntersectionObserver(entries => { entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } }); }, { threshold: 0.05 });
-    display.querySelectorAll('.post-card:not(.teacher-card):not(.visible)').forEach(c => obs.observe(c));
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      display.querySelectorAll('.post-card').forEach(c => c.classList.add('visible'));
+    }));
   }
 
   function buildSlider(imgs, pid) {

@@ -309,7 +309,7 @@
     <div id="loginPanel">
       <div class="field">
         <label data-t="school">학교</label>
-        <input class="inp" id="loginSchool" placeholder="학교 이름 입력" maxlength="30">
+        <select class="inp" id="loginSchool"><option value="">학교 선택</option></select>
       </div>
       <div class="row3">
         <div class="field">
@@ -348,7 +348,7 @@
       <div id="joinStep1">
         <div class="field">
           <label data-t="school">학교</label>
-          <input class="inp" id="joinSchool" placeholder="학교 이름 입력" maxlength="30">
+          <select class="inp" id="joinSchool"><option value="">학교 선택</option></select>
         </div>
         <div class="row2">
           <div class="field">
@@ -569,6 +569,23 @@
 
   if (sessionStorage.getItem('ohinfo_student')) window.location.href = 'home.html';
 
+  // 학교 드롭다운 로드
+  async function loadSchools() {
+    try {
+      const snap = await getDocs(collection(db, 'students'));
+      const schools = [...new Set(snap.docs.map(d => d.data().schoolName).filter(Boolean))].sort();
+      ['loginSchool','joinSchool'].forEach(id => {
+        const sel = document.getElementById(id);
+        if (!sel) return;
+        const prev = sel.value;
+        sel.innerHTML = '<option value="">학교 선택</option>';
+        schools.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; sel.appendChild(o); });
+        if (prev) sel.value = prev;
+      });
+    } catch(e) { /* 그대로 */ }
+  }
+  loadSchools();
+
   // 로그인 번호 목록 동적 로드
   async function loadLoginNumbers() {
     const schoolName = document.getElementById('loginSchool').value.trim();
@@ -596,7 +613,7 @@
   ['loginGrade','loginClass'].forEach(id =>
     document.getElementById(id).addEventListener('change', loadLoginNumbers)
   );
-  document.getElementById('loginSchool').addEventListener('input', loadLoginNumbers);
+  document.getElementById('loginSchool').addEventListener('change', loadLoginNumbers);
 
   // 탭 전환
   window.switchTab = tab => {
