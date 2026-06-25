@@ -32,13 +32,40 @@
     }
     body.dark { background: radial-gradient(ellipse at 15% 20%,#1a2050 0%,transparent 50%), radial-gradient(ellipse at 85% 10%,#1e1040 0%,transparent 45%), radial-gradient(ellipse at 60% 80%,#0d1a35 0%,transparent 50%), #080c1a; background-attachment:fixed; }
     .hidden { display: none !important; }
+
+    /* NAV */
     .nav { position: sticky; top: 0; z-index: 200; background: var(--glass-nav); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border-bottom: 1px solid var(--border); box-shadow: 0 1px 0 rgba(255,255,255,0.35),var(--shadow); padding: 0 20px; height: var(--nav-h); display: flex; align-items: center; gap: 10px; }
     .nav-brand { font-size: 1.1rem; font-weight: 900; letter-spacing: -0.02em; background: linear-gradient(135deg,var(--accent),#7c4dff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; white-space: nowrap; flex-shrink: 0; }
     .nav-end { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+    /* GLOBE */
+    .lang-globe { position: relative; flex-shrink: 0; }
+    .lang-globe-btn { font-family: inherit; font-size: 1rem; cursor: pointer; border-radius: 50%; width: 32px; height: 32px; border: 1px solid var(--border-card); background: var(--glass); color: var(--sub); display: flex; align-items: center; justify-content: center; transition: 0.2s; box-shadow: var(--highlight); }
+    .lang-globe-btn:hover { background: var(--glass-strong); color: var(--text); }
+    .lang-globe-dd { position: absolute; top: calc(100% + 8px); right: 0; background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border-card); border-radius: var(--radius-sm); box-shadow: var(--shadow-md); overflow: hidden; min-width: 110px; z-index: 400; }
+    .lang-globe-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; font-size: 0.85rem; font-weight: 700; cursor: pointer; color: var(--text); transition: 0.15s; }
+    .lang-globe-item:hover { background: var(--accent-light); }
+    .lang-globe-item .check { color: var(--accent); font-size: 0.8rem; }
+
+    /* NAV USER */
+    .nav-user { display:flex; align-items:center; gap:8px; background:var(--glass); border:1px solid var(--border-card); border-radius:50px; padding:5px 12px 5px 5px; cursor:pointer; position:relative; user-select:none; flex-shrink:0; transition:background 0.2s; }
+    .nav-user:hover { background:var(--glass-strong); }
+    .nav-avatar { width:28px; height:28px; border-radius:50%; background:linear-gradient(135deg,var(--accent),#7c4dff); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:0.78rem; flex-shrink:0; overflow:hidden; }
+    .nav-avatar img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
+    .nav-user-name { font-size:0.82rem; font-weight:700; }
+    @media(max-width:600px){ .nav-user-name { display:none; } .nav-user { padding:4px; } }
+    .user-dropdown { position:absolute; top:calc(100% + 8px); right:0; min-width:150px; background:var(--glass-strong); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur); border:1px solid var(--border-card); border-radius:var(--radius-sm); box-shadow:var(--shadow-md); overflow:hidden; z-index:400; }
+    .user-dropdown-item { padding:11px 16px; font-size:0.85rem; font-weight:600; cursor:pointer; color:var(--text); transition:0.15s; }
+    .user-dropdown-item:hover { background:var(--accent-light); }
+    .user-dropdown-item.danger { color:#ef4444; }
+    .user-dropdown-sep { height:1px; background:var(--border-card); margin:2px 0; }
+
+    /* DARK TOGGLE */
     .dark-toggle { width: 42px; height: 24px; border-radius: 50px; background: var(--glass); border: 1px solid var(--border); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--highlight); cursor: pointer; position: relative; transition: 0.3s; flex-shrink: 0; }
     body.dark .dark-toggle { background: rgba(42,92,230,0.6); border-color: rgba(100,140,255,0.4); }
     .dark-toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.2); transition: transform 0.3s; }
     body.dark .dark-toggle::after { transform: translateX(18px); }
+
     .wrap { max-width: 680px; margin: 0 auto; padding: 32px 20px 80px; }
     @media(max-width:600px){ .wrap { padding: 18px 14px 80px; } }
     .card { background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border); border-radius: 22px; padding: 24px 28px; margin-bottom: 16px; box-shadow: var(--highlight),var(--shadow); }
@@ -54,80 +81,83 @@
     .btn.accent { background: rgba(42,92,230,0.82); border-color: rgba(100,140,255,0.5); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,0.3),0 4px 20px rgba(42,92,230,0.35); }
     .btn.accent:hover { background: rgba(42,92,230,0.95); }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    /* Progress bar */
+
     .progress-bar-wrap { background: var(--glass); border: 1px solid var(--border-card); border-radius: 50px; height: 8px; margin-bottom: 20px; overflow: hidden; }
     .progress-bar-fill { height: 100%; border-radius: 50px; background: linear-gradient(90deg,var(--accent),#7c4dff); transition: width 0.4s; }
-    /* Question card */
     .q-wrap { margin-bottom: 18px; }
     .q-label { font-weight: 700; font-size: 0.97rem; margin-bottom: 6px; }
     .q-label .req { color: #ef4444; margin-left: 3px; }
     .q-img { max-width: 100%; border-radius: 10px; margin-bottom: 10px; display: block; }
     .q-desc { font-size: 0.82rem; color: var(--sub); margin-bottom: 8px; }
-    /* Radio / checkbox option */
     .opt-list { display: flex; flex-direction: column; gap: 7px; }
     .opt-item { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-card); background: var(--glass); cursor: pointer; transition: background 0.15s,border-color 0.15s; }
     .opt-item:hover { background: var(--glass-strong); }
     .opt-item input[type=radio], .opt-item input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--accent); flex-shrink: 0; cursor: pointer; }
     .opt-item.selected { border-color: rgba(42,92,230,0.5); background: var(--accent-light); }
-    /* Section title */
     .section-title-card { background: var(--accent-light); border: 1px solid rgba(42,92,230,0.25); border-radius: var(--radius-sm); padding: 14px 18px; margin-bottom: 18px; }
     .section-title-card h3 { font-size: 1.1rem; font-weight: 800; margin-bottom: 2px; }
     .section-title-card p { font-size: 0.82rem; color: var(--sub); }
-    /* Nav buttons */
     .nav-btns { display: flex; gap: 10px; justify-content: space-between; margin-top: 20px; }
-    /* Error */
     .err-msg { color: #ef4444; font-size: 0.8rem; margin-top: 5px; }
-    /* Header card */
     .form-header { margin-bottom: 22px; }
     .form-header h1 { font-size: 1.5rem; font-weight: 900; margin-bottom: 6px; }
     .form-header p { font-size: 0.9rem; color: var(--sub); }
     .form-meta-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
     .meta-badge { font-size: 0.75rem; padding: 3px 10px; border-radius: 50px; background: var(--glass); border: 1px solid var(--border-card); color: var(--sub); }
-    /* Status screens */
     .status-screen { text-align: center; padding: 60px 20px; }
     .status-screen .icon { font-size: 3.5rem; margin-bottom: 16px; }
     .status-screen h2 { font-size: 1.4rem; font-weight: 800; margin-bottom: 8px; }
     .status-screen p { color: var(--sub); font-size: 0.9rem; }
-    /* Score card */
     .score-card { background: var(--accent-light); border: 1px solid rgba(42,92,230,0.25); border-radius: 18px; padding: 28px; text-align: center; margin-bottom: 20px; }
     .score-card .score-num { font-size: 3rem; font-weight: 900; color: var(--accent); }
     .score-card .score-total { font-size: 1rem; color: var(--sub); margin-top: 4px; }
-    /* Quiz feedback */
     .q-feedback { margin-top: 8px; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; }
     .q-feedback.correct { background: rgba(16,185,129,0.12); color: #059669; border: 1px solid rgba(16,185,129,0.3); }
     .q-feedback.wrong { background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.25); }
   </style>
 </head>
 <body>
-<nav class="nav">
-  <div class="nav-brand">📊 설문 참여</div>
+<nav class="nav" onclick="closeAllDD(event)">
+  <div class="nav-brand" id="navBrand">📊 설문 참여</div>
   <div class="nav-end">
+    <div class="lang-globe" id="langGlobe">
+      <button class="lang-globe-btn" onclick="event.stopPropagation();toggleLangDD()" title="언어">🌐</button>
+      <div class="lang-globe-dd hidden" id="langGlobeDD" onclick="event.stopPropagation()">
+        <div class="lang-globe-item" onclick="setLang('ko');closeLangDD()"><span>한국어</span><span class="check" id="lck-ko"></span></div>
+        <div class="lang-globe-item" onclick="setLang('zh');closeLangDD()"><span>中文</span><span class="check" id="lck-zh"></span></div>
+        <div class="lang-globe-item" onclick="setLang('ru');closeLangDD()"><span>Рус</span><span class="check" id="lck-ru"></span></div>
+        <div class="lang-globe-item" onclick="setLang('en');closeLangDD()"><span>English</span><span class="check" id="lck-en"></span></div>
+      </div>
+    </div>
+    <div class="nav-user hidden" id="navUser" onclick="event.stopPropagation();toggleUserMenu()">
+      <div class="nav-avatar" id="navAvatar"></div>
+      <div class="nav-user-name" id="navUserName"></div>
+      <div class="user-dropdown hidden" id="userDropdown" onclick="event.stopPropagation()">
+        <div class="user-dropdown-item danger" id="ddLogout" onclick="doLogout()">🚪 로그아웃</div>
+      </div>
+    </div>
     <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
   </div>
 </nav>
 
-<div class="wrap" id="mainWrap">
-  <!-- Loading -->
+<div class="wrap">
   <div id="pageLoading" class="status-screen">
     <div class="icon">⏳</div>
-    <h2>불러오는 중...</h2>
+    <h2 id="loadingMsg">불러오는 중...</h2>
   </div>
 
-  <!-- Error / closed / not found -->
   <div id="pageError" class="status-screen hidden">
     <div class="icon" id="errIcon">⚠️</div>
     <h2 id="errTitle">오류</h2>
     <p id="errMsg"></p>
   </div>
 
-  <!-- Already submitted -->
   <div id="pageAlready" class="status-screen hidden">
     <div class="icon">✅</div>
-    <h2>이미 제출하셨습니다</h2>
-    <p>이 설문은 1인 1회만 참여할 수 있습니다.</p>
+    <h2 id="alreadyTitle">이미 제출하셨습니다</h2>
+    <p id="alreadyMsg">이 설문은 1인 1회만 참여할 수 있습니다.</p>
   </div>
 
-  <!-- Fill form -->
   <div id="pageFill" class="hidden">
     <div class="card form-header">
       <h1 id="fillTitle"></h1>
@@ -140,12 +170,11 @@
     <div id="sectionCard" class="section-title-card hidden"></div>
     <div id="questionsArea"></div>
     <div class="nav-btns">
-      <button class="btn" id="btnPrev" onclick="prevSection()" style="display:none">← 이전</button>
-      <button class="btn accent" id="btnNext" onclick="nextSection()">다음 →</button>
+      <button class="btn" id="btnPrev" onclick="prevSection()" style="display:none">← <span id="btnPrevTxt">이전</span></button>
+      <button class="btn accent" id="btnNext" onclick="nextSection()"><span id="btnNextTxt">다음 →</span></button>
     </div>
   </div>
 
-  <!-- Done / score -->
   <div id="pageDone" class="hidden">
     <div class="card">
       <div class="status-screen" style="padding:30px 0">
@@ -171,80 +200,221 @@ const FB = { apiKey:"AIzaSyBYYQBnr5brEYVZ5sYilh8QS-c3aqy1IZM", authDomain:"ohweb
 const app = initializeApp(FB);
 const db  = getFirestore(app);
 
-// dark
+// ── i18n ──
+const T = {
+  ko: {
+    brand:'📊 설문 참여', loading:'불러오는 중...', logout:'🚪 로그아웃',
+    notFound:'설문을 찾을 수 없습니다', badLink:'링크가 올바르지 않습니다.',
+    loadErr:'오류', loadErrMsg:'설문을 불러오지 못했습니다: ',
+    deleted:'삭제되었거나 잘못된 링크입니다.',
+    closed:'🔒', closedTitle:'마감된 설문', closedMsg:'이 설문은 응답이 마감되었습니다.',
+    draft:'📝', draftTitle:'준비 중', draftMsg:'아직 공개되지 않은 설문입니다.',
+    deadlineTitle:'마감된 설문', deadlinePrefix:'마감일: ',
+    quiz:'🎯 퀴즈', deadline:'마감', limitOnce:'1인 1회',
+    prev:'이전', next:'다음 →', submit:'제출 ✓', submitting:'제출 중...',
+    required:'필수 항목입니다.',
+    submitErr:'제출 오류: ',
+    select:'선택하세요',
+    answerPh:'답변을 입력하세요',
+    doneTitle:'제출 완료!', doneMsg:'응답해 주셔서 감사합니다.',
+    quizDoneTitle:'퀴즈 완료!', quizDoneMsg:'결과를 확인하세요.',
+    scoreOf1:'문제 중 ', scoreOf2:'개 정답 (',
+    correct:'✅ 정답', wrong:'❌ 오답 — 정답: ', myAns:'내 답: ',
+    alreadyTitle:'이미 제출하셨습니다', alreadyMsg:'이 설문은 1인 1회만 참여할 수 있습니다.',
+    pts:'점',
+  },
+  zh: {
+    brand:'📊 参与问卷', loading:'加载中...', logout:'🚪 退出登录',
+    notFound:'未找到问卷', badLink:'链接无效。',
+    loadErr:'错误', loadErrMsg:'无法加载问卷: ',
+    deleted:'已删除或链接无效。',
+    closed:'🔒', closedTitle:'问卷已关闭', closedMsg:'该问卷已停止接受回答。',
+    draft:'📝', draftTitle:'准备中', draftMsg:'该问卷尚未公开。',
+    deadlineTitle:'问卷已关闭', deadlinePrefix:'截止日期: ',
+    quiz:'🎯 测验', deadline:'截止', limitOnce:'每人限答一次',
+    prev:'上一页', next:'下一页 →', submit:'提交 ✓', submitting:'提交中...',
+    required:'必填项。',
+    submitErr:'提交错误: ',
+    select:'请选择',
+    answerPh:'请输入答案',
+    doneTitle:'提交成功!', doneMsg:'感谢您的回答。',
+    quizDoneTitle:'测验完成!', quizDoneMsg:'请查看结果。',
+    scoreOf1:'题中答对了', scoreOf2:'题 (',
+    correct:'✅ 正确', wrong:'❌ 错误 — 正确答案: ', myAns:'我的答案: ',
+    alreadyTitle:'您已经提交过了', alreadyMsg:'此问卷每人只能参与一次。',
+    pts:'分',
+  },
+  ru: {
+    brand:'📊 Пройти опрос', loading:'Загрузка...', logout:'🚪 Выйти',
+    notFound:'Опрос не найден', badLink:'Неверная ссылка.',
+    loadErr:'Ошибка', loadErrMsg:'Не удалось загрузить опрос: ',
+    deleted:'Удалён или ссылка недействительна.',
+    closed:'🔒', closedTitle:'Опрос закрыт', closedMsg:'Ответы больше не принимаются.',
+    draft:'📝', draftTitle:'В подготовке', draftMsg:'Опрос ещё не опубликован.',
+    deadlineTitle:'Опрос закрыт', deadlinePrefix:'Дедлайн: ',
+    quiz:'🎯 Тест', deadline:'дедлайн', limitOnce:'1 раз на человека',
+    prev:'Назад', next:'Далее →', submit:'Отправить ✓', submitting:'Отправка...',
+    required:'Обязательное поле.',
+    submitErr:'Ошибка отправки: ',
+    select:'Выберите',
+    answerPh:'Введите ответ',
+    doneTitle:'Отправлено!', doneMsg:'Спасибо за ответы.',
+    quizDoneTitle:'Тест завершён!', quizDoneMsg:'Ваш результат:',
+    scoreOf1:' из ', scoreOf2:' правильно (',
+    correct:'✅ Верно', wrong:'❌ Неверно — ответ: ', myAns:'Ваш ответ: ',
+    alreadyTitle:'Вы уже ответили', alreadyMsg:'На этот опрос можно отвечать только один раз.',
+    pts:'очков',
+  },
+  en: {
+    brand:'📊 Fill Survey', loading:'Loading...', logout:'🚪 Logout',
+    notFound:'Survey not found', badLink:'Invalid link.',
+    loadErr:'Error', loadErrMsg:'Failed to load survey: ',
+    deleted:'Deleted or invalid link.',
+    closed:'🔒', closedTitle:'Survey closed', closedMsg:'This survey is no longer accepting responses.',
+    draft:'📝', draftTitle:'Not published', draftMsg:'This survey is not open yet.',
+    deadlineTitle:'Survey closed', deadlinePrefix:'Deadline: ',
+    quiz:'🎯 Quiz', deadline:'deadline', limitOnce:'1 per person',
+    prev:'Previous', next:'Next →', submit:'Submit ✓', submitting:'Submitting...',
+    required:'This field is required.',
+    submitErr:'Submit error: ',
+    select:'Select',
+    answerPh:'Enter your answer',
+    doneTitle:'Submitted!', doneMsg:'Thank you for your response.',
+    quizDoneTitle:'Quiz done!', quizDoneMsg:'Check your result.',
+    scoreOf1:' out of ', scoreOf2:' correct (',
+    correct:'✅ Correct', wrong:'❌ Wrong — answer: ', myAns:'Your answer: ',
+    alreadyTitle:'Already submitted', alreadyMsg:'This survey only allows one response per person.',
+    pts:'pts',
+  },
+};
+
+let currentLang = localStorage.getItem('ohinfo_lang') || 'ko';
+let FORM = null, SESSION = null;
+let sections = [], curSection = 0, allAnswers = {};
+let isLastSection = false;
+
+// ── dark mode ──
 const savedDark = localStorage.getItem('dark');
 if (savedDark === '1' || (!savedDark && window.matchMedia('(prefers-color-scheme:dark)').matches)) document.body.classList.add('dark');
 window.toggleDark = () => { document.body.classList.toggle('dark'); localStorage.setItem('dark', document.body.classList.contains('dark') ? '1' : '0'); };
 
-const params = new URLSearchParams(location.search);
-const formId  = params.get('id');
+// ── lang ──
+window.setLang = function(lang) {
+  currentLang = lang; localStorage.setItem('ohinfo_lang', lang);
+  applyLang();
+  updateLangCheck(lang);
+  rerenderIfActive();
+};
+window.toggleLangDD = () => { document.getElementById('langGlobeDD').classList.toggle('hidden'); };
+window.closeLangDD  = () => { document.getElementById('langGlobeDD').classList.add('hidden'); };
+function updateLangCheck(lang) {
+  ['ko','zh','ru','en'].forEach(l => {
+    document.getElementById('lck-' + l).textContent = l === lang ? '✓' : '';
+  });
+}
+updateLangCheck(currentLang);
 
-let FORM       = null;
-let SESSION    = null;
-let sections   = []; // array of { title, desc, questions:[] }
-let curSection = 0;
-let allAnswers = {}; // qIndex -> answer
+function applyLang() {
+  const t = T[currentLang];
+  document.getElementById('navBrand').textContent   = t.brand;
+  document.getElementById('loadingMsg').textContent  = t.loading;
+  document.getElementById('ddLogout').textContent    = t.logout;
+  document.getElementById('alreadyTitle').textContent = t.alreadyTitle;
+  document.getElementById('alreadyMsg').textContent   = t.alreadyMsg;
+  // nav buttons (only if form is shown)
+  const btnNextTxt = document.getElementById('btnNextTxt');
+  const btnPrevTxt = document.getElementById('btnPrevTxt');
+  if (btnNextTxt) btnNextTxt.textContent = isLastSection ? t.submit : t.next;
+  if (btnPrevTxt) btnPrevTxt.textContent = t.prev;
+}
+applyLang();
 
+// ── nav dropdowns close on outside click ──
+window.closeAllDD = function(e) {
+  document.getElementById('langGlobeDD').classList.add('hidden');
+  document.getElementById('userDropdown').classList.add('hidden');
+};
+window.toggleUserMenu = () => { document.getElementById('userDropdown').classList.toggle('hidden'); };
+
+// ── session ──
 function getSession() {
   try { return JSON.parse(sessionStorage.getItem('ohinfo_student') || 'null'); } catch { return null; }
 }
 
+function renderNavUser(s) {
+  if (!s) return;
+  document.getElementById('navUser').classList.remove('hidden');
+  document.getElementById('navUserName').textContent = s.name || '';
+  const av = document.getElementById('navAvatar');
+  if (s.photoUrl) {
+    av.innerHTML = `<img src="${s.photoUrl}" alt="">`;
+  } else {
+    av.textContent = (s.name || '?')[0].toUpperCase();
+  }
+}
+
+window.doLogout = function() {
+  sessionStorage.removeItem('ohinfo_student');
+  location.href = 'ohdlet.html';
+};
+
+// ── error ──
 function showErr(icon, title, msg) {
   document.getElementById('pageLoading').classList.add('hidden');
   const e = document.getElementById('pageError');
   e.classList.remove('hidden');
-  document.getElementById('errIcon').textContent = icon;
+  document.getElementById('errIcon').textContent  = icon;
   document.getElementById('errTitle').textContent = title;
-  document.getElementById('errMsg').textContent = msg;
+  document.getElementById('errMsg').textContent   = msg;
 }
 
+// ── init ──
+const params = new URLSearchParams(location.search);
+const formId = params.get('id');
+
 async function init() {
-  if (!formId) { showErr('🔍','설문을 찾을 수 없습니다','링크가 올바르지 않습니다.'); return; }
+  const t = T[currentLang];
+  if (!formId) { showErr('🔍', t.notFound, t.badLink); return; }
 
   let snap;
-  try {
-    snap = await getDoc(doc(db, 'student_forms', formId));
-  } catch(e) {
-    showErr('⚠️','오류','설문을 불러오지 못했습니다: ' + e.message);
-    return;
-  }
+  try { snap = await getDoc(doc(db, 'student_forms', formId)); }
+  catch(e) { showErr('⚠️', t.loadErr, t.loadErrMsg + e.message); return; }
 
-  if (!snap.exists()) { showErr('🔍','설문을 찾을 수 없습니다','삭제되었거나 잘못된 링크입니다.'); return; }
+  if (!snap.exists()) { showErr('🔍', t.notFound, t.deleted); return; }
 
   FORM = { id: snap.id, ...snap.data() };
 
-  // Status check
-  if (FORM.status === 'closed') { showErr('🔒','마감된 설문','이 설문은 응답이 마감되었습니다.'); return; }
-  if (FORM.status === 'draft')  { showErr('📝','준비 중','아직 공개되지 않은 설문입니다.'); return; }
+  if (FORM.status === 'closed') { showErr(t.closed, t.closedTitle, t.closedMsg); return; }
+  if (FORM.status === 'draft')  { showErr(t.draft,  t.draftTitle,  t.draftMsg);  return; }
 
-  // Deadline check
   if (FORM.deadline) {
     const dl = new Date(FORM.deadline);
     if (!isNaN(dl) && new Date() > dl) {
-      showErr('⏰','마감된 설문', '마감일: ' + dl.toLocaleString('ko-KR'));
-      return;
+      showErr('⏰', t.deadlineTitle, t.deadlinePrefix + dl.toLocaleString()); return;
     }
   }
 
-  // Login check
   SESSION = getSession();
   if (FORM.requireLogin !== false) {
     if (!SESSION) {
       sessionStorage.setItem('ohinfo_redirect', location.href);
-      location.href = 'ohdlet.html';
-      return;
+      location.href = 'ohdlet.html'; return;
     }
   }
 
-  // 1회 제한
   if (FORM.limitOnce && SESSION) {
     try {
       const q = query(collection(db,'student_form_responses'), where('formId','==',formId), where('respondentId','==',SESSION.id));
-      const existing = await getDocs(q);
-      if (!existing.empty) { document.getElementById('pageLoading').classList.add('hidden'); document.getElementById('pageAlready').classList.remove('hidden'); return; }
+      const ex = await getDocs(q);
+      if (!ex.empty) {
+        document.getElementById('pageLoading').classList.add('hidden');
+        document.getElementById('pageAlready').classList.remove('hidden');
+        return;
+      }
     } catch(e) { console.error('limit check:', e); }
   }
 
+  renderNavUser(SESSION);
   buildSections();
   renderFormHeader();
   document.getElementById('pageLoading').classList.add('hidden');
@@ -252,49 +422,45 @@ async function init() {
   renderSection(0);
 }
 
+// ── build sections ──
 function buildSections() {
-  const questions = FORM.questions || [];
   sections = [];
-  let cur = { title: '', desc: '', questions: [] };
-  for (const q of questions) {
+  let cur = { title:'', desc:'', questions:[] };
+  for (const q of (FORM.questions || [])) {
     if (q.type === 'section') {
-      if (cur.questions.length > 0 || sections.length > 0 || cur.title) {
-        sections.push(cur);
-      }
-      cur = { title: q.title || '', desc: q.desc || '', questions: [] };
+      if (cur.questions.length || sections.length || cur.title) sections.push(cur);
+      cur = { title: q.text || q.title || '', desc: q.desc || '', questions:[] };
     } else {
       cur.questions.push(q);
     }
   }
   sections.push(cur);
-  if (sections.length === 0) sections = [{ title:'', desc:'', questions: [] }];
+  if (!sections.length) sections = [{ title:'', desc:'', questions:[] }];
 }
 
+// ── render header ──
 function renderFormHeader() {
-  document.getElementById('fillTitle').textContent = FORM.title || '설문';
+  const t = T[currentLang];
+  document.getElementById('fillTitle').textContent = FORM.title || '';
   document.getElementById('fillDesc').textContent  = FORM.description || '';
-  const meta = document.getElementById('fillMeta');
   const tags = [];
-  if (FORM.isQuiz) tags.push('🎯 퀴즈');
-  if (FORM.deadline) { const dl = new Date(FORM.deadline); if (!isNaN(dl)) tags.push('⏰ ' + dl.toLocaleDateString('ko-KR') + ' 마감'); }
-  if (FORM.limitOnce) tags.push('1인 1회');
-  meta.innerHTML = tags.map(t => `<span class="meta-badge">${t}</span>`).join('');
-  if (sections.length > 1) {
-    document.getElementById('progressWrap').style.display = '';
-  }
+  if (FORM.isQuiz)    tags.push(t.quiz);
+  if (FORM.deadline)  { const dl = new Date(FORM.deadline); if (!isNaN(dl)) tags.push('⏰ ' + dl.toLocaleDateString() + ' ' + t.deadline); }
+  if (FORM.limitOnce) tags.push(t.limitOnce);
+  document.getElementById('fillMeta').innerHTML = tags.map(tg => `<span class="meta-badge">${tg}</span>`).join('');
+  if (sections.length > 1) document.getElementById('progressWrap').style.display = '';
 }
 
-function updateProgress() {
-  const pct = sections.length <= 1 ? 100 : Math.round(((curSection + 1) / sections.length) * 100);
-  document.getElementById('progressFill').style.width = pct + '%';
-}
-
+// ── render section ──
 function renderSection(idx) {
   curSection = idx;
-  updateProgress();
-  const sec = sections[idx];
+  isLastSection = idx === sections.length - 1;
+  const t = T[currentLang];
 
-  // Section title card
+  const pct = sections.length <= 1 ? 100 : Math.round((idx + 1) / sections.length * 100);
+  document.getElementById('progressFill').style.width = pct + '%';
+
+  const sec = sections[idx];
   const sc = document.getElementById('sectionCard');
   if (sec.title) {
     sc.classList.remove('hidden');
@@ -303,205 +469,194 @@ function renderSection(idx) {
     sc.classList.add('hidden');
   }
 
-  // Questions
   const area = document.getElementById('questionsArea');
   area.innerHTML = '';
   sec.questions.forEach((q, i) => {
-    const globalIdx = getGlobalIndex(idx, i);
-    area.appendChild(buildQuestionEl(q, globalIdx));
+    const gi = getGlobalIndex(idx, i);
+    area.appendChild(buildQuestionEl(q, gi));
   });
 
-  // Buttons
   const btnPrev = document.getElementById('btnPrev');
   const btnNext = document.getElementById('btnNext');
   btnPrev.style.display = idx > 0 ? '' : 'none';
-  if (idx === sections.length - 1) {
-    btnNext.textContent = '제출 ✓';
+  document.getElementById('btnPrevTxt').textContent = t.prev;
+
+  if (isLastSection) {
+    document.getElementById('btnNextTxt').textContent = t.submit;
     btnNext.onclick = submitForm;
   } else {
-    btnNext.textContent = '다음 →';
+    document.getElementById('btnNextTxt').textContent = t.next;
     btnNext.onclick = nextSection;
   }
 }
 
-function getGlobalIndex(secIdx, qIdx) {
+function getGlobalIndex(si, qi) {
   let n = 0;
-  for (let s = 0; s < secIdx; s++) n += sections[s].questions.length;
-  return n + qIdx;
+  for (let s = 0; s < si; s++) n += sections[s].questions.length;
+  return n + qi;
 }
 
-function buildQuestionEl(q, globalIdx) {
+// ── build question element ──
+function buildQuestionEl(q, gi) {
   const wrap = document.createElement('div');
   wrap.className = 'q-wrap card';
-  wrap.dataset.gidx = globalIdx;
+  wrap.dataset.gidx = gi;
+  const t = T[currentLang];
 
-  let html = `<div class="q-label">${esc(q.title || '질문')}${q.required ? '<span class="req">*</span>' : ''}</div>`;
+  // q.text is the field name used in formlab.html builder
+  const qText = q.text || q.title || '';
+  let html = `<div class="q-label">${esc(qText)}${q.required ? '<span class="req">*</span>' : ''}</div>`;
   if (q.imageUrl) html += `<img class="q-img" src="${esc(q.imageUrl)}" alt="">`;
   if (q.description) html += `<div class="q-desc">${esc(q.description)}</div>`;
 
-  const ans = allAnswers[globalIdx];
+  const ans = allAnswers[gi];
 
   if (q.type === 'mc') {
     html += '<div class="opt-list">';
-    (q.options || []).forEach((opt, oi) => {
+    (q.options || []).filter(o => o !== '').forEach(opt => {
       const checked = ans === opt;
-      html += `<label class="opt-item${checked ? ' selected' : ''}"><input type="radio" name="q${globalIdx}" value="${esc(opt)}" ${checked ? 'checked' : ''} onchange="window._ffAns(${globalIdx},'mc',this)"> <span>${esc(opt)}</span></label>`;
+      html += `<label class="opt-item${checked?' selected':''}"><input type="radio" name="q${gi}" value="${esc(opt)}" ${checked?'checked':''} onchange="window._ffAns(${gi},'mc',this)"> <span>${esc(opt)}</span></label>`;
     });
     html += '</div>';
   } else if (q.type === 'checkbox') {
     html += '<div class="opt-list">';
     const ansArr = Array.isArray(ans) ? ans : [];
-    (q.options || []).forEach((opt, oi) => {
+    (q.options || []).filter(o => o !== '').forEach(opt => {
       const checked = ansArr.includes(opt);
-      html += `<label class="opt-item${checked ? ' selected' : ''}"><input type="checkbox" name="q${globalIdx}" value="${esc(opt)}" ${checked ? 'checked' : ''} onchange="window._ffAns(${globalIdx},'checkbox',this)"> <span>${esc(opt)}</span></label>`;
+      html += `<label class="opt-item${checked?' selected':''}"><input type="checkbox" name="q${gi}" value="${esc(opt)}" ${checked?'checked':''} onchange="window._ffAns(${gi},'checkbox',this)"> <span>${esc(opt)}</span></label>`;
     });
     html += '</div>';
   } else if (q.type === 'dropdown') {
-    html += `<select class="inp" onchange="window._ffAns(${globalIdx},'dropdown',this)">`;
-    html += `<option value="">선택하세요</option>`;
-    (q.options || []).forEach(opt => {
-      html += `<option value="${esc(opt)}" ${ans === opt ? 'selected' : ''}>${esc(opt)}</option>`;
+    html += `<select class="inp" onchange="window._ffAns(${gi},'dropdown',this)"><option value="">${t.select}</option>`;
+    (q.options || []).filter(o => o !== '').forEach(opt => {
+      html += `<option value="${esc(opt)}" ${ans===opt?'selected':''}>${esc(opt)}</option>`;
     });
     html += '</select>';
   } else if (q.type === 'short') {
-    html += `<input class="inp" type="text" placeholder="답변을 입력하세요" value="${esc(ans || '')}" oninput="window._ffAns(${globalIdx},'short',this)">`;
+    html += `<input class="inp" type="text" placeholder="${t.answerPh}" value="${esc(ans||'')}" oninput="window._ffAns(${gi},'short',this)">`;
   } else if (q.type === 'long') {
-    html += `<textarea class="inp" placeholder="답변을 입력하세요" oninput="window._ffAns(${globalIdx},'long',this)">${esc(ans || '')}</textarea>`;
+    html += `<textarea class="inp" placeholder="${t.answerPh}" oninput="window._ffAns(${gi},'long',this)">${esc(ans||'')}</textarea>`;
   }
 
-  html += `<div class="err-msg hidden" id="err_${globalIdx}"></div>`;
+  html += `<div class="err-msg hidden" id="err_${gi}"></div>`;
   wrap.innerHTML = html;
   return wrap;
 }
 
 window._ffAns = function(idx, type, el) {
-  if (type === 'mc' || type === 'dropdown' || type === 'short' || type === 'long') {
+  if (type === 'mc') {
     allAnswers[idx] = el.value;
-    if (type === 'mc') {
-      el.closest('.opt-list').querySelectorAll('.opt-item').forEach(li => li.classList.remove('selected'));
-      el.closest('.opt-item').classList.add('selected');
-    }
+    el.closest('.opt-list').querySelectorAll('.opt-item').forEach(li => li.classList.remove('selected'));
+    el.closest('.opt-item').classList.add('selected');
   } else if (type === 'checkbox') {
-    const parent = el.closest('.opt-list');
-    const checked = [...parent.querySelectorAll('input[type=checkbox]:checked')].map(c => c.value);
+    const checked = [...el.closest('.opt-list').querySelectorAll('input[type=checkbox]:checked')].map(c => c.value);
     allAnswers[idx] = checked;
     el.closest('.opt-item').classList.toggle('selected', el.checked);
+  } else {
+    allAnswers[idx] = el.value;
   }
-  const errEl = document.getElementById('err_' + idx);
-  if (errEl) errEl.classList.add('hidden');
+  document.getElementById('err_' + idx)?.classList.add('hidden');
 };
 
 window.prevSection = function() { if (curSection > 0) renderSection(curSection - 1); };
-window.nextSection = function() {
-  if (!validateSection()) return;
-  if (curSection < sections.length - 1) renderSection(curSection + 1);
-};
+window.nextSection = function() { if (validateSection() && curSection < sections.length - 1) renderSection(curSection + 1); };
 
 function validateSection() {
+  const t = T[currentLang];
   const sec = sections[curSection];
   let ok = true;
   sec.questions.forEach((q, i) => {
-    const gidx = getGlobalIndex(curSection, i);
+    const gi = getGlobalIndex(curSection, i);
     if (!q.required) return;
-    const ans = allAnswers[gidx];
-    let empty = false;
-    if (Array.isArray(ans)) empty = ans.length === 0;
-    else empty = !ans || ans.toString().trim() === '';
-    const errEl = document.getElementById('err_' + gidx);
-    if (empty) {
-      ok = false;
-      if (errEl) { errEl.textContent = '필수 항목입니다.'; errEl.classList.remove('hidden'); }
-    } else {
-      if (errEl) errEl.classList.add('hidden');
-    }
+    const ans = allAnswers[gi];
+    const empty = Array.isArray(ans) ? ans.length === 0 : !ans || !ans.toString().trim();
+    const errEl = document.getElementById('err_' + gi);
+    if (empty) { ok = false; if (errEl) { errEl.textContent = t.required; errEl.classList.remove('hidden'); } }
+    else { errEl?.classList.add('hidden'); }
   });
   return ok;
 }
 
+// ── re-render on lang change ──
+function rerenderIfActive() {
+  if (!FORM) return;
+  renderFormHeader();
+  renderSection(curSection);
+}
+
+// ── submit ──
 async function submitForm() {
   if (!validateSection()) return;
-
+  const t = T[currentLang];
   const btn = document.getElementById('btnNext');
   btn.disabled = true;
-  btn.textContent = '제출 중...';
+  document.getElementById('btnNextTxt').textContent = t.submitting;
 
-  // Build answers array
-  const allQuestions = sections.flatMap(s => s.questions);
-  const answersArr = allQuestions.map((q, i) => ({
-    question: q.title || '',
+  const allQ = sections.flatMap(s => s.questions);
+  const answersArr = allQ.map((q, i) => ({
+    question: q.text || q.title || '',
     type: q.type,
     answer: allAnswers[i] ?? null
   }));
 
-  // Quiz grading
   let score = 0, total = 0;
   const quizFeedback = [];
   if (FORM.isQuiz) {
-    allQuestions.forEach((q, i) => {
+    allQ.forEach((q, i) => {
       if (!q.correctAnswer && !q.correctOptions) return;
       total++;
       const ans = allAnswers[i];
       let correct = false;
-      if (q.type === 'mc' || q.type === 'dropdown' || q.type === 'short') {
-        correct = (ans || '').toString().trim() === (q.correctAnswer || '').toString().trim();
+      if (['mc','dropdown','short'].includes(q.type)) {
+        correct = (ans||'').toString().trim() === (q.correctAnswer||'').toString().trim();
       } else if (q.type === 'checkbox') {
         const ca = Array.isArray(q.correctOptions) ? [...q.correctOptions].sort() : [];
         const ua = Array.isArray(ans) ? [...ans].sort() : [];
         correct = JSON.stringify(ca) === JSON.stringify(ua);
       }
       if (correct) score++;
-      quizFeedback.push({ question: q.title, answer: ans, correctAnswer: q.correctAnswer || q.correctOptions, correct });
+      quizFeedback.push({ question: q.text || q.title || '', answer: ans, correctAnswer: q.correctAnswer || q.correctOptions, correct });
     });
   }
 
   const payload = {
-    formId,
-    ownerId: FORM.ownerId || '',
+    formId, ownerId: FORM.ownerId || '',
     respondentId: SESSION ? SESSION.id : 'anonymous',
     respondentName: SESSION ? (SESSION.name || '') : '익명',
-    answers: answersArr,
-    submittedAt: serverTimestamp()
+    answers: answersArr, submittedAt: serverTimestamp()
   };
   if (FORM.isQuiz) { payload.score = score; payload.total = total; }
 
-  try {
-    await addDoc(collection(db, 'student_form_responses'), payload);
-  } catch(e) {
+  try { await addDoc(collection(db,'student_form_responses'), payload); }
+  catch(e) {
     btn.disabled = false;
-    btn.textContent = '제출 ✓';
-    alert('제출 오류: ' + e.message);
-    return;
+    document.getElementById('btnNextTxt').textContent = t.submit;
+    alert(t.submitErr + e.message); return;
   }
 
-  // Show done
   document.getElementById('pageFill').classList.add('hidden');
-  const done = document.getElementById('pageDone');
-  done.classList.remove('hidden');
+  document.getElementById('pageDone').classList.remove('hidden');
 
   if (FORM.isQuiz && total > 0) {
-    document.getElementById('doneTitle').textContent = '퀴즈 완료!';
-    document.getElementById('doneMsg').textContent = '결과를 확인하세요.';
-    const sc = document.getElementById('scoreCard');
-    sc.classList.remove('hidden');
-    document.getElementById('scoreNum').textContent = score + '점';
-    document.getElementById('scoreTotal').textContent = total + '문제 중 ' + score + '개 정답 (' + Math.round(score/total*100) + '%)';
-
-    // Quiz review
-    const rev = document.getElementById('quizReview');
-    rev.innerHTML = quizFeedback.map(f => {
-      const ansStr = Array.isArray(f.answer) ? f.answer.join(', ') : (f.answer || '(미입력)');
-      const corStr = Array.isArray(f.correctAnswer) ? f.correctAnswer.join(', ') : (f.correctAnswer || '');
+    document.getElementById('doneTitle').textContent = t.quizDoneTitle;
+    document.getElementById('doneMsg').textContent   = t.quizDoneMsg;
+    document.getElementById('scoreCard').classList.remove('hidden');
+    document.getElementById('scoreNum').textContent   = score + t.pts;
+    document.getElementById('scoreTotal').textContent = total + t.scoreOf1 + score + t.scoreOf2 + Math.round(score/total*100) + '%)';
+    document.getElementById('quizReview').innerHTML = quizFeedback.map(f => {
+      const aStr = Array.isArray(f.answer) ? f.answer.join(', ') : (f.answer || '');
+      const cStr = Array.isArray(f.correctAnswer) ? f.correctAnswer.join(', ') : (f.correctAnswer || '');
       return `<div style="margin-bottom:14px">
-        <div style="font-weight:700;font-size:0.9rem;margin-bottom:4px">${esc(f.question || '')}</div>
-        <div class="q-feedback ${f.correct ? 'correct' : 'wrong'}">
-          ${f.correct ? '✅ 정답' : `❌ 오답 — 정답: ${esc(corStr)}`}
-          <span style="margin-left:8px;opacity:.8">내 답: ${esc(ansStr)}</span>
+        <div style="font-weight:700;font-size:0.9rem;margin-bottom:4px">${esc(f.question)}</div>
+        <div class="q-feedback ${f.correct?'correct':'wrong'}">
+          ${f.correct ? t.correct : t.wrong + esc(cStr)}
+          <span style="margin-left:8px;opacity:.8">${t.myAns}${esc(aStr)}</span>
         </div>
       </div>`;
     }).join('');
   } else {
-    document.getElementById('doneTitle').textContent = '제출 완료!';
-    document.getElementById('doneMsg').textContent = '응답해 주셔서 감사합니다.';
+    document.getElementById('doneTitle').textContent = t.doneTitle;
+    document.getElementById('doneMsg').textContent   = t.doneMsg;
   }
 }
 
