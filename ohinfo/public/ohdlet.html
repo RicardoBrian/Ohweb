@@ -440,6 +440,7 @@
     document.getElementById('ui-enter-btn').innerText=uiText[lang].enter;
     document.getElementById('subBtn').innerText=f_mode==='edit'?uiText[lang].edit_finish:uiText[lang].submit;
     updateClassList();
+    if(currentPosts.length) render(currentExample, sortedPosts());
   }
 
   function goHome() { document.getElementById('step2').classList.add('hidden'); document.getElementById('step1').classList.remove('hidden'); cancelEdit(); window.scrollTo(0,0); }
@@ -470,8 +471,8 @@
       const hasLiked=localStorage.getItem('voted_'+p.id);
       html+=`<div class="post-card ${p.pinned?'pinned-card':''}" data-id="${p.id}">
         ${p.pinned?'<div class="pin-badge">📌 고정</div>':''}
-        <div class="post-sub">${p.subject}</div>
-        <div class="post-msg">${fmtMsg(p.message)}</div>
+        <div class="post-sub">${currentLang==='zh'?(p.subZh||p.subject):currentLang==='ru'?(p.subRu||p.subject):p.subject}</div>
+        <div class="post-msg">${fmtMsg(currentLang==='zh'?(p.msgZh||p.message):currentLang==='ru'?(p.msgRu||p.message):p.message)}</div>
         ${buildSlider(p.imgs,p.id)}
         <div class="post-meta">
           <div class="like-area ${hasLiked?'voted':''}" onclick="toggleLikeUI('${p.id}',this)">
@@ -585,19 +586,42 @@
     }
   };
 
+  // ── DeepL 번역 ──
+  const DEEPL_KEY = 'cf131ad1-2cd2-455b-8915-dd32ddfce706:fx';
+  async function deepl(text, targetLang) {
+    if (!text.trim()) return text;
+    try {
+      const res = await fetch('https://api-free.deepl.com/v2/translate', {
+        method: 'POST',
+        headers: { 'Authorization': `DeepL-Auth-Key ${DEEPL_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: [text], target_lang: targetLang, source_lang: 'KO' })
+      });
+      const json = await res.json();
+      return json.translations?.[0]?.text || text;
+    } catch { return text; }
+  }
+  async function translatePost(subject, message) {
+    const [subZh, msgZh, subRu, msgRu] = await Promise.all([
+      deepl(subject, 'ZH'), deepl(message, 'ZH'),
+      deepl(subject, 'RU'), deepl(message, 'RU'),
+    ]);
+    return { subZh, msgZh, subRu, msgRu };
+  }
+
   // ── 게시글 등록/수정 ──
   window.submitPost = async (event) => {
     event.preventDefault(); toggleLoading(true); document.getElementById('subBtn').disabled=true;
     const subject=document.getElementById('p_sub').value;
     const message=document.getElementById('p_msg').value;
     try {
+      const tr = await translatePost(subject, message);
       if(f_mode==='edit') {
         const ref=doc(db,'paddlet_posts',f_postId);
         const snap=await getDoc(ref);
         if(!snap.exists()||snap.data().studentId!==SESSION.id){alert('본인 게시물만 수정할 수 있습니다.');toggleLoading(false);document.getElementById('subBtn').disabled=false;return;}
-        await updateDoc(ref,{subject,message,origSub:subject,origMsg:message,imgs:imgList,updatedAt:serverTimestamp()});
+        await updateDoc(ref,{subject,message,origSub:subject,origMsg:message,...tr,imgs:imgList,updatedAt:serverTimestamp()});
       } else {
-        await addDoc(collection(db,'paddlet_posts'),{classTitle:f_class,grade:f_grade,group:f_group,num:SESSION.num,name:SESSION.name,studentId:SESSION.id,subject,message,origSub:subject,origMsg:message,imgs:imgList,likes:0,pinned:false,createdAt:serverTimestamp()});
+        await addDoc(collection(db,'paddlet_posts'),{classTitle:f_class,grade:f_grade,group:f_group,num:SESSION.num,name:SESSION.name,studentId:SESSION.id,subject,message,origSub:subject,origMsg:message,...tr,imgs:imgList,likes:0,pinned:false,createdAt:serverTimestamp()});
       }
       document.getElementById('postForm').reset(); cancelEdit();
       await window.manualRefresh();
