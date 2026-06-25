@@ -1129,6 +1129,7 @@
 
   // ── 학생 개별 추가 ──
   window.addStudent = async () => {
+    const schoolName = document.getElementById('addSchoolName').value.trim();
     const name = document.getElementById('addName').value.trim();
     const grade = document.getElementById('addGrade').value.trim();
     const cls = document.getElementById('addClass').value.trim();
@@ -1141,11 +1142,12 @@
     showLoading(true);
     try {
       await addDoc(collection(db, 'students'), {
-        grade, class: cls, number, name,
+        schoolName, grade, class: cls, number, name,
         registered: false, password: null,
         createdAt: serverTimestamp()
       });
       toast(`${name} 추가 완료!`, 'success');
+      document.getElementById('addSchoolName').value = '';
       document.getElementById('addName').value = '';
       document.getElementById('addGrade').value = '';
       document.getElementById('addClass').value = '';
