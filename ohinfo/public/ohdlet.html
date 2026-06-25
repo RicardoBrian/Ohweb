@@ -586,9 +586,10 @@
   };
 
   // ── GAS API (JSONP) ──
+  let _gasSeq = 0;
   function gasGet(params) {
     return new Promise((resolve, reject) => {
-      const cb = '_cb' + Date.now();
+      const cb = '_cb' + (++_gasSeq);
       const url = GAS_URL + '?' + new URLSearchParams({...params, callback: cb});
       const s = document.createElement('script');
       window[cb] = d => { delete window[cb]; s.remove(); resolve(d); };

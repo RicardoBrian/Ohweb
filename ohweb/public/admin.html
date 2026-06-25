@@ -1355,9 +1355,10 @@
 
   // ── 패들릿 수업 관리 (GAS / Sheets) ──
   const GAS_URL = 'https://script.google.com/macros/s/AKfycbyRdzjvK0vmVh9lEmwCdKoR_NvxXIOXPYpaSA1Wnir-77JTVChBL5rbJAJJk10B_cev/exec';
+  let _gasSeq = 0;
   function gasGet(params) {
     return new Promise((resolve, reject) => {
-      const cb = '_cb' + Date.now();
+      const cb = '_cb' + (++_gasSeq);
       const url = GAS_URL + '?' + new URLSearchParams({...params, callback: cb});
       const s = document.createElement('script');
       window[cb] = d => { delete window[cb]; s.remove(); resolve(d); };
@@ -1368,7 +1369,7 @@
   }
   function gasPost(body) {
     return new Promise((resolve, reject) => {
-      const cb = '_cb' + Date.now();
+      const cb = '_cb' + (++_gasSeq);
       const url = GAS_URL + '?' + new URLSearchParams({ action: body.action, payload: JSON.stringify(body), callback: cb });
       const s = document.createElement('script');
       window[cb] = d => { delete window[cb]; s.remove(); resolve(d); };
