@@ -751,23 +751,24 @@
     const newPw2 = document.getElementById('mpNewPw2').value;
     const updates = {};
     if (_mpPhotoB64) updates.photoUrl = _mpPhotoB64;
+    const _t = uiText[currentLang] || uiText.ko;
     if (newPw || curPw) {
-      if (!curPw) { msgEl.className='modal-msg err'; msgEl.innerText='현재 비밀번호를 입력하세요.'; return; }
-      if (curPw !== _mpStudent.password) { msgEl.className='modal-msg err'; msgEl.innerText='현재 비밀번호가 올바르지 않습니다.'; return; }
-      if (newPw.length < 4) { msgEl.className='modal-msg err'; msgEl.innerText='새 비밀번호는 4자 이상이어야 합니다.'; return; }
-      if (newPw !== newPw2) { msgEl.className='modal-msg err'; msgEl.innerText='새 비밀번호가 일치하지 않습니다.'; return; }
+      if (!curPw) { msgEl.className='modal-msg err'; msgEl.innerText=_t.mpErrCur; return; }
+      if (curPw !== _mpStudent.password) { msgEl.className='modal-msg err'; msgEl.innerText=_t.mpErrCur; return; }
+      if (newPw.length < 4) { msgEl.className='modal-msg err'; msgEl.innerText=_t.mpErrShort; return; }
+      if (newPw !== newPw2) { msgEl.className='modal-msg err'; msgEl.innerText=_t.mpErrMatch; return; }
       updates.password = newPw;
     }
-    if (!Object.keys(updates).length) { msgEl.className='modal-msg err'; msgEl.innerText='변경할 내용이 없습니다.'; return; }
+    if (!Object.keys(updates).length) { msgEl.className='modal-msg err'; msgEl.innerText=_t.mpErrCur; return; }
     const saveBtn = document.getElementById('mpSaveBtn'); saveBtn.disabled = true;
     try {
       await updateDoc(doc(db, 'students', _mpStudent.id), updates);
       Object.assign(_mpStudent, updates);
       sessionStorage.setItem('ohinfo_student', JSON.stringify(_mpStudent));
       renderAvatar(document.getElementById('navAvatar'), _mpStudent);
-      msgEl.className='modal-msg ok'; msgEl.innerText='저장되었습니다.';
+      msgEl.className='modal-msg ok'; msgEl.innerText=_t.mpOk;
       setTimeout(() => closeMyPage(), 1300);
-    } catch(e) { msgEl.className='modal-msg err'; msgEl.innerText='오류: '+e.message; }
+    } catch(e) { msgEl.className='modal-msg err'; msgEl.innerText=e.message; }
     saveBtn.disabled = false;
   };
 
@@ -783,10 +784,58 @@
   const MASTER_PW = "9600";
 
   const uiText = {
-    ko: { opt:"수업을 선택하세요", enter:"입장하기", submit:"게시물 등록", edit_finish:"수정 완료", teacher_notice:"선생님 안내" },
-    zh: { opt:"请选择课程", enter:"进入", submit:"发布", edit_finish:"完成修改", teacher_notice:"老师须知" },
-    ru: { opt:"Выберите урок", enter:"Войти", submit:"Опубликовать", edit_finish:"Изм.завершено", teacher_notice:"Заметка учителя" },
-    en: { opt:"Select class", enter:"Enter", submit:"Post", edit_finish:"Save edit", teacher_notice:"Teacher's Note" }
+    ko: {
+      opt:"수업을 선택하세요", classLabel:"수업 선택", enter:"입장하기", submit:"게시물 등록", edit_finish:"수정 완료", teacher_notice:"선생님 안내",
+      refresh:"↻ 새로고침", refreshMob:"새로고침", backHome:"← 처음으로", search:"검색...", sortNew:"최신순", sortLike:"인기순",
+      uploadLabel:"이미지 첨부 (클릭 또는 Ctrl+V, 최대 4장)", cancelEdit:"수정 취소", adminBtn:"관리",
+      noPost:"게시물이 없습니다.", pin:"핀", edit:"수정", del:"삭제",
+      adminTitle:"수업 관리", admName:"수업명", admDesc:"설명", admEx:"선생님 안내", admPopup:"공지 팝업",
+      admNamePh:"수업명", admDescPh:"수업 상세 설명", admExPh:"게시판 최상단 고정 안내", admPopupPh:"입장 시 팝업 (비워두면 미표시)",
+      admSave:"저장", admCancel:"취소", admPw:"관리자 비밀번호", admSaved:"저장되었습니다.", admDelConfirm:"삭제하시겠습니까?",
+      noticePw:"비밀번호", noticePwPh:"비밀번호 입력", noticeOk:"확인", noticeCancel:"취소", noticeTitle:"공지사항",
+      mypage:"마이페이지", logout:"로그아웃",
+      mpTitle:"마이페이지", mpPhotoBtn:"사진 변경", mpPwLabel:"비밀번호 변경", mpCurPw:"현재 비밀번호", mpNewPw:"새 비밀번호 (4자 이상)", mpNewPw2:"새 비밀번호 확인", mpSave:"저장",
+      mpErrCur:"현재 비밀번호가 맞지 않습니다.", mpErrShort:"새 비밀번호는 4자 이상이어야 합니다.", mpErrMatch:"새 비밀번호가 일치하지 않습니다.", mpOk:"저장되었습니다.",
+    },
+    zh: {
+      opt:"请选择课程", classLabel:"选择课程", enter:"进入", submit:"发布", edit_finish:"完成修改", teacher_notice:"老师须知",
+      refresh:"↻ 刷新", refreshMob:"刷新", backHome:"← 返回", search:"搜索...", sortNew:"最新", sortLike:"热门",
+      uploadLabel:"附加图片 (点击或 Ctrl+V，最多4张)", cancelEdit:"取消修改", adminBtn:"管理",
+      noPost:"没有帖子。", pin:"置顶", edit:"修改", del:"删除",
+      adminTitle:"课程管理", admName:"课程名", admDesc:"描述", admEx:"老师须知", admPopup:"公告弹窗",
+      admNamePh:"课程名称", admDescPh:"课程详细描述", admExPh:"固定在顶部的提示", admPopupPh:"进入时弹窗（空则不显示）",
+      admSave:"保存", admCancel:"取消", admPw:"管理员密码", admSaved:"已保存。", admDelConfirm:"确定删除吗？",
+      noticePw:"密码", noticePwPh:"输入密码", noticeOk:"确认", noticeCancel:"取消", noticeTitle:"公告",
+      mypage:"我的页面", logout:"退出",
+      mpTitle:"我的页面", mpPhotoBtn:"更换照片", mpPwLabel:"修改密码", mpCurPw:"当前密码", mpNewPw:"新密码 (至少4位)", mpNewPw2:"确认新密码", mpSave:"保存",
+      mpErrCur:"当前密码不正确。", mpErrShort:"新密码至少需要4位。", mpErrMatch:"两次输入的新密码不一致。", mpOk:"已保存。",
+    },
+    ru: {
+      opt:"Выберите урок", classLabel:"Выбор урока", enter:"Войти", submit:"Опубликовать", edit_finish:"Изм.завершено", teacher_notice:"Заметка учителя",
+      refresh:"↻ Обновить", refreshMob:"Обновить", backHome:"← Назад", search:"Поиск...", sortNew:"Новые", sortLike:"Популярные",
+      uploadLabel:"Прикрепить фото (клик или Ctrl+V, макс. 4)", cancelEdit:"Отмена", adminBtn:"Управление",
+      noPost:"Нет записей.", pin:"Закреп", edit:"Ред.", del:"Удал.",
+      adminTitle:"Управление уроком", admName:"Название", admDesc:"Описание", admEx:"Заметка учителя", admPopup:"Всплывающее окно",
+      admNamePh:"Название урока", admDescPh:"Описание урока", admExPh:"Закреплённое объявление", admPopupPh:"Всплывающее окно при входе",
+      admSave:"Сохранить", admCancel:"Отмена", admPw:"Пароль администратора", admSaved:"Сохранено.", admDelConfirm:"Удалить?",
+      noticePw:"Пароль", noticePwPh:"Введите пароль", noticeOk:"OK", noticeCancel:"Отмена", noticeTitle:"Объявление",
+      mypage:"Профиль", logout:"Выйти",
+      mpTitle:"Профиль", mpPhotoBtn:"Сменить фото", mpPwLabel:"Сменить пароль", mpCurPw:"Текущий пароль", mpNewPw:"Новый пароль (мин. 4)", mpNewPw2:"Подтвердить пароль", mpSave:"Сохранить",
+      mpErrCur:"Неверный текущий пароль.", mpErrShort:"Новый пароль должен быть не менее 4 символов.", mpErrMatch:"Пароли не совпадают.", mpOk:"Сохранено.",
+    },
+    en: {
+      opt:"Select class", classLabel:"Select Class", enter:"Enter", submit:"Post", edit_finish:"Save edit", teacher_notice:"Teacher's Note",
+      refresh:"↻ Refresh", refreshMob:"Refresh", backHome:"← Back", search:"Search...", sortNew:"Newest", sortLike:"Popular",
+      uploadLabel:"Attach image (click or Ctrl+V, max 4)", cancelEdit:"Cancel edit", adminBtn:"Admin",
+      noPost:"No posts.", pin:"Pin", edit:"Edit", del:"Del",
+      adminTitle:"Class Management", admName:"Class name", admDesc:"Description", admEx:"Teacher's Note", admPopup:"Notice popup",
+      admNamePh:"Class name", admDescPh:"Class description", admExPh:"Fixed notice at top", admPopupPh:"Popup on entry (empty = hidden)",
+      admSave:"Save", admCancel:"Cancel", admPw:"Admin password", admSaved:"Saved.", admDelConfirm:"Delete this?",
+      noticePw:"Password", noticePwPh:"Enter password", noticeOk:"OK", noticeCancel:"Cancel", noticeTitle:"Notice",
+      mypage:"My Page", logout:"Logout",
+      mpTitle:"My Page", mpPhotoBtn:"Change Photo", mpPwLabel:"Change Password", mpCurPw:"Current password", mpNewPw:"New password (min. 4)", mpNewPw2:"Confirm new password", mpSave:"Save",
+      mpErrCur:"Current password is incorrect.", mpErrShort:"New password must be at least 4 characters.", mpErrMatch:"Passwords do not match.", mpOk:"Saved.",
+    }
   };
 
   // ── DeepL 번역 ──
@@ -953,8 +1002,53 @@
     currentLang = lang;
     localStorage.setItem('ohinfo_lang', lang);
     updateLangCheck(lang);
-    document.getElementById('ui-enter-btn').innerText = uiText[lang]?.enter || uiText.ko.enter;
-    document.getElementById('subBtn').innerText = getHidden('f_mode') === 'edit' ? (uiText[lang]?.edit_finish||uiText.ko.edit_finish) : (uiText[lang]?.submit||uiText.ko.submit);
+    const t = uiText[lang] || uiText.ko;
+    // step1
+    const clLabel = document.getElementById('ui-class-label'); if (clLabel) clLabel.innerText = t.classLabel;
+    const entBtn = document.getElementById('ui-enter-btn'); if (entBtn) entBtn.innerText = t.enter;
+    // step2 board
+    const subBtn = document.getElementById('subBtn'); if (subBtn) subBtn.innerText = getHidden('f_mode') === 'edit' ? t.edit_finish : t.submit;
+    const cancelEditBtn = document.getElementById('cancelEditBtn'); if (cancelEditBtn) cancelEditBtn.innerText = t.cancelEdit;
+    const sideRefresh = document.querySelector('.sidebar-refresh'); if (sideRefresh) sideRefresh.innerText = t.refresh;
+    const mobRefresh = document.querySelector('.board-header-mobile .btn'); if (mobRefresh) mobRefresh.innerText = t.refreshMob;
+    const backHomeBtn = document.querySelector('.board-sidebar > div > .btn.ghost'); if (backHomeBtn) backHomeBtn.innerText = t.backHome;
+    const searchInp = document.getElementById('searchInput'); if (searchInp) searchInp.placeholder = t.search;
+    const sortNewBtn = document.getElementById('sortNew'); if (sortNewBtn) sortNewBtn.innerText = t.sortNew;
+    const sortLikeBtn = document.getElementById('sortLike'); if (sortLikeBtn) sortLikeBtn.innerText = t.sortLike;
+    const uploadLabel = document.getElementById('ui-upload-label'); if (uploadLabel) { const prev = document.getElementById('previewArea'); uploadLabel.innerHTML = t.uploadLabel; if (prev) uploadLabel.appendChild(prev); }
+    // admin panel
+    const admTitle = document.querySelector('#adminPanel h2'); if (admTitle) admTitle.innerText = t.adminTitle;
+    const admSaveBtn = document.querySelector('#adminPanel .btn.accent[onclick="saveAdminClass()"]'); if (admSaveBtn) admSaveBtn.innerText = t.admSave;
+    const admCancelBtn = document.getElementById('adm_cancel_btn'); if (admCancelBtn) admCancelBtn.innerText = t.admCancel;
+    const admNameEl = document.querySelector('[for="adm_name"], #adminPanel .field label:nth-of-type(1)');
+    document.querySelectorAll('#adminPanel .field').forEach(f => {
+      const lbl = f.querySelector('label'); const inp = f.querySelector('input,textarea');
+      if (!lbl || !inp) return;
+      if (inp.id === 'adm_name') { lbl.innerText = t.admName; inp.placeholder = t.admNamePh; }
+      else if (inp.id === 'adm_desc') { lbl.innerText = t.admDesc; inp.placeholder = t.admDescPh; }
+      else if (inp.id === 'adm_ex') { lbl.innerText = t.admEx; inp.placeholder = t.admExPh; }
+      else if (inp.id === 'adm_popup') { lbl.innerText = t.admPopup; inp.placeholder = t.admPopupPh; }
+    });
+    // nav user dropdown
+    const ddMy = document.querySelector('#userDropdown .user-dropdown-item:first-child'); if (ddMy) ddMy.innerHTML = `👤 ${t.mypage}`;
+    const ddOut = document.querySelector('#userDropdown .user-dropdown-item.danger'); if (ddOut) ddOut.innerHTML = `🚪 ${t.logout}`;
+    // notice popup
+    const popTitle = document.querySelector('#popupOverlay h2'); if (popTitle) popTitle.innerText = t.noticeTitle;
+    const popOk = document.querySelector('#popupOverlay .btn.accent[onclick="closePopup()"]'); if (popOk) popOk.innerText = t.noticeOk;
+    // password overlay
+    const pwOk = document.querySelector('.pw-actions .btn.accent[onclick="pwConfirm()"]'); if (pwOk) pwOk.innerText = t.noticeOk;
+    const pwCan = document.querySelector('.pw-actions .btn.ghost[onclick="pwCancel()"]'); if (pwCan) pwCan.innerText = t.noticeCancel;
+    const pwInp = document.getElementById('pwInput'); if (pwInp) pwInp.placeholder = t.noticePwPh;
+    // mypage modal
+    const mpT = document.querySelector('#myPageOverlay .modal-title'); if (mpT) mpT.innerText = t.mpTitle;
+    const mpPb = document.querySelector('.btn-photo-change'); if (mpPb) mpPb.innerText = t.mpPhotoBtn;
+    const mpPwL = document.querySelector('#myPageOverlay .modal-section-label'); if (mpPwL) mpPwL.innerText = t.mpPwLabel;
+    const mpC = document.getElementById('mpCurPw'); if (mpC) mpC.placeholder = t.mpCurPw;
+    const mpN = document.getElementById('mpNewPw'); if (mpN) mpN.placeholder = t.mpNewPw;
+    const mpN2 = document.getElementById('mpNewPw2'); if (mpN2) mpN2.placeholder = t.mpNewPw2;
+    const mpSv = document.getElementById('mpSaveBtn'); if (mpSv) mpSv.innerText = t.mpSave;
+    // nav admin button
+    const navAdminBtn = document.querySelector('.nav-admin'); if (navAdminBtn) navAdminBtn.innerText = t.adminBtn;
     if (lang !== 'ru') closeKeyboard();
     updateClassList();
     if (refreshing) manualRefresh();
@@ -982,7 +1076,7 @@
     if (inBoard) { goHome(); } else { window.location.href = 'home.html'; }
   }
 
-  function toggleAdmin() { askPassword('관리자 비밀번호').then(pw => { if (pw !== MASTER_PW) return; document.getElementById('adminPanel').classList.toggle('hidden'); if (!document.getElementById('adminPanel').classList.contains('hidden')) { loadAdminList(); window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); } }); }
+  function toggleAdmin() { askPassword(uiText[currentLang]?.admPw||uiText.ko.admPw).then(pw => { if (pw !== MASTER_PW) return; document.getElementById('adminPanel').classList.toggle('hidden'); if (!document.getElementById('adminPanel').classList.contains('hidden')) { loadAdminList(); window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); } }); }
 
   function startBoard() {
     const cls = document.getElementById('classList').value;
@@ -1060,7 +1154,7 @@
       ? `<div class="post-card teacher-card visible"><div class="post-sub">${noticeLabel}</div><div class="post-msg">${fmtMsg(ex)}</div></div>`
       : '';
     let html = '';
-    if (!posts.length) { display.innerHTML = `<div style="text-align:center;padding:48px 0;color:var(--sub);font-size:0.92rem;">게시물이 없습니다.</div>`; return; }
+    if (!posts.length) { display.innerHTML = `<div style="text-align:center;padding:48px 0;color:var(--sub);font-size:0.92rem;">${uiText[currentLang]?.noPost||uiText.ko.noPost}</div>`; return; }
     posts.forEach((p) => {
       const hasLiked = localStorage.getItem('voted_'+p.id);
       const _srch = [p.subject,p.subKo,p.message,p.msgKo,p.name].filter(Boolean).join(' ').replace(/"/g,'&quot;');
@@ -1074,8 +1168,8 @@
             <span>❤</span><span class="like-count" style="font-weight:700;">${p.likes}</span>
           </div>
           <div class="action-links">
-            <a class="pin-link ${p.pinned?'is-pinned':''}" onclick="handlePinClick('${p.id}')">핀</a>
-            ${!p._readonly && String(p.studentId)===String(SESSION.id) ? `<a onclick="handleEditClick('${p.id}')">수정</a><a class="del-link" onclick="openDelete('${p.id}')">삭제</a>` : ''}
+            <a class="pin-link ${p.pinned?'is-pinned':''}" onclick="handlePinClick('${p.id}')">${uiText[currentLang]?.pin||uiText.ko.pin}</a>
+            ${!p._readonly && String(p.studentId)===String(SESSION.id) ? `<a onclick="handleEditClick('${p.id}')">${uiText[currentLang]?.edit||uiText.ko.edit}</a><a class="del-link" onclick="openDelete('${p.id}')">${uiText[currentLang]?.del||uiText.ko.del}</a>` : ''}
           </div>
         </div>
         <div class="post-byline">${p.name}(${p.num}) · ${p.time}</div>
@@ -1124,7 +1218,7 @@
   }
 
   async function handlePinClick(postId) {
-    const pw = await askPassword('관리자 비밀번호');
+    const pw = await askPassword(uiText[currentLang]?.admPw||uiText.ko.admPw);
     if (pw !== MASTER_PW) return;
     const post = currentPosts.find(p => p.id === postId);
     if (!post) return;
@@ -1228,7 +1322,7 @@
   function cancelEdit(){document.getElementById('postForm').reset();fillSession();setHidden('f_mode','add');setHidden('f_postId','');imgList=[];updatePreview();document.getElementById('subBtn').innerText=uiText[currentLang]?.submit||uiText.ko.submit;document.getElementById('subBtn').disabled=false;document.getElementById('cancelEditBtn').classList.add('hidden');}
 
   async function openDelete(id) {
-    if (!confirm('게시물을 삭제하시겠습니까?')) return;
+    if (!confirm(uiText[currentLang]?.admDelConfirm||uiText.ko.admDelConfirm)) return;
     toggleLoading(true);
     try {
       await updateDoc(doc(db, 'posts', id), { deleted: true });
@@ -1284,7 +1378,7 @@
       toggleLoading(true);
       try {
         await updateDoc(doc(db, 'classes', classId), { grade, group, name, desc, ex, popup });
-        alert('저장되었습니다.');
+        alert(uiText[currentLang]?.admSaved||uiText.ko.admSaved);
         resetAdminForm();
         await loadAdminList();
         await updateClassList();
@@ -1293,7 +1387,7 @@
     } else {
       const gL = [...document.querySelectorAll('.adm-g:checked')].map(i => i.value.replace('학년', ''));
       const bL = [...document.querySelectorAll('.adm-b:checked')].map(i => i.value.replace('반', ''));
-      if (!gL.length || !bL.length) { alert('학년과 반을 각각 최소 하나씩 선택해주세요.'); return; }
+      if (!gL.length || !bL.length) { alert(uiText[currentLang]?.admSave||uiText.ko.admSave); return; }
       toggleLoading(true);
       try {
         const promises = [];
@@ -1303,7 +1397,7 @@
           }
         }
         await Promise.all(promises);
-        alert('저장되었습니다.');
+        alert(uiText[currentLang]?.admSaved||uiText.ko.admSaved);
         resetAdminForm();
         await loadAdminList();
         await updateClassList();
@@ -1313,7 +1407,7 @@
   }
 
   async function delAdminClass(id) {
-    if (!confirm('삭제하시겠습니까?')) return;
+    if (!confirm(uiText[currentLang]?.admDelConfirm||uiText.ko.admDelConfirm)) return;
     toggleLoading(true);
     try {
       await deleteDoc(doc(db, 'classes', id));
