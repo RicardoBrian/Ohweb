@@ -724,9 +724,11 @@
     const snap = await getDocs(constraints.length ? query(q, ...constraints) : q);
     let students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-    // 클라이언트 필터
-    if (grade) students = students.filter(s => s.grade === grade);
-    if (cls)   students = students.filter(s => s.class === cls);
+    // 클라이언트 필터 (DB값이 "1" 또는 "1학년" 형태 모두 대응)
+    const ng = v => String(v||'').replace(/학년/g,'').trim();
+    const nc = v => String(v||'').replace(/반/g,'').trim();
+    if (grade) students = students.filter(s => ng(s.grade) === ng(grade));
+    if (cls)   students = students.filter(s => nc(s.class) === nc(cls));
 
     // 학년→반→번호 정렬
     students.sort((a,b) => {

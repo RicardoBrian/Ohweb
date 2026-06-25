@@ -584,8 +584,11 @@
         where('schoolId', '==', schoolId),
         where('number', '==', number)
       ));
+      const ng = v => String(v||'').replace(/학년/g,'').trim();
+      const nc = v => String(v||'').replace(/반/g,'').trim();
       const match = snap.docs.find(d => {
-        const s = d.data(); return s.grade === grade && s.class === cls;
+        const s = d.data();
+        return ng(s.grade) === ng(grade) && nc(s.class) === nc(cls);
       });
       if (!match) { err.innerText = t.errNotFound; load(false); return; }
       const data = match.data();
@@ -619,7 +622,9 @@
       ));
       const match = snap.docs.find(d => {
         const s = d.data();
-        return s.grade === grade && s.class === cls && s.name === name;
+        const ng = v => String(v||'').replace(/학년/g,'').trim();
+        const nc = v => String(v||'').replace(/반/g,'').trim();
+        return ng(s.grade) === ng(grade) && nc(s.class) === nc(cls) && s.name === name;
       });
       if (!match) { err.innerText = t.errNoMatch; load(false); return; }
       const data = match.data();
