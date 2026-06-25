@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ohweb 관리자 대시보드</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <style>
+    :root {
+      --glass: rgba(255,255,255,0.28);
+      --glass-strong: rgba(255,255,255,0.42);
+      --glass-nav: rgba(255,255,255,0.3);
+      --border: rgba(255,255,255,0.6);
+      --border-card: rgba(255,255,255,0.48);
+      --highlight: inset 0 1px 0 rgba(255,255,255,0.7);
+      --text: #1a1f2e;
+      --sub: #7a849a;
+      --accent: #2a5ce6;
+      --accent-light: rgba(42,92,230,0.12);
+      --blur: blur(28px);
+      --shadow: 0 4px 20px rgba(60,80,160,0.1);
+      --shadow-md: 0 8px 32px rgba(60,80,160,0.18);
+      --radius: 18px;
+      --radius-sm: 11px;
+      --nav-h: 58px;
+    }
+    body.dark {
+      --glass: rgba(255,255,255,0.07);
+      --glass-strong: rgba(255,255,255,0.11);
+      --glass-nav: rgba(10,12,25,0.65);
+      --border: rgba(255,255,255,0.14);
+      --border-card: rgba(255,255,255,0.1);
+      --highlight: inset 0 1px 0 rgba(255,255,255,0.1);
+      --text: #dde2f0;
+      --sub: #525a70;
+      --accent: #4f8df7;
+      --accent-light: rgba(79,141,247,0.15);
+      --shadow: 0 4px 20px rgba(0,0,0,0.45);
+      --shadow-md: 0 8px 32px rgba(0,0,0,0.55);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background:
+        radial-gradient(ellipse at 15% 20%, #b8caff 0%, transparent 50%),
+        radial-gradient(ellipse at 85% 10%, #d4b8ff 0%, transparent 45%),
+        radial-gradient(ellipse at 60% 80%, #b8e0ff 0%, transparent 50%),
+        radial-gradient(ellipse at 5% 90%, #c8d4ff 0%, transparent 40%),
+        #cdd8ff;
+      background-attachment: fixed;
+      color: var(--text);
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 16px;
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+    body.dark {
+      background:
+        radial-gradient(ellipse at 15% 20%, #1a2050 0%, transparent 50%),
+        radial-gradient(ellipse at 85% 10%, #1e1040 0%, transparent 45%),
+        radial-gradient(ellipse at 60% 80%, #0d1a35 0%, transparent 50%),
+        #080c1a;
+      background-attachment: fixed;
+    }
+    .hidden { display: none !important; }
+
+    /* 네비 */
+    .nav {
+      position: sticky; top: 0; z-index: 200;
+      background: var(--glass-nav);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 1px 0 rgba(255,255,255,0.35), var(--shadow);
+      padding: 0 28px; height: var(--nav-h);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .nav-brand {
+      font-size: 1.1rem; font-weight: 900; letter-spacing: -0.02em;
+      background: linear-gradient(135deg, var(--accent), #7c4dff);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .nav-right { display: flex; align-items: center; gap: 8px; }
+    .nav-tab {
+      font-family: inherit; font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; border-radius: 50px;
+      padding: 7px 16px; border: 1px solid transparent;
+      background: transparent; color: var(--sub);
+      transition: all 0.2s; white-space: nowrap;
+    }
+    .nav-tab:hover { background: var(--glass); color: var(--text); border-color: var(--border-card); }
+    .nav-tab.active {
+      background: rgba(42,92,230,0.82); border-color: rgba(100,140,255,0.5); color: #fff;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 20px rgba(42,92,230,0.35);
+    }
+    .dark-toggle {
+      width: 42px; height: 24px; border-radius: 50px;
+      background: var(--glass); border: 1px solid var(--border);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight); cursor: pointer; position: relative; transition: 0.3s; flex-shrink: 0;
+    }
+    body.dark .dark-toggle { background: rgba(42,92,230,0.6); border-color: rgba(100,140,255,0.4); }
+    .dark-toggle::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.2); transition: transform 0.3s;
+    }
+    body.dark .dark-toggle::after { transform: translateX(18px); }
+
+    /* 콘텐츠 */
+    .wrap { max-width: 960px; margin: 0 auto; padding: 32px 24px 80px; }
+    @media (max-width: 600px) { .wrap { padding: 20px 16px 60px; } }
+
+    /* 섹션 */
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* 카드 */
+    .card {
+      background: var(--glass-strong);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 28px;
+      margin-bottom: 20px;
+      box-shadow: var(--highlight), var(--shadow);
+    }
+    .card h2 {
+      font-size: 1.05rem; font-weight: 800;
+      margin-bottom: 20px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card h2 .icon { font-size: 1.1rem; }
+
+    /* 인풋 */
+    .inp {
+      width: 100%; padding: 11px 14px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border-card);
+      background: var(--glass); color: var(--text);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight);
+      font-family: inherit; font-size: 0.95rem; outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .inp::placeholder { color: var(--sub); }
+    .inp:focus { border-color: rgba(42,92,230,0.55); box-shadow: var(--highlight), 0 0 0 3px rgba(42,92,230,0.15); }
+    textarea.inp { resize: vertical; min-height: 80px; line-height: 1.65; }
+    select.inp {
+      cursor: pointer; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;
+    }
+    .field { margin-bottom: 12px; }
+    .field label { display: block; font-size: 0.72rem; font-weight: 700; color: var(--sub); margin-bottom: 5px; letter-spacing: 0.05em; text-transform: uppercase; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 500px) { .field-row { grid-template-columns: 1fr; } }
+
+    /* 버튼 */
+    .btn {
+      font-family: inherit; font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; border-radius: 50px;
+      padding: 8px 20px; border: 1px solid var(--border);
+      background: var(--glass); color: var(--text);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight), var(--shadow);
+      transition: background 0.2s, transform 0.15s;
+      white-space: nowrap;
+    }
+    .btn:hover { background: var(--glass-strong); }
+    .btn:active { transform: scale(0.96); }
+    .btn.accent {
+      background: rgba(42,92,230,0.82); border-color: rgba(100,140,255,0.5); color: #fff;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 20px rgba(42,92,230,0.35);
+    }
+    .btn.accent:hover { background: rgba(42,92,230,0.95); }
+    .btn.danger { color: #ef4444; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.08); box-shadow: none; }
+    .btn.ghost { border-color: transparent; background: transparent; box-shadow: none; }
+    .btn.ghost:hover { background: var(--glass); }
+    .btn.sm { padding: 5px 14px; font-size: 0.78rem; }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+
+    /* 리스트 아이템 */
+    .list-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 16px;
+      background: var(--glass);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-card);
+      border-radius: var(--radius-sm);
+      margin-bottom: 8px;
+      flex-wrap: wrap; gap: 8px;
+      transition: box-shadow 0.2s;
+    }
+    .list-item:hover { box-shadow: var(--highlight), var(--shadow); }
+    .list-item-info { display: flex; flex-direction: column; gap: 2px; }
+    .list-item-name { font-weight: 700; font-size: 0.95rem; }
+    .list-item-sub { font-size: 0.78rem; color: var(--sub); }
+    .list-item-actions { display: flex; gap: 8px; align-items: center; }
+
+    /* 배지 */
+    .badge {
+      display: inline-block; border-radius: 50px;
+      padding: 3px 10px; font-size: 0.72rem; font-weight: 700;
+      border: 1px solid;
+    }
+    .badge.on { color: var(--accent); background: var(--accent-light); border-color: rgba(42,92,230,0.3); }
+    .badge.off { color: #ef4444; background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.25); }
+
+    /* 토글 스위치 */
+    .toggle-wrap { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .toggle-wrap span { font-size: 0.88rem; font-weight: 600; min-width: 60px; }
+    .toggle {
+      position: relative; width: 44px; height: 24px;
+      cursor: pointer; flex-shrink: 0;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-track {
+      position: absolute; inset: 0;
+      background: var(--border-card); border-radius: 50px;
+      transition: 0.3s; border: 1px solid var(--border-card);
+    }
+    .toggle input:checked + .toggle-track { background: rgba(42,92,230,0.8); border-color: rgba(42,92,230,0.5); }
+    .toggle-track::after {
+      content: ''; position: absolute; top: 2px; left: 2px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+      transition: transform 0.3s;
+    }
+    .toggle input:checked + .toggle-track::after { transform: translateX(20px); }
+
+    /* 체크박스 그리드 */
+    .checkbox-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+      gap: 8px; padding: 14px;
+      background: var(--glass); border: 1px solid var(--border-card);
+      border-radius: var(--radius-sm); margin-bottom: 12px;
+    }
+    .checkbox-grid label {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 0.88rem; font-weight: 600; cursor: pointer;
+    }
+    .checkbox-grid hr { grid-column: 1 / -1; border: none; border-top: 1px solid var(--border-card); }
+
+    /* CSV 업로드 */
+    .upload-zone {
+      border: 1.5px dashed var(--border-card);
+      border-radius: var(--radius-sm);
+      padding: 24px; text-align: center;
+      cursor: pointer; color: var(--sub); font-size: 0.88rem;
+      transition: 0.2s; background: var(--glass);
+    }
+    .upload-zone:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+    .upload-zone .upload-icon { font-size: 2rem; margin-bottom: 8px; }
+    .upload-zone p { font-weight: 600; margin-bottom: 4px; }
+    .upload-zone small { font-size: 0.75rem; opacity: 0.7; }
+
+    /* 앱 토글 그리드 */
+    .app-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 10px; margin-top: 12px;
+    }
+    .app-card {
+      background: var(--glass);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-card);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .app-card-name { font-weight: 700; font-size: 0.88rem; }
+    .app-card-id { font-size: 0.72rem; color: var(--sub); font-weight: 600; letter-spacing: 0.04em; }
+
+    /* 선택 컨트롤 */
+    .select-controls {
+      display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center;
+    }
+    .select-controls label { font-size: 0.82rem; font-weight: 700; color: var(--sub); }
+    .select-controls select.inp { width: auto; min-width: 100px; }
+
+    /* 표 */
+    .table-wrap { overflow-x: auto; border-radius: var(--radius-sm); border: 1px solid var(--border-card); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    th { background: var(--glass); padding: 10px 14px; font-weight: 700; text-align: left; font-size: 0.78rem; color: var(--sub); letter-spacing: 0.04em; text-transform: uppercase; border-bottom: 1px solid var(--border-card); white-space: nowrap; }
+    td { padding: 10px 14px; border-bottom: 1px solid var(--border-card); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--glass); }
+
+    /* 로딩 */
+    #loadingOverlay {
+      position: fixed; inset: 0; z-index: 9000;
+      display: none; justify-content: center; align-items: center;
+      background: rgba(190,205,255,0.3);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    }
+    body.dark #loadingOverlay { background: rgba(0,0,0,0.5); }
+    .spinner {
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 3px solid var(--border); border-top-color: var(--accent);
+      animation: spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* 알림 토스트 */
+    .toast {
+      position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border); border-radius: 50px;
+      padding: 12px 24px; font-size: 0.88rem; font-weight: 700;
+      box-shadow: var(--highlight), var(--shadow-md);
+      z-index: 9999; transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+      white-space: nowrap;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.success { color: #22c55e; }
+    .toast.error { color: #ef4444; }
+
+    /* 섹션 제목 */
+    .section-header { margin-bottom: 24px; }
+    .section-header h1 { font-size: 1.6rem; font-weight: 900; letter-spacing: -0.02em; }
+    .section-header p { font-size: 0.88rem; color: var(--sub); margin-top: 4px; }
+
+    /* 통계 카드 */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .stat-card {
+      background: var(--glass-strong);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 18px 20px;
+      box-shadow: var(--highlight), var(--shadow);
+    }
+    .stat-card .stat-num { font-size: 2rem; font-weight: 900; color: var(--accent); line-height: 1; }
+    .stat-card .stat-label { font-size: 0.78rem; font-weight: 700; color: var(--sub); margin-top: 4px; letter-spacing: 0.04em; text-transform: uppercase; }
+
+    /* 구분선 */
+    .divider { border: none; border-top: 1px solid var(--border-card); margin: 20px 0; }
+
+    /* 빈 상태 */
+    .empty-state { text-align: center; padding: 40px 0; color: var(--sub); font-size: 0.9rem; }
+    .empty-state .empty-icon { font-size: 2.5rem; margin-bottom: 10px; }
+
+    /* 확인 모달 */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 8000;
+      display: none; justify-content: center; align-items: center;
+      background: rgba(0,0,0,0.45); backdrop-filter: blur(8px);
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-box {
+      background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border); border-radius: 22px;
+      padding: 32px; max-width: 380px; width: 90%;
+      box-shadow: var(--highlight), var(--shadow-md);
+    }
+    .modal-box h3 { font-size: 1rem; font-weight: 800; margin-bottom: 10px; }
+    .modal-box p { font-size: 0.88rem; color: var(--sub); line-height: 1.65; margin-bottom: 22px; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  </style>
+</head>
+<body>
+
+<div id="loadingOverlay"><div class="spinner"></div></div>
+<div class="toast" id="toast"></div>
+
+<!-- 확인 모달 -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-box">
+    <h3 id="confirmTitle">확인</h3>
+    <p id="confirmMsg"></p>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="confirmCancel()">취소</button>
+      <button class="btn danger" onclick="confirmOk()">삭제</button>
+    </div>
+  </div>
+</div>
+
+<!-- 네비 -->
+<nav class="nav">
+  <div class="nav-brand">Ohweb 관리자</div>
+  <div class="nav-right">
+    <button class="nav-tab active" id="tab-schools" onclick="showSection('schools')">🏫 학교</button>
+    <button class="nav-tab" id="tab-students" onclick="showSection('students')">👥 학생</button>
+    <button class="nav-tab" id="tab-apps" onclick="showSection('apps')">📱 앱 설정</button>
+    <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
+    <button class="btn ghost sm" onclick="logout()">로그아웃</button>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <!-- 학교 관리 섹션 -->
+  <div class="section active" id="section-schools">
+    <div class="section-header">
+      <h1>학교 관리</h1>
+      <p>학교를 추가하고 관리합니다.</p>
+    </div>
+
+    <div class="stats-grid" id="schoolStats">
+      <div class="stat-card"><div class="stat-num" id="statSchoolCount">-</div><div class="stat-label">등록 학교</div></div>
+      <div class="stat-card"><div class="stat-num" id="statStudentCount">-</div><div class="stat-label">전체 학생</div></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">➕</span> 학교 추가</h2>
+      <div class="field-row">
+        <div class="field">
+          <label>학교 이름</label>
+          <input class="inp" id="schoolName" placeholder="예: 관산중학교">
+        </div>
+        <div class="field">
+          <label>학교 코드 (선택)</label>
+          <input class="inp" id="schoolCode" placeholder="예: gwansan">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn accent" onclick="addSchool()">학교 추가</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🏫</span> 학교 목록</h2>
+      <div id="schoolList"><div class="empty-state"><div class="empty-icon">🏫</div>등록된 학교가 없습니다.</div></div>
+    </div>
+  </div>
+
+  <!-- 학생 관리 섹션 -->
+  <div class="section" id="section-students">
+    <div class="section-header">
+      <h1>학생 명단</h1>
+      <p>학교별 학생 명단을 CSV로 업로드합니다.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">📂</span> CSV 업로드</h2>
+      <div class="field">
+        <label>학교 선택</label>
+        <select class="inp" id="uploadSchool"><option value="">학교를 선택하세요</option></select>
+      </div>
+
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('csvFile').click()">
+        <div class="upload-icon">📄</div>
+        <p>CSV 파일을 클릭하여 업로드</p>
+        <small>열 순서: 이름, 학번, 학년, 반 (첫 행은 헤더로 자동 처리)</small>
+      </div>
+      <input type="file" id="csvFile" accept=".csv" class="hidden" onchange="handleCSV(this)">
+
+      <div id="csvPreview" class="hidden" style="margin-top: 14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <span style="font-size:0.88rem; font-weight:700;" id="csvPreviewInfo"></span>
+          <div style="display:flex; gap:8px;">
+            <button class="btn ghost sm" onclick="cancelCSV()">취소</button>
+            <button class="btn accent sm" onclick="uploadCSV()">업로드 확인</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>이름</th><th>학번</th><th>학년</th><th>반</th></tr></thead>
+            <tbody id="csvTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">👥</span> 학생 목록</h2>
+      <div class="select-controls">
+        <label>학교</label>
+        <select class="inp" id="filterSchool" onchange="loadStudents()"><option value="">전체</option></select>
+        <label>학년</label>
+        <select class="inp" id="filterGrade" onchange="loadStudents()">
+          <option value="">전체</option>
+          <option>1학년</option><option>2학년</option><option>3학년</option>
+        </select>
+        <label>반</label>
+        <select class="inp" id="filterClass" onchange="loadStudents()">
+          <option value="">전체</option>
+          <option>1반</option><option>2반</option><option>3반</option><option>4반</option><option>5반</option>
+        </select>
+      </div>
+      <div id="studentList"><div class="empty-state"><div class="empty-icon">👥</div>학생이 없습니다.</div></div>
+    </div>
+  </div>
+
+  <!-- 앱 설정 섹션 -->
+  <div class="section" id="section-apps">
+    <div class="section-header">
+      <h1>앱 공개 설정</h1>
+      <p>학급별로 학생용 앱의 공개 여부를 설정합니다.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">🎯</span> 학급 선택</h2>
+      <div class="select-controls">
+        <label>학교</label>
+        <select class="inp" id="appSchool" onchange="loadAppSettings()"><option value="">학교 선택</option></select>
+        <label>학년</label>
+        <select class="inp" id="appGrade" onchange="loadAppSettings()">
+          <option value="">전체</option>
+          <option>1학년</option><option>2학년</option><option>3학년</option>
+        </select>
+        <label>반</label>
+        <select class="inp" id="appClass" onchange="loadAppSettings()">
+          <option value="">전체</option>
+          <option>1반</option><option>2반</option><option>3반</option><option>4반</option><option>5반</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="appSettingsArea">
+      <div class="empty-state"><div class="empty-icon">📱</div>학교와 학급을 선택하세요.</div>
+    </div>
+  </div>
+
+</div>
+
+<script type="module">
+  import { db } from './firebase-config.js';
+  import {
+    collection, addDoc, getDocs, deleteDoc, doc,
+    query, where, orderBy, setDoc, getDoc, serverTimestamp, writeBatch
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  // 인증 확인
+  if (sessionStorage.getItem('ohweb_admin') !== '1') {
+    window.location.href = 'index.html';
+  }
+
+  // 앱 목록 정의
+  const APPS = [
+    { id: 'ohdlet', name: '패들릿', emoji: '📌' },
+    { id: 'submit', name: '과제제출', emoji: '📝' },
+    { id: 'exam',   name: '시험',    emoji: '📋' },
+    { id: 'form',   name: '설문실습', emoji: '📊' },
+  ];
+
+  let schools = [];
+  let csvData = [];
+  let confirmCallback = null;
+
+  // ── 유틸 ──
+  function showLoading(v) { document.getElementById('loadingOverlay').style.display = v ? 'flex' : 'none'; }
+
+  function toast(msg, type = '') {
+    const el = document.getElementById('toast');
+    el.className = `toast ${type}`;
+    el.innerText = msg;
+    el.classList.add('show');
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove('show'), 2800);
+  }
+
+  function confirmDialog(title, msg, cb) {
+    document.getElementById('confirmTitle').innerText = title;
+    document.getElementById('confirmMsg').innerText = msg;
+    confirmCallback = cb;
+    document.getElementById('confirmModal').classList.add('show');
+  }
+
+  window.confirmOk = () => { document.getElementById('confirmModal').classList.remove('show'); if (confirmCallback) confirmCallback(); };
+  window.confirmCancel = () => { document.getElementById('confirmModal').classList.remove('show'); };
+
+  // ── 섹션 전환 ──
+  window.showSection = (name) => {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('section-' + name).classList.add('active');
+    document.getElementById('tab-' + name).classList.add('active');
+  };
+
+  // ── 다크모드 ──
+  window.toggleDark = () => {
+    document.body.classList.toggle('dark');
+    localStorage.setItem('dark', document.body.classList.contains('dark') ? '1' : '0');
+  };
+  if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
+
+  // ── 로그아웃 ──
+  window.logout = () => { sessionStorage.removeItem('ohweb_admin'); window.location.href = 'index.html'; };
+
+  // ── 학교 관리 ──
+  async function loadSchools() {
+    const snap = await getDocs(query(collection(db, 'schools'), orderBy('createdAt', 'desc')));
+    schools = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // 학생 수 집계
+    const studSnap = await getDocs(collection(db, 'students'));
+    const totalStudents = studSnap.size;
+
+    document.getElementById('statSchoolCount').innerText = schools.length;
+    document.getElementById('statStudentCount').innerText = totalStudents;
+
+    renderSchoolList();
+    populateSchoolSelects();
+  }
+
+  function renderSchoolList() {
+    const el = document.getElementById('schoolList');
+    if (!schools.length) {
+      el.innerHTML = '<div class="empty-state"><div class="empty-icon">🏫</div>등록된 학교가 없습니다.</div>';
+      return;
+    }
+    el.innerHTML = schools.map(s => `
+      <div class="list-item">
+        <div class="list-item-info">
+          <div class="list-item-name">🏫 ${s.name}</div>
+          <div class="list-item-sub">ID: ${s.id}${s.code ? ' · 코드: ' + s.code : ''}</div>
+        </div>
+        <div class="list-item-actions">
+          <button class="btn danger sm" onclick="deleteSchool('${s.id}', '${s.name}')">삭제</button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function populateSchoolSelects() {
+    const opts = schools.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+    ['uploadSchool', 'filterSchool', 'appSchool'].forEach(id => {
+      const el = document.getElementById(id);
+      const first = el.querySelector('option')?.outerHTML || '';
+      el.innerHTML = first + opts;
+    });
+  }
+
+  window.addSchool = async () => {
+    const name = document.getElementById('schoolName').value.trim();
+    const code = document.getElementById('schoolCode').value.trim();
+    if (!name) { toast('학교 이름을 입력하세요.', 'error'); return; }
+    showLoading(true);
+    try {
+      await addDoc(collection(db, 'schools'), { name, code, createdAt: serverTimestamp() });
+      document.getElementById('schoolName').value = '';
+      document.getElementById('schoolCode').value = '';
+      toast('학교가 추가되었습니다.', 'success');
+      await loadSchools();
+    } catch (e) {
+      toast('오류: ' + e.message, 'error');
+    }
+    showLoading(false);
+  };
+
+  window.deleteSchool = (id, name) => {
+    confirmDialog('학교 삭제', `"${name}"을(를) 삭제하시겠습니까? 관련 학생 데이터는 유지됩니다.`, async () => {
+      showLoading(true);
+      try {
+        await deleteDoc(doc(db, 'schools', id));
+        toast('삭제되었습니다.', 'success');
+        await loadSchools();
+      } catch (e) {
+        toast('오류: ' + e.message, 'error');
+      }
+      showLoading(false);
+    });
+  };
+
+  // ── CSV 업로드 ──
+  window.handleCSV = (input) => {
+    const file = input.files[0];
+    if (!file) return;
+    const schoolId = document.getElementById('uploadSchool').value;
+    if (!schoolId) { toast('학교를 먼저 선택하세요.', 'error'); input.value = ''; return; }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target.result;
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+      // 첫 행 헤더 감지
+      const start = /이름|name|학번/i.test(lines[0]) ? 1 : 0;
+      csvData = lines.slice(start).map(line => {
+        const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+        return { name: cols[0]||'', studentId: cols[1]||'', grade: cols[2]||'', class: cols[3]||'' };
+      }).filter(r => r.name);
+
+      document.getElementById('csvPreviewInfo').innerText = `${csvData.length}명 미리보기`;
+      document.getElementById('csvTable').innerHTML = csvData.slice(0, 20).map(r =>
+        `<tr><td>${r.name}</td><td>${r.studentId}</td><td>${r.grade}</td><td>${r.class}</td></tr>`
+      ).join('') + (csvData.length > 20 ? `<tr><td colspan="4" style="text-align:center;color:var(--sub);font-size:0.8rem;">... 외 ${csvData.length - 20}명</td></tr>` : '');
+      document.getElementById('csvPreview').classList.remove('hidden');
+    };
+    reader.readAsText(file, 'UTF-8');
+  };
+
+  window.cancelCSV = () => {
+    csvData = [];
+    document.getElementById('csvPreview').classList.add('hidden');
+    document.getElementById('csvFile').value = '';
+  };
+
+  window.uploadCSV = async () => {
+    const schoolId = document.getElementById('uploadSchool').value;
+    const school = schools.find(s => s.id === schoolId);
+    if (!school || !csvData.length) return;
+    showLoading(true);
+    try {
+      const batch = writeBatch(db);
+      csvData.forEach(r => {
+        const ref = doc(collection(db, 'students'));
+        batch.set(ref, { ...r, schoolId, schoolName: school.name, createdAt: serverTimestamp() });
+      });
+      await batch.commit();
+      toast(`${csvData.length}명 업로드 완료!`, 'success');
+      cancelCSV();
+      await loadSchools();
+      await loadStudents();
+    } catch (e) {
+      toast('오류: ' + e.message, 'error');
+    }
+    showLoading(false);
+  };
+
+  // ── 학생 목록 ──
+  window.loadStudents = async () => {
+    const schoolId = document.getElementById('filterSchool').value;
+    const grade = document.getElementById('filterGrade').value;
+    const cls = document.getElementById('filterClass').value;
+
+    let q = collection(db, 'students');
+    const constraints = [];
+    if (schoolId) constraints.push(where('schoolId', '==', schoolId));
+    if (grade)    constraints.push(where('grade', '==', grade));
+    if (cls)      constraints.push(where('class', '==', cls));
+    constraints.push(orderBy('name'));
+
+    const snap = await getDocs(query(q, ...constraints));
+    const students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    const el = document.getElementById('studentList');
+    if (!students.length) {
+      el.innerHTML = '<div class="empty-state"><div class="empty-icon">👥</div>해당 조건의 학생이 없습니다.</div>';
+      return;
+    }
+    el.innerHTML = `
+      <div style="margin-bottom:10px; font-size:0.82rem; color:var(--sub); font-weight:700;">${students.length}명</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>이름</th><th>학번</th><th>학년</th><th>반</th><th>학교</th><th></th></tr></thead>
+          <tbody>
+            ${students.map(s => `
+              <tr>
+                <td style="font-weight:700;">${s.name}</td>
+                <td>${s.studentId}</td>
+                <td>${s.grade}</td>
+                <td>${s.class}</td>
+                <td style="font-size:0.82rem;color:var(--sub);">${s.schoolName||''}</td>
+                <td><button class="btn danger sm" onclick="deleteStudent('${s.id}','${s.name}')">삭제</button></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  };
+
+  window.deleteStudent = (id, name) => {
+    confirmDialog('학생 삭제', `"${name}"을(를) 삭제하시겠습니까?`, async () => {
+      showLoading(true);
+      try {
+        await deleteDoc(doc(db, 'students', id));
+        toast('삭제되었습니다.', 'success');
+        await loadStudents();
+        await loadSchools();
+      } catch (e) {
+        toast('오류: ' + e.message, 'error');
+      }
+      showLoading(false);
+    });
+  };
+
+  // ── 앱 설정 ──
+  window.loadAppSettings = async () => {
+    const schoolId = document.getElementById('appSchool').value;
+    const grade = document.getElementById('appGrade').value;
+    const cls = document.getElementById('appClass').value;
+    const area = document.getElementById('appSettingsArea');
+
+    if (!schoolId) {
+      area.innerHTML = '<div class="empty-state"><div class="empty-icon">📱</div>학교를 선택하세요.</div>';
+      return;
+    }
+
+    showLoading(true);
+    try {
+      // 학급 목록 결정
+      const grades = grade ? [grade] : ['1학년','2학년','3학년'];
+      const classes = cls ? [cls] : ['1반','2반','3반','4반','5반'];
+      const combos = [];
+      grades.forEach(g => classes.forEach(c => combos.push({ grade: g, class: c })));
+
+      // 설정 로드
+      const settingDocs = await Promise.all(combos.map(combo => {
+        const docId = `${schoolId}_${combo.grade}_${combo.class}`;
+        return getDoc(doc(db, 'appSettings', docId)).then(d => ({
+          ...combo, docId,
+          apps: d.exists() ? (d.data().apps || {}) : {}
+        }));
+      }));
+
+      area.innerHTML = settingDocs.map(s => `
+        <div class="card" id="card_${s.docId}">
+          <h2><span class="icon">📚</span> ${s.grade} ${s.class}</h2>
+          <div class="app-grid">
+            ${APPS.map(app => `
+              <div class="app-card">
+                <div class="app-card-name">${app.emoji} ${app.name}</div>
+                <div class="app-card-id">${app.id}</div>
+                <label class="toggle" title="${app.name} 공개">
+                  <input type="checkbox" ${s.apps[app.id] ? 'checked' : ''}
+                    onchange="saveAppSetting('${s.docId}','${schoolId}','${s.grade}','${s.class}','${app.id}',this.checked)">
+                  <div class="toggle-track"></div>
+                </label>
+              </div>
+            `).join('')}
+          </div>
+          <div class="btn-row">
+            <button class="btn sm accent" onclick="enableAll('${s.docId}')">전체 공개</button>
+            <button class="btn sm danger" onclick="disableAll('${s.docId}')">전체 비공개</button>
+          </div>
+        </div>
+      `).join('');
+    } catch (e) {
+      toast('오류: ' + e.message, 'error');
+    }
+    showLoading(false);
+  };
+
+  window.saveAppSetting = async (docId, schoolId, grade, cls, appId, enabled) => {
+    try {
+      const ref = doc(db, 'appSettings', docId);
+      const snap = await getDoc(ref);
+      const apps = snap.exists() ? (snap.data().apps || {}) : {};
+      apps[appId] = enabled;
+      await setDoc(ref, { schoolId, grade, class: cls, apps }, { merge: true });
+      toast(`${appId} ${enabled ? '공개' : '비공개'} 설정 저장`, 'success');
+    } catch (e) {
+      toast('저장 오류: ' + e.message, 'error');
+    }
+  };
+
+  window.enableAll = async (docId) => {
+    const card = document.getElementById('card_' + docId);
+    card.querySelectorAll('input[type=checkbox]').forEach(cb => { if (!cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change')); } });
+  };
+
+  window.disableAll = async (docId) => {
+    const card = document.getElementById('card_' + docId);
+    card.querySelectorAll('input[type=checkbox]').forEach(cb => { if (cb.checked) { cb.checked = false; cb.dispatchEvent(new Event('change')); } });
+  };
+
+  // ── 초기화 ──
+  async function init() {
+    showLoading(true);
+    await loadSchools();
+    showLoading(false);
+  }
+
+  init();
+</script>
+</body>
+</html>

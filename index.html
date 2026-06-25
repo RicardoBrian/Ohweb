@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ohweb 관리자</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <style>
+    :root {
+      --glass: rgba(255,255,255,0.28);
+      --glass-strong: rgba(255,255,255,0.42);
+      --border: rgba(255,255,255,0.6);
+      --border-card: rgba(255,255,255,0.48);
+      --highlight: inset 0 1px 0 rgba(255,255,255,0.7);
+      --text: #1a1f2e;
+      --sub: #7a849a;
+      --accent: #2a5ce6;
+      --blur: blur(28px);
+      --shadow-md: 0 8px 32px rgba(60,80,160,0.18);
+      --radius: 18px;
+    }
+    body.dark {
+      --glass: rgba(255,255,255,0.07);
+      --glass-strong: rgba(255,255,255,0.11);
+      --border: rgba(255,255,255,0.14);
+      --border-card: rgba(255,255,255,0.1);
+      --highlight: inset 0 1px 0 rgba(255,255,255,0.1);
+      --text: #dde2f0;
+      --sub: #525a70;
+      --accent: #4f8df7;
+      --shadow-md: 0 8px 32px rgba(0,0,0,0.55);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background:
+        radial-gradient(ellipse at 15% 20%, #b8caff 0%, transparent 50%),
+        radial-gradient(ellipse at 85% 10%, #d4b8ff 0%, transparent 45%),
+        radial-gradient(ellipse at 60% 80%, #b8e0ff 0%, transparent 50%),
+        #cdd8ff;
+      background-attachment: fixed;
+      color: var(--text);
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 16px;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    body.dark {
+      background:
+        radial-gradient(ellipse at 15% 20%, #1a2050 0%, transparent 50%),
+        radial-gradient(ellipse at 85% 10%, #1e1040 0%, transparent 45%),
+        radial-gradient(ellipse at 60% 80%, #0d1a35 0%, transparent 50%),
+        #080c1a;
+      background-attachment: fixed;
+    }
+    .login-card {
+      width: 100%;
+      max-width: 380px;
+      margin: 24px;
+      background: var(--glass-strong);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 40px 36px;
+      box-shadow: var(--highlight), var(--shadow-md);
+    }
+    .logo-area {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .logo-area h1 {
+      font-size: 1.8rem;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, var(--accent), #7c4dff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .logo-area p {
+      font-size: 0.85rem;
+      color: var(--sub);
+      margin-top: 6px;
+      font-weight: 600;
+    }
+    .field { margin-bottom: 14px; }
+    .field label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--sub);
+      margin-bottom: 6px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .inp {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border-card);
+      background: var(--glass);
+      color: var(--text);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight);
+      font-family: inherit;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .inp::placeholder { color: var(--sub); }
+    .inp:focus {
+      border-color: rgba(42,92,230,0.55);
+      box-shadow: var(--highlight), 0 0 0 3px rgba(42,92,230,0.15);
+    }
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: var(--radius);
+      border: 1px solid rgba(100,140,255,0.5);
+      background: rgba(42,92,230,0.82);
+      color: #fff;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 20px rgba(42,92,230,0.35);
+      transition: background 0.2s, transform 0.15s;
+      margin-top: 8px;
+    }
+    .btn:hover { background: rgba(42,92,230,0.95); }
+    .btn:active { transform: scale(0.98); }
+    .error-msg {
+      color: #ef4444;
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-align: center;
+      margin-top: 12px;
+      min-height: 20px;
+    }
+    .dark-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 42px;
+      height: 24px;
+      border-radius: 50px;
+      background: var(--glass);
+      border: 1px solid var(--border);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight);
+      cursor: pointer;
+      position: fixed;
+      transition: 0.3s;
+    }
+    body.dark .dark-toggle { background: rgba(42,92,230,0.6); border-color: rgba(100,140,255,0.4); }
+    .dark-toggle::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+      transition: transform 0.3s;
+    }
+    body.dark .dark-toggle::after { transform: translateX(18px); }
+  </style>
+</head>
+<body>
+  <button class="dark-toggle" onclick="toggleDark()" style="position:fixed;top:20px;right:20px;" title="다크모드"></button>
+
+  <div class="login-card">
+    <div class="logo-area">
+      <h1>Ohweb</h1>
+      <p>관리자 페이지</p>
+    </div>
+    <div class="field">
+      <label>관리자 비밀번호</label>
+      <input class="inp" id="pwInput" type="password" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')login()">
+    </div>
+    <button class="btn" onclick="login()">로그인</button>
+    <div class="error-msg" id="errMsg"></div>
+  </div>
+
+  <script>
+    const ADMIN_PW = "9600";
+
+    function login() {
+      const pw = document.getElementById('pwInput').value;
+      if (pw === ADMIN_PW) {
+        sessionStorage.setItem('ohweb_admin', '1');
+        window.location.href = 'admin.html';
+      } else {
+        const err = document.getElementById('errMsg');
+        err.innerText = '비밀번호가 올바르지 않습니다.';
+        document.getElementById('pwInput').value = '';
+        document.getElementById('pwInput').focus();
+        setTimeout(() => err.innerText = '', 3000);
+      }
+    }
+
+    function toggleDark() {
+      document.body.classList.toggle('dark');
+      localStorage.setItem('dark', document.body.classList.contains('dark') ? '1' : '0');
+    }
+    if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
+
+    // 이미 로그인 상태면 바로 이동
+    if (sessionStorage.getItem('ohweb_admin') === '1') window.location.href = 'admin.html';
+  </script>
+</body>
+</html>
