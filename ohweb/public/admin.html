@@ -1866,7 +1866,12 @@
 
   // ── 결과 조회 ──
   async function loadAssignSelect() {
-    const snap = await getDocs(query(collection(db,'exam_assignments'), orderBy('createdAt','desc')));
+    let snap;
+    try {
+      snap = await getDocs(query(collection(db,'exam_assignments'), orderBy('createdAt','desc')));
+    } catch(e) {
+      snap = await getDocs(collection(db,'exam_assignments'));
+    }
     const list = snap.docs.map(d=>({id:d.id,...d.data()}));
     const sel = document.getElementById('res_asId');
     const cur = sel.value;
