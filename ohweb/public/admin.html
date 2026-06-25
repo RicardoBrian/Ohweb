@@ -1307,16 +1307,27 @@
     try {
       const snap = await getDocs(collection(db,'paddlet_posts'));
       const all = snap.docs.map(d=>({id:d.id,...d.data()}));
-      const needs = all.filter(p => !p.subZh||!p.msgZh||!p.subRu||!p.msgRu||!p.subEn||!p.msgEn);
+      // 필드 없거나, 한국어 원문과 동일한 경우(이전 번역 실패 fallback) 모두 재번역
+      const needsTranslate = p => {
+        const srcSub = p.origSub||p.subKo||p.subject||'';
+        const srcMsg = p.origMsg||p.msgKo||p.message||'';
+        return ['Zh','Ru','En'].some(c =>
+          !p[`sub${c}`] || !p[`msg${c}`] ||
+          (srcSub && p[`sub${c}`] === srcSub) ||
+          (srcMsg && p[`msg${c}`] === srcMsg)
+        );
+      };
+      const needs = all.filter(needsTranslate);
       prog.innerText = `번역 필요: ${needs.length}건`;
       let done=0;
       for (const p of needs) {
         const srcSub = p.origSub||p.subKo||p.subject||'';
         const srcMsg = p.origMsg||p.msgKo||p.message||'';
-        const update = { subKo: srcSub, msgKo: srcMsg };
+        const update = { subKo: p.subKo||srcSub, msgKo: p.msgKo||srcMsg };
         for (const [cap, tgt] of Object.entries(MIG_TGT)) {
-          if (!p[`sub${cap}`]) update[`sub${cap}`] = await migDeepL(srcSub, tgt);
-          if (!p[`msg${cap}`]) update[`msg${cap}`] = await migDeepL(srcMsg, tgt);
+          // 없거나 한국어 원문과 동일하면 재번역
+          if (!p[`sub${cap}`] || p[`sub${cap}`]===srcSub) update[`sub${cap}`] = await migDeepL(srcSub, tgt);
+          if (!p[`msg${cap}`] || p[`msg${cap}`]===srcMsg) update[`msg${cap}`] = await migDeepL(srcMsg, tgt);
           await new Promise(r=>setTimeout(r,80)); // rate limit
         }
         await updateDoc(doc(db,'paddlet_posts',p.id), update);
