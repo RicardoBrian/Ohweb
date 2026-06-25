@@ -214,9 +214,25 @@
       <label data-t="school">학교</label>
       <select class="inp" id="loginSchool"><option value="" data-t-opt="selectSchool">학교 선택...</option></select>
     </div>
+    <div class="row2">
+      <div class="field">
+        <label data-t="grade">학년</label>
+        <select class="inp" id="loginGrade">
+          <option data-t-grade="1">1학년</option><option data-t-grade="2">2학년</option><option data-t-grade="3">3학년</option>
+        </select>
+      </div>
+      <div class="field">
+        <label data-t="class">반</label>
+        <select class="inp" id="loginClass">
+          <option>1반</option><option>2반</option><option>3반</option><option>4반</option><option>5반</option>
+        </select>
+      </div>
+    </div>
     <div class="field">
-      <label data-t="studentNum">학번</label>
-      <input class="inp" id="loginSid" placeholder="예: 101" data-t-ph="numPlaceholder" maxlength="20">
+      <label data-t="number">번호</label>
+      <select class="inp" id="loginNumber">
+        <option value="" data-t-opt="selectNum">번호 선택...</option>
+      </select>
     </div>
     <div class="field">
       <label data-t="password">비밀번호</label>
@@ -301,7 +317,7 @@
       newPw:'새 비밀번호', pwPlaceholder:'4자리 이상', confirmPw:'비밀번호 확인', pwConfirmPlaceholder:'동일하게 입력',
       registerBtn:'가입 완료', backBtn:'← 다시 입력',
       gradeLabel: n => `${n}학년`, classLabel: n => `${n}반`,
-      errSchool:'학교를 선택하세요.', errNum:'학번을 입력하세요.', errPw:'비밀번호를 입력하세요.',
+      selectNum:'번호 선택...', errSchool:'학교를 선택하세요.', errNum:'학번을 입력하세요.', errNumSelect:'번호를 선택하세요.', errPw:'비밀번호를 입력하세요.',
       errNotFound:'학생 정보를 찾을 수 없습니다.', errNotReg:'회원가입이 필요합니다.\n회원가입 탭을 이용하세요.',
       errWrongPw:'비밀번호가 올바르지 않습니다.', errNumReq:'번호를 입력하세요.', errNameReq:'이름을 입력하세요.',
       errNoMatch:'일치하는 학생 정보가 없습니다.\n학년·반·번호·이름을 다시 확인하세요.',
@@ -317,7 +333,7 @@
       newPw:'新密码', pwPlaceholder:'至少4位', confirmPw:'确认密码', pwConfirmPlaceholder:'再次输入',
       registerBtn:'完成注册', backBtn:'← 重新输入',
       gradeLabel: n => `${n}年级`, classLabel: n => `${n}班`,
-      errSchool:'请选择学校。', errNum:'请输入学号。', errPw:'请输入密码。',
+      selectNum:'选择编号...', errSchool:'请选择学校。', errNum:'请输入学号。', errNumSelect:'请选择编号。', errPw:'请输入密码。',
       errNotFound:'未找到学生信息。', errNotReg:'需要注册。\n请使用注册选项卡。',
       errWrongPw:'密码不正确。', errNumReq:'请输入编号。', errNameReq:'请输入姓名。',
       errNoMatch:'未找到匹配的学生信息。\n请重新确认年级·班级·编号·姓名。',
@@ -333,7 +349,7 @@
       newPw:'Новый пароль', pwPlaceholder:'Мин. 4 символа', confirmPw:'Подтвердить пароль', pwConfirmPlaceholder:'Повторите пароль',
       registerBtn:'Завершить', backBtn:'← Назад',
       gradeLabel: n => `${n} класс`, classLabel: n => `${n} гр.`,
-      errSchool:'Выберите школу.', errNum:'Введите номер.', errPw:'Введите пароль.',
+      selectNum:'Выберите номер...', errSchool:'Выберите школу.', errNum:'Введите номер.', errNumSelect:'Выберите номер.', errPw:'Введите пароль.',
       errNotFound:'Ученик не найден.', errNotReg:'Требуется регистрация.\nИспользуйте вкладку регистрации.',
       errWrongPw:'Неверный пароль.', errNumReq:'Введите номер.', errNameReq:'Введите имя.',
       errNoMatch:'Ученик не найден.\nПроверьте класс, группу, номер и имя.',
@@ -352,6 +368,7 @@
     document.querySelectorAll('#joinClass option').forEach((el, i) => { el.innerText = t.classLabel(i+1); });
     // school select first option
     document.querySelectorAll('[data-t-opt="selectSchool"]').forEach(el => { el.innerText = t.selectSchool; });
+    document.querySelectorAll('[data-t-opt="selectNum"]').forEach(el => { el.innerText = t.selectNum; });
     // lang buttons
     ['ko','zh','ru'].forEach(l => document.getElementById('lang-'+l).classList.toggle('active', l===lang));
   }
@@ -387,6 +404,36 @@
   }
   loadSchools();
 
+  // 로그인 번호 목록: 학교+학년+반 선택 시 해당 반 번호 로드
+  async function loadLoginNumbers() {
+    const schoolId = document.getElementById('loginSchool').value;
+    const grade = document.getElementById('loginGrade').value;
+    const cls = document.getElementById('loginClass').value;
+    const sel = document.getElementById('loginNumber');
+    const t = T[lang];
+    sel.innerHTML = `<option value="">${t.selectNum || '번호 선택...'}</option>`;
+    if (!schoolId) return;
+    try {
+      const snap = await getDocs(query(collection(db, 'students'),
+        where('schoolId', '==', schoolId),
+        where('grade', '==', grade),
+        where('class', '==', cls),
+        orderBy('number')
+      ));
+      snap.docs.forEach(d => {
+        const num = d.data().number;
+        const name = d.data().name;
+        const opt = document.createElement('option');
+        opt.value = num;
+        opt.innerText = `${num}번 ${name}`;
+        sel.appendChild(opt);
+      });
+    } catch(e) { /* 결과 없으면 빈 목록 유지 */ }
+  }
+  ['loginSchool','loginGrade','loginClass'].forEach(id =>
+    document.getElementById(id).addEventListener('change', loadLoginNumbers)
+  );
+
   // 탭 전환
   window.switchTab = (tab) => {
     const isLogin = tab === 'login';
@@ -399,20 +446,24 @@
   // ── 로그인 ──
   window.doLogin = async () => {
     const schoolId = document.getElementById('loginSchool').value;
-    const sid = document.getElementById('loginSid').value.trim();
+    const grade = document.getElementById('loginGrade').value;
+    const cls = document.getElementById('loginClass').value;
+    const number = document.getElementById('loginNumber').value;
     const pw = document.getElementById('loginPw').value;
     const err = document.getElementById('loginErr');
     err.innerText = '';
     const t = T[lang];
     if (!schoolId) { err.innerText = t.errSchool; return; }
-    if (!sid) { err.innerText = t.errNum; return; }
+    if (!number) { err.innerText = t.errNumSelect; return; }
     if (!pw) { err.innerText = t.errPw; return; }
 
     load(true);
     try {
       const snap = await getDocs(query(collection(db, 'students'),
         where('schoolId', '==', schoolId),
-        where('number', '==', sid)
+        where('grade', '==', grade),
+        where('class', '==', cls),
+        where('number', '==', number)
       ));
       if (snap.empty) { err.innerText = t.errNotFound; load(false); return; }
       const data = snap.docs[0].data();
