@@ -570,6 +570,10 @@
         </div>
       </div>
       <div style="margin-bottom:12px;">
+        <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:6px;">학교 (비워두면 전체)</label>
+        <div id="adm_school_boxes" style="display:flex;gap:12px;flex-wrap:wrap;"></div>
+      </div>
+      <div style="margin-bottom:12px;">
         <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:6px;">학년</label>
         <div style="display:flex;gap:12px;flex-wrap:wrap;">
           <label style="display:flex;align-items:center;gap:4px;font-size:0.88rem;"><input type="checkbox" class="adm-g" value="1"> 1학년</label>
@@ -667,7 +671,7 @@
           <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">문제 제목 (한국어)</label>
           <textarea class="inp" id="q_title" rows="2" placeholder="문제 제목" style="resize:vertical;"></textarea>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:4px;">
           <div>
             <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">문제 제목 (中文)</label>
             <textarea class="inp" id="q_titleZh" rows="2" placeholder="(선택)" style="resize:vertical;"></textarea>
@@ -676,12 +680,19 @@
             <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">문제 제목 (РУ)</label>
             <textarea class="inp" id="q_titleRu" rows="2" placeholder="(선택)" style="resize:vertical;"></textarea>
           </div>
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">문제 제목 (EN)</label>
+            <textarea class="inp" id="q_titleEn" rows="2" placeholder="(선택)" style="resize:vertical;"></textarea>
+          </div>
+        </div>
+        <div style="margin-bottom:12px;text-align:right;">
+          <button type="button" class="btn ghost sm" onclick="translateQFields()" id="q_translateBtn">🌐 한국어→자동번역</button>
         </div>
         <div style="margin-bottom:12px;">
           <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">문제 내용 (한국어)</label>
           <textarea class="inp" id="q_content" rows="3" placeholder="문제 본문 (선택)" style="resize:vertical;"></textarea>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
           <div>
             <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">내용 (中文)</label>
             <textarea class="inp" id="q_contentZh" rows="3" placeholder="(선택)" style="resize:vertical;"></textarea>
@@ -689,6 +700,10 @@
           <div>
             <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">내용 (РУ)</label>
             <textarea class="inp" id="q_contentRu" rows="3" placeholder="(선택)" style="resize:vertical;"></textarea>
+          </div>
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">내용 (EN)</label>
+            <textarea class="inp" id="q_contentEn" rows="3" placeholder="(선택)" style="resize:vertical;"></textarea>
           </div>
         </div>
         <div style="margin-bottom:12px;">
@@ -702,7 +717,7 @@
             <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">선택지 (한 줄에 하나씩)</label>
             <textarea class="inp" id="q_options" rows="5" placeholder="1번 선택지&#10;2번 선택지&#10;3번 선택지&#10;4번 선택지" style="resize:vertical;"></textarea>
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
             <div>
               <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">선택지 (中文, 한 줄씩)</label>
               <textarea class="inp" id="q_optionsZh" rows="4" placeholder="(선택)" style="resize:vertical;"></textarea>
@@ -710,6 +725,10 @@
             <div>
               <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">선택지 (РУ, 한 줄씩)</label>
               <textarea class="inp" id="q_optionsRu" rows="4" placeholder="(선택)" style="resize:vertical;"></textarea>
+            </div>
+            <div>
+              <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">선택지 (EN, 한 줄씩)</label>
+              <textarea class="inp" id="q_optionsEn" rows="4" placeholder="(선택)" style="resize:vertical;"></textarea>
             </div>
           </div>
           <div style="margin-bottom:12px;">
@@ -795,7 +814,13 @@
             <input class="inp" id="as_code" placeholder="예: A1B2C3" style="text-transform:uppercase;letter-spacing:0.1em;font-weight:700;" oninput="this.value=this.value.toUpperCase()">
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">학교</label>
+            <select class="inp" id="as_schoolId">
+              <option value="">전체</option>
+            </select>
+          </div>
           <div>
             <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">학년</label>
             <select class="inp" id="as_grade">
@@ -1246,7 +1271,16 @@
   init();
 
   // ── 패들릿 수업 관리 ──
+  function renderSchoolCheckboxes(selectedIds) {
+    const wrap = document.getElementById('adm_school_boxes');
+    if (!wrap) return;
+    if (!schools.length) { wrap.innerHTML = '<span style="font-size:0.82rem;color:var(--sub);">학교를 먼저 등록하세요.</span>'; return; }
+    wrap.innerHTML = schools.map(s => `<label style="display:flex;align-items:center;gap:4px;font-size:0.88rem;"><input type="checkbox" class="adm-s" value="${s.id}"> ${s.name}</label>`).join('');
+    if (selectedIds?.length) document.querySelectorAll('.adm-s').forEach(i => i.checked = selectedIds.includes(i.value));
+  }
+
   window.loadAdminList = async () => {
+    renderSchoolCheckboxes();
     const snap = await getDocs(collection(db, 'paddlet_classes'));
     const list = snap.docs.map(d => ({id:d.id,...d.data()}));
     const el = document.getElementById('adminList');
@@ -1255,7 +1289,7 @@
       <div class="list-item">
         <div>
           <div class="list-item-name">📌 ${c.name}</div>
-          <div class="list-item-sub">${(c.grades||[]).map(g=>g+'학년').join('·')} / ${(c.groups||[]).map(g=>g+'반').join('·')}</div>
+          <div class="list-item-sub">${(c.schoolIds||[]).length?'['+c.schoolIds.join('·')+'] ':''}${(c.grades||[]).map(g=>g+'학년').join('·')} / ${(c.groups||[]).map(g=>g+'반').join('·')}</div>
         </div>
         <div class="list-item-actions" style="display:flex;align-items:center;gap:8px;">
           <select onchange="toggleClassStatus('${c.id}',this.value)" style="font-size:0.78rem;padding:4px 8px;border-radius:8px;border:1.5px solid var(--border-card);background:var(--glass);cursor:pointer;font-weight:700;color:${(c.status==='ON'||c.status===true)?'#22c55e':'#ef4444'}">
@@ -1272,10 +1306,11 @@
     const docId = document.getElementById('adm_docId').value;
     const grades = [...document.querySelectorAll('.adm-g:checked')].map(i=>i.value);
     const groups = [...document.querySelectorAll('.adm-b:checked')].map(i=>i.value);
+    const schoolIds = [...document.querySelectorAll('.adm-s:checked')].map(i=>i.value);
     const name = document.getElementById('adm_name').value.trim();
     if (!name) { toast('수업명을 입력하세요.', 'error'); return; }
     if (!grades.length || !groups.length) { toast('학년과 반을 각각 하나 이상 선택하세요.', 'error'); return; }
-    const data = { name, desc: document.getElementById('adm_desc').value, ex: document.getElementById('adm_ex').value, popup: document.getElementById('adm_popup').value, grades, groups, status: 'ON' };
+    const data = { name, desc: document.getElementById('adm_desc').value, ex: document.getElementById('adm_ex').value, popup: document.getElementById('adm_popup').value, grades, groups, schoolIds, status: 'ON' };
     showLoading(true);
     try {
       if (docId) await updateDoc(doc(db,'paddlet_classes',docId), data);
@@ -1302,6 +1337,7 @@
     document.getElementById('adm_popup').value = c.popup||'';
     document.querySelectorAll('.adm-g').forEach(i => i.checked=(c.grades||[]).includes(i.value));
     document.querySelectorAll('.adm-b').forEach(i => i.checked=(c.groups||[]).includes(i.value));
+    renderSchoolCheckboxes(c.schoolIds||[]);
     const info = document.getElementById('adm_edit_info');
     info.style.display='block'; info.innerText=`수정 중: ${c.name}`;
     document.getElementById('adm_cancel_btn').classList.remove('hidden');
@@ -1323,6 +1359,7 @@
     document.getElementById('adm_ex').value='';
     document.getElementById('adm_popup').value='';
     document.querySelectorAll('.adm-g, .adm-b').forEach(i=>i.checked=false);
+    document.querySelectorAll('.adm-s').forEach(i=>i.checked=false);
     document.getElementById('adm_edit_info').style.display='none';
     document.getElementById('adm_cancel_btn').classList.add('hidden');
   };
@@ -1385,6 +1422,10 @@
       const cur = sel.value;
       sel.innerHTML = '<option value="">시험 선택</option>' + exams.map(e => `<option value="${e.id}" ${e.id===cur?'selected':''}>${e.title}</option>`).join('');
     });
+    const asSch = document.getElementById('as_schoolId');
+    if (asSch) {
+      asSch.innerHTML = '<option value="">전체</option>' + schools.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+    }
   }
 
   window.saveExam = async () => {
@@ -1467,9 +1508,9 @@
     if (!title) { toast('문제 제목을 입력하세요.', 'error'); return; }
     const data = {
       examId, type,
-      title, titleZh: document.getElementById('q_titleZh').value.trim(), titleRu: document.getElementById('q_titleRu').value.trim(),
+      title, titleZh: document.getElementById('q_titleZh').value.trim(), titleRu: document.getElementById('q_titleRu').value.trim(), titleEn: document.getElementById('q_titleEn').value.trim(),
       content: document.getElementById('q_content').value.trim(),
-      contentZh: document.getElementById('q_contentZh').value.trim(), contentRu: document.getElementById('q_contentRu').value.trim(),
+      contentZh: document.getElementById('q_contentZh').value.trim(), contentRu: document.getElementById('q_contentRu').value.trim(), contentEn: document.getElementById('q_contentEn').value.trim(),
       imageUrl: document.getElementById('q_imageUrl').value.trim(),
       points: parseInt(document.getElementById('q_points').value) || 10,
       order: parseInt(document.getElementById('q_order').value) || 1,
@@ -1478,6 +1519,7 @@
       data.options = document.getElementById('q_options').value.split('\n').map(s=>s.trim()).filter(Boolean);
       data.optionsZh = document.getElementById('q_optionsZh').value.split('\n').map(s=>s.trim()).filter(Boolean);
       data.optionsRu = document.getElementById('q_optionsRu').value.split('\n').map(s=>s.trim()).filter(Boolean);
+      data.optionsEn = document.getElementById('q_optionsEn').value.split('\n').map(s=>s.trim()).filter(Boolean);
       data.answer = String(parseInt(document.getElementById('q_answer_mc').value) || 0);
     } else if (type === 'sa') {
       data.answer = document.getElementById('q_answer_sa').value.trim();
@@ -1508,9 +1550,11 @@
     document.getElementById('q_title').value = q.title||'';
     document.getElementById('q_titleZh').value = q.titleZh||'';
     document.getElementById('q_titleRu').value = q.titleRu||'';
+    document.getElementById('q_titleEn').value = q.titleEn||'';
     document.getElementById('q_content').value = q.content||'';
     document.getElementById('q_contentZh').value = q.contentZh||'';
     document.getElementById('q_contentRu').value = q.contentRu||'';
+    document.getElementById('q_contentEn').value = q.contentEn||'';
     document.getElementById('q_imageUrl').value = q.imageUrl||'';
     document.getElementById('q_points').value = q.points||10;
     document.getElementById('q_order').value = q.order||1;
@@ -1518,6 +1562,7 @@
       document.getElementById('q_options').value = (q.options||[]).join('\n');
       document.getElementById('q_optionsZh').value = (q.optionsZh||[]).join('\n');
       document.getElementById('q_optionsRu').value = (q.optionsRu||[]).join('\n');
+      document.getElementById('q_optionsEn').value = (q.optionsEn||[]).join('\n');
       document.getElementById('q_answer_mc').value = q.answer||'0';
     } else if (q.type === 'sa') {
       document.getElementById('q_answer_sa').value = q.answer||'';
@@ -1545,12 +1590,53 @@
   };
 
   window.resetQForm = () => {
-    ['q_docId','q_title','q_titleZh','q_titleRu','q_content','q_contentZh','q_contentRu','q_imageUrl','q_options','q_optionsZh','q_optionsRu','q_answer_mc','q_answer_sa','q_inDesc','q_outDesc','q_inEx','q_outEx','q_boilerplate','q_testCases'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['q_docId','q_title','q_titleZh','q_titleRu','q_titleEn','q_content','q_contentZh','q_contentRu','q_contentEn','q_imageUrl','q_options','q_optionsZh','q_optionsRu','q_optionsEn','q_answer_mc','q_answer_sa','q_inDesc','q_outDesc','q_inEx','q_outEx','q_boilerplate','q_testCases'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('q_points').value='10';
     document.getElementById('q_order').value='1';
     document.getElementById('q_type').value='mc';
     window.toggleQTypeFields();
     document.getElementById('q_cancel_btn').classList.add('hidden');
+  };
+
+  const ADM_DEEPL_KEY = 'cf131ad1-2cd2-455b-8915-dd32ddfce706:fx';
+  const ADM_DEEPL_TGT = { zh:'ZH', ru:'RU', en:'EN-US' };
+  async function admDeepL(text, tgt) {
+    if (!text.trim()) return text;
+    try {
+      const r = await fetch('https://api-free.deepl.com/v2/translate', {
+        method:'POST',
+        headers:{'Authorization':`DeepL-Auth-Key ${ADM_DEEPL_KEY}`,'Content-Type':'application/json'},
+        body: JSON.stringify({ text:[text], target_lang: ADM_DEEPL_TGT[tgt], source_lang:'KO' })
+      });
+      const j = await r.json();
+      return j.translations?.[0]?.text || text;
+    } catch { return text; }
+  }
+
+  window.translateQFields = async () => {
+    const btn = document.getElementById('q_translateBtn');
+    btn.disabled = true; btn.innerText = '🌐 번역 중...';
+    const title = document.getElementById('q_title').value.trim();
+    const content = document.getElementById('q_content').value.trim();
+    const optsKo = document.getElementById('q_options').value.trim();
+    const langs = ['zh','ru','en'];
+    try {
+      const jobs = langs.flatMap(l => [
+        title ? admDeepL(title, l) : Promise.resolve(''),
+        content ? admDeepL(content, l) : Promise.resolve(''),
+        optsKo ? Promise.all(optsKo.split('\n').filter(Boolean).map(o=>admDeepL(o,l))) : Promise.resolve([]),
+      ]);
+      const results = await Promise.all(jobs);
+      langs.forEach((l, li) => {
+        const base = li * 3;
+        const cap = l.charAt(0).toUpperCase()+l.slice(1);
+        if (results[base]) document.getElementById(`q_title${cap}`).value = results[base];
+        if (results[base+1]) document.getElementById(`q_content${cap}`).value = results[base+1];
+        if (results[base+2]?.length) document.getElementById(`q_options${cap}`).value = results[base+2].join('\n');
+      });
+      toast('번역 완료', 'success');
+    } catch(e) { toast('번역 오류: '+e.message, 'error'); }
+    btn.disabled = false; btn.innerText = '🌐 한국어→자동번역';
   };
 
   // ── 배정 관리 ──
@@ -1560,10 +1646,11 @@
     const code = document.getElementById('as_code').value.trim().toUpperCase();
     const grade = document.getElementById('as_grade').value;
     const cls = document.getElementById('as_class').value;
+    const schoolId = document.getElementById('as_schoolId')?.value || '';
     const duration = parseInt(document.getElementById('as_duration').value) || 0;
     if (!examId) { toast('시험을 선택하세요.', 'error'); return; }
     if (!code) { toast('시험 코드를 입력하세요.', 'error'); return; }
-    const data = { examId, code, grade, class: cls, duration, status: 'ON' };
+    const data = { examId, code, grade, class: cls, schoolId, duration, status: 'ON' };
     showLoading(true);
     try {
       if (docId) await updateDoc(doc(db,'exam_assignments',docId), data);
@@ -1585,7 +1672,7 @@
       return `<div class="list-item">
         <div class="list-item-info">
           <div class="list-item-name">🎯 <b style="letter-spacing:0.1em;">${a.code}</b> — ${exam?.title||a.examId}</div>
-          <div class="list-item-sub">${a.grade}학년 ${a.class}반 · ${a.duration>0?a.duration+'분':'무제한'}</div>
+          <div class="list-item-sub">${a.schoolId?(schools.find(s=>s.id===a.schoolId)?.name||a.schoolId)+' · ':''}${a.grade}학년 ${a.class}반 · ${a.duration>0?a.duration+'분':'무제한'}</div>
         </div>
         <div class="list-item-actions" style="display:flex;gap:8px;align-items:center;">
           <select onchange="toggleAsStatus('${a.id}',this.value)" style="font-size:0.78rem;padding:4px 8px;border-radius:8px;border:1.5px solid var(--border-card);background:var(--glass);cursor:pointer;font-weight:700;color:${a.status==='ON'?'#22c55e':'#ef4444'}">
@@ -1619,6 +1706,7 @@
     document.getElementById('as_examId').value='';
     document.getElementById('as_code').value='';
     document.getElementById('as_duration').value='45';
+    document.getElementById('as_schoolId').value='';
     document.getElementById('as_cancel_btn').classList.add('hidden');
   };
 

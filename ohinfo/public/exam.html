@@ -310,7 +310,7 @@ import {
 // ── 세션 ──
 const _st = JSON.parse(sessionStorage.getItem('ohinfo_student') || '{}');
 if (!_st.id) { window.location.href = 'index.html'; }
-const SESSION = { id: _st.id||'', name: _st.name||'', grade: _st.grade||'', cls: _st.class||'', num: _st.number||'' };
+const SESSION = { id: _st.id||'', name: _st.name||'', grade: _st.grade||'', cls: _st.class||'', num: _st.number||'', schoolId: _st.schoolId||'' };
 
 // ── 상태 ──
 let currentLang = 'ko';
@@ -430,6 +430,8 @@ window.enterExam = async () => {
     if (String(asData.grade) !== String(SESSION.grade) || String(asData.class) !== String(SESSION.cls)) {
       errEl.innerText = '이 시험은 내 학년/반 대상이 아닙니다.'; showLoading(false); return;
     }
+    const schoolOk = !asData.schoolId || asData.schoolId === SESSION.schoolId;
+    if (!schoolOk) { errEl.innerText = '이 시험은 해당 학교 학생만 응시할 수 있습니다.'; showLoading(false); return; }
     // 이미 제출했는지 확인
     const progRef = doc(db, 'exam_progress', `${asDoc.id}_${SESSION.id}`);
     const progSnap = await getDoc(progRef);

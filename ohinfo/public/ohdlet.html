@@ -386,7 +386,7 @@
 
 <script>
   const _st = JSON.parse(sessionStorage.getItem('ohinfo_student')||'{}');
-  const SESSION = { id: _st.id||'', name: _st.name||'', grade: _st.grade||'', cls: _st.class||'', num: _st.number||'' };
+  const SESSION = { id: _st.id||'', name: _st.name||'', grade: _st.grade||'', cls: _st.class||'', num: _st.number||'', schoolId: _st.schoolId||'' };
   let currentLang = 'ko';
   let imgList = [];
   let currentPosts = [];
@@ -541,10 +541,12 @@
         const statusOk = c.status==='ON' || c.status===true || c.status==='on';
         const gs = c.grades||[];
         const bs = c.groups||[];
+        const ss = c.schoolIds||[];
         const gradeOk = gs.length===0 || gs.some(g => nv(g)===nv(grade));
         const groupOk = bs.length===0 || bs.some(g => nv(g)===nv(group));
-        console.log(`  ${c.name}: status=${c.status}(${statusOk}), grades=${JSON.stringify(gs)}(${gradeOk}), groups=${JSON.stringify(bs)}(${groupOk})`);
-        return statusOk && gradeOk && groupOk;
+        const schoolOk = ss.length===0 || ss.includes(SESSION.schoolId);
+        console.log(`  ${c.name}: status=${c.status}(${statusOk}), grades=${JSON.stringify(gs)}(${gradeOk}), groups=${JSON.stringify(bs)}(${groupOk}), schools=${JSON.stringify(ss)}(${schoolOk})`);
+        return statusOk && gradeOk && groupOk && schoolOk;
       });
       const sel = document.getElementById('classList');
       const optText = uiText[currentLang]?.opt || '수업을 선택하세요';
