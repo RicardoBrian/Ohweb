@@ -233,8 +233,46 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* 경고 배너 */
-    .alert-banner { position: fixed; top: var(--nav-h); left: 0; right: 0; z-index: 500; padding: 10px 20px; background: rgba(239,68,68,0.9); color: #fff; text-align: center; font-weight: 700; font-size: 0.9rem; transform: translateY(-100%); transition: transform 0.3s; }
-    .alert-banner.show { transform: translateY(0); }
+    .alert-banner { position: fixed; top: var(--nav-h); left: 0; right: 0; z-index: 500; padding: 10px 20px; background: rgba(239,68,68,0.9); color: #fff; text-align: center; font-weight: 700; font-size: 0.9rem; transform: translateY(-100%); transition: transform 0.3s, opacity 0.3s; opacity: 0; visibility: hidden; pointer-events: none; }
+    .alert-banner.show { transform: translateY(0); opacity: 1; visibility: visible; pointer-events: auto; }
+
+    /* 네비 유저 칩 */
+    .nav-user { display:flex; align-items:center; gap:8px; background:var(--glass); border:1px solid var(--border-card); border-radius:50px; padding:5px 12px 5px 5px; cursor:pointer; position:relative; user-select:none; flex-shrink:0; transition:background 0.2s; }
+    .nav-user:hover { background:var(--glass-strong); }
+    .nav-avatar { width:28px; height:28px; border-radius:50%; background:linear-gradient(135deg,var(--accent),#7c4dff); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:0.78rem; flex-shrink:0; overflow:hidden; }
+    .nav-user-name { font-size:0.82rem; font-weight:700; }
+    @media (max-width:520px) { .nav-user-name { display:none; } .nav-user { padding:4px; } }
+
+    /* 유저 드롭다운 */
+    .user-dropdown { position:absolute; top:calc(100% + 8px); right:0; min-width:160px; background:var(--glass-strong); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur); border:1px solid var(--border-card); border-radius:var(--radius-sm); box-shadow:var(--shadow-md); z-index:300; overflow:hidden; }
+    .user-dropdown-item { display:flex; align-items:center; gap:10px; padding:12px 16px; font-size:0.88rem; font-weight:700; cursor:pointer; color:var(--text); transition:0.15s; }
+    .user-dropdown-item:hover { background:var(--accent-light); }
+    .user-dropdown-item.danger { color:#ef4444; }
+    .user-dropdown-sep { height:1px; background:var(--border-card); margin:0 10px; }
+
+    /* 마이페이지 모달 */
+    .modal-overlay { position:fixed; inset:0; z-index:600; background:rgba(0,0,0,0.35); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; padding:20px; }
+    .modal-card { background:var(--glass-strong); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur); border:1px solid var(--border-card); border-radius:var(--radius); box-shadow:var(--shadow-md); width:100%; max-width:360px; padding:28px 26px 22px; position:relative; }
+    .modal-title { font-size:1.1rem; font-weight:900; letter-spacing:-0.02em; margin-bottom:20px; }
+    .modal-close { position:absolute; top:14px; right:14px; width:28px; height:28px; border-radius:50%; background:var(--glass); border:1px solid var(--border-card); cursor:pointer; font-size:1rem; display:flex; align-items:center; justify-content:center; color:var(--sub); transition:0.15s; font-family:inherit; }
+    .modal-close:hover { background:var(--glass-strong); }
+    .photo-section { text-align:center; margin-bottom:22px; }
+    .photo-preview { width:80px; height:80px; border-radius:50%; margin:0 auto 10px; background:linear-gradient(135deg,var(--accent),#7c4dff); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:1.6rem; overflow:hidden; border:2px solid var(--border-card); }
+    .photo-preview img { width:100%; height:100%; object-fit:cover; }
+    .btn-photo-change { font-family:inherit; font-size:0.8rem; font-weight:700; cursor:pointer; border-radius:50px; padding:6px 16px; border:1px solid var(--border-card); background:var(--glass); color:var(--sub); transition:0.2s; }
+    .btn-photo-change:hover { background:var(--glass-strong); color:var(--text); }
+    .modal-section { margin-bottom:14px; }
+    .modal-section-label { font-size:0.7rem; font-weight:700; color:var(--sub); letter-spacing:0.06em; text-transform:uppercase; margin-bottom:8px; }
+    .modal-inp { width:100%; padding:10px 13px; border-radius:var(--radius-sm); border:1px solid var(--border-card); background:var(--glass); color:var(--text); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur); font-family:inherit; font-size:0.92rem; outline:none; margin-bottom:7px; transition:border-color 0.2s; }
+    .modal-inp:last-of-type { margin-bottom:0; }
+    .modal-inp:focus { border-color:rgba(42,92,230,0.55); }
+    .modal-inp::placeholder { color:var(--sub); }
+    .btn-modal-save { width:100%; padding:12px; border-radius:var(--radius); border:1px solid rgba(100,140,255,0.5); background:rgba(42,92,230,0.82); color:#fff; font-family:inherit; font-size:0.95rem; font-weight:700; cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,0.3),0 4px 16px rgba(42,92,230,0.3); transition:background 0.2s; margin-top:14px; }
+    .btn-modal-save:hover { background:rgba(42,92,230,0.95); }
+    .btn-modal-save:disabled { opacity:0.6; cursor:not-allowed; }
+    .modal-msg { font-size:0.82rem; font-weight:600; margin-top:10px; text-align:center; min-height:18px; }
+    .modal-msg.ok { color:#22c55e; }
+    .modal-msg.err { color:#ef4444; }
 
     /* 제출 영역 */
     .submit-area { position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; padding: 16px 24px; background: var(--glass-nav); backdrop-filter: var(--blur); border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 12px; }
@@ -272,6 +310,15 @@
     <button class="btn lang-btn" id="btn-ru" onclick="setLang('ru')">РУ</button>
     <button class="btn lang-btn" id="btn-en" onclick="setLang('en')">EN</button>
     <div class="timer-badge hidden" id="timerBadge">00:00</div>
+    <div class="nav-user" id="navUser" onclick="toggleUserMenu()">
+      <div class="nav-avatar" id="navAvatar"></div>
+      <div class="nav-user-name" id="navUserName"></div>
+      <div class="user-dropdown hidden" id="userDropdown" onclick="event.stopPropagation()">
+        <div class="user-dropdown-item" onclick="openMyPage()">👤 마이페이지</div>
+        <div class="user-dropdown-sep"></div>
+        <div class="user-dropdown-item danger" onclick="goHome()">🏠 홈으로</div>
+      </div>
+    </div>
     <button class="dark-toggle" onclick="toggleDark()"></button>
   </div>
 </nav>
@@ -322,6 +369,27 @@
   </div>
 </div>
 
+<!-- 마이페이지 모달 -->
+<div class="modal-overlay hidden" id="myPageOverlay" onclick="closeMyPage()">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeMyPage()">✕</button>
+    <div class="modal-title">마이페이지</div>
+    <div class="photo-section">
+      <div class="photo-preview" id="mpPhotoPreview"></div>
+      <input type="file" id="mpPhotoInput" accept="image/*" style="display:none" onchange="onPhotoChange(this)">
+      <button class="btn-photo-change" onclick="document.getElementById('mpPhotoInput').click()">사진 변경</button>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-label">비밀번호 변경</div>
+      <input class="modal-inp" id="mpCurPw" type="password" placeholder="현재 비밀번호">
+      <input class="modal-inp" id="mpNewPw" type="password" placeholder="새 비밀번호 (4자 이상)">
+      <input class="modal-inp" id="mpNewPw2" type="password" placeholder="새 비밀번호 확인" onkeydown="if(event.key==='Enter')saveMyPage()">
+    </div>
+    <button class="btn-modal-save" onclick="saveMyPage()" id="mpSaveBtn">저장</button>
+    <div class="modal-msg" id="mpMsg"></div>
+  </div>
+</div>
+
 <script type="module">
 import { db } from './firebase-config.js';
 import {
@@ -334,6 +402,85 @@ const _st = JSON.parse(sessionStorage.getItem('ohinfo_student') || '{}');
 if (!_st.id) { window.location.href = 'index.html'; }
 const _nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
 const SESSION = { id: _st.id||'', name: _st.name||'', grade: _nv(_st.grade||''), cls: _nv(_st.class||''), num: String(_st.number||''), schoolName: _st.schoolName||'' };
+let _mpStudent = { ..._st }; // mutable copy for mypage updates
+
+// ── 네비 아바타 렌더 ──
+function renderAvatar(el, s) {
+  if (s.photoUrl) {
+    el.innerHTML = `<img src="${s.photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+  } else {
+    el.innerText = (s.name||'?')[0];
+  }
+}
+renderAvatar(document.getElementById('navAvatar'), _mpStudent);
+document.getElementById('navUserName').innerText = _mpStudent.name || '';
+
+// ── 드롭다운 ──
+window.toggleUserMenu = () => { document.getElementById('userDropdown').classList.toggle('hidden'); };
+document.addEventListener('click', e => {
+  const nu = document.getElementById('navUser');
+  if (nu && !nu.contains(e.target)) document.getElementById('userDropdown').classList.add('hidden');
+});
+
+// ── 마이페이지 ──
+let _mpPhotoB64 = null;
+window.openMyPage = () => {
+  document.getElementById('userDropdown').classList.add('hidden');
+  _mpPhotoB64 = null;
+  const prev = document.getElementById('mpPhotoPreview');
+  if (_mpStudent.photoUrl) { prev.innerHTML = `<img src="${_mpStudent.photoUrl}">`; }
+  else { prev.innerText = (_mpStudent.name||'?')[0]; }
+  ['mpCurPw','mpNewPw','mpNewPw2'].forEach(id => document.getElementById(id).value = '');
+  const msg = document.getElementById('mpMsg'); msg.innerText = ''; msg.className = 'modal-msg';
+  document.getElementById('myPageOverlay').classList.remove('hidden');
+};
+window.closeMyPage = () => { document.getElementById('myPageOverlay').classList.add('hidden'); };
+window.onPhotoChange = (input) => {
+  if (!input.files || !input.files[0]) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX = 200; let w = img.width, h = img.height;
+      if (w > h) { if (w > MAX) { h = Math.round(h*MAX/w); w = MAX; } }
+      else { if (h > MAX) { w = Math.round(w*MAX/h); h = MAX; } }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      _mpPhotoB64 = canvas.toDataURL('image/jpeg', 0.8);
+      document.getElementById('mpPhotoPreview').innerHTML = `<img src="${_mpPhotoB64}">`;
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(input.files[0]);
+};
+window.saveMyPage = async () => {
+  const msgEl = document.getElementById('mpMsg');
+  msgEl.className = 'modal-msg'; msgEl.innerText = '';
+  const curPw = document.getElementById('mpCurPw').value;
+  const newPw = document.getElementById('mpNewPw').value;
+  const newPw2 = document.getElementById('mpNewPw2').value;
+  const updates = {};
+  if (_mpPhotoB64) updates.photoUrl = _mpPhotoB64;
+  if (newPw || curPw) {
+    if (!curPw) { msgEl.className='modal-msg err'; msgEl.innerText='현재 비밀번호를 입력하세요.'; return; }
+    if (curPw !== _mpStudent.password) { msgEl.className='modal-msg err'; msgEl.innerText='현재 비밀번호가 올바르지 않습니다.'; return; }
+    if (newPw.length < 4) { msgEl.className='modal-msg err'; msgEl.innerText='새 비밀번호는 4자 이상이어야 합니다.'; return; }
+    if (newPw !== newPw2) { msgEl.className='modal-msg err'; msgEl.innerText='새 비밀번호가 일치하지 않습니다.'; return; }
+    updates.password = newPw;
+  }
+  if (!Object.keys(updates).length) { msgEl.className='modal-msg err'; msgEl.innerText='변경할 내용이 없습니다.'; return; }
+  const saveBtn = document.getElementById('mpSaveBtn'); saveBtn.disabled = true;
+  try {
+    await updateDoc(doc(db, 'students', _mpStudent.id), updates);
+    Object.assign(_mpStudent, updates);
+    sessionStorage.setItem('ohinfo_student', JSON.stringify(_mpStudent));
+    renderAvatar(document.getElementById('navAvatar'), _mpStudent);
+    msgEl.className='modal-msg ok'; msgEl.innerText='저장되었습니다.';
+    setTimeout(() => closeMyPage(), 1300);
+  } catch(e) { msgEl.className='modal-msg err'; msgEl.innerText='오류: '+e.message; }
+  saveBtn.disabled = false;
+};
 
 // ── 상태 ──
 let currentLang = localStorage.getItem('ohinfo_lang') || 'ko';
