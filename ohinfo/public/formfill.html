@@ -192,13 +192,9 @@
 </div>
 
 <script type="module">
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getFirestore, doc, getDoc, addDoc, collection, query, where, getDocs, serverTimestamp }
+import { db } from './firebase-config.js';
+import { doc, getDoc, addDoc, collection, query, where, getDocs, serverTimestamp }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-
-const FB = { apiKey:"AIzaSyBYYQBnr5brEYVZ5sYilh8QS-c3aqy1IZM", authDomain:"ohweb-93062.firebaseapp.com", projectId:"ohweb-93062" };
-const app = initializeApp(FB);
-const db  = getFirestore(app);
 
 // ── i18n ──
 const T = {
