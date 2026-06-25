@@ -571,7 +571,7 @@
       const snap = await getDocs(collection(db, 'paddlet_classes'));
       const all = snap.docs.map(d => ({id:d.id,...d.data()}));
       console.log('[paddlet] 전체 클래스:', all.length, all.map(c=>({name:c.name,status:c.status,grades:c.grades,groups:c.groups})));
-      console.log('[paddlet] 현재 학년:', grade, '→', ng(grade), ' / 반:', group, '→', nc(group));
+      console.log('[paddlet] 현재 학년:', grade, '→', nv(grade), ' / 반:', group, '→', nv(group));
       const classes = all.filter(c => {
         const statusOk = c.status==='ON' || c.status===true || c.status==='on';
         const gs = c.grades||[];
