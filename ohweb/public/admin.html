@@ -601,6 +601,13 @@
       <h2><span class="icon">📋</span> 수업 목록</h2>
       <div id="adminList"><div class="empty-state"><div class="empty-icon">📌</div>등록된 수업이 없습니다.</div></div>
     </div>
+
+    <div class="card">
+      <h2><span class="icon">🌐</span> 기존 게시글 번역 (일괄)</h2>
+      <p style="font-size:0.85rem;color:var(--sub);margin-bottom:14px;">번역 필드가 없는 기존 게시글을 DeepL로 일괄 번역합니다. 시간이 걸릴 수 있습니다.</p>
+      <div id="migrateProgress" style="font-size:0.85rem;color:var(--sub);margin-bottom:10px;"></div>
+      <button class="btn accent sm" id="migrateBtn" onclick="migratePosts()">번역 시작</button>
+    </div>
   </div>
 
   <!-- 시험 관리 섹션 -->
@@ -1278,6 +1285,50 @@
     wrap.innerHTML = schools.map(s => `<label style="display:flex;align-items:center;gap:4px;font-size:0.88rem;"><input type="checkbox" class="adm-s" value="${s.id}"> ${s.name}</label>`).join('');
     if (selectedIds?.length) document.querySelectorAll('.adm-s').forEach(i => i.checked = selectedIds.includes(i.value));
   }
+
+  // ── 기존 게시글 일괄 번역 ──
+  const MIG_DEEPL_KEY = 'cf131ad1-2cd2-455b-8915-dd32ddfce706:fx';
+  const MIG_TGT = { Zh:'ZH', Ru:'RU', En:'EN-US' };
+  async function migDeepL(text, tgt) {
+    if (!text?.trim()) return text || '';
+    const r = await fetch('https://api-free.deepl.com/v2/translate', {
+      method:'POST',
+      headers:{'Authorization':`DeepL-Auth-Key ${MIG_DEEPL_KEY}`,'Content-Type':'application/json'},
+      body: JSON.stringify({text:[text], target_lang:tgt, source_lang:'KO'})
+    });
+    const j = await r.json();
+    return j.translations?.[0]?.text || text;
+  }
+  window.migratePosts = async () => {
+    const btn = document.getElementById('migrateBtn');
+    const prog = document.getElementById('migrateProgress');
+    btn.disabled = true;
+    prog.innerText = '게시글 목록 불러오는 중...';
+    try {
+      const snap = await getDocs(collection(db,'paddlet_posts'));
+      const all = snap.docs.map(d=>({id:d.id,...d.data()}));
+      const needs = all.filter(p => !p.subZh||!p.msgZh||!p.subRu||!p.msgRu||!p.subEn||!p.msgEn);
+      prog.innerText = `번역 필요: ${needs.length}건`;
+      let done=0;
+      for (const p of needs) {
+        const srcSub = p.origSub||p.subKo||p.subject||'';
+        const srcMsg = p.origMsg||p.msgKo||p.message||'';
+        const update = { subKo: srcSub, msgKo: srcMsg };
+        for (const [cap, tgt] of Object.entries(MIG_TGT)) {
+          if (!p[`sub${cap}`]) update[`sub${cap}`] = await migDeepL(srcSub, tgt);
+          if (!p[`msg${cap}`]) update[`msg${cap}`] = await migDeepL(srcMsg, tgt);
+          await new Promise(r=>setTimeout(r,80)); // rate limit
+        }
+        await updateDoc(doc(db,'paddlet_posts',p.id), update);
+        done++;
+        if(done%10===0||done===needs.length) prog.innerText = `${done}/${needs.length} 완료...`;
+      }
+      prog.style.color='#22c55e';
+      prog.innerText = `✅ ${done}건 번역 완료`;
+      toast('번역 마이그레이션 완료', 'success');
+    } catch(e) { prog.innerText='오류: '+e.message; toast('오류: '+e.message,'error'); }
+    btn.disabled = false;
+  };
 
   window.loadAdminList = async () => {
     renderSchoolCheckboxes();
