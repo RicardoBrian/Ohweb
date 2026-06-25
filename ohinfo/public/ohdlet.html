@@ -189,6 +189,7 @@
       }
       .sidebar-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 4px; }
       .sidebar-desc { font-size: 0.85rem; color: var(--sub); margin-bottom: 20px; line-height: 1.5; }
+      .board-desc { font-size: 0.88rem; color: var(--sub); margin-top: 4px; line-height: 1.5; }
       .sidebar-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
       .board-header-mobile { display: none; }
       .grid-board { column-count: 3; column-gap: 16px; }
@@ -799,7 +800,16 @@
 
   function setSort(type) { currentSort = type; document.getElementById('sortNew').classList.toggle('active', type==='new'); document.getElementById('sortLike').classList.toggle('active', type==='like'); render(currentExample, sortedPosts()); }
   function sortedPosts() { const p = [...currentPosts]; if (currentSort === 'like') p.sort((a,b) => (b.pinned?1:0)-(a.pinned?1:0) || b.likes-a.likes); return p; }
-  function filterPosts() { const q = document.getElementById('searchInput').value.trim().toLowerCase(); if (!q) { render(currentExample, sortedPosts()); return; } const f = sortedPosts().filter(p => (p.subject||'').toLowerCase().includes(q)||(p.message||'').toLowerCase().includes(q)||(p.name||'').toLowerCase().includes(q)); render(currentExample, f, true); }
+  function filterPosts() {
+    const q = document.getElementById('searchInput').value.trim().toLowerCase();
+    if (!q) { render(currentExample, sortedPosts()); return; }
+    const f = sortedPosts().filter(p =>
+      (p.subject||p.subKo||'').toLowerCase().includes(q) ||
+      (p.message||p.msgKo||'').toLowerCase().includes(q) ||
+      (p.name||'').toLowerCase().includes(q)
+    );
+    render(currentExample, f, true);
+  }
 
   function render(ex, posts, isFiltered) {
     const display = document.getElementById('display');

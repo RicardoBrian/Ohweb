@@ -570,10 +570,6 @@
         </div>
       </div>
       <div style="margin-bottom:12px;">
-        <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:6px;">학교 (비워두면 전체)</label>
-        <div id="adm_school_boxes" style="display:flex;gap:12px;flex-wrap:wrap;"></div>
-      </div>
-      <div style="margin-bottom:12px;">
         <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:6px;">학년</label>
         <div style="display:flex;gap:12px;flex-wrap:wrap;">
           <label style="display:flex;align-items:center;gap:4px;font-size:0.88rem;"><input type="checkbox" class="adm-g" value="1"> 1학년</label>
@@ -1384,7 +1380,14 @@
     const list = data.classes || [];
     const el = document.getElementById('adminList');
     if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📌</div>등록된 수업이 없습니다.</div>'; return; }
-    el.innerHTML = list.map(c => `
+    const gradeOrder = ['1','2','3'];
+    const groups = {};
+    list.forEach(c => {
+      const g = (c.grade && gradeOrder.includes(String(c.grade))) ? String(c.grade) : '기타';
+      if (!groups[g]) groups[g] = [];
+      groups[g].push(c);
+    });
+    const renderItem = c => `
       <div class="list-item">
         <div>
           <div class="list-item-name">📌 ${c.name}</div>
@@ -1398,7 +1401,12 @@
           <button class="btn ghost sm" onclick='editAdminUI(${JSON.stringify(c).replace(/'/g,"&#39;")})'>수정</button>
           <button class="btn danger sm" onclick="delAdminClass('${c.id}')">삭제</button>
         </div>
-      </div>`).join('');
+      </div>`;
+    const orderedKeys = [...gradeOrder.filter(g => groups[g]), ...(groups['기타'] ? ['기타'] : [])];
+    el.innerHTML = orderedKeys.map(g => `
+      <div style="margin-bottom:4px;margin-top:12px;font-size:0.8rem;font-weight:700;color:var(--sub);padding:0 2px;">${g === '기타' ? '기타' : g+'학년'}</div>
+      ${groups[g].map(renderItem).join('')}
+    `).join('');
   };
 
   window.saveAdminClass = async () => {
