@@ -552,7 +552,7 @@
 
   function cancelEdit(){document.getElementById('postForm').reset();f_mode='add';f_postId='';imgList=[];updatePreview();document.getElementById('subBtn').innerText=uiText[currentLang].submit;document.getElementById('subBtn').disabled=false;document.getElementById('cancelEditBtn').classList.add('hidden');}
 
-  window.onload=()=>{ updateClassList(); setLanguage('ko'); };
+  window.onload=()=>{ setLanguage('ko'); };
 </script>
 
 <script type="module">
@@ -766,6 +766,9 @@
     document.getElementById('adm_edit_info').classList.add('hidden');
     document.getElementById('adm_cancel_btn').classList.add('hidden');
   };
+
+  // 모듈 로드 완료 후 초기 수업 목록 로드 (일반 스크립트 onload보다 늦게 실행되므로 여기서 호출)
+  window.updateClassList();
 </script>
 </body>
 </html>
