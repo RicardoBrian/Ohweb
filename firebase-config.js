@@ -3,12 +3,13 @@ import { getFirestore } from "https://www.gstatic.com/firebasejs/10.12.2/firebas
 import { getStorage } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
+  apiKey: "AIzaSyB1SuaWwJgUY6SrCnmN8dmhG2cnVnGcl2s",
   authDomain: "ohweb-93062.firebaseapp.com",
   projectId: "ohweb-93062",
-  storageBucket: "ohweb-93062.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  storageBucket: "ohweb-93062.firebasestorage.app",
+  messagingSenderId: "1027347539839",
+  appId: "1:1027347539839:web:b3b8e8a02986a6e4cb1c4a",
+  measurementId: "G-6QD89WX54B"
 };
 
 const app = initializeApp(firebaseConfig);
