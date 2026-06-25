@@ -594,10 +594,12 @@
   }
 
   async function gasPost(body) {
-    const res = await fetch(GAS_URL, {
-      method: 'POST',
-      body: JSON.stringify(body)
+    // Apps Script는 브라우저 POST CORS를 지원 안 해서 GET으로 우회
+    const url = GAS_URL + '?' + new URLSearchParams({
+      action: body.action,
+      payload: JSON.stringify(body)
     });
+    const res = await fetch(url);
     return res.json();
   }
 
