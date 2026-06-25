@@ -287,7 +287,10 @@
   window._renderApps(); // initial greeting render
 
   document.getElementById('loadingOverlay').style.display = 'flex';
-  const docId = `${student.schoolId}_g${student.grade}_c${student.class}`;
+  // appSettings 키: 학교명(자유텍스트)+정규화된 학년/반. admin과 동일 규칙 유지.
+  const nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
+  const appKey = (school, grade, cls) => `${String(school||'').replace(/\//g,'_')}__g${nv(grade)}__c${nv(cls)}`;
+  const docId = appKey(student.schoolName, student.grade, student.class);
   getDoc(doc(db, 'appSettings', docId)).then(snap => {
     const settings = snap.exists() ? snap.data() : {};
     const apps = settings.apps || {};

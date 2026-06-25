@@ -254,8 +254,9 @@
 
     .teacher-card {
       border-left: 3px solid var(--accent) !important;
-      column-span: all; margin-bottom: 16px;
+      margin-bottom: 16px;
     }
+    #teacherNotice:empty { display: none; }
     .teacher-card .post-sub { font-size: 0.82rem; font-weight: 700; color: var(--accent); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6px; }
 
     .post-sub { font-size: 0.97rem; font-weight: 700; margin-bottom: 5px; white-space: pre-wrap; word-break: break-all; line-height: 1.45; }
@@ -515,6 +516,7 @@
             <button id="sortLike" onclick="setSort('like')">인기순</button>
           </div>
         </div>
+        <div id="teacherNotice"></div>
         <div id="display" class="grid-board"></div>
       </main>
 
@@ -587,10 +589,10 @@
   const MASTER_PW = "9600";
 
   const uiText = {
-    ko: { opt:"수업을 선택하세요", enter:"입장하기", submit:"게시물 등록", edit_finish:"수정 완료" },
-    zh: { opt:"请选择课程", enter:"进入", submit:"发布", edit_finish:"完成修改" },
-    ru: { opt:"Выберите урок", enter:"Войти", submit:"Опубликовать", edit_finish:"Изм.завершено" },
-    en: { opt:"Select class", enter:"Enter", submit:"Post", edit_finish:"Save edit" }
+    ko: { opt:"수업을 선택하세요", enter:"입장하기", submit:"게시물 등록", edit_finish:"수정 완료", teacher_notice:"선생님 안내" },
+    zh: { opt:"请选择课程", enter:"进入", submit:"发布", edit_finish:"完成修改", teacher_notice:"老师须知" },
+    ru: { opt:"Выберите урок", enter:"Войти", submit:"Опубликовать", edit_finish:"Изм.завершено", teacher_notice:"Заметка учителя" },
+    en: { opt:"Select class", enter:"Enter", submit:"Post", edit_finish:"Save edit", teacher_notice:"Teacher's Note" }
   };
 
   // ── DeepL 번역 ──
@@ -808,10 +810,11 @@
 
       const sfx = langSfx(currentLang);
       const example = cls['ex'+sfx] || cls.ex || '';
+      const desc = cls['desc'+sfx] || cls.desc || '';
       document.getElementById('boardTitle').innerText = cls.name || classTitle;
-      document.getElementById('boardDesc').innerText = cls.desc || '';
+      document.getElementById('boardDesc').innerText = desc;
       document.getElementById('sidebarTitle').innerText = cls.name || classTitle;
-      document.getElementById('sidebarDesc').innerText = cls.desc || '';
+      document.getElementById('sidebarDesc').innerText = desc;
       currentPosts = rawPosts.map(p => ({
         ...p,
         subject: p['sub'+sfx] || p.subKo || '',
@@ -836,11 +839,14 @@
 
   function render(ex, posts, isFiltered) {
     const display = document.getElementById('display');
+    const noticeEl = document.getElementById('teacherNotice');
+    // 선생님 안내: 그리드 밖 전체폭 블록으로 분리 (컬럼 겹침 방지)
+    const noticeLabel = uiText[currentLang]?.teacher_notice || '선생님 안내';
+    noticeEl.innerHTML = (ex && !isFiltered)
+      ? `<div class="post-card teacher-card visible"><div class="post-sub">${noticeLabel}</div><div class="post-msg">${fmtMsg(ex)}</div></div>`
+      : '';
     let html = '';
-    if (ex && !isFiltered) {
-      html += `<div class="post-card teacher-card visible"><div class="post-sub">선생님 안내</div><div class="post-msg">${fmtMsg(ex)}</div></div>`;
-    }
-    if (!posts.length) { display.innerHTML = html + `<div style="text-align:center;padding:48px 0;color:var(--sub);font-size:0.92rem;">게시물이 없습니다.</div>`; return; }
+    if (!posts.length) { display.innerHTML = `<div style="text-align:center;padding:48px 0;color:var(--sub);font-size:0.92rem;">게시물이 없습니다.</div>`; return; }
     posts.forEach((p) => {
       const hasLiked = localStorage.getItem('voted_'+p.id);
       const _srch = [p.subject,p.subKo,p.message,p.msgKo,p.name].filter(Boolean).join(' ').replace(/"/g,'&quot;');
@@ -1124,7 +1130,7 @@
 
   window.onload = () => {
     document.getElementById('sessionBadge').innerText = `${SESSION.name} · ${SESSION.grade} ${SESSION.group}`;
-    buildKeyboard(); bindKeyboardTargets(); updateClassList(); setLanguage('ko');
+    buildKeyboard(); bindKeyboardTargets(); updateClassList(); setLanguage(currentLang);
     fillSession();
   };
 
