@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>설문 참여</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <style>
+    :root {
+      --glass: rgba(255,255,255,0.28); --glass-strong: rgba(255,255,255,0.42);
+      --glass-nav: rgba(255,255,255,0.3); --border: rgba(255,255,255,0.6);
+      --border-card: rgba(255,255,255,0.48); --highlight: inset 0 1px 0 rgba(255,255,255,0.7);
+      --text: #1a1f2e; --sub: #7a849a; --accent: #2a5ce6; --accent-light: rgba(42,92,230,0.12);
+      --blur: blur(28px); --shadow: 0 4px 20px rgba(60,80,160,0.1);
+      --shadow-md: 0 8px 32px rgba(60,80,160,0.18); --radius: 18px; --radius-sm: 11px; --nav-h: 58px;
+    }
+    body.dark {
+      --glass: rgba(255,255,255,0.07); --glass-strong: rgba(255,255,255,0.11);
+      --glass-nav: rgba(10,12,25,0.65); --border: rgba(255,255,255,0.14);
+      --border-card: rgba(255,255,255,0.1); --highlight: inset 0 1px 0 rgba(255,255,255,0.1);
+      --text: #dde2f0; --sub: #525a70; --accent: #4f8df7; --accent-light: rgba(79,141,247,0.15);
+      --shadow: 0 4px 20px rgba(0,0,0,0.45); --shadow-md: 0 8px 32px rgba(0,0,0,0.55);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: radial-gradient(ellipse at 15% 20%, #b8caff 0%, transparent 50%),
+        radial-gradient(ellipse at 85% 10%, #d4b8ff 0%, transparent 45%),
+        radial-gradient(ellipse at 60% 80%, #b8e0ff 0%, transparent 50%), #cdd8ff;
+      background-attachment: fixed; color: var(--text);
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 16px; line-height: 1.7; min-height: 100vh;
+    }
+    body.dark { background: radial-gradient(ellipse at 15% 20%,#1a2050 0%,transparent 50%), radial-gradient(ellipse at 85% 10%,#1e1040 0%,transparent 45%), radial-gradient(ellipse at 60% 80%,#0d1a35 0%,transparent 50%), #080c1a; background-attachment:fixed; }
+    .hidden { display: none !important; }
+    .nav { position: sticky; top: 0; z-index: 200; background: var(--glass-nav); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border-bottom: 1px solid var(--border); box-shadow: 0 1px 0 rgba(255,255,255,0.35),var(--shadow); padding: 0 20px; height: var(--nav-h); display: flex; align-items: center; gap: 10px; }
+    .nav-brand { font-size: 1.1rem; font-weight: 900; letter-spacing: -0.02em; background: linear-gradient(135deg,var(--accent),#7c4dff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; white-space: nowrap; flex-shrink: 0; }
+    .nav-end { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    .dark-toggle { width: 42px; height: 24px; border-radius: 50px; background: var(--glass); border: 1px solid var(--border); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--highlight); cursor: pointer; position: relative; transition: 0.3s; flex-shrink: 0; }
+    body.dark .dark-toggle { background: rgba(42,92,230,0.6); border-color: rgba(100,140,255,0.4); }
+    .dark-toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.2); transition: transform 0.3s; }
+    body.dark .dark-toggle::after { transform: translateX(18px); }
+    .wrap { max-width: 680px; margin: 0 auto; padding: 32px 20px 80px; }
+    @media(max-width:600px){ .wrap { padding: 18px 14px 80px; } }
+    .card { background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border); border-radius: 22px; padding: 24px 28px; margin-bottom: 16px; box-shadow: var(--highlight),var(--shadow); }
+    @media(max-width:600px){ .card { padding: 16px; border-radius: 16px; } }
+    .inp { width: 100%; padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-card); background: var(--glass); color: var(--text); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--highlight); font-family: inherit; font-size: 0.93rem; outline: none; transition: border-color 0.2s; }
+    .inp::placeholder { color: var(--sub); }
+    .inp:focus { border-color: rgba(42,92,230,0.5); box-shadow: var(--highlight),0 0 0 3px rgba(42,92,230,0.13); }
+    textarea.inp { resize: vertical; min-height: 80px; line-height: 1.6; }
+    select.inp { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+    .btn { font-family: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; border-radius: 50px; padding: 8px 22px; border: 1px solid var(--border); background: var(--glass); color: var(--text); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--highlight),var(--shadow); transition: background 0.2s,transform 0.15s; white-space: nowrap; }
+    .btn:hover { background: var(--glass-strong); }
+    .btn:active { transform: scale(0.96); }
+    .btn.accent { background: rgba(42,92,230,0.82); border-color: rgba(100,140,255,0.5); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,0.3),0 4px 20px rgba(42,92,230,0.35); }
+    .btn.accent:hover { background: rgba(42,92,230,0.95); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    /* Progress bar */
+    .progress-bar-wrap { background: var(--glass); border: 1px solid var(--border-card); border-radius: 50px; height: 8px; margin-bottom: 20px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; border-radius: 50px; background: linear-gradient(90deg,var(--accent),#7c4dff); transition: width 0.4s; }
+    /* Question card */
+    .q-wrap { margin-bottom: 18px; }
+    .q-label { font-weight: 700; font-size: 0.97rem; margin-bottom: 6px; }
+    .q-label .req { color: #ef4444; margin-left: 3px; }
+    .q-img { max-width: 100%; border-radius: 10px; margin-bottom: 10px; display: block; }
+    .q-desc { font-size: 0.82rem; color: var(--sub); margin-bottom: 8px; }
+    /* Radio / checkbox option */
+    .opt-list { display: flex; flex-direction: column; gap: 7px; }
+    .opt-item { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-card); background: var(--glass); cursor: pointer; transition: background 0.15s,border-color 0.15s; }
+    .opt-item:hover { background: var(--glass-strong); }
+    .opt-item input[type=radio], .opt-item input[type=checkbox] { width: 17px; height: 17px; accent-color: var(--accent); flex-shrink: 0; cursor: pointer; }
+    .opt-item.selected { border-color: rgba(42,92,230,0.5); background: var(--accent-light); }
+    /* Section title */
+    .section-title-card { background: var(--accent-light); border: 1px solid rgba(42,92,230,0.25); border-radius: var(--radius-sm); padding: 14px 18px; margin-bottom: 18px; }
+    .section-title-card h3 { font-size: 1.1rem; font-weight: 800; margin-bottom: 2px; }
+    .section-title-card p { font-size: 0.82rem; color: var(--sub); }
+    /* Nav buttons */
+    .nav-btns { display: flex; gap: 10px; justify-content: space-between; margin-top: 20px; }
+    /* Error */
+    .err-msg { color: #ef4444; font-size: 0.8rem; margin-top: 5px; }
+    /* Header card */
+    .form-header { margin-bottom: 22px; }
+    .form-header h1 { font-size: 1.5rem; font-weight: 900; margin-bottom: 6px; }
+    .form-header p { font-size: 0.9rem; color: var(--sub); }
+    .form-meta-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
+    .meta-badge { font-size: 0.75rem; padding: 3px 10px; border-radius: 50px; background: var(--glass); border: 1px solid var(--border-card); color: var(--sub); }
+    /* Status screens */
+    .status-screen { text-align: center; padding: 60px 20px; }
+    .status-screen .icon { font-size: 3.5rem; margin-bottom: 16px; }
+    .status-screen h2 { font-size: 1.4rem; font-weight: 800; margin-bottom: 8px; }
+    .status-screen p { color: var(--sub); font-size: 0.9rem; }
+    /* Score card */
+    .score-card { background: var(--accent-light); border: 1px solid rgba(42,92,230,0.25); border-radius: 18px; padding: 28px; text-align: center; margin-bottom: 20px; }
+    .score-card .score-num { font-size: 3rem; font-weight: 900; color: var(--accent); }
+    .score-card .score-total { font-size: 1rem; color: var(--sub); margin-top: 4px; }
+    /* Quiz feedback */
+    .q-feedback { margin-top: 8px; padding: 8px 12px; border-radius: 8px; font-size: 0.82rem; }
+    .q-feedback.correct { background: rgba(16,185,129,0.12); color: #059669; border: 1px solid rgba(16,185,129,0.3); }
+    .q-feedback.wrong { background: rgba(239,68,68,0.1); color: #ef4444; border: 1px solid rgba(239,68,68,0.25); }
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-brand">📊 설문 참여</div>
+  <div class="nav-end">
+    <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
+  </div>
+</nav>
+
+<div class="wrap" id="mainWrap">
+  <!-- Loading -->
+  <div id="pageLoading" class="status-screen">
+    <div class="icon">⏳</div>
+    <h2>불러오는 중...</h2>
+  </div>
+
+  <!-- Error / closed / not found -->
+  <div id="pageError" class="status-screen hidden">
+    <div class="icon" id="errIcon">⚠️</div>
+    <h2 id="errTitle">오류</h2>
+    <p id="errMsg"></p>
+  </div>
+
+  <!-- Already submitted -->
+  <div id="pageAlready" class="status-screen hidden">
+    <div class="icon">✅</div>
+    <h2>이미 제출하셨습니다</h2>
+    <p>이 설문은 1인 1회만 참여할 수 있습니다.</p>
+  </div>
+
+  <!-- Fill form -->
+  <div id="pageFill" class="hidden">
+    <div class="card form-header">
+      <h1 id="fillTitle"></h1>
+      <p id="fillDesc"></p>
+      <div class="form-meta-row" id="fillMeta"></div>
+    </div>
+    <div class="progress-bar-wrap" id="progressWrap" style="display:none">
+      <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+    </div>
+    <div id="sectionCard" class="section-title-card hidden"></div>
+    <div id="questionsArea"></div>
+    <div class="nav-btns">
+      <button class="btn" id="btnPrev" onclick="prevSection()" style="display:none">← 이전</button>
+      <button class="btn accent" id="btnNext" onclick="nextSection()">다음 →</button>
+    </div>
+  </div>
+
+  <!-- Done / score -->
+  <div id="pageDone" class="hidden">
+    <div class="card">
+      <div class="status-screen" style="padding:30px 0">
+        <div class="icon">🎉</div>
+        <h2 id="doneTitle">제출 완료!</h2>
+        <p id="doneMsg" style="margin-bottom:20px"></p>
+      </div>
+      <div id="scoreCard" class="score-card hidden">
+        <div class="score-num" id="scoreNum"></div>
+        <div class="score-total" id="scoreTotal"></div>
+      </div>
+      <div id="quizReview"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, doc, getDoc, addDoc, collection, query, where, getDocs, serverTimestamp }
+  from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+const FB = { apiKey:"AIzaSyBYYQBnr5brEYVZ5sYilh8QS-c3aqy1IZM", authDomain:"ohweb-93062.firebaseapp.com", projectId:"ohweb-93062" };
+const app = initializeApp(FB);
+const db  = getFirestore(app);
+
+// dark
+const savedDark = localStorage.getItem('dark');
+if (savedDark === '1' || (!savedDark && window.matchMedia('(prefers-color-scheme:dark)').matches)) document.body.classList.add('dark');
+window.toggleDark = () => { document.body.classList.toggle('dark'); localStorage.setItem('dark', document.body.classList.contains('dark') ? '1' : '0'); };
+
+const params = new URLSearchParams(location.search);
+const formId  = params.get('id');
+
+let FORM       = null;
+let SESSION    = null;
+let sections   = []; // array of { title, desc, questions:[] }
+let curSection = 0;
+let allAnswers = {}; // qIndex -> answer
+
+function getSession() {
+  try { return JSON.parse(sessionStorage.getItem('ohinfo_student') || 'null'); } catch { return null; }
+}
+
+function showErr(icon, title, msg) {
+  document.getElementById('pageLoading').classList.add('hidden');
+  const e = document.getElementById('pageError');
+  e.classList.remove('hidden');
+  document.getElementById('errIcon').textContent = icon;
+  document.getElementById('errTitle').textContent = title;
+  document.getElementById('errMsg').textContent = msg;
+}
+
+async function init() {
+  if (!formId) { showErr('🔍','설문을 찾을 수 없습니다','링크가 올바르지 않습니다.'); return; }
+
+  let snap;
+  try {
+    snap = await getDoc(doc(db, 'student_forms', formId));
+  } catch(e) {
+    showErr('⚠️','오류','설문을 불러오지 못했습니다: ' + e.message);
+    return;
+  }
+
+  if (!snap.exists()) { showErr('🔍','설문을 찾을 수 없습니다','삭제되었거나 잘못된 링크입니다.'); return; }
+
+  FORM = { id: snap.id, ...snap.data() };
+
+  // Status check
+  if (FORM.status === 'closed') { showErr('🔒','마감된 설문','이 설문은 응답이 마감되었습니다.'); return; }
+  if (FORM.status === 'draft')  { showErr('📝','준비 중','아직 공개되지 않은 설문입니다.'); return; }
+
+  // Deadline check
+  if (FORM.deadline) {
+    const dl = new Date(FORM.deadline);
+    if (!isNaN(dl) && new Date() > dl) {
+      showErr('⏰','마감된 설문', '마감일: ' + dl.toLocaleString('ko-KR'));
+      return;
+    }
+  }
+
+  // Login check
+  SESSION = getSession();
+  if (FORM.requireLogin !== false) {
+    if (!SESSION) {
+      showErr('🔐','로그인 필요','학생 계정으로 로그인한 후 참여할 수 있습니다.'); return;
+    }
+  }
+
+  // 1회 제한
+  if (FORM.limitOnce && SESSION) {
+    try {
+      const q = query(collection(db,'student_form_responses'), where('formId','==',formId), where('respondentId','==',SESSION.id));
+      const existing = await getDocs(q);
+      if (!existing.empty) { document.getElementById('pageLoading').classList.add('hidden'); document.getElementById('pageAlready').classList.remove('hidden'); return; }
+    } catch(e) { console.error('limit check:', e); }
+  }
+
+  buildSections();
+  renderFormHeader();
+  document.getElementById('pageLoading').classList.add('hidden');
+  document.getElementById('pageFill').classList.remove('hidden');
+  renderSection(0);
+}
+
+function buildSections() {
+  const questions = FORM.questions || [];
+  sections = [];
+  let cur = { title: '', desc: '', questions: [] };
+  for (const q of questions) {
+    if (q.type === 'section') {
+      if (cur.questions.length > 0 || sections.length > 0 || cur.title) {
+        sections.push(cur);
+      }
+      cur = { title: q.title || '', desc: q.desc || '', questions: [] };
+    } else {
+      cur.questions.push(q);
+    }
+  }
+  sections.push(cur);
+  if (sections.length === 0) sections = [{ title:'', desc:'', questions: [] }];
+}
+
+function renderFormHeader() {
+  document.getElementById('fillTitle').textContent = FORM.title || '설문';
+  document.getElementById('fillDesc').textContent  = FORM.description || '';
+  const meta = document.getElementById('fillMeta');
+  const tags = [];
+  if (FORM.isQuiz) tags.push('🎯 퀴즈');
+  if (FORM.deadline) { const dl = new Date(FORM.deadline); if (!isNaN(dl)) tags.push('⏰ ' + dl.toLocaleDateString('ko-KR') + ' 마감'); }
+  if (FORM.limitOnce) tags.push('1인 1회');
+  meta.innerHTML = tags.map(t => `<span class="meta-badge">${t}</span>`).join('');
+  if (sections.length > 1) {
+    document.getElementById('progressWrap').style.display = '';
+  }
+}
+
+function updateProgress() {
+  const pct = sections.length <= 1 ? 100 : Math.round(((curSection + 1) / sections.length) * 100);
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+
+function renderSection(idx) {
+  curSection = idx;
+  updateProgress();
+  const sec = sections[idx];
+
+  // Section title card
+  const sc = document.getElementById('sectionCard');
+  if (sec.title) {
+    sc.classList.remove('hidden');
+    sc.innerHTML = `<h3>${esc(sec.title)}</h3>${sec.desc ? `<p>${esc(sec.desc)}</p>` : ''}`;
+  } else {
+    sc.classList.add('hidden');
+  }
+
+  // Questions
+  const area = document.getElementById('questionsArea');
+  area.innerHTML = '';
+  sec.questions.forEach((q, i) => {
+    const globalIdx = getGlobalIndex(idx, i);
+    area.appendChild(buildQuestionEl(q, globalIdx));
+  });
+
+  // Buttons
+  const btnPrev = document.getElementById('btnPrev');
+  const btnNext = document.getElementById('btnNext');
+  btnPrev.style.display = idx > 0 ? '' : 'none';
+  if (idx === sections.length - 1) {
+    btnNext.textContent = '제출 ✓';
+    btnNext.onclick = submitForm;
+  } else {
+    btnNext.textContent = '다음 →';
+    btnNext.onclick = nextSection;
+  }
+}
+
+function getGlobalIndex(secIdx, qIdx) {
+  let n = 0;
+  for (let s = 0; s < secIdx; s++) n += sections[s].questions.length;
+  return n + qIdx;
+}
+
+function buildQuestionEl(q, globalIdx) {
+  const wrap = document.createElement('div');
+  wrap.className = 'q-wrap card';
+  wrap.dataset.gidx = globalIdx;
+
+  let html = `<div class="q-label">${esc(q.title || '질문')}${q.required ? '<span class="req">*</span>' : ''}</div>`;
+  if (q.imageUrl) html += `<img class="q-img" src="${esc(q.imageUrl)}" alt="">`;
+  if (q.description) html += `<div class="q-desc">${esc(q.description)}</div>`;
+
+  const ans = allAnswers[globalIdx];
+
+  if (q.type === 'mc') {
+    html += '<div class="opt-list">';
+    (q.options || []).forEach((opt, oi) => {
+      const checked = ans === opt;
+      html += `<label class="opt-item${checked ? ' selected' : ''}"><input type="radio" name="q${globalIdx}" value="${esc(opt)}" ${checked ? 'checked' : ''} onchange="window._ffAns(${globalIdx},'mc',this)"> <span>${esc(opt)}</span></label>`;
+    });
+    html += '</div>';
+  } else if (q.type === 'checkbox') {
+    html += '<div class="opt-list">';
+    const ansArr = Array.isArray(ans) ? ans : [];
+    (q.options || []).forEach((opt, oi) => {
+      const checked = ansArr.includes(opt);
+      html += `<label class="opt-item${checked ? ' selected' : ''}"><input type="checkbox" name="q${globalIdx}" value="${esc(opt)}" ${checked ? 'checked' : ''} onchange="window._ffAns(${globalIdx},'checkbox',this)"> <span>${esc(opt)}</span></label>`;
+    });
+    html += '</div>';
+  } else if (q.type === 'dropdown') {
+    html += `<select class="inp" onchange="window._ffAns(${globalIdx},'dropdown',this)">`;
+    html += `<option value="">선택하세요</option>`;
+    (q.options || []).forEach(opt => {
+      html += `<option value="${esc(opt)}" ${ans === opt ? 'selected' : ''}>${esc(opt)}</option>`;
+    });
+    html += '</select>';
+  } else if (q.type === 'short') {
+    html += `<input class="inp" type="text" placeholder="답변을 입력하세요" value="${esc(ans || '')}" oninput="window._ffAns(${globalIdx},'short',this)">`;
+  } else if (q.type === 'long') {
+    html += `<textarea class="inp" placeholder="답변을 입력하세요" oninput="window._ffAns(${globalIdx},'long',this)">${esc(ans || '')}</textarea>`;
+  }
+
+  html += `<div class="err-msg hidden" id="err_${globalIdx}"></div>`;
+  wrap.innerHTML = html;
+  return wrap;
+}
+
+window._ffAns = function(idx, type, el) {
+  if (type === 'mc' || type === 'dropdown' || type === 'short' || type === 'long') {
+    allAnswers[idx] = el.value;
+    if (type === 'mc') {
+      el.closest('.opt-list').querySelectorAll('.opt-item').forEach(li => li.classList.remove('selected'));
+      el.closest('.opt-item').classList.add('selected');
+    }
+  } else if (type === 'checkbox') {
+    const parent = el.closest('.opt-list');
+    const checked = [...parent.querySelectorAll('input[type=checkbox]:checked')].map(c => c.value);
+    allAnswers[idx] = checked;
+    el.closest('.opt-item').classList.toggle('selected', el.checked);
+  }
+  const errEl = document.getElementById('err_' + idx);
+  if (errEl) errEl.classList.add('hidden');
+};
+
+window.prevSection = function() { if (curSection > 0) renderSection(curSection - 1); };
+window.nextSection = function() {
+  if (!validateSection()) return;
+  if (curSection < sections.length - 1) renderSection(curSection + 1);
+};
+
+function validateSection() {
+  const sec = sections[curSection];
+  let ok = true;
+  sec.questions.forEach((q, i) => {
+    const gidx = getGlobalIndex(curSection, i);
+    if (!q.required) return;
+    const ans = allAnswers[gidx];
+    let empty = false;
+    if (Array.isArray(ans)) empty = ans.length === 0;
+    else empty = !ans || ans.toString().trim() === '';
+    const errEl = document.getElementById('err_' + gidx);
+    if (empty) {
+      ok = false;
+      if (errEl) { errEl.textContent = '필수 항목입니다.'; errEl.classList.remove('hidden'); }
+    } else {
+      if (errEl) errEl.classList.add('hidden');
+    }
+  });
+  return ok;
+}
+
+async function submitForm() {
+  if (!validateSection()) return;
+
+  const btn = document.getElementById('btnNext');
+  btn.disabled = true;
+  btn.textContent = '제출 중...';
+
+  // Build answers array
+  const allQuestions = sections.flatMap(s => s.questions);
+  const answersArr = allQuestions.map((q, i) => ({
+    question: q.title || '',
+    type: q.type,
+    answer: allAnswers[i] ?? null
+  }));
+
+  // Quiz grading
+  let score = 0, total = 0;
+  const quizFeedback = [];
+  if (FORM.isQuiz) {
+    allQuestions.forEach((q, i) => {
+      if (!q.correctAnswer && !q.correctOptions) return;
+      total++;
+      const ans = allAnswers[i];
+      let correct = false;
+      if (q.type === 'mc' || q.type === 'dropdown' || q.type === 'short') {
+        correct = (ans || '').toString().trim() === (q.correctAnswer || '').toString().trim();
+      } else if (q.type === 'checkbox') {
+        const ca = Array.isArray(q.correctOptions) ? [...q.correctOptions].sort() : [];
+        const ua = Array.isArray(ans) ? [...ans].sort() : [];
+        correct = JSON.stringify(ca) === JSON.stringify(ua);
+      }
+      if (correct) score++;
+      quizFeedback.push({ question: q.title, answer: ans, correctAnswer: q.correctAnswer || q.correctOptions, correct });
+    });
+  }
+
+  const payload = {
+    formId,
+    ownerId: FORM.ownerId || '',
+    respondentId: SESSION ? SESSION.id : 'anonymous',
+    respondentName: SESSION ? (SESSION.name || '') : '익명',
+    answers: answersArr,
+    submittedAt: serverTimestamp()
+  };
+  if (FORM.isQuiz) { payload.score = score; payload.total = total; }
+
+  try {
+    await addDoc(collection(db, 'student_form_responses'), payload);
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = '제출 ✓';
+    alert('제출 오류: ' + e.message);
+    return;
+  }
+
+  // Show done
+  document.getElementById('pageFill').classList.add('hidden');
+  const done = document.getElementById('pageDone');
+  done.classList.remove('hidden');
+
+  if (FORM.isQuiz && total > 0) {
+    document.getElementById('doneTitle').textContent = '퀴즈 완료!';
+    document.getElementById('doneMsg').textContent = '결과를 확인하세요.';
+    const sc = document.getElementById('scoreCard');
+    sc.classList.remove('hidden');
+    document.getElementById('scoreNum').textContent = score + '점';
+    document.getElementById('scoreTotal').textContent = total + '문제 중 ' + score + '개 정답 (' + Math.round(score/total*100) + '%)';
+
+    // Quiz review
+    const rev = document.getElementById('quizReview');
+    rev.innerHTML = quizFeedback.map(f => {
+      const ansStr = Array.isArray(f.answer) ? f.answer.join(', ') : (f.answer || '(미입력)');
+      const corStr = Array.isArray(f.correctAnswer) ? f.correctAnswer.join(', ') : (f.correctAnswer || '');
+      return `<div style="margin-bottom:14px">
+        <div style="font-weight:700;font-size:0.9rem;margin-bottom:4px">${esc(f.question || '')}</div>
+        <div class="q-feedback ${f.correct ? 'correct' : 'wrong'}">
+          ${f.correct ? '✅ 정답' : `❌ 오답 — 정답: ${esc(corStr)}`}
+          <span style="margin-left:8px;opacity:.8">내 답: ${esc(ansStr)}</span>
+        </div>
+      </div>`;
+    }).join('');
+  } else {
+    document.getElementById('doneTitle').textContent = '제출 완료!';
+    document.getElementById('doneMsg').textContent = '응답해 주셔서 감사합니다.';
+  }
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+init();
+</script>
+</body>
+</html>

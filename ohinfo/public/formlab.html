@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>설문 실습</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <style>
+    :root {
+      --glass: rgba(255,255,255,0.28); --glass-strong: rgba(255,255,255,0.42);
+      --glass-nav: rgba(255,255,255,0.3); --border: rgba(255,255,255,0.6);
+      --border-card: rgba(255,255,255,0.48); --highlight: inset 0 1px 0 rgba(255,255,255,0.7);
+      --text: #1a1f2e; --sub: #7a849a; --accent: #2a5ce6; --accent-light: rgba(42,92,230,0.12);
+      --blur: blur(28px); --shadow: 0 4px 20px rgba(60,80,160,0.1);
+      --shadow-md: 0 8px 32px rgba(60,80,160,0.18); --radius: 18px; --radius-sm: 11px; --nav-h: 58px;
+    }
+    body.dark {
+      --glass: rgba(255,255,255,0.07); --glass-strong: rgba(255,255,255,0.11);
+      --glass-nav: rgba(10,12,25,0.65); --border: rgba(255,255,255,0.14);
+      --border-card: rgba(255,255,255,0.1); --highlight: inset 0 1px 0 rgba(255,255,255,0.1);
+      --text: #dde2f0; --sub: #525a70; --accent: #4f8df7; --accent-light: rgba(79,141,247,0.15);
+      --shadow: 0 4px 20px rgba(0,0,0,0.45); --shadow-md: 0 8px 32px rgba(0,0,0,0.55);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: radial-gradient(ellipse at 15% 20%, #b8caff 0%, transparent 50%),
+        radial-gradient(ellipse at 85% 10%, #d4b8ff 0%, transparent 45%),
+        radial-gradient(ellipse at 60% 80%, #b8e0ff 0%, transparent 50%), #cdd8ff;
+      background-attachment: fixed; color: var(--text);
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 16px; line-height: 1.7; min-height: 100vh;
+    }
+    body.dark { background: radial-gradient(ellipse at 15% 20%,#1a2050 0%,transparent 50%), radial-gradient(ellipse at 85% 10%,#1e1040 0%,transparent 45%), radial-gradient(ellipse at 60% 80%,#0d1a35 0%,transparent 50%), #080c1a; background-attachment:fixed; }
+    .hidden { display: none !important; }
+    /* NAV */
+    .nav { position: sticky; top: 0; z-index: 200; background: var(--glass-nav); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border-bottom: 1px solid var(--border); box-shadow: 0 1px 0 rgba(255,255,255,0.35),var(--shadow); padding: 0 20px; height: var(--nav-h); display: flex; align-items: center; gap: 10px; }
+    .nav-brand { font-size: 1.1rem; font-weight: 900; letter-spacing: -0.02em; background: linear-gradient(135deg,var(--accent),#7c4dff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; white-space: nowrap; flex-shrink: 0; cursor: pointer; }
+    .nav-end { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    .dark-toggle { width: 42px; height: 24px; border-radius: 50px; background: var(--glass); border: 1px solid var(--border); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--highlight); cursor: pointer; position: relative; transition: 0.3s; flex-shrink: 0; }
+    body.dark .dark-toggle { background: rgba(42,92,230,0.6); border-color: rgba(100,140,255,0.4); }
+    .dark-toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.2); transition: transform 0.3s; }
+    body.dark .dark-toggle::after { transform: translateX(18px); }
+    /* LAYOUT */
+    .wrap { max-width: 720px; margin: 0 auto; padding: 28px 20px 80px; }
+    @media(max-width:600px){ .wrap { padding: 16px 14px 80px; } }
+    /* CARD */
+    .card { background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border); border-radius: 22px; padding: 22px 26px; margin-bottom: 14px; box-shadow: var(--highlight),var(--shadow); }
+    @media(max-width:600px){ .card { padding: 16px; border-radius: 16px; } }
+    /* INP */
+    .inp { width: 100%; padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-card); background: var(--glass); color: var(--text); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--highlight); font-family: inherit; font-size: 0.93rem; outline: none; transition: border-color 0.2s; }
+    .inp::placeholder { color: var(--sub); }
+    .inp:focus { border-color: rgba(42,92,230,0.5); box-shadow: var(--highlight),0 0 0 3px rgba(42,92,230,0.13); }
+    textarea.inp { resize: vertical; min-height: 72px; line-height: 1.6; }
+    select.inp { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+    .field { margin-bottom: 10px; }
+    .field > label { display: block; font-size: 0.71rem; font-weight: 700; color: var(--sub); margin-bottom: 4px; letter-spacing: 0.05em; text-transform: uppercase; }
+    /* BTN */
+    .btn { font-family: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; border-radius: 50px; padding: 8px 20px; border: 1px solid var(--border); background: var(--glass); color: var(--text); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--highlight),var(--shadow); transition: background 0.2s,transform 0.15s; white-space: nowrap; }
+    .btn:hover { background: var(--glass-strong); }
+    .btn:active { transform: scale(0.96); }
+    .btn.accent { background: rgba(42,92,230,0.82); border-color: rgba(100,140,255,0.5); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,0.3),0 4px 20px rgba(42,92,230,0.35); }
+    .btn.accent:hover { background: rgba(42,92,230,0.95); }
+    .btn.danger { color: #ef4444; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.08); box-shadow: none; }
+    .btn.ghost { border-color: transparent; background: transparent; box-shadow: none; }
+    .btn.ghost:hover { background: var(--glass); }
+    .btn.sm { padding: 5px 13px; font-size: 0.78rem; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    /* PAGES */
+    .page { display: none; }
+    .page.active { display: block; }
+    /* FORM LIST */
+    .form-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; margin-bottom: 8px; background: var(--glass); border: 1px solid var(--border-card); border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s; flex-wrap: wrap; }
+    .form-item:hover { background: var(--glass-strong); }
+    .fi-title { font-weight: 700; font-size: 0.95rem; flex: 1; min-width: 100px; }
+    .fi-meta { font-size: 0.75rem; color: var(--sub); }
+    .fi-resp { font-size: 0.78rem; font-weight: 700; color: var(--accent); flex-shrink: 0; }
+    /* BUILDER */
+    .q-card { background: var(--glass); border: 1px solid var(--border-card); border-radius: var(--radius-sm); padding: 14px 16px; margin-bottom: 10px; position: relative; }
+    .q-top { display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 10px; }
+    .q-text-inp { flex: 1; min-width: 160px; }
+    .q-type-sel { width: 140px; flex-shrink: 0; font-size: 0.82rem; padding: 7px 10px; }
+    @media(max-width:480px){ .q-type-sel { width: 100%; } }
+    .q-opts { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+    .q-opt-row { display: flex; align-items: center; gap: 6px; }
+    .q-opt-icon { font-size: 0.85rem; color: var(--sub); width: 16px; flex-shrink: 0; }
+    .add-opt { font-size: 0.78rem; color: var(--accent); background: none; border: none; cursor: pointer; font-family: inherit; font-weight: 600; padding: 3px 0; }
+    .add-opt:hover { text-decoration: underline; }
+    .q-del { position: absolute; top: 10px; right: 12px; }
+    .q-img-preview { max-width: 160px; max-height: 90px; border-radius: 8px; object-fit: cover; display: block; margin: 6px 0; }
+    .req-row { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--sub); margin-top: 8px; }
+    /* SHARE BOX */
+    .share-box { display: flex; gap: 8px; align-items: stretch; }
+    .share-link { flex: 1; font-size: 0.78rem; color: var(--sub); padding: 9px 12px; background: var(--glass); border: 1px solid var(--border-card); border-radius: var(--radius-sm); word-break: break-all; line-height: 1.4; }
+    /* RESULTS */
+    .res-tabs { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
+    .res-tab { font-family: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer; border-radius: 50px; padding: 6px 14px; border: 1px solid var(--border-card); background: var(--glass); color: var(--sub); }
+    .res-tab.active { background: var(--accent); color: #fff; border-color: transparent; }
+    .res-q-block { margin-bottom: 22px; }
+    .res-q-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; }
+    .res-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 0.82rem; }
+    .res-bar-label { min-width: 90px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .res-bar-track { flex: 1; height: 16px; background: var(--glass); border-radius: 50px; overflow: hidden; border: 1px solid var(--border-card); }
+    .res-bar-fill { height: 100%; border-radius: 50px; transition: width 0.5s; }
+    .res-bar-count { min-width: 28px; text-align: right; color: var(--sub); font-weight: 600; }
+    .res-texts { max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+    .res-text-item { background: var(--glass); border: 1px solid var(--border-card); border-radius: 8px; padding: 7px 12px; font-size: 0.84rem; }
+    .res-stat-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    .res-stat { background: var(--glass); border: 1px solid var(--border-card); border-radius: var(--radius-sm); padding: 10px 18px; text-align: center; }
+    .res-stat-num { font-size: 1.6rem; font-weight: 900; color: var(--accent); line-height: 1; }
+    .res-stat-label { font-size: 0.7rem; color: var(--sub); font-weight: 600; margin-top: 2px; }
+    .chart-wrap { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
+    .pie-svg { width: 84px; height: 84px; flex-shrink: 0; }
+    .chart-legend { display: flex; flex-direction: column; gap: 4px; font-size: 0.77rem; }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .resp-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 9px 14px; background: var(--glass); border: 1px solid var(--border-card); border-radius: 8px; margin-bottom: 6px; font-size: 0.82rem; cursor: pointer; }
+    .resp-row:hover { background: var(--glass-strong); }
+    .resp-detail { background: var(--glass); border: 1px solid var(--border-card); border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; margin-top: -4px; }
+    /* STATUS TOGGLE */
+    .status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 50px; font-size: 0.75rem; font-weight: 700; cursor: pointer; border: none; font-family: inherit; }
+    .status-pill.open { background: rgba(34,197,94,0.15); color: #15803d; border: 1px solid rgba(34,197,94,0.3); }
+    .status-pill.closed { background: rgba(239,68,68,0.1); color: #b91c1c; border: 1px solid rgba(239,68,68,0.25); }
+    /* LOADING */
+    #loadingOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.22); z-index: 9999; display: none; align-items: center; justify-content: center; }
+    .spinner { width: 44px; height: 44px; border-radius: 50%; border: 4px solid rgba(255,255,255,0.25); border-top-color: #fff; animation: spin 0.75s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty-msg { text-align: center; padding: 36px 0; color: var(--sub); font-size: 0.9rem; }
+    .page-heading { font-size: 1.1rem; font-weight: 900; margin-bottom: 18px; }
+    .tag { display: inline-block; font-size: 0.7rem; font-weight: 700; padding: 2px 9px; border-radius: 50px; }
+    .tag.open { background: rgba(34,197,94,0.15); color: #15803d; }
+    .tag.closed { background: rgba(239,68,68,0.1); color: #b91c1c; }
+  </style>
+</head>
+<body>
+<div id="loadingOverlay"><div class="spinner"></div></div>
+
+<nav class="nav">
+  <div class="nav-brand" onclick="showPage('pageList')">ohinfo</div>
+  <span id="navSub" style="font-size:0.82rem;color:var(--sub);font-weight:600;">📊 설문 실습</span>
+  <div class="nav-end">
+    <button class="btn sm ghost" id="navBack" onclick="showPage('pageList')" style="display:none;">← 목록</button>
+    <button class="dark-toggle" onclick="toggleDark()"></button>
+  </div>
+</nav>
+
+<div class="wrap">
+  <!-- 목록 -->
+  <div class="page active" id="pageList">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px;">
+      <div class="page-heading" style="margin:0;">내 설문 목록</div>
+      <button class="btn accent" onclick="initBuilder()">+ 새 설문 만들기</button>
+    </div>
+    <div id="myFormList"><div class="empty-msg">아직 만든 설문이 없습니다.</div></div>
+  </div>
+
+  <!-- 빌더 -->
+  <div class="page" id="pageBuilder">
+    <!-- 폼 기본 정보 -->
+    <div class="card">
+      <div class="field"><label>설문 제목 *</label><input class="inp" id="bTitle" placeholder="설문지 제목을 입력하세요"></div>
+      <div class="field"><label>설명 (선택)</label><textarea class="inp" id="bDesc" rows="2" placeholder="설문 목적이나 안내사항"></textarea></div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:4px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:0.83rem;cursor:pointer;">
+          <input type="checkbox" id="bAnon" checked>
+          <span style="font-weight:600;">비로그인도 응답 가능</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:0.83rem;cursor:pointer;">
+          <input type="checkbox" id="bShowResult">
+          <span style="font-weight:600;">응답자에게 결과 공개</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- 질문 목록 -->
+    <div id="bQuestions"></div>
+
+    <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+      <button class="btn ghost" onclick="addQuestion()">+ 질문 추가</button>
+    </div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <button class="btn accent" onclick="saveForm()" id="bSaveBtn">저장 & 공유 링크 받기</button>
+      <button class="btn ghost" onclick="showPage('pageList')">취소</button>
+      <span id="bSaveMsg" style="font-size:0.8rem;color:var(--sub);"></span>
+    </div>
+  </div>
+
+  <!-- 결과 -->
+  <div class="page" id="pageResults">
+    <div style="margin-bottom:18px;">
+      <div class="page-heading" style="margin-bottom:4px;" id="resTitle"></div>
+      <div style="font-size:0.8rem;color:var(--sub);" id="resMeta"></div>
+    </div>
+
+    <!-- 공유 링크 -->
+    <div class="card" style="padding:16px 20px;">
+      <div style="font-size:0.8rem;font-weight:700;color:var(--sub);margin-bottom:8px;">공유 링크</div>
+      <div class="share-box">
+        <div class="share-link" id="shareLink"></div>
+        <button class="btn sm" onclick="copyLink()">복사</button>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <button class="status-pill" id="statusToggleBtn" onclick="toggleStatus()"></button>
+        <button class="btn sm danger" onclick="deleteForm()">삭제</button>
+        <button class="btn sm" onclick="editForm()">수정</button>
+        <button class="btn sm accent" onclick="exportCsv()">CSV 내보내기</button>
+      </div>
+    </div>
+
+    <!-- 통계 -->
+    <div class="res-stat-row" id="resStats"></div>
+
+    <!-- 탭 -->
+    <div class="res-tabs">
+      <button class="res-tab active" onclick="showResTab('summary',this)">요약</button>
+      <button class="res-tab" onclick="showResTab('individual',this)">개별 응답</button>
+    </div>
+    <div id="resContent"></div>
+  </div>
+</div>
+
+<script type="module">
+import { db } from './firebase-config.js';
+import {
+  collection, query, where, orderBy, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, doc, serverTimestamp
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+// ── 유틸 ──
+const SESSION = JSON.parse(sessionStorage.getItem('ohinfo_student') || 'null');
+if (!SESSION) { window.location.href = 'index.html'; }
+function toggleDark() { document.body.classList.toggle('dark'); localStorage.setItem('dark', document.body.classList.contains('dark')?'1':'0'); }
+if (localStorage.getItem('dark')==='1') document.body.classList.add('dark');
+window.toggleDark = toggleDark;
+function showLoading(v) { document.getElementById('loadingOverlay').style.display = v ? 'flex' : 'none'; }
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function uid() { return Math.random().toString(36).slice(2,10); }
+
+const COLORS = ['#4f8df7','#7c4dff','#22c55e','#f59e0b','#ef4444','#06b6d4','#ec4899','#84cc16','#a78bfa','#fb923c'];
+const TYPE_LABELS = { mc:'객관식', checkbox:'체크박스', short:'주관식', long:'장문', dropdown:'드롭다운' };
+
+// ── 상태 ──
+let questions = []; // [{id,type,text,options,required,imageUrl}]
+let currentFormId = null;
+let currentFormData = null;
+let responses = [];
+let resTabMode = 'summary';
+
+// ── 페이지 전환 ──
+window.showPage = (id) => {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.getElementById('navBack').style.display = id === 'pageList' ? 'none' : '';
+  if (id === 'pageList') loadMyForms();
+};
+
+// ── 목록 로드 ──
+async function loadMyForms() {
+  showLoading(true);
+  try {
+    const snap = await getDocs(query(
+      collection(db, 'student_forms'),
+      where('ownerId', '==', SESSION.id),
+      orderBy('createdAt', 'desc')
+    ));
+    const forms = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const el = document.getElementById('myFormList');
+    if (!forms.length) { el.innerHTML = '<div class="empty-msg">아직 만든 설문이 없습니다.<br>새 설문을 만들어보세요!</div>'; showLoading(false); return; }
+    el.innerHTML = forms.map(f => {
+      const resCount = f.responseCount || 0;
+      const status = f.status === 'open' ? '<span class="tag open">응답 중</span>' : '<span class="tag closed">마감</span>';
+      const date = f.createdAt ? new Date(f.createdAt.toDate ? f.createdAt.toDate() : f.createdAt).toLocaleDateString() : '';
+      return `<div class="form-item" onclick="openResults('${f.id}')">
+        <div style="flex:1;min-width:0;">
+          <div class="fi-title">${escHtml(f.title||'(제목 없음)')}</div>
+          <div class="fi-meta">${date}</div>
+        </div>
+        ${status}
+        <div class="fi-resp">응답 ${resCount}개</div>
+        <div style="display:flex;gap:6px;" onclick="event.stopPropagation()">
+          <button class="btn sm" onclick="editFormId('${f.id}')">수정</button>
+          <button class="btn sm danger" onclick="deleteFormId('${f.id}')">삭제</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) { document.getElementById('myFormList').innerHTML = `<div class="empty-msg" style="color:#ef4444;">${e.message}</div>`; }
+  showLoading(false);
+}
+
+// ── 빌더 초기화 ──
+window.initBuilder = (formId) => {
+  currentFormId = formId || null;
+  questions = [];
+  document.getElementById('bTitle').value = '';
+  document.getElementById('bDesc').value = '';
+  document.getElementById('bAnon').checked = true;
+  document.getElementById('bShowResult').checked = false;
+  document.getElementById('bSaveMsg').innerText = '';
+  if (formId) {
+    showLoading(true);
+    getDoc(doc(db,'student_forms',formId)).then(snap => {
+      showLoading(false);
+      if (!snap.exists()) return;
+      const d = snap.data();
+      document.getElementById('bTitle').value = d.title || '';
+      document.getElementById('bDesc').value = d.description || '';
+      document.getElementById('bAnon').checked = !!d.allowAnon;
+      document.getElementById('bShowResult').checked = !!d.showResultToRespondent;
+      questions = d.questions ? JSON.parse(JSON.stringify(d.questions)) : [];
+      renderQuestions();
+    }).catch(e => { showLoading(false); alert(e.message); });
+  } else {
+    questions = [{ id: uid(), type: 'mc', text: '', options: ['', ''], required: false, imageUrl: '' }];
+    renderQuestions();
+  }
+  showPage('pageBuilder');
+};
+window.editFormId = (id) => initBuilder(id);
+
+// ── 질문 렌더 ──
+function renderQuestions() {
+  document.getElementById('bQuestions').innerHTML = questions.map((q, i) => renderQCard(q, i)).join('');
+}
+
+function renderQCard(q, i) {
+  const hasOpts = ['mc','checkbox','dropdown'].includes(q.type);
+  const optsHtml = hasOpts ? `
+    <div class="q-opts" id="opts_${q.id}">
+      ${(q.options||[]).map((o, oi) => `
+        <div class="q-opt-row">
+          <span class="q-opt-icon">${q.type==='mc'?'◉':q.type==='checkbox'?'☑':(oi+1)+'.'}</span>
+          <input class="inp" style="flex:1;" value="${escHtml(o)}" placeholder="옵션 ${oi+1}" oninput="updateOpt('${q.id}',${oi},this.value)">
+          ${q.options.length>1?`<button class="btn sm ghost danger" onclick="removeOpt('${q.id}',${oi})" style="flex-shrink:0;">✕</button>`:''}
+        </div>`).join('')}
+    </div>
+    <button class="add-opt" onclick="addOpt('${q.id}')">+ 옵션 추가</button>
+  ` : '';
+  const imgHtml = q.imageUrl
+    ? `<img class="q-img-preview" src="${q.imageUrl}"><button class="btn sm danger" onclick="removeQImg('${q.id}')" style="margin-bottom:8px;display:block;">이미지 삭제</button>`
+    : `<input type="file" accept="image/*" id="imgf_${q.id}" style="display:none" onchange="onQImg(this,'${q.id}')"><button class="btn sm ghost" onclick="document.getElementById('imgf_${q.id}').click()" style="margin-bottom:8px;">🖼 이미지 첨부</button>`;
+
+  return `<div class="q-card" id="qc_${q.id}">
+    <button class="btn sm ghost danger q-del" onclick="deleteQ('${q.id}')">✕</button>
+    <div class="q-top">
+      <input class="inp q-text-inp" value="${escHtml(q.text||'')}" placeholder="질문 ${i+1}" oninput="updateQText('${q.id}',this.value)">
+      <select class="inp q-type-sel" onchange="changeQType('${q.id}',this.value)">
+        ${Object.entries(TYPE_LABELS).map(([v,l])=>`<option value="${v}" ${q.type===v?'selected':''}>${l}</option>`).join('')}
+      </select>
+    </div>
+    ${imgHtml}
+    ${optsHtml}
+    <div class="req-row">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <input type="checkbox" ${q.required?'checked':''} onchange="updateQField('${q.id}','required',this.checked)">
+        <span>필수 항목</span>
+      </label>
+    </div>
+  </div>`;
+}
+
+window.addQuestion = () => {
+  questions.push({ id: uid(), type: 'mc', text: '', options: ['',''], required: false, imageUrl: '' });
+  renderQuestions();
+  setTimeout(() => document.getElementById('bQuestions').lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+};
+window.deleteQ = (qId) => { questions = questions.filter(q=>q.id!==qId); renderQuestions(); };
+window.updateQText = (qId, val) => { const q = questions.find(q=>q.id===qId); if(q) q.text = val; };
+window.updateQField = (qId, field, val) => { const q = questions.find(q=>q.id===qId); if(q) q[field] = val; };
+window.changeQType = (qId, type) => {
+  const q = questions.find(q=>q.id===qId);
+  if (!q) return;
+  q.type = type;
+  if (['mc','checkbox','dropdown'].includes(type) && (!q.options||!q.options.length)) q.options = ['',''];
+  renderQuestions();
+};
+window.addOpt = (qId) => { const q = questions.find(q=>q.id===qId); if(q) { q.options.push(''); renderQuestions(); } };
+window.removeOpt = (qId, idx) => { const q = questions.find(q=>q.id===qId); if(q) { q.options.splice(idx,1); renderQuestions(); } };
+window.updateOpt = (qId, idx, val) => { const q = questions.find(q=>q.id===qId); if(q&&q.options) q.options[idx] = val; };
+window.onQImg = (input, qId) => {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX = 600; let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) { if (w > h) { h *= MAX/w; w = MAX; } else { w *= MAX/h; h = MAX; } }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const q = questions.find(q=>q.id===qId); if (q) { q.imageUrl = canvas.toDataURL('image/jpeg', 0.75); renderQuestions(); }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+};
+window.removeQImg = (qId) => { const q = questions.find(q=>q.id===qId); if(q) { q.imageUrl = ''; renderQuestions(); } };
+
+// 저장 전 현재 input 값 동기화
+function syncInputs() {
+  questions.forEach(q => {
+    const ti = document.querySelector(`#qc_${q.id} .q-text-inp`); if (ti) q.text = ti.value;
+    if (q.options) {
+      q.options = q.options.map((_, i) => {
+        const el = document.querySelector(`#opts_${q.id} .q-opt-row:nth-child(${i+1}) input`);
+        return el ? el.value : _;
+      });
+    }
+  });
+}
+
+// ── 저장 ──
+window.saveForm = async () => {
+  syncInputs();
+  const title = document.getElementById('bTitle').value.trim();
+  if (!title) { alert('설문 제목을 입력하세요.'); return; }
+  if (!questions.length) { alert('질문을 하나 이상 추가하세요.'); return; }
+  const data = {
+    title,
+    description: document.getElementById('bDesc').value.trim(),
+    allowAnon: document.getElementById('bAnon').checked,
+    showResultToRespondent: document.getElementById('bShowResult').checked,
+    questions,
+    ownerId: SESSION.id,
+    ownerName: SESSION.name,
+    status: 'open',
+    updatedAt: serverTimestamp(),
+  };
+  showLoading(true);
+  try {
+    if (currentFormId) {
+      await updateDoc(doc(db,'student_forms',currentFormId), data);
+    } else {
+      data.createdAt = serverTimestamp();
+      data.responseCount = 0;
+      const ref = await addDoc(collection(db,'student_forms'), data);
+      currentFormId = ref.id;
+    }
+    document.getElementById('bSaveMsg').innerText = '✓ 저장되었습니다.';
+    setTimeout(() => { openResults(currentFormId); }, 700);
+  } catch(e) { alert(e.message); }
+  showLoading(false);
+};
+
+// ── 결과 ──
+window.openResults = async (formId) => {
+  showLoading(true);
+  try {
+    const fSnap = await getDoc(doc(db,'student_forms',formId));
+    if (!fSnap.exists()) { showLoading(false); return; }
+    currentFormId = formId;
+    currentFormData = { id: formId, ...fSnap.data() };
+    const rSnap = await getDocs(query(collection(db,'student_form_responses'), where('formId','==',formId), orderBy('submittedAt','desc')));
+    responses = rSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    document.getElementById('resTitle').innerText = currentFormData.title || '(제목 없음)';
+    document.getElementById('resMeta').innerText = `응답 ${responses.length}개 · ${currentFormData.allowAnon?'비로그인 허용':'로그인 필요'} · ${currentFormData.showResultToRespondent?'결과 공개':'결과 비공개'}`;
+
+    const baseUrl = location.origin + location.pathname.replace('formlab.html', 'formfill.html');
+    document.getElementById('shareLink').innerText = `${baseUrl}?id=${formId}`;
+    const btn = document.getElementById('statusToggleBtn');
+    const isOpen = currentFormData.status === 'open';
+    btn.className = 'status-pill ' + (isOpen ? 'open' : 'closed');
+    btn.innerText = isOpen ? '🟢 응답 중 (클릭해서 마감)' : '🔴 마감됨 (클릭해서 재개)';
+
+    renderResStats();
+    showResTabContent('summary');
+    showPage('pageResults');
+  } catch(e) { alert(e.message); }
+  showLoading(false);
+};
+
+function renderResStats() {
+  document.getElementById('resStats').innerHTML = `
+    <div class="res-stat"><div class="res-stat-num">${responses.length}</div><div class="res-stat-label">총 응답</div></div>
+    <div class="res-stat"><div class="res-stat-num">${currentFormData.questions?.length||0}</div><div class="res-stat-label">질문 수</div></div>
+  `;
+}
+
+window.showResTab = (tab, btn) => {
+  resTabMode = tab;
+  document.querySelectorAll('.res-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  showResTabContent(tab);
+};
+
+function showResTabContent(tab) {
+  const el = document.getElementById('resContent');
+  if (tab === 'summary') renderSummary(el);
+  else renderIndividual(el);
+}
+
+function renderSummary(el) {
+  if (!responses.length) { el.innerHTML = '<div class="empty-msg">아직 응답이 없습니다.</div>'; return; }
+  const qs = currentFormData.questions || [];
+  el.innerHTML = qs.map((q, qi) => {
+    const answers = responses.map(r => r.answers?.[q.id]).filter(a => a !== undefined && a !== null && a !== '');
+    const header = `<div class="res-q-title">Q${qi+1}. ${escHtml(q.text||'(질문)')} <span style="font-size:0.72rem;color:var(--sub);">(${answers.length}/${responses.length})</span></div>`;
+    if (!answers.length) return `<div class="card res-q-block">${header}<div style="color:var(--sub);font-size:0.82rem;">응답 없음</div></div>`;
+
+    if (['mc','dropdown'].includes(q.type)) {
+      const counts = {}; (q.options||[]).forEach(o => counts[o] = 0);
+      answers.forEach(a => { const o = q.options?.[a]; if (o !== undefined) counts[o] = (counts[o]||0) + 1; });
+      const entries = Object.entries(counts); const total = answers.length;
+      return `<div class="card res-q-block">
+        ${header}
+        <div class="chart-wrap">${buildPie(entries.map(([,c])=>c), COLORS)}
+          <div class="chart-legend">${entries.map(([l,c],i)=>`<div class="legend-item"><span class="legend-dot" style="background:${COLORS[i%COLORS.length]}"></span><span>${escHtml(l)}: ${c}개 (${total?Math.round(c/total*100):0}%)</span></div>`).join('')}</div>
+        </div>
+        ${entries.map(([l,c],i)=>`<div class="res-bar-row"><div class="res-bar-label">${escHtml(l)}</div><div class="res-bar-track"><div class="res-bar-fill" style="width:${total?Math.round(c/total*100):0}%;background:${COLORS[i%COLORS.length]};"></div></div><div class="res-bar-count">${c}</div></div>`).join('')}
+      </div>`;
+    }
+    if (q.type === 'checkbox') {
+      const counts = {}; (q.options||[]).forEach(o => counts[o] = 0);
+      answers.forEach(arr => { (Array.isArray(arr)?arr:[arr]).forEach(idx => { const o = q.options?.[idx]; if (o !== undefined) counts[o] = (counts[o]||0) + 1; }); });
+      const entries = Object.entries(counts); const total = answers.length;
+      return `<div class="card res-q-block">
+        ${header}
+        ${entries.map(([l,c],i)=>`<div class="res-bar-row"><div class="res-bar-label">${escHtml(l)}</div><div class="res-bar-track"><div class="res-bar-fill" style="width:${total?Math.round(c/total*100):0}%;background:${COLORS[i%COLORS.length]};"></div></div><div class="res-bar-count">${c}</div></div>`).join('')}
+      </div>`;
+    }
+    return `<div class="card res-q-block">
+      ${header}
+      <div class="res-texts">${answers.map(a=>`<div class="res-text-item">${escHtml(String(a))}</div>`).join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+function buildPie(counts, colors) {
+  const total = counts.reduce((a,b)=>a+b,0); if (!total) return '';
+  let acc = 0;
+  const slices = counts.map((c, i) => {
+    const pct = c/total; const s = acc*2*Math.PI-Math.PI/2; acc += pct; const e = acc*2*Math.PI-Math.PI/2;
+    const x1=45+40*Math.cos(s),y1=45+40*Math.sin(s),x2=45+40*Math.cos(e),y2=45+40*Math.sin(e);
+    if (counts.length === 1) return `<circle cx="45" cy="45" r="40" fill="${colors[i%colors.length]}"/>`;
+    return `<path d="M45,45 L${x1},${y1} A40,40 0 ${pct>0.5?1:0},1 ${x2},${y2} Z" fill="${colors[i%colors.length]}"/>`;
+  });
+  return `<svg class="pie-svg" viewBox="0 0 90 90">${slices.join('')}</svg>`;
+}
+
+function renderIndividual(el) {
+  if (!responses.length) { el.innerHTML = '<div class="empty-msg">아직 응답이 없습니다.</div>'; return; }
+  const qs = currentFormData.questions || [];
+  el.innerHTML = responses.map((r, i) => {
+    const name = r.respondentName || (r.respondentId ? `학생 #${r.respondentId.slice(-4)}` : '익명');
+    const time = r.submittedAt ? new Date(r.submittedAt.toDate?r.submittedAt.toDate():r.submittedAt).toLocaleString() : '';
+    return `<div class="resp-row" onclick="toggleDetail('rd_${i}')">
+      <div><b>${escHtml(name)}</b> <span style="color:var(--sub);font-size:0.75rem;">${time}</span></div>
+      <span style="color:var(--sub);">▾</span>
+    </div>
+    <div class="resp-detail hidden" id="rd_${i}">
+      ${qs.map(q => {
+        const a = r.answers?.[q.id];
+        let disp = '';
+        if (['mc','dropdown'].includes(q.type)) disp = a !== undefined ? escHtml(q.options?.[a]||a) : '(미응답)';
+        else if (q.type==='checkbox') disp = Array.isArray(a) ? a.map(i=>escHtml(q.options?.[i]||i)).join(', ') : '(미응답)';
+        else disp = escHtml(String(a||'(미응답)'));
+        return `<div style="margin-bottom:8px;"><div style="font-size:0.75rem;color:var(--sub);font-weight:600;">${escHtml(q.text||'(질문)')}</div><div style="font-size:0.87rem;">${disp}</div></div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+}
+
+window.toggleDetail = (id) => { document.getElementById(id)?.classList.toggle('hidden'); };
+
+// ── 상태 토글 ──
+window.toggleStatus = async () => {
+  if (!currentFormId) return;
+  const newStatus = currentFormData.status === 'open' ? 'closed' : 'open';
+  showLoading(true);
+  try {
+    await updateDoc(doc(db,'student_forms',currentFormId), { status: newStatus });
+    currentFormData.status = newStatus;
+    const btn = document.getElementById('statusToggleBtn');
+    btn.className = 'status-pill ' + (newStatus==='open'?'open':'closed');
+    btn.innerText = newStatus==='open' ? '🟢 응답 중 (클릭해서 마감)' : '🔴 마감됨 (클릭해서 재개)';
+  } catch(e) { alert(e.message); }
+  showLoading(false);
+};
+
+// ── 수정 ──
+window.editForm = () => { if (currentFormId) initBuilder(currentFormId); };
+
+// ── 삭제 ──
+window.deleteFormId = async (id) => {
+  if (!confirm('삭제하시겠습니까? 응답도 모두 삭제됩니다.')) return;
+  showLoading(true);
+  try {
+    const rSnap = await getDocs(query(collection(db,'student_form_responses'), where('formId','==',id)));
+    await Promise.all(rSnap.docs.map(d=>deleteDoc(doc(db,'student_form_responses',d.id))));
+    await deleteDoc(doc(db,'student_forms',id));
+    await loadMyForms();
+  } catch(e) { alert(e.message); }
+  showLoading(false);
+};
+window.deleteForm = () => { if (currentFormId) deleteFormId(currentFormId).then(() => showPage('pageList')); };
+
+// ── 링크 복사 ──
+window.copyLink = () => {
+  const text = document.getElementById('shareLink').innerText;
+  navigator.clipboard.writeText(text).then(() => alert('링크가 복사되었습니다!')).catch(() => {
+    const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); alert('링크가 복사되었습니다!');
+  });
+};
+
+// ── CSV ──
+window.exportCsv = () => {
+  if (!responses.length) { alert('응답이 없습니다.'); return; }
+  const qs = currentFormData.questions || [];
+  const headers = ['응답자', '제출시각', ...qs.map(q => q.text||'(질문)')];
+  const rows = responses.map(r => {
+    const name = r.respondentName || (r.respondentId ? `#${r.respondentId.slice(-4)}` : '익명');
+    const time = r.submittedAt ? new Date(r.submittedAt.toDate?r.submittedAt.toDate():r.submittedAt).toLocaleString() : '';
+    return [name, time, ...qs.map(q => {
+      const a = r.answers?.[q.id];
+      if (['mc','dropdown'].includes(q.type)) return q.options?.[a] || a || '';
+      if (q.type==='checkbox') return Array.isArray(a) ? a.map(i=>q.options?.[i]||i).join('/') : '';
+      return String(a||'');
+    })];
+  });
+  const csv = [headers,...rows].map(row=>row.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=`${currentFormData.title||'survey'}_responses.csv`; a.click(); URL.revokeObjectURL(url);
+};
+
+// ── 초기 로드 ──
+loadMyForms();
+</script>
+</body>
+</html>
