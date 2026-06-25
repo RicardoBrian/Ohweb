@@ -1240,7 +1240,11 @@
   // ── 초기화 ──
   async function init() {
     showLoading(true);
-    await loadSchools();
+    try {
+      await loadSchools();
+    } catch(e) {
+      console.error('init error:', e);
+    }
     showLoading(false);
   }
 
