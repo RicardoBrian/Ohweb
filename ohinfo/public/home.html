@@ -75,6 +75,14 @@
       background: linear-gradient(135deg, var(--accent), #7c4dff);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
+    .lang-bar { display: flex; gap: 5px; }
+    .lang-btn {
+      font-family: inherit; font-size: 0.72rem; font-weight: 700; cursor: pointer;
+      border-radius: 50px; padding: 4px 10px;
+      border: 1px solid var(--border-card); background: var(--glass); color: var(--sub);
+      transition: 0.2s;
+    }
+    .lang-btn.active { background: rgba(42,92,230,0.82); color: #fff; border-color: transparent; }
     .nav-right { display: flex; align-items: center; gap: 10px; }
     .nav-user {
       display: flex; align-items: center; gap: 8px;
@@ -176,25 +184,56 @@
 
 <nav class="nav">
   <div class="nav-brand">ohinfo</div>
+  <div class="lang-bar">
+    <button class="lang-btn" id="lang-ko" onclick="setLang('ko')">한</button>
+    <button class="lang-btn" id="lang-zh" onclick="setLang('zh')">中</button>
+    <button class="lang-btn" id="lang-ru" onclick="setLang('ru')">РУ</button>
+  </div>
   <div class="nav-right">
     <div class="nav-user">
       <div class="nav-avatar" id="navAvatar"></div>
       <div class="nav-user-name" id="navName"></div>
     </div>
     <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
-    <button class="btn-logout" onclick="logout()">로그아웃</button>
+    <button class="btn-logout" id="logoutBtn" onclick="logout()">로그아웃</button>
   </div>
 </nav>
 
 <div class="wrap">
   <div class="greeting">
-    <h1>안녕하세요, <span id="greetName"></span>님 👋</h1>
+    <h1 id="greetH1">안녕하세요, <span id="greetName"></span>님 👋</h1>
     <p id="greetSub"></p>
   </div>
-  <div class="section-label">공개된 앱</div>
+  <div class="section-label" id="appsLabel">공개된 앱</div>
   <div class="app-grid" id="appGrid"></div>
 </div>
 
+<script>
+  const TH = {
+    ko: { appsLabel:'공개된 앱', logout:'로그아웃', greeting: n => `안녕하세요, ${n}님 👋`,
+      apps: { ohdlet:{name:'패들릿',desc:'칠판 공유 공간'}, submit:{name:'과제제출',desc:'과제를 제출하세요'}, exam:{name:'시험',desc:'온라인 시험'}, form:{name:'설문실습',desc:'설문 및 실습'} },
+      empty:'현재 공개된 앱이 없습니다.', emptySub:'선생님이 앱을 공개하면 여기에 표시됩니다.' },
+    zh: { appsLabel:'已开放的应用', logout:'退出', greeting: n => `你好，${n} 👋`,
+      apps: { ohdlet:{name:'共享白板',desc:'共享黑板空间'}, submit:{name:'作业提交',desc:'提交作业'}, exam:{name:'考试',desc:'在线考试'}, form:{name:'问卷练习',desc:'问卷和练习'} },
+      empty:'目前没有开放的应用。', emptySub:'老师开放应用后将显示在这里。' },
+    ru: { appsLabel:'Доступные приложения', logout:'Выйти', greeting: n => `Привет, ${n} 👋`,
+      apps: { ohdlet:{name:'Паддлет',desc:'Общая доска'}, submit:{name:'Задания',desc:'Сдать задание'}, exam:{name:'Тест',desc:'Онлайн тест'}, form:{name:'Опрос',desc:'Опросы и практика'} },
+      empty:'Приложений пока нет.', emptySub:'Когда учитель откроет приложения, они появятся здесь.' },
+  };
+  let homeLang = localStorage.getItem('ohinfo_lang') || 'ko';
+  function applyHomeLang() {
+    const t = TH[homeLang];
+    const appsLabelEl = document.getElementById('appsLabel');
+    if (appsLabelEl) appsLabelEl.innerText = t.appsLabel;
+    const logoutEl = document.getElementById('logoutBtn');
+    if (logoutEl) logoutEl.innerText = t.logout;
+    ['ko','zh','ru'].forEach(l => { const b = document.getElementById('lang-'+l); if(b) b.classList.toggle('active', l===homeLang); });
+    // re-render app grid if already rendered
+    if (window._renderApps) window._renderApps();
+  }
+  window.setLang = function(l) { homeLang = l; localStorage.setItem('ohinfo_lang', l); applyHomeLang(); };
+  applyHomeLang();
+</script>
 <script type="module">
   import { db } from './firebase-config.js';
   import { doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -210,34 +249,45 @@
   if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
   window.logout = () => { sessionStorage.removeItem('ohinfo_student'); window.location.href = 'index.html'; };
 
-  const APPS = {
-    ohdlet: { name: '패들릿',   desc: '칠판 공유 공간',   emoji: '📌', cls: 'icon-ohdlet', href: 'ohdlet.html' },
-    submit: { name: '과제제출', desc: '과제를 제출하세요', emoji: '📝', cls: 'icon-submit', href: 'submit.html' },
-    exam:   { name: '시험',     desc: '온라인 시험',       emoji: '📋', cls: 'icon-exam',   href: 'exam.html'   },
-    form:   { name: '설문실습', desc: '설문 및 실습',       emoji: '📊', cls: 'icon-form',   href: 'form.html'   },
+  const APP_META = {
+    ohdlet: { emoji: '📌', cls: 'icon-ohdlet', href: 'ohdlet.html' },
+    submit: { emoji: '📝', cls: 'icon-submit', href: 'submit.html' },
+    exam:   { emoji: '📋', cls: 'icon-exam',   href: 'exam.html'   },
+    form:   { emoji: '📊', cls: 'icon-form',   href: 'form.html'   },
+  };
+
+  let enabledApps = [];
+
+  window._renderApps = () => {
+    const t = TH[homeLang];
+    const grid = document.getElementById('appGrid');
+    if (!grid) return;
+    if (!enabledApps.length) {
+      grid.innerHTML = `<div class="empty-state"><div class="icon">🔒</div><p>${t.empty}</p><small>${t.emptySub}</small></div>`;
+    } else {
+      grid.innerHTML = enabledApps.map(id => {
+        const m = APP_META[id]; const a = t.apps[id] || {name:id,desc:''};
+        return `<a class="app-card" href="${m.href}"><div class="app-icon ${m.cls}">${m.emoji}</div><div class="app-name">${a.name}</div><div class="app-desc">${a.desc}</div></a>`;
+      }).join('');
+      const obs = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } }), { threshold: 0.05 });
+      grid.querySelectorAll('.app-card').forEach(c => obs.observe(c));
+    }
+    // update greeting
+    const greetEl = document.getElementById('greetH1');
+    if (greetEl) greetEl.innerHTML = t.greeting(`<span>${student.name}</span>`);
   };
 
   document.getElementById('navAvatar').innerText = student.name[0];
   document.getElementById('navName').innerText = student.name;
-  document.getElementById('greetName').innerText = student.name;
   document.getElementById('greetSub').innerText = `${student.schoolName || ''} · ${student.grade} ${student.class}`;
+  window._renderApps(); // initial greeting render
 
   document.getElementById('loadingOverlay').style.display = 'flex';
   const docId = `${student.schoolId}_${student.grade}-${student.class}`;
   getDoc(doc(db, 'appSettings', docId)).then(snap => {
     const settings = snap.exists() ? snap.data() : {};
-    const enabled = Object.keys(APPS).filter(id => settings[id]);
-    const grid = document.getElementById('appGrid');
-    if (!enabled.length) {
-      grid.innerHTML = `<div class="empty-state"><div class="icon">🔒</div><p>현재 공개된 앱이 없습니다.</p><small>선생님이 앱을 공개하면 여기에 표시됩니다.</small></div>`;
-    } else {
-      grid.innerHTML = enabled.map(id => {
-        const a = APPS[id];
-        return `<a class="app-card" href="${a.href}"><div class="app-icon ${a.cls}">${a.emoji}</div><div class="app-name">${a.name}</div><div class="app-desc">${a.desc}</div></a>`;
-      }).join('');
-      const obs = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } }), { threshold: 0.05 });
-      grid.querySelectorAll('.app-card').forEach(c => obs.observe(c));
-    }
+    enabledApps = Object.keys(APP_META).filter(id => settings[id]);
+    window._renderApps();
   }).catch(e => {
     document.getElementById('appGrid').innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><p>오류: ${e.message}</p></div>`;
   }).finally(() => {

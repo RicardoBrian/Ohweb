@@ -77,6 +77,14 @@
       -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
     }
     .logo p { font-size: 0.85rem; color: var(--sub); margin-top: 5px; font-weight: 600; }
+    .lang-bar { display: flex; justify-content: center; gap: 6px; margin-top: 10px; }
+    .lang-btn {
+      font-family: inherit; font-size: 0.75rem; font-weight: 700; cursor: pointer;
+      border-radius: 50px; padding: 4px 11px;
+      border: 1px solid var(--border-card); background: var(--glass); color: var(--sub);
+      transition: 0.2s;
+    }
+    .lang-btn.active { background: rgba(42,92,230,0.82); color: #fff; border-color: transparent; }
 
     /* 탭 */
     .tab-bar {
@@ -187,48 +195,53 @@
 <div class="card">
   <div class="logo">
     <h1>ohinfo</h1>
-    <p>학생 정보 포털</p>
+    <p data-t="subtitle">학생 정보 포털</p>
+    <div class="lang-bar">
+      <button class="lang-btn active" id="lang-ko" onclick="setLang('ko')">한</button>
+      <button class="lang-btn" id="lang-zh" onclick="setLang('zh')">中</button>
+      <button class="lang-btn" id="lang-ru" onclick="setLang('ru')">РУ</button>
+    </div>
   </div>
 
   <div class="tab-bar">
-    <button class="tab-btn active" id="tabLogin" onclick="switchTab('login')">로그인</button>
-    <button class="tab-btn" id="tabJoin" onclick="switchTab('join')">회원가입</button>
+    <button class="tab-btn active" id="tabLogin" onclick="switchTab('login')" data-t="tabLogin">로그인</button>
+    <button class="tab-btn" id="tabJoin" onclick="switchTab('join')" data-t="tabJoin">회원가입</button>
   </div>
 
   <!-- ── 로그인 ── -->
   <div id="loginPanel">
     <div class="field">
-      <label>학교</label>
-      <select class="inp" id="loginSchool"><option value="">학교 선택...</option></select>
+      <label data-t="school">학교</label>
+      <select class="inp" id="loginSchool"><option value="" data-t-opt="selectSchool">학교 선택...</option></select>
     </div>
     <div class="field">
-      <label>학번</label>
-      <input class="inp" id="loginSid" placeholder="예: 101" maxlength="20">
+      <label data-t="studentNum">학번</label>
+      <input class="inp" id="loginSid" placeholder="예: 101" data-t-ph="numPlaceholder" maxlength="20">
     </div>
     <div class="field">
-      <label>비밀번호</label>
-      <input class="inp" id="loginPw" type="password" placeholder="비밀번호" onkeydown="if(event.key==='Enter')doLogin()">
+      <label data-t="password">비밀번호</label>
+      <input class="inp" id="loginPw" type="password" placeholder="비밀번호" data-t-ph="password" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
-    <button class="btn" onclick="doLogin()">로그인</button>
+    <button class="btn" onclick="doLogin()" data-t="loginBtn">로그인</button>
     <div class="err" id="loginErr"></div>
   </div>
 
   <!-- ── 회원가입 스텝 1: 학생 확인 ── -->
-  <div id="joinPanel">
+  <div id="joinPanel" class="hidden">
     <div id="joinStep1">
       <div class="field">
-        <label>학교</label>
-        <select class="inp" id="joinSchool"><option value="">학교 선택...</option></select>
+        <label data-t="school">학교</label>
+        <select class="inp" id="joinSchool"><option value="" data-t-opt="selectSchool">학교 선택...</option></select>
       </div>
       <div class="row2">
         <div class="field">
-          <label>학년</label>
+          <label data-t="grade">학년</label>
           <select class="inp" id="joinGrade">
-            <option>1학년</option><option>2학년</option><option>3학년</option>
+            <option data-t-grade="1">1학년</option><option data-t-grade="2">2학년</option><option data-t-grade="3">3학년</option>
           </select>
         </div>
         <div class="field">
-          <label>반</label>
+          <label data-t="class">반</label>
           <select class="inp" id="joinClass">
             <option>1반</option><option>2반</option><option>3반</option><option>4반</option><option>5반</option>
           </select>
@@ -236,15 +249,15 @@
       </div>
       <div class="row2">
         <div class="field">
-          <label>번호</label>
-          <input class="inp" id="joinNumber" placeholder="출석번호" maxlength="5">
+          <label data-t="number">번호</label>
+          <input class="inp" id="joinNumber" placeholder="출석번호" data-t-ph="numPlaceholder" maxlength="5">
         </div>
         <div class="field">
-          <label>이름</label>
-          <input class="inp" id="joinName" placeholder="홍길동" maxlength="10">
+          <label data-t="name">이름</label>
+          <input class="inp" id="joinName" placeholder="홍길동" data-t-ph="namePlaceholder" maxlength="10">
         </div>
       </div>
-      <button class="btn" onclick="checkStudent()">학생 확인</button>
+      <button class="btn" onclick="checkStudent()" data-t="checkBtn">학생 확인</button>
       <div class="err" id="joinErr1"></div>
     </div>
 
@@ -258,8 +271,8 @@
         </div>
       </div>
       <div class="field">
-        <label>새 비밀번호</label>
-        <input class="inp" id="joinPw" type="password" placeholder="4자리 이상" oninput="pwStrength()">
+        <label data-t="newPw">새 비밀번호</label>
+        <input class="inp" id="joinPw" type="password" placeholder="4자리 이상" data-t-ph="pwPlaceholder" oninput="pwStrength()">
         <div class="pw-strength">
           <div class="pw-bar" id="bar1"></div>
           <div class="pw-bar" id="bar2"></div>
@@ -267,16 +280,84 @@
         </div>
       </div>
       <div class="field">
-        <label>비밀번호 확인</label>
-        <input class="inp" id="joinPw2" type="password" placeholder="동일하게 입력" onkeydown="if(event.key==='Enter')doRegister()">
+        <label data-t="confirmPw">비밀번호 확인</label>
+        <input class="inp" id="joinPw2" type="password" placeholder="동일하게 입력" data-t-ph="pwConfirmPlaceholder" onkeydown="if(event.key==='Enter')doRegister()">
       </div>
-      <button class="btn" onclick="doRegister()">가입 완료</button>
-      <button class="btn" style="background:transparent;border:1px solid var(--border-card);color:var(--sub);box-shadow:var(--highlight);margin-top:6px;" onclick="resetJoin()">← 다시 입력</button>
+      <button class="btn" onclick="doRegister()" data-t="registerBtn">가입 완료</button>
+      <button class="btn" style="background:transparent;border:1px solid var(--border-card);color:var(--sub);box-shadow:var(--highlight);margin-top:6px;" onclick="resetJoin()" data-t="backBtn">← 다시 입력</button>
       <div class="err" id="joinErr2"></div>
     </div>
   </div>
 </div>
 
+<script>
+  const T = {
+    ko: {
+      subtitle:'학생 정보 포털', tabLogin:'로그인', tabJoin:'회원가입',
+      school:'학교', selectSchool:'학교 선택...', studentNum:'학번', numPlaceholder:'예: 101',
+      password:'비밀번호', loginBtn:'로그인',
+      grade:'학년', class:'반', number:'번호', name:'이름',
+      namePlaceholder:'홍길동', checkBtn:'학생 확인',
+      newPw:'새 비밀번호', pwPlaceholder:'4자리 이상', confirmPw:'비밀번호 확인', pwConfirmPlaceholder:'동일하게 입력',
+      registerBtn:'가입 완료', backBtn:'← 다시 입력',
+      gradeLabel: n => `${n}학년`, classLabel: n => `${n}반`,
+      errSchool:'학교를 선택하세요.', errNum:'학번을 입력하세요.', errPw:'비밀번호를 입력하세요.',
+      errNotFound:'학생 정보를 찾을 수 없습니다.', errNotReg:'회원가입이 필요합니다.\n회원가입 탭을 이용하세요.',
+      errWrongPw:'비밀번호가 올바르지 않습니다.', errNumReq:'번호를 입력하세요.', errNameReq:'이름을 입력하세요.',
+      errNoMatch:'일치하는 학생 정보가 없습니다.\n학년·반·번호·이름을 다시 확인하세요.',
+      errAlready:'이미 가입된 학생입니다.\n로그인 탭을 이용하세요.',
+      errPwShort:'비밀번호는 4자리 이상이어야 합니다.', errPwMismatch:'비밀번호가 일치하지 않습니다.',
+    },
+    zh: {
+      subtitle:'学生信息门户', tabLogin:'登录', tabJoin:'注册',
+      school:'学校', selectSchool:'选择学校...', studentNum:'学号', numPlaceholder:'例: 101',
+      password:'密码', loginBtn:'登录',
+      grade:'年级', class:'班级', number:'编号', name:'姓名',
+      namePlaceholder:'姓名', checkBtn:'查询学生',
+      newPw:'新密码', pwPlaceholder:'至少4位', confirmPw:'确认密码', pwConfirmPlaceholder:'再次输入',
+      registerBtn:'完成注册', backBtn:'← 重新输入',
+      gradeLabel: n => `${n}年级`, classLabel: n => `${n}班`,
+      errSchool:'请选择学校。', errNum:'请输入学号。', errPw:'请输入密码。',
+      errNotFound:'未找到学生信息。', errNotReg:'需要注册。\n请使用注册选项卡。',
+      errWrongPw:'密码不正确。', errNumReq:'请输入编号。', errNameReq:'请输入姓名。',
+      errNoMatch:'未找到匹配的学生信息。\n请重新确认年级·班级·编号·姓名。',
+      errAlready:'该学生已注册。\n请使用登录选项卡。',
+      errPwShort:'密码至少需要4位。', errPwMismatch:'密码不一致。',
+    },
+    ru: {
+      subtitle:'Портал для учеников', tabLogin:'Войти', tabJoin:'Регистрация',
+      school:'Школа', selectSchool:'Выберите школу...', studentNum:'Номер', numPlaceholder:'Пр: 101',
+      password:'Пароль', loginBtn:'Войти',
+      grade:'Класс', class:'Группа', number:'Номер', name:'Имя',
+      namePlaceholder:'Имя', checkBtn:'Найти ученика',
+      newPw:'Новый пароль', pwPlaceholder:'Мин. 4 символа', confirmPw:'Подтвердить пароль', pwConfirmPlaceholder:'Повторите пароль',
+      registerBtn:'Завершить', backBtn:'← Назад',
+      gradeLabel: n => `${n} класс`, classLabel: n => `${n} гр.`,
+      errSchool:'Выберите школу.', errNum:'Введите номер.', errPw:'Введите пароль.',
+      errNotFound:'Ученик не найден.', errNotReg:'Требуется регистрация.\nИспользуйте вкладку регистрации.',
+      errWrongPw:'Неверный пароль.', errNumReq:'Введите номер.', errNameReq:'Введите имя.',
+      errNoMatch:'Ученик не найден.\nПроверьте класс, группу, номер и имя.',
+      errAlready:'Ученик уже зарегистрирован.\nИспользуйте вкладку входа.',
+      errPwShort:'Пароль должен содержать не менее 4 символов.', errPwMismatch:'Пароли не совпадают.',
+    }
+  };
+  let lang = localStorage.getItem('ohinfo_lang') || 'ko';
+  function applyLang() {
+    const t = T[lang];
+    document.querySelectorAll('[data-t]').forEach(el => { if (t[el.dataset.t]) el.innerText = t[el.dataset.t]; });
+    document.querySelectorAll('[data-t-ph]').forEach(el => { if (t[el.dataset.tPh]) el.placeholder = t[el.dataset.tPh]; });
+    // grade options
+    document.querySelectorAll('[data-t-grade]').forEach(el => { el.innerText = t.gradeLabel(el.dataset.tGrade); });
+    // class options
+    document.querySelectorAll('#joinClass option').forEach((el, i) => { el.innerText = t.classLabel(i+1); });
+    // school select first option
+    document.querySelectorAll('[data-t-opt="selectSchool"]').forEach(el => { el.innerText = t.selectSchool; });
+    // lang buttons
+    ['ko','zh','ru'].forEach(l => document.getElementById('lang-'+l).classList.toggle('active', l===lang));
+  }
+  window.setLang = function(l) { lang = l; localStorage.setItem('ohinfo_lang', l); applyLang(); };
+  applyLang();
+</script>
 <script type="module">
   import { db } from './firebase-config.js';
   import {
@@ -322,9 +403,10 @@
     const pw = document.getElementById('loginPw').value;
     const err = document.getElementById('loginErr');
     err.innerText = '';
-    if (!schoolId) { err.innerText = '학교를 선택하세요.'; return; }
-    if (!sid) { err.innerText = '학번을 입력하세요.'; return; }
-    if (!pw) { err.innerText = '비밀번호를 입력하세요.'; return; }
+    const t = T[lang];
+    if (!schoolId) { err.innerText = t.errSchool; return; }
+    if (!sid) { err.innerText = t.errNum; return; }
+    if (!pw) { err.innerText = t.errPw; return; }
 
     load(true);
     try {
@@ -332,10 +414,10 @@
         where('schoolId', '==', schoolId),
         where('number', '==', sid)
       ));
-      if (snap.empty) { err.innerText = '학생 정보를 찾을 수 없습니다.'; load(false); return; }
+      if (snap.empty) { err.innerText = t.errNotFound; load(false); return; }
       const data = snap.docs[0].data();
-      if (!data.registered) { err.innerText = '회원가입이 필요합니다.\n회원가입 탭을 이용하세요.'; load(false); return; }
-      if (data.password !== pw) { err.innerText = '비밀번호가 올바르지 않습니다.'; document.getElementById('loginPw').value = ''; load(false); return; }
+      if (!data.registered) { err.innerText = t.errNotReg; load(false); return; }
+      if (data.password !== pw) { err.innerText = t.errWrongPw; document.getElementById('loginPw').value = ''; load(false); return; }
       sessionStorage.setItem('ohinfo_student', JSON.stringify({ id: snap.docs[0].id, ...data }));
       window.location.href = 'home.html';
     } catch(e) { err.innerText = '오류: ' + e.message; }
@@ -351,9 +433,10 @@
     const name = document.getElementById('joinName').value.trim();
     const err = document.getElementById('joinErr1');
     err.innerText = '';
-    if (!schoolId) { err.innerText = '학교를 선택하세요.'; return; }
-    if (!number) { err.innerText = '번호를 입력하세요.'; return; }
-    if (!name) { err.innerText = '이름을 입력하세요.'; return; }
+    const t = T[lang];
+    if (!schoolId) { err.innerText = t.errSchool; return; }
+    if (!number) { err.innerText = t.errNumReq; return; }
+    if (!name) { err.innerText = t.errNameReq; return; }
 
     load(true);
     try {
@@ -364,9 +447,9 @@
         where('number', '==', number),
         where('name', '==', name)
       ));
-      if (snap.empty) { err.innerText = '일치하는 학생 정보가 없습니다.\n학년·반·번호·이름을 다시 확인하세요.'; load(false); return; }
+      if (snap.empty) { err.innerText = t.errNoMatch; load(false); return; }
       const data = snap.docs[0].data();
-      if (data.registered) { err.innerText = '이미 가입된 학생입니다.\n로그인 탭을 이용하세요.'; load(false); return; }
+      if (data.registered) { err.innerText = t.errAlready; load(false); return; }
       foundStudentId = snap.docs[0].id;
       foundStudent = data;
 
@@ -397,8 +480,9 @@
     const pw2 = document.getElementById('joinPw2').value;
     const err = document.getElementById('joinErr2');
     err.innerText = '';
-    if (pw.length < 4) { err.innerText = '비밀번호는 4자리 이상이어야 합니다.'; return; }
-    if (pw !== pw2) { err.innerText = '비밀번호가 일치하지 않습니다.'; return; }
+    const t = T[lang];
+    if (pw.length < 4) { err.innerText = t.errPwShort; return; }
+    if (pw !== pw2) { err.innerText = t.errPwMismatch; return; }
 
     load(true);
     try {
