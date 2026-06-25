@@ -622,7 +622,8 @@
       const classData = classSnap.docs[0]?.data() || {};
       const title = classData.name || f_class;
       const desc = classData.desc || '';
-      const example = classData.ex || '';
+      const exMap = { ko: classData.exKo||classData.ex||'', zh: classData.exZh||classData.ex||'', ru: classData.exRu||classData.ex||'', en: classData.exEn||classData.ex||'' };
+      const example = exMap[currentLang] || classData.ex || '';
       const popup = classData.popup || '';
 
       document.getElementById('boardTitle').innerText = title;
