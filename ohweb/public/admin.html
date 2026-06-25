@@ -1539,7 +1539,7 @@
       </div>`).join('');
   }
 
-  function populateExamSelects() {
+  async function populateExamSelects() {
     ['q_examId','qlist_examId','as_examId'].forEach(id => {
       const sel = document.getElementById(id);
       if (!sel) return;
@@ -1548,7 +1548,16 @@
     });
     const asSch = document.getElementById('as_schoolName');
     if (asSch) {
-      const uniqueSchools = [...new Set(_appStudents.map(s=>s.schoolName).filter(Boolean))].sort();
+      // 학생 DB에서 학교 목록 로드 (아직 안 로드된 경우 직접 조회)
+      let schools = _appStudents.map(s=>s.schoolName).filter(Boolean);
+      if (!schools.length) {
+        try {
+          const snap = await getDocs(collection(db, 'students'));
+          _appStudents = snap.docs.map(d=>d.data());
+          schools = _appStudents.map(s=>s.schoolName).filter(Boolean);
+        } catch(e) {}
+      }
+      const uniqueSchools = [...new Set(schools)].sort();
       asSch.innerHTML = '<option value="">전체 학교</option>' + uniqueSchools.map(s=>`<option value="${s}">${s}</option>`).join('');
     }
   }
@@ -1594,6 +1603,7 @@
 
   // ── 문제 관리 ──
   let _testCases = [];
+  let _qCache = {};
 
   const renderTestCases = (tcs) => {
     _testCases = tcs || [];
@@ -1646,6 +1656,8 @@
       snap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId)));
     }
     const qs = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.order||0)-(b.order||0));
+    _qCache = {};
+    qs.forEach(q => { _qCache[q.id] = q; });
     if (!qs.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">❓</div>문제가 없습니다.</div>'; return; }
     const typeLabels = { mc:'객관식', sa:'단답형', code:'코딩' };
     el.innerHTML = qs.map((q,i) => `
@@ -1655,7 +1667,7 @@
           <div class="list-item-sub">${q.points||0}점 · 순서:${q.order}</div>
         </div>
         <div class="list-item-actions">
-          <button class="btn ghost sm" onclick='editQuestion(${JSON.stringify({...q}).replace(/'/g,"&#39;")})'>수정</button>
+          <button class="btn ghost sm" onclick="editQuestionById('${q.id}')">수정</button>
           <button class="btn danger sm" onclick="deleteQuestion('${q.id}')">삭제</button>
         </div>
       </div>`).join('');
@@ -1728,6 +1740,12 @@
       await loadQList();
     } catch(e) { toast('오류: '+e.message, 'error'); }
     showLoading(false);
+  };
+
+  window.editQuestionById = (id) => {
+    const q = _qCache[id];
+    if (!q) { toast('문제를 찾을 수 없습니다.', 'error'); return; }
+    window.editQuestion(q);
   };
 
   window.editQuestion = (q) => {
