@@ -592,17 +592,13 @@
   };
 
   // ── DeepL 번역 ──
-  const DEEPL_KEY = 'cf131ad1-2cd2-455b-8915-dd32ddfce706:fx';
-  const DEEPL_URL = 'https://api-free.deepl.com/v2/translate';
   async function deepl(texts, targetLang) {
-    const body = new URLSearchParams({ auth_key: DEEPL_KEY, source_lang: 'KO', target_lang: targetLang });
-    texts.forEach(t => body.append('text', t));
-    const res = await fetch(DEEPL_URL, {
+    const res = await fetch('/.netlify/functions/translate', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: body.toString()
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texts, targetLang, sourceLang: 'KO' })
     });
-    if (!res.ok) throw new Error(`DeepL ${res.status}`);
+    if (!res.ok) throw new Error(`translate ${res.status}`);
     const data = await res.json();
     return (data.translations || []).map(t => t.text);
   }
@@ -823,7 +819,7 @@
       currentExample = example;
       render(example, sortedPosts());
       if (cls.popup) showPopup(cls.popup);
-    } catch(e) { document.getElementById('display').innerHTML = ''; }
+    } catch(e) { console.error('manualRefresh error:', e); document.getElementById('display').innerHTML = `<div style="padding:20px;color:#ef4444;">오류: ${e.message}</div>`; }
   }
 
   function setSort(type) { currentSort = type; document.getElementById('sortNew').classList.toggle('active', type==='new'); document.getElementById('sortLike').classList.toggle('active', type==='like'); render(currentExample, sortedPosts()); }
