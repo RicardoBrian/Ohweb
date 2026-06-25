@@ -582,15 +582,16 @@
     try {
       const snap = await getDocs(query(collection(db, 'students'),
         where('schoolId', '==', schoolId),
-        where('grade', '==', grade),
-        where('class', '==', cls),
         where('number', '==', number)
       ));
-      if (snap.empty) { err.innerText = t.errNotFound; load(false); return; }
-      const data = snap.docs[0].data();
+      const match = snap.docs.find(d => {
+        const s = d.data(); return s.grade === grade && s.class === cls;
+      });
+      if (!match) { err.innerText = t.errNotFound; load(false); return; }
+      const data = match.data();
       if (!data.registered) { err.innerText = t.errNotReg; load(false); return; }
       if (data.password !== pw) { err.innerText = t.errWrongPw; document.getElementById('loginPw').value = ''; load(false); return; }
-      sessionStorage.setItem('ohinfo_student', JSON.stringify({ id: snap.docs[0].id, ...data }));
+      sessionStorage.setItem('ohinfo_student', JSON.stringify({ id: match.id, ...data }));
       window.location.href = 'home.html';
     } catch(e) { err.innerText = '오류: ' + e.message; }
     load(false);
@@ -611,17 +612,19 @@
     if (!name)     { err.innerText = t.errNameReq; return; }
     load(true);
     try {
+      // schoolId + number 두 개만 서버 쿼리, 나머지는 클라이언트 검증 (인덱스 불필요)
       const snap = await getDocs(query(collection(db, 'students'),
         where('schoolId', '==', schoolId),
-        where('grade', '==', grade),
-        where('class', '==', cls),
-        where('number', '==', number),
-        where('name', '==', name)
+        where('number', '==', number)
       ));
-      if (snap.empty) { err.innerText = t.errNoMatch; load(false); return; }
-      const data = snap.docs[0].data();
+      const match = snap.docs.find(d => {
+        const s = d.data();
+        return s.grade === grade && s.class === cls && s.name === name;
+      });
+      if (!match) { err.innerText = t.errNoMatch; load(false); return; }
+      const data = match.data();
       if (data.registered) { err.innerText = t.errAlready; load(false); return; }
-      foundStudentId = snap.docs[0].id;
+      foundStudentId = match.id;
       foundStudent = data;
       document.getElementById('badgeAvatar').innerText = name[0];
       document.getElementById('badgeName').innerText = `${name} (${number}번)`;
