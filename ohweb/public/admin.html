@@ -70,27 +70,35 @@
       backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
       border-bottom: 1px solid var(--border);
       box-shadow: 0 1px 0 rgba(255,255,255,0.35), var(--shadow);
-      padding: 0 28px; height: var(--nav-h);
-      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px; height: var(--nav-h);
+      display: flex; align-items: center; gap: 8px;
     }
     .nav-brand {
       font-size: 1.1rem; font-weight: 900; letter-spacing: -0.02em;
       background: linear-gradient(135deg, var(--accent), #7c4dff);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-      background-clip: text;
+      background-clip: text; white-space: nowrap; flex-shrink: 0;
     }
-    .nav-right { display: flex; align-items: center; gap: 8px; }
+    .nav-right {
+      display: flex; align-items: center; gap: 6px;
+      overflow-x: auto; flex: 1;
+      scrollbar-width: none; -ms-overflow-style: none;
+    }
+    .nav-right::-webkit-scrollbar { display: none; }
     .nav-tab {
       font-family: inherit; font-size: 0.85rem; font-weight: 600;
       cursor: pointer; border-radius: 50px;
-      padding: 7px 16px; border: 1px solid transparent;
+      padding: 7px 14px; border: 1px solid transparent;
       background: transparent; color: var(--sub);
-      transition: all 0.2s; white-space: nowrap;
+      transition: all 0.2s; white-space: nowrap; flex-shrink: 0;
     }
     .nav-tab:hover { background: var(--glass); color: var(--text); border-color: var(--border-card); }
     .nav-tab.active {
       background: rgba(42,92,230,0.82); border-color: rgba(100,140,255,0.5); color: #fff;
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 20px rgba(42,92,230,0.35);
+    }
+    @media (max-width: 600px) {
+      .nav-tab { padding: 6px 10px; font-size: 0.78rem; }
     }
     .dark-toggle {
       width: 42px; height: 24px; border-radius: 50px;
@@ -108,7 +116,8 @@
 
     /* 콘텐츠 */
     .wrap { max-width: 960px; margin: 0 auto; padding: 32px 24px 80px; }
-    @media (max-width: 600px) { .wrap { padding: 20px 16px 60px; } }
+    @media (max-width: 768px) { .wrap { padding: 24px 18px 80px; } }
+    @media (max-width: 600px) { .wrap { padding: 16px 14px 80px; } }
 
     /* 섹션 */
     .section { display: none; }
@@ -124,6 +133,7 @@
       margin-bottom: 20px;
       box-shadow: var(--highlight), var(--shadow);
     }
+    @media (max-width: 600px) { .card { padding: 18px 16px; border-radius: 16px; } }
     .card h2 {
       font-size: 1.05rem; font-weight: 800;
       margin-bottom: 20px;
@@ -255,9 +265,10 @@
 
     /* 앱 토글 그리드 */
     .app-grid {
-      display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
       gap: 10px; margin-top: 12px;
     }
+    @media (max-width: 480px) { .app-grid { grid-template-columns: repeat(2, 1fr); } }
     .app-card {
       background: var(--glass);
       backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
@@ -314,22 +325,24 @@
     .toast.error { color: #ef4444; }
 
     /* 섹션 제목 */
-    .section-header { margin-bottom: 24px; }
+    .section-header { margin-bottom: 20px; }
     .section-header h1 { font-size: 1.6rem; font-weight: 900; letter-spacing: -0.02em; }
     .section-header p { font-size: 0.88rem; color: var(--sub); margin-top: 4px; }
+    @media (max-width: 600px) { .section-header h1 { font-size: 1.25rem; } .section-header { margin-bottom: 14px; } }
 
     /* 통계 카드 */
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    @media (max-width: 480px) { .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; } }
     .stat-card {
       background: var(--glass-strong);
       backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
-      padding: 18px 20px;
+      padding: 16px 18px;
       box-shadow: var(--highlight), var(--shadow);
     }
-    .stat-card .stat-num { font-size: 2rem; font-weight: 900; color: var(--accent); line-height: 1; }
-    .stat-card .stat-label { font-size: 0.78rem; font-weight: 700; color: var(--sub); margin-top: 4px; letter-spacing: 0.04em; text-transform: uppercase; }
+    .stat-card .stat-num { font-size: 1.8rem; font-weight: 900; color: var(--accent); line-height: 1; }
+    .stat-card .stat-label { font-size: 0.75rem; font-weight: 700; color: var(--sub); margin-top: 4px; letter-spacing: 0.04em; text-transform: uppercase; }
 
     /* 구분선 */
     .divider { border: none; border-top: 1px solid var(--border-card); margin: 20px 0; }
@@ -598,11 +611,11 @@
     </div>
 
     <!-- 시험 탭 -->
-    <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
-      <button class="btn accent sm" id="examSubTab-list" onclick="showExamTab('list')">📋 시험 목록</button>
-      <button class="btn ghost sm" id="examSubTab-questions" onclick="showExamTab('questions')">❓ 문제 관리</button>
-      <button class="btn ghost sm" id="examSubTab-assign" onclick="showExamTab('assign')">🎯 배정 관리</button>
-      <button class="btn ghost sm" id="examSubTab-results" onclick="showExamTab('results')">📊 결과 조회</button>
+    <div style="display:flex;gap:8px;margin-bottom:20px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;">
+      <button class="btn accent sm" id="examSubTab-list" onclick="showExamTab('list')" style="white-space:nowrap;flex-shrink:0;">📋 시험 목록</button>
+      <button class="btn ghost sm" id="examSubTab-questions" onclick="showExamTab('questions')" style="white-space:nowrap;flex-shrink:0;">❓ 문제 관리</button>
+      <button class="btn ghost sm" id="examSubTab-assign" onclick="showExamTab('assign')" style="white-space:nowrap;flex-shrink:0;">🎯 배정 관리</button>
+      <button class="btn ghost sm" id="examSubTab-results" onclick="showExamTab('results')" style="white-space:nowrap;flex-shrink:0;">📊 결과 조회</button>
     </div>
 
     <!-- 시험 목록 탭 -->

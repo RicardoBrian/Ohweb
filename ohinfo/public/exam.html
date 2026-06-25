@@ -239,9 +239,21 @@
     /* 제출 영역 */
     .submit-area { position: fixed; bottom: 0; left: 0; right: 0; z-index: 100; padding: 16px 24px; background: var(--glass-nav); backdrop-filter: var(--blur); border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 
+    /* 반응형 */
     @media (max-width: 600px) {
-      .exam-wrap { padding: 16px 12px 100px; }
-      .q-card { padding: 18px; }
+      .exam-wrap { padding: 14px 12px 100px; }
+      .q-card { padding: 16px 14px; border-radius: 14px; }
+      .login-card { padding: 28px 20px; border-radius: 18px; }
+      .login-card h1 { font-size: 1.2rem; }
+      .nav { padding: 0 14px; }
+      .timer-badge { padding: 4px 12px; font-size: 0.88rem; }
+      .q-title { font-size: 0.95rem; }
+      .result-score { font-size: 3rem; }
+      .submit-area { padding: 12px 16px; }
+    }
+    @media (max-width: 400px) {
+      .btn.lang-btn { padding: 4px 8px; font-size: 0.72rem; }
+      .nav-brand { font-size: 1rem; }
     }
   </style>
 </head>
