@@ -655,43 +655,12 @@
           </div>
         </div>
         <div style="margin-bottom:12px;">
-          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">문제 제목 (한국어)</label>
+          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">문제 제목</label>
           <textarea class="inp" id="q_title" rows="2" placeholder="문제 제목" style="resize:vertical;"></textarea>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:4px;">
-          <div>
-            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">문제 제목 (中文)</label>
-            <textarea class="inp" id="q_titleZh" rows="2" placeholder="(선택)" style="resize:vertical;"></textarea>
-          </div>
-          <div>
-            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">문제 제목 (РУ)</label>
-            <textarea class="inp" id="q_titleRu" rows="2" placeholder="(선택)" style="resize:vertical;"></textarea>
-          </div>
-          <div>
-            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">문제 제목 (EN)</label>
-            <textarea class="inp" id="q_titleEn" rows="2" placeholder="(선택)" style="resize:vertical;"></textarea>
-          </div>
-        </div>
-        <div style="margin-bottom:12px;text-align:right;">
-          <button type="button" class="btn ghost sm" onclick="translateQFields()" id="q_translateBtn">🌐 한국어→자동번역</button>
-        </div>
         <div style="margin-bottom:12px;">
-          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">문제 내용 (한국어)</label>
+          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">문제 내용</label>
           <textarea class="inp" id="q_content" rows="3" placeholder="문제 본문 (선택)" style="resize:vertical;"></textarea>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
-          <div>
-            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">내용 (中文)</label>
-            <textarea class="inp" id="q_contentZh" rows="3" placeholder="(선택)" style="resize:vertical;"></textarea>
-          </div>
-          <div>
-            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">내용 (РУ)</label>
-            <textarea class="inp" id="q_contentRu" rows="3" placeholder="(선택)" style="resize:vertical;"></textarea>
-          </div>
-          <div>
-            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">내용 (EN)</label>
-            <textarea class="inp" id="q_contentEn" rows="3" placeholder="(선택)" style="resize:vertical;"></textarea>
-          </div>
         </div>
         <div style="margin-bottom:12px;">
           <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">이미지 URL (선택)</label>
@@ -703,20 +672,6 @@
           <div style="margin-bottom:12px;">
             <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">선택지 (한 줄에 하나씩)</label>
             <textarea class="inp" id="q_options" rows="5" placeholder="1번 선택지&#10;2번 선택지&#10;3번 선택지&#10;4번 선택지" style="resize:vertical;"></textarea>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
-            <div>
-              <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">선택지 (中文, 한 줄씩)</label>
-              <textarea class="inp" id="q_optionsZh" rows="4" placeholder="(선택)" style="resize:vertical;"></textarea>
-            </div>
-            <div>
-              <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">선택지 (РУ, 한 줄씩)</label>
-              <textarea class="inp" id="q_optionsRu" rows="4" placeholder="(선택)" style="resize:vertical;"></textarea>
-            </div>
-            <div>
-              <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">선택지 (EN, 한 줄씩)</label>
-              <textarea class="inp" id="q_optionsEn" rows="4" placeholder="(선택)" style="resize:vertical;"></textarea>
-            </div>
           </div>
           <div style="margin-bottom:12px;">
             <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">정답 번호 (0부터, 예: 0=1번)</label>
@@ -759,8 +714,19 @@
             <textarea class="inp" id="q_boilerplate" rows="4" style="resize:vertical;font-family:monospace;"></textarea>
           </div>
           <div style="margin-bottom:12px;">
-            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">테스트케이스 (JSON: [{"input":"","expected":""},...])</label>
-            <textarea class="inp" id="q_testCases" rows="4" placeholder='[{"input":"3","expected":"9"},{"input":"5","expected":"25"}]' style="resize:vertical;font-family:monospace;"></textarea>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:8px;">테스트케이스</label>
+            <div id="q_tcList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;">
+              <div>
+                <label style="font-size:0.75rem;color:var(--sub);display:block;margin-bottom:3px;">입력</label>
+                <textarea class="inp" id="q_tcInput" rows="2" style="resize:vertical;font-family:monospace;"></textarea>
+              </div>
+              <div>
+                <label style="font-size:0.75rem;color:var(--sub);display:block;margin-bottom:3px;">예상 출력</label>
+                <textarea class="inp" id="q_tcExpected" rows="2" style="resize:vertical;font-family:monospace;"></textarea>
+              </div>
+              <button class="btn accent sm" type="button" onclick="addTestCase()" style="height:40px;">+ 추가</button>
+            </div>
           </div>
         </div>
 
@@ -1627,6 +1593,36 @@
   };
 
   // ── 문제 관리 ──
+  let _testCases = [];
+
+  const renderTestCases = (tcs) => {
+    _testCases = tcs || [];
+    const el = document.getElementById('q_tcList');
+    if (!el) return;
+    if (!_testCases.length) { el.innerHTML = '<div style="color:var(--sub);font-size:0.82rem;">테스트케이스 없음</div>'; return; }
+    el.innerHTML = _testCases.map((tc, i) => `
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px;">
+        <div style="font-size:0.8rem;"><span style="color:var(--sub);">입력</span><br><pre style="margin:2px 0;font-size:0.82rem;white-space:pre-wrap;">${tc.input||'(없음)'}</pre></div>
+        <div style="font-size:0.8rem;"><span style="color:var(--sub);">출력</span><br><pre style="margin:2px 0;font-size:0.82rem;white-space:pre-wrap;">${tc.expected||''}</pre></div>
+        <button class="btn ghost sm" onclick="removeTestCase(${i})" style="color:#e74c3c;">✕</button>
+      </div>`).join('');
+  };
+
+  window.addTestCase = () => {
+    const inp = document.getElementById('q_tcInput').value;
+    const exp = document.getElementById('q_tcExpected').value;
+    if (!exp) { toast('예상 출력을 입력하세요.', 'error'); return; }
+    _testCases.push({ input: inp, expected: exp });
+    renderTestCases(_testCases);
+    document.getElementById('q_tcInput').value = '';
+    document.getElementById('q_tcExpected').value = '';
+  };
+
+  window.removeTestCase = (i) => {
+    _testCases.splice(i, 1);
+    renderTestCases(_testCases);
+  };
+
   window.toggleQTypeFields = () => {
     const type = document.getElementById('q_type').value;
     document.getElementById('qf_mc').classList.toggle('hidden', type !== 'mc');
@@ -1667,18 +1663,14 @@
     if (!title) { toast('문제 제목을 입력하세요.', 'error'); return; }
     const data = {
       examId, type,
-      title, titleZh: document.getElementById('q_titleZh').value.trim(), titleRu: document.getElementById('q_titleRu').value.trim(), titleEn: document.getElementById('q_titleEn').value.trim(),
+      title,
       content: document.getElementById('q_content').value.trim(),
-      contentZh: document.getElementById('q_contentZh').value.trim(), contentRu: document.getElementById('q_contentRu').value.trim(), contentEn: document.getElementById('q_contentEn').value.trim(),
       imageUrl: document.getElementById('q_imageUrl').value.trim(),
       points: parseInt(document.getElementById('q_points').value) || 10,
       order: parseInt(document.getElementById('q_order').value) || 1,
     };
     if (type === 'mc') {
       data.options = document.getElementById('q_options').value.split('\n').map(s=>s.trim()).filter(Boolean);
-      data.optionsZh = document.getElementById('q_optionsZh').value.split('\n').map(s=>s.trim()).filter(Boolean);
-      data.optionsRu = document.getElementById('q_optionsRu').value.split('\n').map(s=>s.trim()).filter(Boolean);
-      data.optionsEn = document.getElementById('q_optionsEn').value.split('\n').map(s=>s.trim()).filter(Boolean);
       data.answer = String(parseInt(document.getElementById('q_answer_mc').value) || 0);
     } else if (type === 'sa') {
       data.answer = document.getElementById('q_answer_sa').value.trim();
@@ -1688,11 +1680,10 @@
       data.inEx = document.getElementById('q_inEx').value.trim();
       data.outEx = document.getElementById('q_outEx').value.trim();
       data.boilerplate = document.getElementById('q_boilerplate').value;
-      try { data.testCases = JSON.parse(document.getElementById('q_testCases').value || '[]'); }
-      catch(e) { toast('테스트케이스 JSON 형식 오류.', 'error'); return; }
+      data.testCases = _testCases.slice();
     }
-    // 번역 필드가 비어있으면 자동번역
-    if (!data.titleZh && !data.titleRu && !data.titleEn) {
+    // 자동번역
+    if (!data.titleZh) {
       try {
         const toTr = [data.title, data.content].filter(Boolean);
         const optsKo = type === 'mc' ? (data.options || []) : [];
@@ -1725,21 +1716,12 @@
     document.getElementById('q_examId').value = q.examId;
     document.getElementById('q_type').value = q.type;
     document.getElementById('q_title').value = q.title||'';
-    document.getElementById('q_titleZh').value = q.titleZh||'';
-    document.getElementById('q_titleRu').value = q.titleRu||'';
-    document.getElementById('q_titleEn').value = q.titleEn||'';
     document.getElementById('q_content').value = q.content||'';
-    document.getElementById('q_contentZh').value = q.contentZh||'';
-    document.getElementById('q_contentRu').value = q.contentRu||'';
-    document.getElementById('q_contentEn').value = q.contentEn||'';
     document.getElementById('q_imageUrl').value = q.imageUrl||'';
     document.getElementById('q_points').value = q.points||10;
     document.getElementById('q_order').value = q.order||1;
     if (q.type === 'mc') {
       document.getElementById('q_options').value = (q.options||[]).join('\n');
-      document.getElementById('q_optionsZh').value = (q.optionsZh||[]).join('\n');
-      document.getElementById('q_optionsRu').value = (q.optionsRu||[]).join('\n');
-      document.getElementById('q_optionsEn').value = (q.optionsEn||[]).join('\n');
       document.getElementById('q_answer_mc').value = q.answer||'0';
     } else if (q.type === 'sa') {
       document.getElementById('q_answer_sa').value = q.answer||'';
@@ -1749,7 +1731,7 @@
       document.getElementById('q_inEx').value = q.inEx||'';
       document.getElementById('q_outEx').value = q.outEx||'';
       document.getElementById('q_boilerplate').value = q.boilerplate||'';
-      document.getElementById('q_testCases').value = JSON.stringify(q.testCases||[]);
+      renderTestCases(q.testCases||[]);
     }
     window.toggleQTypeFields();
     document.getElementById('q_cancel_btn').classList.remove('hidden');
@@ -1767,34 +1749,13 @@
   };
 
   window.resetQForm = () => {
-    ['q_docId','q_title','q_titleZh','q_titleRu','q_titleEn','q_content','q_contentZh','q_contentRu','q_contentEn','q_imageUrl','q_options','q_optionsZh','q_optionsRu','q_optionsEn','q_answer_mc','q_answer_sa','q_inDesc','q_outDesc','q_inEx','q_outEx','q_boilerplate','q_testCases'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['q_docId','q_title','q_content','q_imageUrl','q_options','q_answer_mc','q_answer_sa','q_inDesc','q_outDesc','q_inEx','q_outEx','q_boilerplate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    renderTestCases([]);
     document.getElementById('q_points').value='10';
     document.getElementById('q_order').value='1';
     document.getElementById('q_type').value='mc';
     window.toggleQTypeFields();
     document.getElementById('q_cancel_btn').classList.add('hidden');
-  };
-
-  window.translateQFields = async () => {
-    const btn = document.getElementById('q_translateBtn');
-    btn.disabled = true; btn.innerText = '🌐 번역 중...';
-    const title = document.getElementById('q_title').value.trim();
-    const content = document.getElementById('q_content').value.trim();
-    const optsKo = document.getElementById('q_options').value.trim().split('\n').filter(Boolean);
-    const texts = [title, content, ...optsKo].filter(Boolean);
-    if (!texts.length) { btn.disabled=false; btn.innerText='🌐 한국어→자동번역'; return; }
-    try {
-      const langCodes = [['zh-cn','Zh'],['ru','Ru'],['en','En']];
-      await Promise.all(langCodes.map(async ([code, cap]) => {
-        const results = await translateTexts(texts, code);
-        let i = 0;
-        if (title) document.getElementById(`q_title${cap}`).value = results[i++] || '';
-        if (content) document.getElementById(`q_content${cap}`).value = results[i++] || '';
-        if (optsKo.length) document.getElementById(`q_options${cap}`).value = results.slice(i).join('\n');
-      }));
-      toast('번역 완료', 'success');
-    } catch(e) { toast('번역 오류: '+e.message, 'error'); }
-    btn.disabled = false; btn.innerText = '🌐 한국어→자동번역';
   };
 
   // ── 배정 관리 ──
