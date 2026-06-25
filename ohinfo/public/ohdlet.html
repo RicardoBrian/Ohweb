@@ -290,6 +290,7 @@
     <button class="btn lang-btn active" id="btn-ko" onclick="setLanguage('ko')">한</button>
     <button class="btn lang-btn" id="btn-zh" onclick="setLanguage('zh')">中</button>
     <button class="btn lang-btn" id="btn-ru" onclick="setLanguage('ru')">РУ</button>
+    <button class="btn lang-btn" id="btn-en" onclick="setLanguage('en')">EN</button>
     <button class="btn ghost" onclick="goHome()">홈</button>
     <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
   </div>
@@ -302,6 +303,7 @@
     <button class="btn lang-btn" id="m-btn-ko" onclick="setLanguage('ko');closeMobileMenu()">한</button>
     <button class="btn lang-btn" id="m-btn-zh" onclick="setLanguage('zh');closeMobileMenu()">中</button>
     <button class="btn lang-btn" id="m-btn-ru" onclick="setLanguage('ru');closeMobileMenu()">РУ</button>
+    <button class="btn lang-btn" id="m-btn-en" onclick="setLanguage('en');closeMobileMenu()">EN</button>
   </div>
   <div style="display:flex;align-items:center;gap:10px;">
     <span style="font-size:0.85rem;font-weight:600;color:var(--sub);">다크모드</span>
@@ -397,7 +399,8 @@
   const uiText = {
     ko: { opt:"수업을 선택하세요", enter:"입장하기", submit:"게시물 등록", edit_finish:"수정 완료" },
     zh: { opt:"请选择课程", enter:"进入", submit:"发布", edit_finish:"完成修改" },
-    ru: { opt:"Выберите урок", enter:"Войти", submit:"Опубликовать", edit_finish:"Изм.завершено" }
+    ru: { opt:"Выберите урок", enter:"Войти", submit:"Опубликовать", edit_finish:"Изм.завершено" },
+    en: { opt:"Select a class", enter:"Enter", submit:"Post", edit_finish:"Save changes" }
   };
 
   function fmtTime(ts) {
@@ -436,7 +439,7 @@
 
   function setLanguage(lang) {
     currentLang=lang;
-    ['ko','zh','ru'].forEach(l=>{ document.getElementById('btn-'+l)?.classList.toggle('active',l===lang); document.getElementById('m-btn-'+l)?.classList.toggle('active',l===lang); });
+    ['ko','zh','ru','en'].forEach(l=>{ document.getElementById('btn-'+l)?.classList.toggle('active',l===lang); document.getElementById('m-btn-'+l)?.classList.toggle('active',l===lang); });
     document.getElementById('ui-enter-btn').innerText=uiText[lang].enter;
     document.getElementById('subBtn').innerText=f_mode==='edit'?uiText[lang].edit_finish:uiText[lang].submit;
     updateClassList();
@@ -471,8 +474,8 @@
       const hasLiked=localStorage.getItem('voted_'+p.id);
       html+=`<div class="post-card ${p.pinned?'pinned-card':''}" data-id="${p.id}">
         ${p.pinned?'<div class="pin-badge">📌 고정</div>':''}
-        <div class="post-sub">${currentLang==='zh'?(p.subZh||p.subject):currentLang==='ru'?(p.subRu||p.subject):p.subject}</div>
-        <div class="post-msg">${fmtMsg(currentLang==='zh'?(p.msgZh||p.message):currentLang==='ru'?(p.msgRu||p.message):p.message)}</div>
+        <div class="post-sub">${currentLang==='zh'?(p.subZh||p.subKo||p.subject):currentLang==='ru'?(p.subRu||p.subKo||p.subject):currentLang==='en'?(p.subEn||p.subKo||p.subject):(p.subKo||p.subject)}</div>
+        <div class="post-msg">${fmtMsg(currentLang==='zh'?(p.msgZh||p.msgKo||p.message):currentLang==='ru'?(p.msgRu||p.msgKo||p.message):currentLang==='en'?(p.msgEn||p.msgKo||p.message):(p.msgKo||p.message))}</div>
         ${buildSlider(p.imgs,p.id)}
         <div class="post-meta">
           <div class="like-area ${hasLiked?'voted':''}" onclick="toggleLikeUI('${p.id}',this)">
@@ -588,24 +591,38 @@
 
   // ── DeepL 번역 ──
   const DEEPL_KEY = 'cf131ad1-2cd2-455b-8915-dd32ddfce706:fx';
-  async function deepl(text, targetLang) {
-    if (!text.trim()) return text;
+  const DEEPL_SRC = { ko:'KO', zh:'ZH', ru:'RU', en:'EN' };
+  const DEEPL_TGT = { ko:'KO', zh:'ZH', ru:'RU', en:'EN-US' };
+  async function deepl(text, targetLang, sourceLang) {
+    if (!text || !text.trim()) return text;
     try {
+      const body = { text: [text], target_lang: DEEPL_TGT[targetLang] };
+      if (sourceLang && DEEPL_SRC[sourceLang]) body.source_lang = DEEPL_SRC[sourceLang];
       const res = await fetch('https://api-free.deepl.com/v2/translate', {
         method: 'POST',
         headers: { 'Authorization': `DeepL-Auth-Key ${DEEPL_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: [text], target_lang: targetLang, source_lang: 'KO' })
+        body: JSON.stringify(body)
       });
       const json = await res.json();
       return json.translations?.[0]?.text || text;
     } catch { return text; }
   }
-  async function translatePost(subject, message) {
-    const [subZh, msgZh, subRu, msgRu] = await Promise.all([
-      deepl(subject, 'ZH'), deepl(message, 'ZH'),
-      deepl(subject, 'RU'), deepl(message, 'RU'),
-    ]);
-    return { subZh, msgZh, subRu, msgRu };
+  async function translatePost(subject, message, srcLang) {
+    const langs = ['ko','zh','ru','en'].filter(l => l !== srcLang);
+    const pairs = await Promise.all(langs.flatMap(l => [
+      deepl(subject, l, srcLang),
+      deepl(message, l, srcLang)
+    ]));
+    const result = { subKo: subject, msgKo: message, subZh: subject, msgZh: message, subRu: subject, msgRu: message, subEn: subject, msgEn: message };
+    // overwrite source lang fields with originals
+    result[`sub${srcLang.charAt(0).toUpperCase()+srcLang.slice(1)}`] = subject;
+    result[`msg${srcLang.charAt(0).toUpperCase()+srcLang.slice(1)}`] = message;
+    langs.forEach((l, i) => {
+      const cap = l.charAt(0).toUpperCase()+l.slice(1);
+      result[`sub${cap}`] = pairs[i*2];
+      result[`msg${cap}`] = pairs[i*2+1];
+    });
+    return result;
   }
 
   // ── 게시글 등록/수정 ──
@@ -614,7 +631,7 @@
     const subject=document.getElementById('p_sub').value;
     const message=document.getElementById('p_msg').value;
     try {
-      const tr = await translatePost(subject, message);
+      const tr = await translatePost(subject, message, currentLang);
       if(f_mode==='edit') {
         const ref=doc(db,'paddlet_posts',f_postId);
         const snap=await getDoc(ref);

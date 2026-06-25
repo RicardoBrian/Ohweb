@@ -273,6 +273,7 @@
         <button class="lang-btn active" id="lang-ko" onclick="setLang('ko')">한</button>
         <button class="lang-btn" id="lang-zh" onclick="setLang('zh')">中</button>
         <button class="lang-btn" id="lang-ru" onclick="setLang('ru')">РУ</button>
+        <button class="lang-btn" id="lang-en" onclick="setLang('en')">EN</button>
       </div>
     </div>
 
@@ -467,6 +468,32 @@
       errPwMismatch: 'Пароли не совпадают.',
       brand: { tagline: 'Портал для учеников', sub: 'Используйте приложения от учителя', footer: '© ohinfo · Ученический портал',
         apps: { 'ohdlet-name':'Доска','ohdlet-desc':'Общая классная доска','submit-name':'Задания','submit-desc':'Сдача домашних заданий','exam-name':'Тест','exam-desc':'Онлайн-тестирование','form-name':'Опрос','form-desc':'Опросы и практика' } },
+    },
+    en: {
+      subtitle: 'Student Portal',
+      tabLogin: 'Login', tabJoin: 'Sign Up',
+      school: 'School', selectSchool: 'Select school...',
+      grade: 'Grade', class: 'Class', number: 'Number', name: 'Name',
+      gradeLabel: n => `Grade ${n}`, classLabel: n => `Class ${n}`,
+      selectNum: 'Select',
+      password: 'Password', passwordPh: 'Enter password', loginBtn: 'Login',
+      numPh: 'e.g. 3', namePh: 'John Doe',
+      checkBtn: 'Find Student',
+      newPw: 'New Password', pwPh: 'At least 4 characters',
+      confirmPw: 'Confirm Password', pwConfirmPh: 'Re-enter password',
+      registerBtn: 'Complete Sign Up', backBtn: '← Back',
+      errSchool: 'Please select a school.', errNumSelect: 'Please select a number.',
+      errPw: 'Please enter your password.',
+      errNotFound: 'Student not found.',
+      errNotReg: 'Registration required.\nPlease use the Sign Up tab.',
+      errWrongPw: 'Incorrect password.',
+      errNumReq: 'Please enter a number.', errNameReq: 'Please enter a name.',
+      errNoMatch: 'No matching student found.\nPlease check grade, class, number, and name.',
+      errAlready: 'This student is already registered.\nPlease use the Login tab.',
+      errPwShort: 'Password must be at least 4 characters.',
+      errPwMismatch: 'Passwords do not match.',
+      brand: { tagline: 'Student Portal', sub: 'Use apps shared by your teacher', footer: '© ohinfo · Student Portal',
+        apps: { 'ohdlet-name':'Paddlet','ohdlet-desc':'Shared board space','submit-name':'Assignments','submit-desc':'Submit your assignments','exam-name':'Exam','exam-desc':'Online exam','form-name':'Survey','form-desc':'Surveys and practice' } },
     }
   };
 
@@ -492,7 +519,7 @@
     const ftEl = document.getElementById('brandFooter'); if (ftEl) ftEl.innerText = b.footer;
     document.querySelectorAll('[data-ba]').forEach(el => { const v = b.apps[el.dataset.ba]; if (v) el.innerText = v; });
     // 언어 버튼
-    ['ko','zh','ru'].forEach(l => document.getElementById('lang-'+l).classList.toggle('active', l === lang));
+    ['ko','zh','ru','en'].forEach(l => document.getElementById('lang-'+l).classList.toggle('active', l === lang));
   }
 
   window.setLang = function(l) { lang = l; localStorage.setItem('ohinfo_lang', l); applyLang(); };

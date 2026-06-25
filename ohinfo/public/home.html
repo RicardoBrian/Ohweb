@@ -188,6 +188,7 @@
     <button class="lang-btn" id="lang-ko" onclick="setLang('ko')">한</button>
     <button class="lang-btn" id="lang-zh" onclick="setLang('zh')">中</button>
     <button class="lang-btn" id="lang-ru" onclick="setLang('ru')">РУ</button>
+    <button class="lang-btn" id="lang-en" onclick="setLang('en')">EN</button>
   </div>
   <div class="nav-right">
     <div class="nav-user">
@@ -219,6 +220,9 @@
     ru: { appsLabel:'Доступные приложения', logout:'Выйти', greeting: n => `Привет, ${n} 👋`,
       apps: { ohdlet:{name:'Паддлет',desc:'Общая доска'}, submit:{name:'Задания',desc:'Сдать задание'}, exam:{name:'Тест',desc:'Онлайн тест'}, form:{name:'Опрос',desc:'Опросы и практика'} },
       empty:'Приложений пока нет.', emptySub:'Когда учитель откроет приложения, они появятся здесь.' },
+    en: { appsLabel:'Available Apps', logout:'Logout', greeting: n => `Hello, ${n} 👋`,
+      apps: { ohdlet:{name:'Paddlet',desc:'Shared board space'}, submit:{name:'Assignments',desc:'Submit your work'}, exam:{name:'Exam',desc:'Online exam'}, form:{name:'Survey',desc:'Surveys and practice'} },
+      empty:'No apps available.', emptySub:'Apps shared by your teacher will appear here.' },
   };
   let homeLang = localStorage.getItem('ohinfo_lang') || 'ko';
   function applyHomeLang() {
@@ -227,7 +231,7 @@
     if (appsLabelEl) appsLabelEl.innerText = t.appsLabel;
     const logoutEl = document.getElementById('logoutBtn');
     if (logoutEl) logoutEl.innerText = t.logout;
-    ['ko','zh','ru'].forEach(l => { const b = document.getElementById('lang-'+l); if(b) b.classList.toggle('active', l===homeLang); });
+    ['ko','zh','ru','en'].forEach(l => { const b = document.getElementById('lang-'+l); if(b) b.classList.toggle('active', l===homeLang); });
     // re-render app grid if already rendered
     if (window._renderApps) window._renderApps();
   }

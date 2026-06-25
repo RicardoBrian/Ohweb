@@ -244,6 +244,7 @@
     <button class="btn lang-btn active" id="btn-ko" onclick="setLang('ko')">한</button>
     <button class="btn lang-btn" id="btn-zh" onclick="setLang('zh')">中</button>
     <button class="btn lang-btn" id="btn-ru" onclick="setLang('ru')">РУ</button>
+    <button class="btn lang-btn" id="btn-en" onclick="setLang('en')">EN</button>
     <div class="timer-badge hidden" id="timerBadge">00:00</div>
     <button class="dark-toggle" onclick="toggleDark()"></button>
   </div>
@@ -329,6 +330,7 @@ const UI = {
   ko: { title:'📋 시험', sub:'선생님이 알려주신 시험 코드를 입력하세요.', codeLabel:'시험 코드', enter:'입장', back:'← 홈으로', submit:'제출하기', alertInfo:'이탈 감지', run:'실행', running:'실행 중...', noSession:'세션이 없습니다. 먼저 로그인하세요.' },
   zh: { title:'📋 考试', sub:'请输入老师告知的考试代码。', codeLabel:'考试代码', enter:'进入', back:'← 返回主页', submit:'提交', alertInfo:'切换检测', run:'运行', running:'运行中...', noSession:'未登录。请先登录。' },
   ru: { title:'📋 Тест', sub:'Введите код теста, который сообщил учитель.', codeLabel:'Код теста', enter:'Войти', back:'← На главную', submit:'Отправить', alertInfo:'Обнаружений', run:'Запуск', running:'Запуск...', noSession:'Сессия не найдена. Пожалуйста, войдите.' },
+  en: { title:'📋 Exam', sub:'Enter the exam code provided by your teacher.', codeLabel:'Exam Code', enter:'Enter', back:'← Home', submit:'Submit', alertInfo:'Tab switches', run:'Run', running:'Running...', noSession:'No session found. Please log in first.' },
 };
 
 // ── 유틸 ──
@@ -339,7 +341,7 @@ if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
 
 function setLang(lang) {
   currentLang = lang;
-  ['ko','zh','ru'].forEach(l => document.getElementById('btn-'+l).classList.toggle('active', l === lang));
+  ['ko','zh','ru','en'].forEach(l => document.getElementById('btn-'+l)?.classList.toggle('active', l === lang));
   applyLangUI();
   if (questions.length) renderQuestions();
 }
@@ -372,7 +374,7 @@ document.addEventListener('visibilitychange', () => {
 
 function showAlertBanner() {
   const b = document.getElementById('alertBanner');
-  const msgs = { ko: `⚠️ 화면 이탈 감지! (${alertCount}회)`, zh: `⚠️ 检测到切换屏幕！(${alertCount}次)`, ru: `⚠️ Обнаружен выход! (${alertCount} раз)` };
+  const msgs = { ko: `⚠️ 화면 이탈 감지! (${alertCount}회)`, zh: `⚠️ 检测到切换屏幕！(${alertCount}次)`, ru: `⚠️ Обнаружен выход! (${alertCount} раз)`, en: `⚠️ Tab switch detected! (${alertCount}×)` };
   b.innerText = msgs[currentLang] || msgs.ko;
   b.classList.add('show');
   setTimeout(() => b.classList.remove('show'), 3000);
@@ -526,6 +528,7 @@ function getQContent(q) {
 function getOptions(q) {
   if (currentLang === 'zh' && q.optionsZh?.length) return q.optionsZh;
   if (currentLang === 'ru' && q.optionsRu?.length) return q.optionsRu;
+  if (currentLang === 'en' && q.optionsEn?.length) return q.optionsEn;
   return q.options || [];
 }
 
@@ -557,13 +560,13 @@ function renderQuestion(q, i) {
       </label>`
     ).join('') + `</div>`;
   } else if (q.type === 'sa') {
-    body = `<textarea class="inp sa-input" id="sa_${i}" rows="3" placeholder="${currentLang==='zh'?'请输入答案...':currentLang==='ru'?'Введите ответ...':'답을 입력하세요...'}" oninput="saveSA(${i},this.value)"></textarea>`;
+    body = `<textarea class="inp sa-input" id="sa_${i}" rows="3" placeholder="${currentLang==='zh'?'请输入答案...':currentLang==='ru'?'Введите ответ...':currentLang==='en'?'Enter your answer...':'답을 입력하세요...'}" oninput="saveSA(${i},this.value)"></textarea>`;
   } else if (q.type === 'code') {
     const tcHtml = (q.inEx || q.outEx) ? `<div class="tc-box">
-      ${q.inDesc ? `<div class="tc-row"><span class="tc-label">${currentLang==='zh'?'输入说明':currentLang==='ru'?'Ввод':'입력 형식'}</span><span>${q.inDesc}</span></div>` : ''}
-      ${q.outDesc ? `<div class="tc-row"><span class="tc-label">${currentLang==='zh'?'输出说明':currentLang==='ru'?'Вывод':'출력 형식'}</span><span>${q.outDesc}</span></div>` : ''}
-      ${q.inEx ? `<div class="tc-row"><span class="tc-label">${currentLang==='zh'?'输入例':currentLang==='ru'?'Пример':'예시 입력'}</span><pre style="margin:0;font-size:0.82rem;">${q.inEx}</pre></div>` : ''}
-      ${q.outEx ? `<div class="tc-row"><span class="tc-label">${currentLang==='zh'?'输出例':currentLang==='ru'?'Ответ':'예시 출력'}</span><pre style="margin:0;font-size:0.82rem;">${q.outEx}</pre></div>` : ''}
+      ${q.inDesc ? `<div class="tc-row"><span class="tc-label">${currentLang==='zh'?'输入说明':currentLang==='ru'?'Ввод':currentLang==='en'?'Input format':'입력 형식'}</span><span>${q.inDesc}</span></div>` : ''}
+      ${q.outDesc ? `<div class="tc-row"><span class="tc-label">${currentLang==='zh'?'输出说明':currentLang==='ru'?'Вывод':currentLang==='en'?'Output format':'출력 형식'}</span><span>${q.outDesc}</span></div>` : ''}
+      ${q.inEx ? `<div class="tc-row"><span class="tc-label">${currentLang==='zh'?'输入例':currentLang==='ru'?'Пример':currentLang==='en'?'Sample input':'예시 입력'}</span><pre style="margin:0;font-size:0.82rem;">${q.inEx}</pre></div>` : ''}
+      ${q.outEx ? `<div class="tc-row"><span class="tc-label">${currentLang==='zh'?'输出例':currentLang==='ru'?'Ответ':currentLang==='en'?'Sample output':'예시 출력'}</span><pre style="margin:0;font-size:0.82rem;">${q.outEx}</pre></div>` : ''}
     </div>` : '';
     body = `
       ${tcHtml}
