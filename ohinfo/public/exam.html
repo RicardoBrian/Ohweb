@@ -473,23 +473,24 @@ window.saveMyPage = async () => {
   const newPw2 = document.getElementById('mpNewPw2').value;
   const updates = {};
   if (_mpPhotoB64) updates.photoUrl = _mpPhotoB64;
+  const _t = UI[currentLang];
   if (newPw || curPw) {
-    if (!curPw) { msgEl.className='modal-msg err'; msgEl.innerText='현재 비밀번호를 입력하세요.'; return; }
-    if (curPw !== _mpStudent.password) { msgEl.className='modal-msg err'; msgEl.innerText='현재 비밀번호가 올바르지 않습니다.'; return; }
-    if (newPw.length < 4) { msgEl.className='modal-msg err'; msgEl.innerText='새 비밀번호는 4자 이상이어야 합니다.'; return; }
-    if (newPw !== newPw2) { msgEl.className='modal-msg err'; msgEl.innerText='새 비밀번호가 일치하지 않습니다.'; return; }
+    if (!curPw) { msgEl.className='modal-msg err'; msgEl.innerText=_t.mpCurPw+' '+(_t.mpErrCur||''); return; }
+    if (curPw !== _mpStudent.password) { msgEl.className='modal-msg err'; msgEl.innerText=_t.mpErrCur; return; }
+    if (newPw.length < 4) { msgEl.className='modal-msg err'; msgEl.innerText=_t.mpErrShort; return; }
+    if (newPw !== newPw2) { msgEl.className='modal-msg err'; msgEl.innerText=_t.mpErrMatch; return; }
     updates.password = newPw;
   }
-  if (!Object.keys(updates).length) { msgEl.className='modal-msg err'; msgEl.innerText='변경할 내용이 없습니다.'; return; }
+  if (!Object.keys(updates).length) { msgEl.className='modal-msg err'; msgEl.innerText=_t.mpErrCur; return; }
   const saveBtn = document.getElementById('mpSaveBtn'); saveBtn.disabled = true;
   try {
     await updateDoc(doc(db, 'students', _mpStudent.id), updates);
     Object.assign(_mpStudent, updates);
     sessionStorage.setItem('ohinfo_student', JSON.stringify(_mpStudent));
     renderAvatar(document.getElementById('navAvatar'), _mpStudent);
-    msgEl.className='modal-msg ok'; msgEl.innerText='저장되었습니다.';
+    msgEl.className='modal-msg ok'; msgEl.innerText=_t.mpOk;
     setTimeout(() => closeMyPage(), 1300);
-  } catch(e) { msgEl.className='modal-msg err'; msgEl.innerText='오류: '+e.message; }
+  } catch(e) { msgEl.className='modal-msg err'; msgEl.innerText=_t.errPrefix+e.message; }
   saveBtn.disabled = false;
 };
 
@@ -509,10 +510,62 @@ let pyodide = null;
 let pyodideLoading = false;
 
 const UI = {
-  ko: { title:'📋 시험', sub:'선생님이 알려주신 시험 코드를 입력하세요.', codeLabel:'시험 코드', enter:'입장', back:'← 홈으로', submit:'제출하기', alertInfo:'이탈 감지', run:'실행', running:'실행 중...', noSession:'세션이 없습니다. 먼저 로그인하세요.' },
-  zh: { title:'📋 考试', sub:'请输入老师告知的考试代码。', codeLabel:'考试代码', enter:'进入', back:'← 返回主页', submit:'提交', alertInfo:'切换检测', run:'运行', running:'运行中...', noSession:'未登录。请先登录。' },
-  ru: { title:'📋 Тест', sub:'Введите код теста, который сообщил учитель.', codeLabel:'Код теста', enter:'Войти', back:'← На главную', submit:'Отправить', alertInfo:'Обнаружений', run:'Запуск', running:'Запуск...', noSession:'Сессия не найдена. Пожалуйста, войдите.' },
-  en: { title:'📋 Exam', sub:'Enter the exam code provided by your teacher.', codeLabel:'Exam Code', enter:'Enter', back:'← Home', submit:'Submit', alertInfo:'Tab switches', run:'Run', running:'Running...', noSession:'No session found. Please log in first.' },
+  ko: {
+    title:'📋 시험', sub:'선생님이 알려주신 시험 코드를 입력하세요.', codeLabel:'시험 코드', enter:'입장', back:'← 홈으로', submit:'제출하기', alertInfo:'이탈 감지', run:'실행', running:'실행 중...', noSession:'세션이 없습니다. 먼저 로그인하세요.',
+    examList:'📋 시험 목록', loading:'불러오는 중...', noExams:'배정된 시험이 없습니다.', target:'대상', submitted:'✓ 제출완료', pts:'점', viewResult:'결과 보기', enterBtn:'입장 →',
+    resultNotFound:'결과를 찾을 수 없습니다.', errPrefix:'오류: ', submitErr:'제출 오류: ',
+    resultHome:'홈으로', pts2:'점', pct:'%',
+    mypage:'마이페이지', home:'홈으로',
+    mpTitle:'마이페이지', mpPhotoBtn:'사진 변경', mpPwLabel:'비밀번호 변경', mpCurPw:'현재 비밀번호', mpNewPw:'새 비밀번호 (4자 이상)', mpNewPw2:'새 비밀번호 확인', mpSave:'저장',
+    mpErrCur:'현재 비밀번호가 맞지 않습니다.', mpErrShort:'새 비밀번호는 4자 이상이어야 합니다.', mpErrMatch:'새 비밀번호가 일치하지 않습니다.', mpOk:'저장되었습니다.',
+    correct:'정답', wrong:'오답 (정답: ', testPass:'테스트케이스 통과', manualGrade:'수동 채점 필요',
+    stdin:'표준 입력 (stdin)', stdinPlaceholder:'입력이 필요한 경우 입력 값을 넣어주세요.',
+    pyodideLoading:'Pyodide 로딩 중...', noOutput:'(출력 없음)',
+    gradeUnit:'학년', classUnit:'반',
+    sortNew:'최신순', sortLike:'인기순',
+  },
+  zh: {
+    title:'📋 考试', sub:'请输入老师告知的考试代码。', codeLabel:'考试代码', enter:'进入', back:'← 返回主页', submit:'提交', alertInfo:'切换检测', run:'运行', running:'运行中...', noSession:'未登录。请先登录。',
+    examList:'📋 考试列表', loading:'加载中...', noExams:'没有分配的考试。', target:'对象', submitted:'✓ 已提交', pts:'分', viewResult:'查看结果', enterBtn:'进入 →',
+    resultNotFound:'找不到结果。', errPrefix:'错误: ', submitErr:'提交错误: ',
+    resultHome:'返回主页', pts2:'分', pct:'%',
+    mypage:'我的页面', home:'返回主页',
+    mpTitle:'我的页面', mpPhotoBtn:'更换照片', mpPwLabel:'修改密码', mpCurPw:'当前密码', mpNewPw:'新密码 (至少4位)', mpNewPw2:'确认新密码', mpSave:'保存',
+    mpErrCur:'当前密码不正确。', mpErrShort:'新密码至少需要4位。', mpErrMatch:'两次输入的新密码不一致。', mpOk:'已保存。',
+    correct:'正确', wrong:'错误 (正确答案: ', testPass:'测试用例通过', manualGrade:'需要人工评分',
+    stdin:'标准输入 (stdin)', stdinPlaceholder:'如需输入，请填写输入值。',
+    pyodideLoading:'Pyodide 加载中...', noOutput:'(无输出)',
+    gradeUnit:'年级', classUnit:'班',
+    sortNew:'最新', sortLike:'热门',
+  },
+  ru: {
+    title:'📋 Тест', sub:'Введите код теста, который сообщил учитель.', codeLabel:'Код теста', enter:'Войти', back:'← На главную', submit:'Отправить', alertInfo:'Обнаружений', run:'Запуск', running:'Запуск...', noSession:'Сессия не найдена. Пожалуйста, войдите.',
+    examList:'📋 Список тестов', loading:'Загрузка...', noExams:'Нет назначенных тестов.', target:'для', submitted:'✓ Сдано', pts:'б.', viewResult:'Результат', enterBtn:'Войти →',
+    resultNotFound:'Результат не найден.', errPrefix:'Ошибка: ', submitErr:'Ошибка отправки: ',
+    resultHome:'На главную', pts2:'б.', pct:'%',
+    mypage:'Мой профиль', home:'На главную',
+    mpTitle:'Мой профиль', mpPhotoBtn:'Сменить фото', mpPwLabel:'Сменить пароль', mpCurPw:'Текущий пароль', mpNewPw:'Новый пароль (мин. 4)', mpNewPw2:'Подтвердить пароль', mpSave:'Сохранить',
+    mpErrCur:'Неверный текущий пароль.', mpErrShort:'Новый пароль должен быть не менее 4 символов.', mpErrMatch:'Пароли не совпадают.', mpOk:'Сохранено.',
+    correct:'Правильно', wrong:'Неверно (ответ: ', testPass:'тест-кейс пройден', manualGrade:'Требует проверки',
+    stdin:'Стандартный ввод (stdin)', stdinPlaceholder:'Введите тестовые данные.',
+    pyodideLoading:'Загрузка Pyodide...', noOutput:'(нет вывода)',
+    gradeUnit:'кл.', classUnit:'гр.',
+    sortNew:'Новые', sortLike:'Популярные',
+  },
+  en: {
+    title:'📋 Exam', sub:'Enter the exam code provided by your teacher.', codeLabel:'Exam Code', enter:'Enter', back:'← Home', submit:'Submit', alertInfo:'Tab switches', run:'Run', running:'Running...', noSession:'No session found. Please log in first.',
+    examList:'📋 Exam List', loading:'Loading...', noExams:'No exams assigned.', target:'for', submitted:'✓ Submitted', pts:'pts', viewResult:'View Result', enterBtn:'Enter →',
+    resultNotFound:'Result not found.', errPrefix:'Error: ', submitErr:'Submit error: ',
+    resultHome:'Home', pts2:'pts', pct:'%',
+    mypage:'My Page', home:'Home',
+    mpTitle:'My Page', mpPhotoBtn:'Change Photo', mpPwLabel:'Change Password', mpCurPw:'Current password', mpNewPw:'New password (min. 4)', mpNewPw2:'Confirm new password', mpSave:'Save',
+    mpErrCur:'Current password is incorrect.', mpErrShort:'New password must be at least 4 characters.', mpErrMatch:'Passwords do not match.', mpOk:'Saved.',
+    correct:'Correct', wrong:'Wrong (answer: ', testPass:'test cases passed', manualGrade:'Manual grading required',
+    stdin:'Standard Input (stdin)', stdinPlaceholder:'Enter test input values if needed.',
+    pyodideLoading:'Loading Pyodide...', noOutput:'(no output)',
+    gradeUnit:'', classUnit:'',
+    sortNew:'Newest', sortLike:'Popular',
+  },
 };
 
 // ── 유틸 ──
@@ -546,16 +599,37 @@ function setLang(lang) {
 
 function applyLangUI() {
   const t = UI[currentLang];
-  const titleEl = document.getElementById('ui-title') || document.getElementById('ui-title0');
-  if (titleEl) titleEl.innerText = t.title;
-  const subEl = document.getElementById('ui-sub'); if (subEl) subEl.innerText = t.sub;
-  const codeEl = document.getElementById('ui-code-label'); if (codeEl) codeEl.innerText = t.codeLabel;
-  const enterEl = document.getElementById('ui-enter-btn'); if (enterEl) enterEl.innerText = t.enter;
+  // step0 title
+  const t0 = document.getElementById('ui-title0'); if (t0) t0.innerText = t.examList;
   const backEl = document.getElementById('ui-back-btn'); if (backEl) backEl.innerText = t.back;
-  const sb = document.getElementById('ui-submit-btn');
-  if (sb) sb.innerText = t.submit;
+  // step2
+  const sb = document.getElementById('ui-submit-btn'); if (sb) sb.innerText = t.submit;
   const ai = document.getElementById('alertInfo');
   if (ai) ai.innerHTML = `${t.alertInfo}: <b id="alertCount">${alertCount}</b>회`;
+  // step3 result button
+  const rb = document.querySelector('#step3 .btn.accent'); if (rb) rb.innerText = t.resultHome;
+  // nav user dropdown
+  const ddMy = document.querySelector('#userDropdown .user-dropdown-item:first-child'); if (ddMy) ddMy.innerHTML = `👤 ${t.mypage}`;
+  const ddHome = document.querySelector('#userDropdown .user-dropdown-item.danger'); if (ddHome) ddHome.innerHTML = `🏠 ${t.home}`;
+  // mypage modal
+  const mpT = document.querySelector('#myPageOverlay .modal-title'); if (mpT) mpT.innerText = t.mpTitle;
+  const mpPb = document.querySelector('.btn-photo-change'); if (mpPb) mpPb.innerText = t.mpPhotoBtn;
+  const mpPwL = document.querySelector('.modal-section-label'); if (mpPwL) mpPwL.innerText = t.mpPwLabel;
+  const mpC = document.getElementById('mpCurPw'); if (mpC) mpC.placeholder = t.mpCurPw;
+  const mpN = document.getElementById('mpNewPw'); if (mpN) mpN.placeholder = t.mpNewPw;
+  const mpN2 = document.getElementById('mpNewPw2'); if (mpN2) mpN2.placeholder = t.mpNewPw2;
+  const mpSv = document.getElementById('mpSaveBtn'); if (mpSv) mpSv.innerText = t.mpSave;
+  // re-render exam list with new language
+  if (!document.getElementById('step0').classList.contains('hidden')) loadMyExams();
+  // result score unit
+  const rt = document.getElementById('resultTotal');
+  if (rt && rt.dataset.score !== undefined) {
+    const score = parseInt(rt.dataset.score); const total = parseInt(rt.dataset.total);
+    if (!isNaN(score) && !isNaN(total)) {
+      const pct = total > 0 ? Math.round(score/total*100) : 0;
+      rt.innerText = `/ ${total}${t.pts2} (${pct}${t.pct})`;
+    }
+  }
 }
 
 // 세션 정보 표시
@@ -564,7 +638,7 @@ document.getElementById('sessionInfo').innerText = `${SESSION.grade}학년 ${SES
 // ── 내 시험 목록 로드 (step0) ──
 async function loadMyExams() {
   const area = document.getElementById('examListArea');
-  area.innerHTML = '<div style="color:var(--sub);font-size:0.85rem;">불러오는 중...</div>';
+  area.innerHTML = `<div style="color:var(--sub);font-size:0.85rem;">${UI[currentLang].loading}</div>`;
   try {
     // grade 단일 쿼리 → 클라이언트 필터 (복합인덱스 불필요)
     const snap = await getDocs(query(
@@ -578,7 +652,7 @@ async function loadMyExams() {
       return gradeOk && clsOk && schoolOk;
     });
     if (!assignments.length) {
-      area.innerHTML = '<div style="color:var(--sub);font-size:0.85rem;text-align:center;padding:12px;">배정된 시험이 없습니다.</div>';
+      area.innerHTML = `<div style="color:var(--sub);font-size:0.85rem;text-align:center;padding:12px;">${UI[currentLang].noExams}</div>`;
       return;
     }
     // exam 제목 조회
@@ -599,25 +673,27 @@ async function loadMyExams() {
       } catch(e) {}
     }));
 
+    const t = UI[currentLang];
     area.innerHTML = assignments.map(a => {
       const prog = submittedMap[a.id];
       const isDone = prog?.status === 'submitted';
       const escapedId = a.id.replace(/'/g, "\\'");
+      const gradeStr = currentLang === 'ko' ? `${SESSION.grade}학년 ${SESSION.cls}반 ${t.target}` : currentLang === 'zh' ? `${SESSION.grade}${t.gradeUnit}${SESSION.cls}${t.classUnit} ${t.target}` : currentLang === 'ru' ? `${SESSION.grade} ${t.gradeUnit} ${SESSION.cls} ${t.classUnit} ${t.target}` : `Grade ${SESSION.grade} Class ${SESSION.cls} ${t.target}`;
       return `<div style="border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;">
         <div style="font-weight:700;font-size:0.97rem;margin-bottom:2px;">${examTitles[a.examId]||a.examId}</div>
-        <div style="font-size:0.78rem;color:var(--sub);margin-bottom:10px;">${SESSION.grade}학년 ${SESSION.cls}반 대상</div>
+        <div style="font-size:0.78rem;color:var(--sub);margin-bottom:10px;">${gradeStr}</div>
         ${isDone
           ? `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-               <span style="color:#22c55e;font-weight:800;font-size:0.9rem;">✓ 제출완료</span>
-               <span style="color:var(--sub);font-size:0.85rem;">${prog.totalScore??'?'} / ${prog.totalPoints??'?'}점</span>
-               <button class="btn ghost sm" onclick="showMyResult('${escapedId}')" style="margin-left:auto;">결과 보기</button>
+               <span style="color:#22c55e;font-weight:800;font-size:0.9rem;">${t.submitted}</span>
+               <span style="color:var(--sub);font-size:0.85rem;">${prog.totalScore??'?'} / ${prog.totalPoints??'?'}${t.pts}</span>
+               <button class="btn ghost sm" onclick="showMyResult('${escapedId}')" style="margin-left:auto;">${t.viewResult}</button>
              </div>`
           : `<div style="display:flex;gap:8px;align-items:center;">
-               <input class="inp" id="code_${escapedId}" placeholder="시험 코드"
+               <input class="inp" id="code_${escapedId}" placeholder="${t.codeLabel}"
                  style="flex:1;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;font-size:0.9rem;"
                  oninput="this.value=this.value.toUpperCase()"
                  onkeydown="if(event.key==='Enter')enterExamWithCode('${escapedId}',this.value)">
-               <button class="btn accent sm" onclick="enterExamWithCode('${escapedId}',document.getElementById('code_${escapedId}').value)" style="white-space:nowrap;">입장 →</button>
+               <button class="btn accent sm" onclick="enterExamWithCode('${escapedId}',document.getElementById('code_${escapedId}').value)" style="white-space:nowrap;">${t.enterBtn}</button>
              </div>
              <div id="err_${escapedId}" style="color:#ef4444;font-size:0.8rem;margin-top:6px;min-height:16px;"></div>`
         }
@@ -633,7 +709,7 @@ window.showMyResult = async (asId) => {
   showLoading(true);
   try {
     const progSnap = await getDoc(doc(db,'exam_progress',`${asId}_${SESSION.id}`));
-    if (!progSnap.exists()) { alert('결과를 찾을 수 없습니다.'); showLoading(false); return; }
+    if (!progSnap.exists()) { alert(UI[currentLang].resultNotFound); showLoading(false); return; }
     const prog = progSnap.data();
     // Load result items
     const resultsSnap = await getDocs(query(collection(db,'exam_results'),
@@ -646,7 +722,7 @@ window.showMyResult = async (asId) => {
       value: r.value||'', score: r.score||0, maxScore: r.maxScore||0, feedback: r.feedback||''
     }));
     showResult(prog.totalScore||0, prog.totalPoints||0, resultItems);
-  } catch(e) { alert('오류: '+e.message); showLoading(false); }
+  } catch(e) { alert(UI[currentLang].errPrefix+e.message); showLoading(false); }
 };
 
 // ── 탭 이탈 감지 ──
@@ -1062,14 +1138,14 @@ window.submitExam = async (isAuto = false) => {
       if (q.type === 'mc') {
         value = answers[i]?.value !== undefined ? String(answers[i].value) : '';
         const correct = String(q.answer ?? '');
-        if (value !== '' && value === correct) { score = q.points || 0; feedback = '정답'; }
-        else { feedback = `오답 (정답: ${String.fromCharCode(9312 + parseInt(correct))})`; }
+        if (value !== '' && value === correct) { score = q.points || 0; feedback = UI[currentLang].correct; }
+        else { feedback = `${UI[currentLang].wrong}${String.fromCharCode(9312 + parseInt(correct))})`; }
 
       } else if (q.type === 'sa') {
         value = answers[i]?.value?.trim() || '';
         const correct = String(q.answer || '').trim();
-        if (value && value.toLowerCase() === correct.toLowerCase()) { score = q.points || 0; feedback = '정답'; }
-        else { feedback = `오답 (정답: ${correct})`; }
+        if (value && value.toLowerCase() === correct.toLowerCase()) { score = q.points || 0; feedback = UI[currentLang].correct; }
+        else { feedback = `${UI[currentLang].wrong}${correct})`; }
 
       } else if (q.type === 'code') {
         const cm = cmInstances[i];
@@ -1099,9 +1175,9 @@ _result = _buf.getvalue().strip()
           }
           const ratio = passCount / q.testCases.length;
           score = Math.round((q.points || 0) * ratio);
-          feedback = `${passCount}/${q.testCases.length} 테스트케이스 통과`;
+          feedback = `${passCount}/${q.testCases.length} ${UI[currentLang].testPass}`;
         } else {
-          feedback = '수동 채점 필요';
+          feedback = UI[currentLang].manualGrade;
         }
       }
 
@@ -1131,7 +1207,7 @@ _result = _buf.getvalue().strip()
     showResult(totalScore, totalPoints, resultItems);
   } catch(e) {
     showLoading(false);
-    alert('제출 오류: ' + e.message);
+    alert(UI[currentLang].submitErr + e.message);
     submitted = false;
   }
 };
@@ -1141,14 +1217,17 @@ function showResult(score, total, items) {
   document.getElementById('step3').classList.remove('hidden');
   document.getElementById('timerBadge').classList.add('hidden');
   const pct = total > 0 ? Math.round(score / total * 100) : 0;
+  const t = UI[currentLang];
   document.getElementById('resultScore').innerText = score;
-  document.getElementById('resultTotal').innerText = `/ ${total}점 (${pct}%)`;
+  const rtEl = document.getElementById('resultTotal');
+  rtEl.innerText = `/ ${total}${t.pts2} (${pct}${t.pct})`;
+  rtEl.dataset.score = score; rtEl.dataset.total = total;
   document.getElementById('resultEmoji').innerText = pct >= 90 ? '🏆' : pct >= 70 ? '🎉' : pct >= 50 ? '📚' : '💪';
   document.getElementById('resultDetails').innerHTML = items.map(r => {
     const cls = r.score === r.maxScore ? 'ok' : r.score > 0 ? 'partial' : 'fail';
     return `<div class="r-item">
       <div class="r-q">Q${r.qIdx+1}. ${escHtml(r.title)}<div class="r-fb">${escHtml(r.feedback)}</div></div>
-      <div class="r-score ${cls}">${r.score}/${r.maxScore}점</div>
+      <div class="r-score ${cls}">${r.score}/${r.maxScore}${t.pts2}</div>
     </div>`;
   }).join('');
   window.scrollTo({ top: 0, behavior: 'smooth' });
