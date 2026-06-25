@@ -250,26 +250,30 @@
   </div>
 </nav>
 
-<!-- 스텝 1: 코드 입력 -->
-<div id="step1">
+<!-- 스텝 0: 내 시험 목록 -->
+<div id="step0">
   <div class="center-wrap">
     <div class="login-card">
-      <h1 id="ui-title">📋 시험</h1>
-      <p class="sub" id="ui-sub">선생님이 알려주신 시험 코드를 입력하세요.</p>
+      <h1 id="ui-title0">📋 시험 목록</h1>
       <div class="info-box" id="sessionInfo"></div>
-      <div style="margin-bottom:16px;">
-        <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:5px;" id="ui-code-label">시험 코드</label>
-        <input class="inp" id="examCode" placeholder="예: A1B2C3" style="text-transform:uppercase;letter-spacing:0.12em;font-weight:700;"
+      <div id="examListArea" style="margin:14px 0;"></div>
+      <div style="border-top:1px solid var(--border);margin:16px 0 12px;"></div>
+      <div style="font-size:0.8rem;font-weight:700;color:var(--sub);margin-bottom:8px;" id="ui-code-label">코드로 직접 입장</div>
+      <div style="display:flex;gap:8px;">
+        <input class="inp" id="examCode" placeholder="시험 코드" style="flex:1;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;"
           oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')enterExam()">
+        <button class="btn accent sm" id="ui-enter-btn" onclick="enterExam()">입장</button>
       </div>
-      <button class="btn accent full" id="ui-enter-btn" onclick="enterExam()">입장</button>
       <div id="step1Error" style="color:#ef4444;font-size:0.82rem;margin-top:10px;text-align:center;"></div>
-      <div style="margin-top:18px;text-align:center;">
+      <div style="margin-top:16px;text-align:center;">
         <button class="btn ghost" onclick="goHome()" id="ui-back-btn" style="font-size:0.82rem;">← 홈으로</button>
       </div>
     </div>
   </div>
 </div>
+
+<!-- 스텝 1 (구 코드입력, step0으로 통합됨 - hidden) -->
+<div id="step1" class="hidden"></div>
 
 <!-- 스텝 2: 시험 -->
 <div id="step2" class="hidden">
@@ -349,11 +353,12 @@ function setLang(lang) {
 
 function applyLangUI() {
   const t = UI[currentLang];
-  document.getElementById('ui-title').innerText = t.title;
-  document.getElementById('ui-sub').innerText = t.sub;
-  document.getElementById('ui-code-label').innerText = t.codeLabel;
-  document.getElementById('ui-enter-btn').innerText = t.enter;
-  document.getElementById('ui-back-btn').innerText = t.back;
+  const titleEl = document.getElementById('ui-title') || document.getElementById('ui-title0');
+  if (titleEl) titleEl.innerText = t.title;
+  const subEl = document.getElementById('ui-sub'); if (subEl) subEl.innerText = t.sub;
+  const codeEl = document.getElementById('ui-code-label'); if (codeEl) codeEl.innerText = t.codeLabel;
+  const enterEl = document.getElementById('ui-enter-btn'); if (enterEl) enterEl.innerText = t.enter;
+  const backEl = document.getElementById('ui-back-btn'); if (backEl) backEl.innerText = t.back;
   const sb = document.getElementById('ui-submit-btn');
   if (sb) sb.innerText = t.submit;
   const ai = document.getElementById('alertInfo');
@@ -362,6 +367,55 @@ function applyLangUI() {
 
 // 세션 정보 표시
 document.getElementById('sessionInfo').innerText = `${SESSION.grade}학년 ${SESSION.cls}반 ${SESSION.num}번 ${SESSION.name}`;
+
+// ── 내 시험 목록 로드 (step0) ──
+async function loadMyExams() {
+  const area = document.getElementById('examListArea');
+  area.innerHTML = '<div style="color:var(--sub);font-size:0.85rem;">불러오는 중...</div>';
+  try {
+    // grade/class 둘 다 쿼리 (Firestore 복합 쿼리 fallback)
+    let snap;
+    try {
+      snap = await getDocs(query(
+        collection(db, 'exam_assignments'),
+        where('grade', '==', SESSION.grade),
+        where('class', '==', SESSION.cls),
+        where('status', '==', 'ON')
+      ));
+    } catch(e) {
+      snap = await getDocs(query(collection(db, 'exam_assignments'), where('status', '==', 'ON')));
+    }
+    const assignments = snap.docs.map(d=>({id:d.id,...d.data()})).filter(a => {
+      const gradeOk = _nv(String(a.grade||'')) === SESSION.grade;
+      const clsOk   = _nv(String(a.class||'')) === SESSION.cls;
+      const schoolOk = !a.schoolName || a.schoolName === SESSION.schoolName;
+      return gradeOk && clsOk && schoolOk;
+    });
+    if (!assignments.length) {
+      area.innerHTML = '<div style="color:var(--sub);font-size:0.85rem;text-align:center;padding:12px;">배정된 시험이 없습니다.</div>';
+      return;
+    }
+    // exam 제목 조회
+    const examIds = [...new Set(assignments.map(a=>a.examId))];
+    const examTitles = {};
+    await Promise.all(examIds.map(async eid => {
+      try {
+        const es = await getDoc(doc(db,'exams',eid));
+        if (es.exists()) examTitles[eid] = es.data().title || eid;
+      } catch(e) {}
+    }));
+    area.innerHTML = assignments.map(a => `
+      <div style="border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:background 0.15s;"
+        onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''"
+        onclick="enterExamDirect('${a.id}')">
+        <div style="font-weight:700;font-size:0.95rem;">${examTitles[a.examId]||a.examId}</div>
+        <div style="font-size:0.78rem;color:var(--sub);margin-top:3px;">코드: ${a.code} · ${SESSION.grade}학년 ${SESSION.cls}반</div>
+      </div>`).join('');
+  } catch(e) {
+    area.innerHTML = `<div style="color:#ef4444;font-size:0.82rem;">${e.message}</div>`;
+  }
+}
+loadMyExams();
 
 // ── 탭 이탈 감지 ──
 document.addEventListener('visibilitychange', () => {
@@ -413,7 +467,50 @@ function renderTimer() {
   else if (remainSec <= 300) { el.classList.remove('danger'); el.classList.add('warning'); }
 }
 
-// ── 입장 ──
+// ── 공통: asDoc으로 시험 시작 ──
+async function startExamFromAs(asDoc, errEl) {
+  const asData = asDoc.data();
+  if (asData.status !== 'ON') { if(errEl) errEl.innerText = '현재 시험이 열려있지 않습니다.'; showLoading(false); return; }
+  // 이미 제출했는지 확인
+  const progRef = doc(db, 'exam_progress', `${asDoc.id}_${SESSION.id}`);
+  const progSnap = await getDoc(progRef);
+  if (progSnap.exists() && progSnap.data().status === 'submitted') {
+    if(errEl) errEl.innerText = '이미 제출한 시험입니다.'; showLoading(false); return;
+  }
+  // 시험 정보 로드
+  const examSnap = await getDoc(doc(db, 'exams', asData.examId));
+  if (!examSnap.exists()) { if(errEl) errEl.innerText = '시험 정보를 찾을 수 없습니다.'; showLoading(false); return; }
+  // 문제 로드 (orderBy fallback)
+  let qSnap;
+  try {
+    qSnap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',asData.examId), orderBy('order','asc')));
+  } catch(e) {
+    qSnap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',asData.examId)));
+  }
+  questions = qSnap.docs.map((d,i)=>({id:d.id,idx:i,...d.data()})).sort((a,b)=>(a.order||0)-(b.order||0));
+  if (!questions.length) { if(errEl) errEl.innerText = '시험 문제가 없습니다.'; showLoading(false); return; }
+  currentAssignment = { asId: asDoc.id, ...asData };
+  currentExam = { id: examSnap.id, ...examSnap.data() };
+  await setDoc(progRef, {
+    examId: asData.examId, asId: asDoc.id,
+    studentId: SESSION.id, name: SESSION.name, grade: SESSION.grade, class: SESSION.cls, num: SESSION.num,
+    status: 'started', alertCount: 0, startTime: serverTimestamp()
+  }, { merge: true });
+  showLoading(false);
+  startExamUI();
+}
+
+// ── 목록에서 직접 입장 ──
+window.enterExamDirect = async (asId) => {
+  showLoading(true);
+  try {
+    const asDoc = await getDoc(doc(db, 'exam_assignments', asId));
+    if (!asDoc.exists()) { alert('배정 정보를 찾을 수 없습니다.'); showLoading(false); return; }
+    await startExamFromAs(asDoc, null);
+  } catch(e) { alert('오류: ' + e.message); showLoading(false); }
+};
+
+// ── 코드 직접 입장 ──
 window.enterExam = async () => {
   const code = document.getElementById('examCode').value.trim().toUpperCase();
   const errEl = document.getElementById('step1Error');
@@ -421,40 +518,23 @@ window.enterExam = async () => {
   if (!code) { errEl.innerText = '코드를 입력하세요.'; return; }
   showLoading(true);
   try {
-    // assignments에서 코드 조회
-    const snap = await getDocs(query(collection(db, 'exam_assignments'), where('code', '==', code)));
+    // 코드로 조회 (숫자 코드 대응: 문자열로 먼저, 안 되면 숫자로도 시도)
+    let snap = await getDocs(query(collection(db,'exam_assignments'), where('code','==',code)));
+    if (snap.empty) {
+      const numCode = Number(code);
+      if (!isNaN(numCode)) snap = await getDocs(query(collection(db,'exam_assignments'), where('code','==',numCode)));
+    }
     if (snap.empty) { errEl.innerText = '존재하지 않는 코드입니다.'; showLoading(false); return; }
     const asDoc = snap.docs[0];
     const asData = asDoc.data();
-    if (asData.status !== 'ON') { errEl.innerText = '현재 시험이 열려있지 않습니다.'; showLoading(false); return; }
     // 학년/반 확인
     if (_nv(String(asData.grade)) !== SESSION.grade || _nv(String(asData.class)) !== SESSION.cls) {
-      errEl.innerText = '이 시험은 내 학년/반 대상이 아닙니다.'; showLoading(false); return;
+      errEl.innerText = `이 시험은 ${asData.grade}학년 ${asData.class}반 대상입니다. (내 정보: ${SESSION.grade}학년 ${SESSION.cls}반)`;
+      showLoading(false); return;
     }
     const schoolOk = !asData.schoolName || asData.schoolName === SESSION.schoolName;
     if (!schoolOk) { errEl.innerText = '이 시험은 해당 학교 학생만 응시할 수 있습니다.'; showLoading(false); return; }
-    // 이미 제출했는지 확인
-    const progRef = doc(db, 'exam_progress', `${asDoc.id}_${SESSION.id}`);
-    const progSnap = await getDoc(progRef);
-    if (progSnap.exists() && progSnap.data().status === 'submitted') {
-      errEl.innerText = '이미 제출한 시험입니다.'; showLoading(false); return;
-    }
-    // 시험 정보 로드
-    const examSnap = await getDoc(doc(db, 'exams', asData.examId));
-    if (!examSnap.exists()) { errEl.innerText = '시험 정보를 찾을 수 없습니다.'; showLoading(false); return; }
-    // 문제 로드
-    const qSnap = await getDocs(query(collection(db, 'exam_questions'), where('examId', '==', asData.examId), orderBy('order', 'asc')));
-    questions = qSnap.docs.map((d,i) => ({ id: d.id, idx: i, ...d.data() }));
-    currentAssignment = { asId: asDoc.id, ...asData };
-    currentExam = { id: examSnap.id, ...examSnap.data() };
-    // progress 기록 시작
-    await setDoc(progRef, {
-      examId: asData.examId, asId: asDoc.id,
-      studentId: SESSION.id, name: SESSION.name, grade: SESSION.grade, class: SESSION.cls, num: SESSION.num,
-      status: 'started', alertCount: 0, startTime: serverTimestamp()
-    }, { merge: true });
-    showLoading(false);
-    startExamUI();
+    await startExamFromAs(asDoc, errEl);
   } catch(e) {
     errEl.innerText = '오류: ' + e.message;
     showLoading(false);
@@ -462,6 +542,7 @@ window.enterExam = async () => {
 };
 
 function startExamUI() {
+  document.getElementById('step0').classList.add('hidden');
   document.getElementById('step1').classList.add('hidden');
   document.getElementById('step2').classList.remove('hidden');
   document.getElementById('examTitle').innerText = currentExam.title || '';
