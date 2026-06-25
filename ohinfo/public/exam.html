@@ -310,7 +310,8 @@ import {
 // ── 세션 ──
 const _st = JSON.parse(sessionStorage.getItem('ohinfo_student') || '{}');
 if (!_st.id) { window.location.href = 'index.html'; }
-const SESSION = { id: _st.id||'', name: _st.name||'', grade: _st.grade||'', cls: _st.class||'', num: _st.number||'', schoolId: _st.schoolId||'' };
+const _nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
+const SESSION = { id: _st.id||'', name: _st.name||'', grade: _nv(_st.grade||''), cls: _nv(_st.class||''), num: String(_st.number||''), schoolName: _st.schoolName||'' };
 
 // ── 상태 ──
 let currentLang = localStorage.getItem('ohinfo_lang') || 'ko';
@@ -427,10 +428,10 @@ window.enterExam = async () => {
     const asData = asDoc.data();
     if (asData.status !== 'ON') { errEl.innerText = '현재 시험이 열려있지 않습니다.'; showLoading(false); return; }
     // 학년/반 확인
-    if (String(asData.grade) !== String(SESSION.grade) || String(asData.class) !== String(SESSION.cls)) {
+    if (_nv(String(asData.grade)) !== SESSION.grade || _nv(String(asData.class)) !== SESSION.cls) {
       errEl.innerText = '이 시험은 내 학년/반 대상이 아닙니다.'; showLoading(false); return;
     }
-    const schoolOk = !asData.schoolId || asData.schoolId === SESSION.schoolId;
+    const schoolOk = !asData.schoolName || asData.schoolName === SESSION.schoolName;
     if (!schoolOk) { errEl.innerText = '이 시험은 해당 학교 학생만 응시할 수 있습니다.'; showLoading(false); return; }
     // 이미 제출했는지 확인
     const progRef = doc(db, 'exam_progress', `${asDoc.id}_${SESSION.id}`);
@@ -636,20 +637,20 @@ window.runCode = async (idx) => {
   resultEl.innerText = '실행 중...';
   try {
     let output = '';
-    pyodide.globals.set('__output__', []);
     pyodide.runPython(`
-import sys, io
-_buf = io.StringIO()
+import sys, io as _io
+_buf = _io.StringIO()
 sys.stdout = _buf
+sys.stdin = _io.StringIO('')
 `);
     await pyodide.runPythonAsync(code);
-    pyodide.runPython(`sys.stdout = sys.__stdout__`);
+    pyodide.runPython(`sys.stdout = sys.__stdout__\nsys.stdin = sys.__stdin__`);
     output = pyodide.runPython(`_buf.getvalue()`);
     resultEl.className = 'run-result ok';
     resultEl.innerText = output || '(출력 없음)';
     saveCode(idx, code);
   } catch(e) {
-    pyodide.runPython(`import sys; sys.stdout = sys.__stdout__`);
+    pyodide.runPython(`import sys; sys.stdout = sys.__stdout__; sys.stdin = sys.__stdin__`);
     resultEl.className = 'run-result error';
     resultEl.innerText = String(e);
   }
@@ -710,12 +711,16 @@ window.submitExam = async (isAuto = false) => {
           let passCount = 0;
           for (const tc of q.testCases) {
             try {
+              const inputData = String(tc.input || '');
               const testCode = `
-import sys, io
-_buf = io.StringIO()
+import sys, io as _io
+_buf = _io.StringIO()
+_in = _io.StringIO(${JSON.stringify(inputData)})
 sys.stdout = _buf
+sys.stdin = _in
 ${code}
 sys.stdout = sys.__stdout__
+sys.stdin = sys.__stdin__
 _result = _buf.getvalue().strip()
 `;
               pyodide.runPython(testCode);

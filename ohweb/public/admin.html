@@ -804,8 +804,8 @@
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
           <div>
             <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">학교</label>
-            <select class="inp" id="as_schoolId">
-              <option value="">전체</option>
+            <select class="inp" id="as_schoolName">
+              <option value="">전체 학교</option>
             </select>
           </div>
           <div>
@@ -1580,9 +1580,10 @@
       const cur = sel.value;
       sel.innerHTML = '<option value="">시험 선택</option>' + exams.map(e => `<option value="${e.id}" ${e.id===cur?'selected':''}>${e.title}</option>`).join('');
     });
-    const asSch = document.getElementById('as_schoolId');
+    const asSch = document.getElementById('as_schoolName');
     if (asSch) {
-      asSch.innerHTML = '<option value="">전체</option>' + schools.map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+      const uniqueSchools = [...new Set(_appStudents.map(s=>s.schoolName).filter(Boolean))].sort();
+      asSch.innerHTML = '<option value="">전체 학교</option>' + uniqueSchools.map(s=>`<option value="${s}">${s}</option>`).join('');
     }
   }
 
@@ -1690,6 +1691,24 @@
       try { data.testCases = JSON.parse(document.getElementById('q_testCases').value || '[]'); }
       catch(e) { toast('테스트케이스 JSON 형식 오류.', 'error'); return; }
     }
+    // 번역 필드가 비어있으면 자동번역
+    if (!data.titleZh && !data.titleRu && !data.titleEn) {
+      try {
+        const toTr = [data.title, data.content].filter(Boolean);
+        const optsKo = type === 'mc' ? (data.options || []) : [];
+        const allTexts = [...toTr, ...optsKo];
+        if (allTexts.length) {
+          const langCodes = [['zh-cn','Zh'],['ru','Ru'],['en','En']];
+          await Promise.all(langCodes.map(async ([code, cap]) => {
+            const res = await translateTexts(allTexts, code);
+            let i = 0;
+            if (data.title) data['title'+cap] = res[i++] || '';
+            if (data.content) data['content'+cap] = res[i++] || '';
+            if (optsKo.length) data['options'+cap] = res.slice(i);
+          }));
+        }
+      } catch(e) { console.error('auto-translate question:', e); }
+    }
     showLoading(true);
     try {
       if (docId) await updateDoc(doc(db,'exam_questions',docId), data);
@@ -1756,42 +1775,23 @@
     document.getElementById('q_cancel_btn').classList.add('hidden');
   };
 
-  const ADM_DEEPL_KEY = 'cf131ad1-2cd2-455b-8915-dd32ddfce706:fx';
-  const ADM_DEEPL_TGT = { zh:'ZH', ru:'RU', en:'EN-US' };
-  async function admDeepL(text, tgt) {
-    if (!text.trim()) return text;
-    try {
-      const r = await fetch('https://api-free.deepl.com/v2/translate', {
-        method:'POST',
-        headers:{'Authorization':`DeepL-Auth-Key ${ADM_DEEPL_KEY}`,'Content-Type':'application/json'},
-        body: JSON.stringify({ text:[text], target_lang: ADM_DEEPL_TGT[tgt], source_lang:'KO' })
-      });
-      const j = await r.json();
-      return j.translations?.[0]?.text || text;
-    } catch { return text; }
-  }
-
   window.translateQFields = async () => {
     const btn = document.getElementById('q_translateBtn');
     btn.disabled = true; btn.innerText = '🌐 번역 중...';
     const title = document.getElementById('q_title').value.trim();
     const content = document.getElementById('q_content').value.trim();
-    const optsKo = document.getElementById('q_options').value.trim();
-    const langs = ['zh','ru','en'];
+    const optsKo = document.getElementById('q_options').value.trim().split('\n').filter(Boolean);
+    const texts = [title, content, ...optsKo].filter(Boolean);
+    if (!texts.length) { btn.disabled=false; btn.innerText='🌐 한국어→자동번역'; return; }
     try {
-      const jobs = langs.flatMap(l => [
-        title ? admDeepL(title, l) : Promise.resolve(''),
-        content ? admDeepL(content, l) : Promise.resolve(''),
-        optsKo ? Promise.all(optsKo.split('\n').filter(Boolean).map(o=>admDeepL(o,l))) : Promise.resolve([]),
-      ]);
-      const results = await Promise.all(jobs);
-      langs.forEach((l, li) => {
-        const base = li * 3;
-        const cap = l.charAt(0).toUpperCase()+l.slice(1);
-        if (results[base]) document.getElementById(`q_title${cap}`).value = results[base];
-        if (results[base+1]) document.getElementById(`q_content${cap}`).value = results[base+1];
-        if (results[base+2]?.length) document.getElementById(`q_options${cap}`).value = results[base+2].join('\n');
-      });
+      const langCodes = [['zh-cn','Zh'],['ru','Ru'],['en','En']];
+      await Promise.all(langCodes.map(async ([code, cap]) => {
+        const results = await translateTexts(texts, code);
+        let i = 0;
+        if (title) document.getElementById(`q_title${cap}`).value = results[i++] || '';
+        if (content) document.getElementById(`q_content${cap}`).value = results[i++] || '';
+        if (optsKo.length) document.getElementById(`q_options${cap}`).value = results.slice(i).join('\n');
+      }));
       toast('번역 완료', 'success');
     } catch(e) { toast('번역 오류: '+e.message, 'error'); }
     btn.disabled = false; btn.innerText = '🌐 한국어→자동번역';
@@ -1804,11 +1804,11 @@
     const code = document.getElementById('as_code').value.trim().toUpperCase();
     const grade = document.getElementById('as_grade').value;
     const cls = document.getElementById('as_class').value;
-    const schoolId = document.getElementById('as_schoolId')?.value || '';
+    const schoolName = document.getElementById('as_schoolName')?.value || '';
     const duration = parseInt(document.getElementById('as_duration').value) || 0;
     if (!examId) { toast('시험을 선택하세요.', 'error'); return; }
     if (!code) { toast('시험 코드를 입력하세요.', 'error'); return; }
-    const data = { examId, code, grade, class: cls, schoolId, duration, status: 'ON' };
+    const data = { examId, code, grade, class: cls, schoolName, duration, status: 'ON' };
     showLoading(true);
     try {
       if (docId) await updateDoc(doc(db,'exam_assignments',docId), data);
@@ -1830,7 +1830,7 @@
       return `<div class="list-item">
         <div class="list-item-info">
           <div class="list-item-name">🎯 <b style="letter-spacing:0.1em;">${a.code}</b> — ${exam?.title||a.examId}</div>
-          <div class="list-item-sub">${a.schoolId?(schools.find(s=>s.id===a.schoolId)?.name||a.schoolId)+' · ':''}${a.grade}학년 ${a.class}반 · ${a.duration>0?a.duration+'분':'무제한'}</div>
+          <div class="list-item-sub">${a.schoolName?a.schoolName+' · ':''}${a.grade}학년 ${a.class}반 · ${a.duration>0?a.duration+'분':'무제한'}</div>
         </div>
         <div class="list-item-actions" style="display:flex;gap:8px;align-items:center;">
           <select onchange="toggleAsStatus('${a.id}',this.value)" style="font-size:0.78rem;padding:4px 8px;border-radius:8px;border:1.5px solid var(--border-card);background:var(--glass);cursor:pointer;font-weight:700;color:${a.status==='ON'?'#22c55e':'#ef4444'}">
@@ -1864,7 +1864,7 @@
     document.getElementById('as_examId').value='';
     document.getElementById('as_code').value='';
     document.getElementById('as_duration').value='45';
-    document.getElementById('as_schoolId').value='';
+    const asSchEl = document.getElementById('as_schoolName'); if(asSchEl) asSchEl.value='';
     document.getElementById('as_cancel_btn').classList.add('hidden');
   };
 
