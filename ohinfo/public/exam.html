@@ -271,14 +271,6 @@
       <h1 id="ui-title0">📋 시험 목록</h1>
       <div class="info-box" id="sessionInfo"></div>
       <div id="examListArea" style="margin:14px 0;"></div>
-      <div style="border-top:1px solid var(--border);margin:16px 0 12px;"></div>
-      <div style="font-size:0.8rem;font-weight:700;color:var(--sub);margin-bottom:8px;" id="ui-code-label">코드로 직접 입장</div>
-      <div style="display:flex;gap:8px;">
-        <input class="inp" id="examCode" placeholder="시험 코드" style="flex:1;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;"
-          oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')enterExam()">
-        <button class="btn accent sm" id="ui-enter-btn" onclick="enterExam()">입장</button>
-      </div>
-      <div id="step1Error" style="color:#ef4444;font-size:0.82rem;margin-top:10px;text-align:center;"></div>
       <div style="margin-top:16px;text-align:center;">
         <button class="btn ghost" onclick="goHome()" id="ui-back-btn" style="font-size:0.82rem;">← 홈으로</button>
       </div>
@@ -431,12 +423,24 @@ async function loadMyExams() {
     area.innerHTML = assignments.map(a => {
       const prog = submittedMap[a.id];
       const isDone = prog?.status === 'submitted';
-      return `<div style="border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;">
-        <div style="font-weight:700;font-size:0.95rem;">${examTitles[a.examId]||a.examId}</div>
-        <div style="font-size:0.78rem;color:var(--sub);margin-top:3px;">${SESSION.grade}학년 ${SESSION.cls}반 대상</div>
+      const escapedId = a.id.replace(/'/g, "\\'");
+      return `<div style="border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;">
+        <div style="font-weight:700;font-size:0.97rem;margin-bottom:2px;">${examTitles[a.examId]||a.examId}</div>
+        <div style="font-size:0.78rem;color:var(--sub);margin-bottom:10px;">${SESSION.grade}학년 ${SESSION.cls}반 대상</div>
         ${isDone
-          ? `<div style="margin-top:8px;display:flex;align-items:center;gap:8px;"><span style="color:#22c55e;font-weight:700;font-size:0.85rem;">✓ 제출완료</span><span style="color:var(--sub);font-size:0.82rem;">${prog.totalScore??'?'}/${prog.totalPoints??'?'}점</span><button class="btn ghost sm" onclick="showMyResult('${a.id}')" style="margin-left:auto;font-size:0.8rem;">결과 보기</button></div>`
-          : `<button class="btn accent sm" onclick="enterExamDirect('${a.id}')" style="margin-top:8px;font-size:0.85rem;">코드로 입장 →</button>`
+          ? `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+               <span style="color:#22c55e;font-weight:800;font-size:0.9rem;">✓ 제출완료</span>
+               <span style="color:var(--sub);font-size:0.85rem;">${prog.totalScore??'?'} / ${prog.totalPoints??'?'}점</span>
+               <button class="btn ghost sm" onclick="showMyResult('${escapedId}')" style="margin-left:auto;">결과 보기</button>
+             </div>`
+          : `<div style="display:flex;gap:8px;align-items:center;">
+               <input class="inp" id="code_${escapedId}" placeholder="시험 코드"
+                 style="flex:1;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;font-size:0.9rem;"
+                 oninput="this.value=this.value.toUpperCase()"
+                 onkeydown="if(event.key==='Enter')enterExamWithCode('${escapedId}',this.value)">
+               <button class="btn accent sm" onclick="enterExamWithCode('${escapedId}',document.getElementById('code_${escapedId}').value)" style="white-space:nowrap;">입장 →</button>
+             </div>
+             <div id="err_${escapedId}" style="color:#ef4444;font-size:0.8rem;margin-top:6px;min-height:16px;"></div>`
         }
       </div>`;
     }).join('');
@@ -549,15 +553,33 @@ async function startExamFromAs(asDoc, errEl) {
   startExamUI();
 }
 
-// ── 목록에서 직접 입장 ──
-window.enterExamDirect = (asId, code) => {
-  const input = document.getElementById('examCode');
-  if (input) {
-    input.value = '';
-    input.focus();
-    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+// ── 목록 카드에서 코드 입력 후 입장 ──
+window.enterExamWithCode = async (asId, code) => {
+  const errEl = document.getElementById('err_' + asId);
+  if (errEl) errEl.innerText = '';
+  code = (code || '').trim().toUpperCase();
+  if (!code) { if (errEl) errEl.innerText = '코드를 입력하세요.'; return; }
+  showLoading(true);
+  try {
+    const asRef = doc(db, 'exam_assignments', asId);
+    const asDoc = await getDoc(asRef);
+    if (!asDoc.exists()) { if (errEl) errEl.innerText = '배정 정보를 찾을 수 없습니다.'; showLoading(false); return; }
+    const asData = asDoc.data();
+    const stored = String(asData.code || '').toUpperCase();
+    const storedNum = String(Number(asData.code) || '').toUpperCase();
+    if (code !== stored && code !== storedNum) {
+      if (errEl) errEl.innerText = '코드가 맞지 않습니다.';
+      showLoading(false); return;
+    }
+    await startExamFromAs(asDoc, errEl);
+  } catch(e) {
+    if (errEl) errEl.innerText = '오류: ' + e.message;
+    showLoading(false);
   }
 };
+
+// ── 목록에서 직접 입장 (unused) ──
+window.enterExamDirect = (asId) => {};
 
 // ── 코드 직접 입장 ──
 window.enterExam = async () => {
