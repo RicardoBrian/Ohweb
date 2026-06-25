@@ -716,16 +716,16 @@
           <div style="margin-bottom:12px;">
             <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:8px;">테스트케이스</label>
             <div id="q_tcList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;"></div>
-            <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;">
+            <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:end;">
               <div>
-                <label style="font-size:0.75rem;color:var(--sub);display:block;margin-bottom:3px;">입력</label>
-                <textarea class="inp" id="q_tcInput" rows="2" style="resize:vertical;font-family:monospace;"></textarea>
+                <label style="font-size:0.75rem;color:var(--sub);display:block;margin-bottom:2px;">입력</label>
+                <input class="inp" id="q_tcInput" placeholder="입력값 (없으면 빈칸)" style="font-family:monospace;font-size:0.85rem;">
               </div>
               <div>
-                <label style="font-size:0.75rem;color:var(--sub);display:block;margin-bottom:3px;">예상 출력</label>
-                <textarea class="inp" id="q_tcExpected" rows="2" style="resize:vertical;font-family:monospace;"></textarea>
+                <label style="font-size:0.75rem;color:var(--sub);display:block;margin-bottom:2px;">예상 출력</label>
+                <input class="inp" id="q_tcExpected" placeholder="예상 출력" style="font-family:monospace;font-size:0.85rem;">
               </div>
-              <button class="btn accent sm" type="button" onclick="addTestCase()" style="height:40px;">+ 추가</button>
+              <button class="btn accent sm" type="button" onclick="addTestCase()">+ 추가</button>
             </div>
           </div>
         </div>
@@ -1636,9 +1636,16 @@
     // sync both selects
     const a = document.getElementById('q_examId'); if (a) a.value = examId;
     const b = document.getElementById('qlist_examId'); if (b) b.value = examId;
-    const snap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId), orderBy('order','asc')));
-    const qs = snap.docs.map(d=>({id:d.id,...d.data()}));
     const el = document.getElementById('qList');
+    try {
+    let snap;
+    try {
+      snap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId), orderBy('order','asc')));
+    } catch(e) {
+      // composite index 없을 때 fallback
+      snap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId)));
+    }
+    const qs = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.order||0)-(b.order||0));
     if (!qs.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">❓</div>문제가 없습니다.</div>'; return; }
     const typeLabels = { mc:'객관식', sa:'단답형', code:'코딩' };
     el.innerHTML = qs.map((q,i) => `
@@ -1652,6 +1659,7 @@
           <button class="btn danger sm" onclick="deleteQuestion('${q.id}')">삭제</button>
         </div>
       </div>`).join('');
+    } catch(e) { el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div>${e.message}</div>`; }
   };
 
   window.saveQuestion = async () => {
@@ -1661,13 +1669,21 @@
     const type = document.getElementById('q_type').value;
     const title = document.getElementById('q_title').value.trim();
     if (!title) { toast('문제 제목을 입력하세요.', 'error'); return; }
+    // 순서 자동 계산 (신규 문제일 때)
+    let orderVal = parseInt(document.getElementById('q_order').value) || 0;
+    if (!docId && !orderVal) {
+      try {
+        const countSnap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId)));
+        orderVal = countSnap.size + 1;
+      } catch(e) { orderVal = 1; }
+    }
     const data = {
       examId, type,
       title,
       content: document.getElementById('q_content').value.trim(),
       imageUrl: document.getElementById('q_imageUrl').value.trim(),
       points: parseInt(document.getElementById('q_points').value) || 10,
-      order: parseInt(document.getElementById('q_order').value) || 1,
+      order: orderVal || 1,
     };
     if (type === 'mc') {
       data.options = document.getElementById('q_options').value.split('\n').map(s=>s.trim()).filter(Boolean);
@@ -1705,7 +1721,10 @@
       if (docId) await updateDoc(doc(db,'exam_questions',docId), data);
       else await addDoc(collection(db,'exam_questions'), { ...data, createdAt: serverTimestamp() });
       toast('저장되었습니다.', 'success');
+      const savedExamId = examId;
       resetQForm();
+      document.getElementById('q_examId').value = savedExamId;
+      document.getElementById('qlist_examId').value = savedExamId;
       await loadQList();
     } catch(e) { toast('오류: '+e.message, 'error'); }
     showLoading(false);
