@@ -291,7 +291,6 @@
     <button class="btn lang-btn" id="btn-zh" onclick="setLanguage('zh')">中</button>
     <button class="btn lang-btn" id="btn-ru" onclick="setLanguage('ru')">РУ</button>
     <button class="btn ghost" onclick="goHome()">홈</button>
-    <button class="btn ghost" onclick="toggleAdmin()">관리</button>
     <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
   </div>
   <button class="hamburger" onclick="toggleMobileMenu()"><span></span><span></span><span></span></button>
@@ -299,7 +298,6 @@
 
 <div id="mobileMenu" class="mobile-menu">
   <button class="btn ghost" onclick="goHome();closeMobileMenu()">홈</button>
-  <button class="btn ghost" onclick="toggleAdmin();closeMobileMenu()">관리</button>
   <div style="display:flex;gap:8px;">
     <button class="btn lang-btn" id="m-btn-ko" onclick="setLanguage('ko');closeMobileMenu()">한</button>
     <button class="btn lang-btn" id="m-btn-zh" onclick="setLanguage('zh');closeMobileMenu()">中</button>
@@ -351,11 +349,6 @@
         </div>
         <div class="form-card">
           <form id="postForm" onsubmit="submitPost(event)">
-            <div class="form-row">
-              <input class="inp" id="p_num" placeholder="번호" required>
-              <input class="inp" id="p_name" placeholder="이름" required>
-              <input class="inp" id="p_pw_display" type="password" placeholder="비번" required>
-            </div>
             <input class="inp" id="p_sub" placeholder="제목" required style="margin-bottom:7px;">
             <textarea class="inp" id="p_msg" rows="4" placeholder="내용" required style="margin-bottom:9px;"></textarea>
             <div class="upload-box" id="ui-upload-label" onclick="document.getElementById('fileInput').click()">
@@ -387,40 +380,11 @@
     </div>
   </div>
 
-  <div id="adminPanel" class="hidden">
-    <div class="admin-wrap">
-      <div class="admin-panel">
-        <h2>수업 관리</h2>
-        <div id="adm_edit_info" class="edit-banner hidden"></div>
-        <input type="hidden" id="adm_docId">
-        <div class="checkbox-grid" id="adm_target_area">
-          <label><input type="checkbox" class="adm-g" value="1"> 1학년</label>
-          <label><input type="checkbox" class="adm-g" value="2"> 2학년</label>
-          <label><input type="checkbox" class="adm-g" value="3"> 3학년</label>
-          <hr>
-          <label><input type="checkbox" class="adm-b" value="1"> 1반</label>
-          <label><input type="checkbox" class="adm-b" value="2"> 2반</label>
-          <label><input type="checkbox" class="adm-b" value="3"> 3반</label>
-          <label><input type="checkbox" class="adm-b" value="4"> 4반</label>
-          <label><input type="checkbox" class="adm-b" value="5"> 5반</label>
-        </div>
-        <div class="field"><label>수업명</label><input class="inp" id="adm_name" placeholder="수업명"></div>
-        <div class="field"><label>설명</label><textarea class="inp" id="adm_desc" rows="2" placeholder="수업 상세 설명"></textarea></div>
-        <div class="field"><label>선생님 안내</label><textarea class="inp" id="adm_ex" rows="2" placeholder="게시판 최상단 고정 안내"></textarea></div>
-        <div class="field" style="margin-bottom:18px;"><label>공지 팝업</label><textarea class="inp" id="adm_popup" rows="2" placeholder="입장 시 팝업 (비워두면 미표시)"></textarea></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;">
-          <button class="btn accent" onclick="saveAdminClass()">저장</button>
-          <button id="adm_cancel_btn" class="btn hidden" onclick="resetAdminForm()">취소</button>
-        </div>
-        <hr class="divider">
-        <div id="adminList"></div>
-      </div>
-    </div>
-  </div>
 </div>
 
 <script>
-  const MASTER_PW = "9600";
+  const _st = JSON.parse(sessionStorage.getItem('ohinfo_student')||'{}');
+  const SESSION = { id: _st.id||'', name: _st.name||'', grade: _st.grade||'', cls: _st.class||'', num: _st.number||'' };
   let currentLang = 'ko';
   let imgList = [];
   let currentPosts = [];
@@ -478,8 +442,7 @@
     updateClassList();
   }
 
-  function goHome() { document.getElementById('step2').classList.add('hidden'); document.getElementById('step1').classList.remove('hidden'); document.getElementById('adminPanel').classList.add('hidden'); cancelEdit(); window.scrollTo(0,0); }
-  function toggleAdmin() { askPassword('관리자 비밀번호').then(pw=>{ if(pw!==MASTER_PW)return; document.getElementById('adminPanel').classList.toggle('hidden'); if(!document.getElementById('adminPanel').classList.contains('hidden')){loadAdminList();window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});} }); }
+  function goHome() { document.getElementById('step2').classList.add('hidden'); document.getElementById('step1').classList.remove('hidden'); cancelEdit(); window.scrollTo(0,0); }
 
   function startBoard() {
     const cls=document.getElementById('classList').value;
@@ -515,9 +478,7 @@
             <span>❤</span><span class="like-count" style="font-weight:700;">${p.likes||0}</span>
           </div>
           <div class="action-links">
-            <a class="pin-link ${p.pinned?'is-pinned':''}" onclick="handlePinClick('${p.id}')">핀</a>
-            <a onclick="handleEditClick('${p.id}')">수정</a>
-            <a class="del-link" onclick="openDelete('${p.id}')">삭제</a>
+            ${p.studentId===SESSION.id?`<a onclick="handleEditClick('${p.id}')">수정</a><a class="del-link" onclick="openDelete('${p.id}')">삭제</a>`:''}
           </div>
         </div>
         <div class="post-byline">${p.name}(${p.num}) · ${p.time}</div>
@@ -627,38 +588,30 @@
   // ── 게시글 등록/수정 ──
   window.submitPost = async (event) => {
     event.preventDefault(); toggleLoading(true); document.getElementById('subBtn').disabled=true;
-    const num=document.getElementById('p_num').value;
-    const name=document.getElementById('p_name').value;
-    const password=document.getElementById('p_pw_display').value;
     const subject=document.getElementById('p_sub').value;
     const message=document.getElementById('p_msg').value;
     try {
       if(f_mode==='edit') {
         const ref=doc(db,'paddlet_posts',f_postId);
         const snap=await getDoc(ref);
-        if(!snap.exists()||snap.data().password!==password){alert('비밀번호가 올바르지 않습니다.');toggleLoading(false);document.getElementById('subBtn').disabled=false;return;}
+        if(!snap.exists()||snap.data().studentId!==SESSION.id){alert('본인 게시물만 수정할 수 있습니다.');toggleLoading(false);document.getElementById('subBtn').disabled=false;return;}
         await updateDoc(ref,{subject,message,origSub:subject,origMsg:message,imgs:imgList,updatedAt:serverTimestamp()});
       } else {
-        await addDoc(collection(db,'paddlet_posts'),{classTitle:f_class,grade:f_grade,group:f_group,num,name,password,subject,message,origSub:subject,origMsg:message,imgs:imgList,likes:0,pinned:false,createdAt:serverTimestamp()});
+        await addDoc(collection(db,'paddlet_posts'),{classTitle:f_class,grade:f_grade,group:f_group,num:SESSION.num,name:SESSION.name,studentId:SESSION.id,subject,message,origSub:subject,origMsg:message,imgs:imgList,likes:0,pinned:false,createdAt:serverTimestamp()});
       }
       document.getElementById('postForm').reset(); cancelEdit();
       await window.manualRefresh();
       setTimeout(()=>{const first=document.querySelector('.grid-board .post-card:not(.teacher-card)');if(first)first.scrollIntoView({behavior:'smooth',block:'center'});},150);
-    } catch(e) { alert('오류: '+e.message); document.getElementById('subBtn').disabled=false; }
+    } catch(e){alert('오류: '+e.message);document.getElementById('subBtn').disabled=false;}
     toggleLoading(false);
   };
 
-  // ── 수정 버튼 ──
   window.handleEditClick = async (postId) => {
     const post=currentPosts.find(p=>p.id===postId); if(!post)return;
-    const pw=await askPassword('비밀번호'); if(!pw)return;
-    if(post.password!==pw){alert('비밀번호가 올바르지 않습니다.');return;}
+    if(post.studentId!==SESSION.id){alert('본인 게시물만 수정할 수 있습니다.');return;}
     f_mode='edit'; f_postId=post.id;
-    document.getElementById('p_name').value=post.name;
-    document.getElementById('p_num').value=post.num;
     document.getElementById('p_sub').value=post.origSub||post.subject;
     document.getElementById('p_msg').value=post.origMsg||post.message;
-    document.getElementById('p_pw_display').value=pw;
     imgList=Array.isArray(post.imgs)?[...post.imgs]:[];
     updatePreview();
     document.getElementById('subBtn').innerText=uiText[currentLang].edit_finish;
@@ -666,108 +619,20 @@
     document.querySelector('.board-sidebar').scrollIntoView({behavior:'smooth',block:'start'});
   };
 
-  // ── 삭제 버튼 ──
   window.openDelete = async (id) => {
-    const pw=await askPassword('비밀번호'); if(!pw)return;
     const post=currentPosts.find(p=>p.id===id); if(!post)return;
-    if(post.password!==pw && pw!==MASTER_PW){alert('비밀번호가 올바르지 않습니다.');return;}
+    if(post.studentId!==SESSION.id){alert('본인 게시물만 삭제할 수 있습니다.');return;}
+    if(!confirm('삭제하시겠습니까?'))return;
     toggleLoading(true);
-    try { await deleteDoc(doc(db,'paddlet_posts',id)); await window.manualRefresh(); }
+    try{await deleteDoc(doc(db,'paddlet_posts',id));await window.manualRefresh();}
     catch(e){alert('오류: '+e.message);}
     toggleLoading(false);
   };
 
-  // ── 좋아요 ──
   window.fbToggleLike = async (postId, isCancel) => {
     await updateDoc(doc(db,'paddlet_posts',postId),{likes:increment(isCancel?-1:1)});
   };
 
-  // ── 핀 ──
-  window.handlePinClick = async (postId) => {
-    const pw=await askPassword('관리자 비밀번호'); if(pw!==MASTER_PW)return;
-    const post=currentPosts.find(p=>p.id===postId); if(!post)return;
-    const isPinned=!post.pinned;
-    try { await updateDoc(doc(db,'paddlet_posts',postId),{pinned:isPinned}); post.pinned=isPinned; render(currentExample,sortedPosts()); }
-    catch(e){alert('오류: '+e.message);}
-  };
-
-  // ── 관리자: 수업 목록 ──
-  window.loadAdminList = async () => {
-    const snap = await getDocs(collection(db,'paddlet_classes'));
-    const list = snap.docs.map(d=>({id:d.id,...d.data()}));
-    document.getElementById('adminList').innerHTML = list.map(c=>`
-      <div class="admin-item">
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-          <select onchange="toggleClassStatus('${c.id}',this.value)" class="status-pill ${(c.status==='ON'||c.status===true)?'on':'off'}">
-            <option value="ON" ${(c.status==='ON'||c.status===true)?'selected':''}>ON</option>
-            <option value="OFF" ${(c.status==='OFF'||c.status===false)?'selected':''}>OFF</option>
-          </select>
-          <span style="font-size:0.88rem;">${(c.grades||[]).join('·')} ${(c.groups||[]).join('·')} — <b>${c.name}</b></span>
-        </div>
-        <div style="display:flex;gap:12px;">
-          <a onclick='editAdminUI(${JSON.stringify({...c}).replace(/'/g,"&#39;")})' style="font-size:0.82rem;font-weight:700;color:var(--accent);cursor:pointer;">수정</a>
-          <a onclick="delAdminClass('${c.id}')" style="font-size:0.82rem;font-weight:700;color:#ef4444;cursor:pointer;">삭제</a>
-        </div>
-      </div>`).join('');
-  };
-
-  window.toggleClassStatus = async (docId, status) => {
-    toggleLoading(true);
-    await updateDoc(doc(db,'paddlet_classes',docId),{status});
-    await window.loadAdminList(); await window.updateClassList(); toggleLoading(false);
-  };
-
-  window.editAdminUI = (c) => {
-    document.getElementById('adm_docId').value=c.id;
-    document.getElementById('adm_name').value=c.name;
-    document.getElementById('adm_desc').value=c.desc||'';
-    document.getElementById('adm_ex').value=c.ex||'';
-    document.getElementById('adm_popup').value=c.popup||'';
-    document.querySelectorAll('.adm-g').forEach(i=>i.checked=(c.grades||[]).includes(i.value));
-    document.querySelectorAll('.adm-b').forEach(i=>i.checked=(c.groups||[]).includes(i.value));
-    document.getElementById('adm_target_area').classList.remove('hidden');
-    const info=document.getElementById('adm_edit_info');
-    info.classList.remove('hidden'); info.innerText=`수정 중: ${c.name}`;
-    document.getElementById('adm_cancel_btn').classList.remove('hidden');
-    window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
-  };
-
-  window.saveAdminClass = async () => {
-    const docId=document.getElementById('adm_docId').value;
-    const grades=[...document.querySelectorAll('.adm-g:checked')].map(i=>i.value);
-    const groups=[...document.querySelectorAll('.adm-b:checked')].map(i=>i.value);
-    if(!grades.length||!groups.length){alert('학년과 반을 각각 최소 하나씩 선택해주세요.');return;}
-    const name=document.getElementById('adm_name').value.trim();
-    if(!name){alert('수업명을 입력하세요.');return;}
-    const data={name,desc:document.getElementById('adm_desc').value,ex:document.getElementById('adm_ex').value,popup:document.getElementById('adm_popup').value,grades,groups,status:'ON'};
-    toggleLoading(true);
-    try {
-      if(docId) await updateDoc(doc(db,'paddlet_classes',docId),data);
-      else await addDoc(collection(db,'paddlet_classes'),{...data,createdAt:serverTimestamp()});
-      alert('저장되었습니다.'); resetAdminForm(); await window.loadAdminList(); await window.updateClassList();
-    } catch(e){alert('오류: '+e.message);}
-    toggleLoading(false);
-  };
-
-  window.delAdminClass = async (docId) => {
-    if(!confirm('삭제하시겠습니까?'))return;
-    toggleLoading(true);
-    await deleteDoc(doc(db,'paddlet_classes',docId));
-    await window.loadAdminList(); toggleLoading(false);
-  };
-
-  window.resetAdminForm = () => {
-    document.getElementById('adm_docId').value='';
-    document.getElementById('adm_name').value='';
-    document.getElementById('adm_desc').value='';
-    document.getElementById('adm_ex').value='';
-    document.getElementById('adm_popup').value='';
-    document.querySelectorAll('#adm_target_area input[type=checkbox]').forEach(i=>i.checked=false);
-    document.getElementById('adm_edit_info').classList.add('hidden');
-    document.getElementById('adm_cancel_btn').classList.add('hidden');
-  };
-
-  // 모듈 로드 완료 후 초기 수업 목록 로드 (일반 스크립트 onload보다 늦게 실행되므로 여기서 호출)
   window.updateClassList();
 </script>
 </body>

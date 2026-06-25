@@ -380,6 +380,7 @@
     <button class="nav-tab active" id="tab-schools" onclick="showSection('schools')">🏫 학교</button>
     <button class="nav-tab" id="tab-students" onclick="showSection('students')">👥 학생</button>
     <button class="nav-tab" id="tab-apps" onclick="showSection('apps')">📱 앱 설정</button>
+<button class="nav-tab" id="tab-paddlet" onclick="showSection('paddlet')">📌 패들릿</button>
     <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
     <button class="btn ghost sm" onclick="logout()">로그아웃</button>
   </div>
@@ -538,13 +539,72 @@
     </div>
   </div>
 
+  <!-- 패들릿 관리 섹션 -->
+  <div class="section" id="section-paddlet">
+    <div class="section-header">
+      <h1>패들릿 수업 관리</h1>
+      <p>학생들이 이용할 패들릿 수업을 만들고 관리합니다.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">➕</span> 수업 추가 / 수정</h2>
+      <input type="hidden" id="adm_docId">
+      <div id="adm_edit_info" style="display:none;padding:8px 12px;background:var(--accent-light);border-radius:8px;font-size:0.82rem;font-weight:700;color:var(--accent);margin-bottom:12px;"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div style="grid-column:1/-1;">
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">수업명</label>
+          <input class="inp" id="adm_name" placeholder="수업명" style="width:100%;">
+        </div>
+        <div style="grid-column:1/-1;">
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">설명</label>
+          <textarea class="inp" id="adm_desc" rows="2" placeholder="수업 설명" style="width:100%;resize:vertical;"></textarea>
+        </div>
+        <div style="grid-column:1/-1;">
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">선생님 안내 (게시판 상단 고정)</label>
+          <textarea class="inp" id="adm_ex" rows="2" placeholder="선생님 안내 메시지" style="width:100%;resize:vertical;"></textarea>
+        </div>
+        <div style="grid-column:1/-1;">
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">공지 팝업 (입장 시 표시)</label>
+          <textarea class="inp" id="adm_popup" rows="2" placeholder="비워두면 미표시" style="width:100%;resize:vertical;"></textarea>
+        </div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:6px;">학년</label>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+          <label style="display:flex;align-items:center;gap:4px;font-size:0.88rem;"><input type="checkbox" class="adm-g" value="1"> 1학년</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:0.88rem;"><input type="checkbox" class="adm-g" value="2"> 2학년</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:0.88rem;"><input type="checkbox" class="adm-g" value="3"> 3학년</label>
+        </div>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:6px;">반</label>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+          <label style="display:flex;align-items:center;gap:4px;font-size:0.88rem;"><input type="checkbox" class="adm-b" value="1"> 1반</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:0.88rem;"><input type="checkbox" class="adm-b" value="2"> 2반</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:0.88rem;"><input type="checkbox" class="adm-b" value="3"> 3반</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:0.88rem;"><input type="checkbox" class="adm-b" value="4"> 4반</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:0.88rem;"><input type="checkbox" class="adm-b" value="5"> 5반</label>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn accent sm" onclick="saveAdminClass()">저장</button>
+        <button id="adm_cancel_btn" class="btn ghost sm hidden" onclick="resetAdminForm()">취소</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">📋</span> 수업 목록</h2>
+      <div id="adminList"><div class="empty-state"><div class="empty-icon">📌</div>등록된 수업이 없습니다.</div></div>
+    </div>
+  </div>
+
 </div>
 
 <script type="module">
   import { db } from './firebase-config.js';
   import {
     collection, addDoc, getDocs, deleteDoc, doc,
-    query, where, orderBy, setDoc, getDoc, serverTimestamp, writeBatch
+    query, where, orderBy, setDoc, getDoc, serverTimestamp, writeBatch, updateDoc
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   // 인증 확인
@@ -931,6 +991,95 @@
   }
 
   init();
+
+  // ── 패들릿 수업 관리 ──
+  window.loadAdminList = async () => {
+    const snap = await getDocs(collection(db, 'paddlet_classes'));
+    const list = snap.docs.map(d => ({id:d.id,...d.data()}));
+    const el = document.getElementById('adminList');
+    if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📌</div>등록된 수업이 없습니다.</div>'; return; }
+    el.innerHTML = list.map(c => `
+      <div class="list-item">
+        <div>
+          <div class="list-item-name">📌 ${c.name}</div>
+          <div class="list-item-sub">${(c.grades||[]).map(g=>g+'학년').join('·')} / ${(c.groups||[]).map(g=>g+'반').join('·')}</div>
+        </div>
+        <div class="list-item-actions" style="display:flex;align-items:center;gap:8px;">
+          <select onchange="toggleClassStatus('${c.id}',this.value)" style="font-size:0.78rem;padding:4px 8px;border-radius:8px;border:1.5px solid var(--border-card);background:var(--glass);cursor:pointer;font-weight:700;color:${(c.status==='ON'||c.status===true)?'#22c55e':'#ef4444'}">
+            <option value="ON" ${(c.status==='ON'||c.status===true)?'selected':''}>ON</option>
+            <option value="OFF" ${(c.status==='OFF'||c.status===false)?'selected':''}>OFF</option>
+          </select>
+          <button class="btn ghost sm" onclick='editAdminUI(${JSON.stringify({...c}).replace(/'/g,"&#39;")})'>수정</button>
+          <button class="btn danger sm" onclick="delAdminClass('${c.id}')">삭제</button>
+        </div>
+      </div>`).join('');
+  };
+
+  window.saveAdminClass = async () => {
+    const docId = document.getElementById('adm_docId').value;
+    const grades = [...document.querySelectorAll('.adm-g:checked')].map(i=>i.value);
+    const groups = [...document.querySelectorAll('.adm-b:checked')].map(i=>i.value);
+    const name = document.getElementById('adm_name').value.trim();
+    if (!name) { toast('수업명을 입력하세요.', 'error'); return; }
+    if (!grades.length || !groups.length) { toast('학년과 반을 각각 하나 이상 선택하세요.', 'error'); return; }
+    const data = { name, desc: document.getElementById('adm_desc').value, ex: document.getElementById('adm_ex').value, popup: document.getElementById('adm_popup').value, grades, groups, status: 'ON' };
+    showLoading(true);
+    try {
+      if (docId) await updateDoc(doc(db,'paddlet_classes',docId), data);
+      else await addDoc(collection(db,'paddlet_classes'), {...data, createdAt: serverTimestamp()});
+      toast('저장되었습니다.', 'success');
+      resetAdminForm();
+      await window.loadAdminList();
+    } catch(e) { toast('오류: '+e.message, 'error'); }
+    showLoading(false);
+  };
+
+  window.toggleClassStatus = async (docId, status) => {
+    showLoading(true);
+    await updateDoc(doc(db,'paddlet_classes',docId), {status});
+    await window.loadAdminList();
+    showLoading(false);
+  };
+
+  window.editAdminUI = (c) => {
+    document.getElementById('adm_docId').value = c.id;
+    document.getElementById('adm_name').value = c.name;
+    document.getElementById('adm_desc').value = c.desc||'';
+    document.getElementById('adm_ex').value = c.ex||'';
+    document.getElementById('adm_popup').value = c.popup||'';
+    document.querySelectorAll('.adm-g').forEach(i => i.checked=(c.grades||[]).includes(i.value));
+    document.querySelectorAll('.adm-b').forEach(i => i.checked=(c.groups||[]).includes(i.value));
+    const info = document.getElementById('adm_edit_info');
+    info.style.display='block'; info.innerText=`수정 중: ${c.name}`;
+    document.getElementById('adm_cancel_btn').classList.remove('hidden');
+  };
+
+  window.delAdminClass = (docId) => {
+    confirmDialog('수업 삭제', '이 수업을 삭제하시겠습니까?', async () => {
+      showLoading(true);
+      await deleteDoc(doc(db,'paddlet_classes',docId));
+      await window.loadAdminList();
+      showLoading(false);
+    });
+  };
+
+  window.resetAdminForm = () => {
+    document.getElementById('adm_docId').value='';
+    document.getElementById('adm_name').value='';
+    document.getElementById('adm_desc').value='';
+    document.getElementById('adm_ex').value='';
+    document.getElementById('adm_popup').value='';
+    document.querySelectorAll('.adm-g, .adm-b').forEach(i=>i.checked=false);
+    document.getElementById('adm_edit_info').style.display='none';
+    document.getElementById('adm_cancel_btn').classList.add('hidden');
+  };
+
+  // 패들릿 섹션 진입 시 목록 로드
+  const origShowSection = window.showSection;
+  window.showSection = (name) => {
+    origShowSection(name);
+    if (name === 'paddlet') window.loadAdminList();
+  };
 </script>
 </body>
 </html>
