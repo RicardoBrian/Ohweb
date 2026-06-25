@@ -533,14 +533,15 @@
     const sel = document.getElementById('loginNumber');
     const t = T[lang];
     sel.innerHTML = `<option value="">${t.selectNum}</option>`;
-    if (!schoolId) return;
+    if (!schoolId || !grade || !cls) return;
+    const ng = v => String(v||'').replace(/학년/g,'').trim();
+    const nc = v => String(v||'').replace(/반/g,'').trim();
     try {
       const snap = await getDocs(query(collection(db, 'students'),
-        where('schoolId', '==', schoolId),
-        where('grade', '==', grade),
-        where('class', '==', cls)
+        where('schoolId', '==', schoolId)
       ));
       snap.docs
+        .filter(d => { const s = d.data(); return ng(s.grade)===ng(grade) && nc(s.class)===nc(cls); })
         .slice()
         .sort((a,b) => (parseInt(a.data().number)||0) - (parseInt(b.data().number)||0))
         .forEach(d => {
