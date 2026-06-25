@@ -45,7 +45,7 @@
       font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
       min-height: 100vh;
       display: flex; align-items: center; justify-content: center;
-      padding: 32px 24px;
+      padding: 20px 16px;
     }
     body.dark {
       background:
@@ -107,8 +107,12 @@
       padding: 48px 40px;
     }
     @media (max-width: 700px) {
-      .page-wrap { border-radius: 26px; }
+      .page-wrap { border-radius: 22px; }
       .form-panel { width: 100%; padding: 36px 24px; }
+    }
+    @media (max-width: 480px) {
+      .page-wrap { border-radius: 18px; }
+      .form-panel { padding: 28px 20px; }
     }
 
     .logo { margin-bottom: 28px; }

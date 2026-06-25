@@ -67,15 +67,16 @@
       backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
       border-bottom: 1px solid var(--border);
       box-shadow: 0 1px 0 rgba(255,255,255,0.35), var(--shadow);
-      padding: 0 24px; height: var(--nav-h);
-      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px; height: var(--nav-h);
+      display: flex; align-items: center; gap: 10px;
     }
     .nav-brand {
       font-size: 1.2rem; font-weight: 900; letter-spacing: -0.03em;
       background: linear-gradient(135deg, var(--accent), #7c4dff);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      flex-shrink: 0;
     }
-    .lang-bar { display: flex; gap: 5px; }
+    .lang-bar { display: flex; gap: 5px; flex-shrink: 0; }
     .lang-btn {
       font-family: inherit; font-size: 0.72rem; font-weight: 700; cursor: pointer;
       border-radius: 50px; padding: 4px 10px;
@@ -83,7 +84,7 @@
       transition: 0.2s;
     }
     .lang-btn.active { background: rgba(42,92,230,0.82); color: #fff; border-color: transparent; }
-    .nav-right { display: flex; align-items: center; gap: 10px; }
+    .nav-right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
     .nav-user {
       display: flex; align-items: center; gap: 8px;
       background: var(--glass); border: 1px solid var(--border-card);
@@ -116,15 +117,22 @@
       cursor: pointer; border-radius: 50px; padding: 6px 14px;
       border: 1px solid var(--border-card); background: var(--glass); color: var(--sub);
       backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
-      box-shadow: var(--highlight); transition: 0.2s;
+      box-shadow: var(--highlight); transition: 0.2s; white-space: nowrap;
     }
     .btn-logout:hover { color: var(--text); background: var(--glass-strong); }
+    @media (max-width: 520px) {
+      .nav { padding: 0 14px; gap: 6px; }
+      .nav-user-name { display: none; }
+      .nav-user { padding: 4px; }
+      .btn-logout { padding: 6px 10px; font-size: 0.72rem; }
+    }
 
-    .wrap { max-width: 800px; margin: 0 auto; padding: 40px 24px 80px; }
-    @media (max-width: 600px) { .wrap { padding: 28px 16px 60px; } }
+    .wrap { max-width: 800px; margin: 0 auto; padding: 36px 22px 80px; }
+    @media (max-width: 600px) { .wrap { padding: 22px 14px 60px; } }
 
-    .greeting { margin-bottom: 32px; }
+    .greeting { margin-bottom: 28px; }
     .greeting h1 { font-size: 1.8rem; font-weight: 900; letter-spacing: -0.02em; line-height: 1.2; }
+    @media (max-width: 480px) { .greeting h1 { font-size: 1.45rem; } }
     .greeting h1 span {
       background: linear-gradient(135deg, var(--accent), #7c4dff);
       -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
