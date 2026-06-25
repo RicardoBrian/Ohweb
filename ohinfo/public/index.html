@@ -309,7 +309,7 @@
     <div id="loginPanel">
       <div class="field">
         <label data-t="school">학교</label>
-        <select class="inp" id="loginSchool"><option value="" data-t-opt="selectSchool">학교 선택...</option></select>
+        <input class="inp" id="loginSchool" placeholder="학교 이름 입력" maxlength="30">
       </div>
       <div class="row3">
         <div class="field">
@@ -348,7 +348,7 @@
       <div id="joinStep1">
         <div class="field">
           <label data-t="school">학교</label>
-          <select class="inp" id="joinSchool"><option value="" data-t-opt="selectSchool">학교 선택...</option></select>
+          <input class="inp" id="joinSchool" placeholder="학교 이름 입력" maxlength="30">
         </div>
         <div class="row2">
           <div class="field">
@@ -560,40 +560,28 @@
 <script type="module">
   import { db } from './firebase-config.js';
   import {
-    collection, getDocs, query, where, doc, updateDoc
+    collection, getDocs, doc, updateDoc
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   let foundStudentId = null, foundStudent = null;
   const load = v => document.getElementById('loadingOverlay').style.display = v ? 'flex' : 'none';
+  const nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
 
   if (sessionStorage.getItem('ohinfo_student')) window.location.href = 'home.html';
 
-  // 학교 목록 — orderBy 없이 가져와서 클라이언트 정렬 (인덱스 불필요)
-  async function loadSchools() {
-    const snap = await getDocs(collection(db, 'schools'));
-    const sorted = snap.docs.slice().sort((a,b) => a.data().name.localeCompare(b.data().name, 'ko'));
-    const opts = sorted.map(d => `<option value="${d.id}">${d.data().name}</option>`).join('');
-    document.getElementById('loginSchool').innerHTML += opts;
-    document.getElementById('joinSchool').innerHTML += opts;
-  }
-  loadSchools();
-
-  // 로그인 번호 목록 동적 로드 — 복합 인덱스 불필요 (equality only)
+  // 로그인 번호 목록 동적 로드
   async function loadLoginNumbers() {
-    const schoolId = document.getElementById('loginSchool').value;
+    const schoolName = document.getElementById('loginSchool').value.trim();
     const grade = document.getElementById('loginGrade').value;
     const cls = document.getElementById('loginClass').value;
     const sel = document.getElementById('loginNumber');
     const t = T[lang];
     sel.innerHTML = `<option value="">${t.selectNum}</option>`;
-    if (!schoolId || !grade || !cls) return;
-    const nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
+    if (!schoolName || !grade || !cls) return;
     try {
-      const snap = await getDocs(query(collection(db, 'students'),
-        where('schoolId', '==', schoolId)
-      ));
+      const snap = await getDocs(collection(db, 'students'));
       snap.docs
-        .filter(d => { const s = d.data(); return nv(s.grade)===nv(grade) && nv(s.class)===nv(cls); })
+        .filter(d => { const s = d.data(); return s.schoolName === schoolName && nv(s.grade)===nv(grade) && nv(s.class)===nv(cls); })
         .slice()
         .sort((a,b) => (parseInt(a.data().number)||0) - (parseInt(b.data().number)||0))
         .forEach(d => {
@@ -605,9 +593,10 @@
         });
     } catch(e) { /* 빈 목록 유지 */ }
   }
-  ['loginSchool','loginGrade','loginClass'].forEach(id =>
+  ['loginGrade','loginClass'].forEach(id =>
     document.getElementById(id).addEventListener('change', loadLoginNumbers)
   );
+  document.getElementById('loginSchool').addEventListener('input', loadLoginNumbers);
 
   // 탭 전환
   window.switchTab = tab => {
@@ -620,7 +609,7 @@
 
   // 로그인
   window.doLogin = async () => {
-    const schoolId = document.getElementById('loginSchool').value;
+    const schoolName = document.getElementById('loginSchool').value.trim();
     const grade = document.getElementById('loginGrade').value;
     const cls = document.getElementById('loginClass').value;
     const number = document.getElementById('loginNumber').value;
@@ -628,19 +617,15 @@
     const err = document.getElementById('loginErr');
     err.innerText = '';
     const t = T[lang];
-    if (!schoolId) { err.innerText = t.errSchool; return; }
-    if (!number)   { err.innerText = t.errNumSelect; return; }
-    if (!pw)       { err.innerText = t.errPw; return; }
+    if (!schoolName) { err.innerText = t.errSchool; return; }
+    if (!number)     { err.innerText = t.errNumSelect; return; }
+    if (!pw)         { err.innerText = t.errPw; return; }
     load(true);
     try {
-      const snap = await getDocs(query(collection(db, 'students'),
-        where('schoolId', '==', schoolId),
-        where('number', '==', number)
-      ));
-      const nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
+      const snap = await getDocs(collection(db, 'students'));
       const match = snap.docs.find(d => {
         const s = d.data();
-        return nv(s.grade) === nv(grade) && nv(s.class) === nv(cls);
+        return s.schoolName === schoolName && nv(s.grade) === nv(grade) && nv(s.class) === nv(cls) && String(s.number) === String(number);
       });
       if (!match) { err.innerText = t.errNotFound; load(false); return; }
       const data = match.data();
@@ -654,7 +639,7 @@
 
   // 회원가입: 학생 확인
   window.checkStudent = async () => {
-    const schoolId = document.getElementById('joinSchool').value;
+    const schoolName = document.getElementById('joinSchool').value.trim();
     const grade = document.getElementById('joinGrade').value;
     const cls = document.getElementById('joinClass').value;
     const number = document.getElementById('joinNumber').value.trim();
@@ -662,20 +647,15 @@
     const err = document.getElementById('joinErr1');
     err.innerText = '';
     const t = T[lang];
-    if (!schoolId) { err.innerText = t.errSchool; return; }
-    if (!number)   { err.innerText = t.errNumReq; return; }
-    if (!name)     { err.innerText = t.errNameReq; return; }
+    if (!schoolName) { err.innerText = t.errSchool; return; }
+    if (!number)     { err.innerText = t.errNumReq; return; }
+    if (!name)       { err.innerText = t.errNameReq; return; }
     load(true);
     try {
-      // schoolId + number 두 개만 서버 쿼리, 나머지는 클라이언트 검증 (인덱스 불필요)
-      const snap = await getDocs(query(collection(db, 'students'),
-        where('schoolId', '==', schoolId),
-        where('number', '==', number)
-      ));
-      const nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
+      const snap = await getDocs(collection(db, 'students'));
       const match = snap.docs.find(d => {
         const s = d.data();
-        return nv(s.grade) === nv(grade) && nv(s.class) === nv(cls) && s.name === name;
+        return s.schoolName === schoolName && nv(s.grade) === nv(grade) && nv(s.class) === nv(cls) && String(s.number) === String(number) && s.name === name;
       });
       if (!match) { err.innerText = t.errNoMatch; load(false); return; }
       const data = match.data();

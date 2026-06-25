@@ -599,9 +599,9 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ texts, targetLang, sourceLang: 'KO' })
     });
-    if (!res.ok) throw new Error(`translate ${res.status}`);
     const data = await res.json();
-    return (data.translations || []).map(t => t.text);
+    if (!res.ok || data.error || !data.translations) throw new Error(data.error || data.message || `HTTP ${res.status}`);
+    return data.translations.map(t => t.text);
   }
 
   async function translatePost(subKo, msgKo) {
