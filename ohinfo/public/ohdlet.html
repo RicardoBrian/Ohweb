@@ -73,10 +73,10 @@
       backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
       border-bottom: 1px solid var(--border);
       box-shadow: 0 1px 0 rgba(255,255,255,0.35), var(--shadow);
-      padding: 0 28px; height: var(--nav-h);
-      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px; height: var(--nav-h);
+      display: flex; align-items: center; gap: 8px;
     }
-    .nav-left, .nav-right { display: flex; align-items: center; gap: 8px; }
+    .nav-right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
     .nav-logo {
       cursor: pointer;
       font-size: 1.1rem; font-weight: 900; letter-spacing: -0.02em;
@@ -85,7 +85,31 @@
       user-select: none; flex-shrink: 0;
     }
 
-    .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 4px; background: none; border: none; }
+    /* 글로브 언어 선택 */
+    .lang-globe { position: relative; flex-shrink: 0; }
+    .lang-globe-btn {
+      font-family: inherit; font-size: 1rem; cursor: pointer;
+      border-radius: 50%; width: 32px; height: 32px;
+      border: 1px solid var(--border-card); background: var(--glass); color: var(--sub);
+      display: flex; align-items: center; justify-content: center;
+      transition: 0.2s; box-shadow: var(--highlight);
+    }
+    .lang-globe-btn:hover { background: var(--glass-strong); color: var(--text); }
+    .lang-globe-dd {
+      position: absolute; top: calc(100% + 8px); right: 0;
+      background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-card); border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-md); overflow: hidden; min-width: 110px; z-index: 400;
+    }
+    .lang-globe-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; font-size: 0.85rem; font-weight: 700;
+      cursor: pointer; color: var(--text); transition: 0.15s;
+    }
+    .lang-globe-item:hover { background: var(--accent-light); }
+    .lang-globe-item .check { color: var(--accent); font-size: 0.8rem; }
+
+    .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 4px; background: none; border: none; flex-shrink: 0; }
     .hamburger span { display: block; width: 22px; height: 2px; background: var(--text); border-radius: 2px; }
     .mobile-menu {
       display: none; position: fixed; inset: var(--nav-h) 0 0 0; z-index: 190;
@@ -452,25 +476,28 @@
 </div>
 
 <nav class="nav">
-  <div class="nav-left">
-    <div class="nav-logo" onclick="navLogoClick()">ohinfo</div>
-  </div>
+  <div class="nav-logo" onclick="navLogoClick()">ohinfo</div>
   <div class="nav-right">
-    <button class="btn lang-btn active" id="btn-ko" onclick="setLanguage('ko')">한</button>
-    <button class="btn lang-btn" id="btn-zh" onclick="setLanguage('zh')">中</button>
-    <button class="btn lang-btn" id="btn-ru" onclick="setLanguage('ru')">РУ</button>
-    <button class="btn lang-btn" id="btn-en" onclick="setLanguage('en')">EN</button>
-    <button class="btn ghost" onclick="toggleAdmin()">관리</button>
-    <div class="nav-user" id="navUser" onclick="toggleUserMenu()">
-      <div class="nav-avatar" id="navAvatar"></div>
-      <div class="nav-user-name" id="navUserName"></div>
-      <div class="user-dropdown hidden" id="userDropdown" onclick="event.stopPropagation()">
-        <div class="user-dropdown-item" onclick="openMyPage()">👤 마이페이지</div>
-        <div class="user-dropdown-sep"></div>
-        <div class="user-dropdown-item danger" onclick="logout()">🚪 로그아웃</div>
+    <div class="lang-globe" id="langGlobe">
+      <button class="lang-globe-btn" onclick="toggleLangDD()" title="언어">🌐</button>
+      <div class="lang-globe-dd hidden" id="langGlobeDD" onclick="event.stopPropagation()">
+        <div class="lang-globe-item" onclick="setLanguage('ko');closeLangDD()"><span>한국어</span><span class="check" id="lck-ko"></span></div>
+        <div class="lang-globe-item" onclick="setLanguage('zh');closeLangDD()"><span>中文</span><span class="check" id="lck-zh"></span></div>
+        <div class="lang-globe-item" onclick="setLanguage('ru');closeLangDD()"><span>Рус</span><span class="check" id="lck-ru"></span></div>
+        <div class="lang-globe-item" onclick="setLanguage('en');closeLangDD()"><span>English</span><span class="check" id="lck-en"></span></div>
       </div>
     </div>
+    <button class="btn ghost" onclick="toggleAdmin()">관리</button>
     <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
+  </div>
+  <div class="nav-user" id="navUser" onclick="toggleUserMenu()">
+    <div class="nav-avatar" id="navAvatar"></div>
+    <div class="nav-user-name" id="navUserName"></div>
+    <div class="user-dropdown hidden" id="userDropdown" onclick="event.stopPropagation()">
+      <div class="user-dropdown-item" onclick="openMyPage()">👤 마이페이지</div>
+      <div class="user-dropdown-sep"></div>
+      <div class="user-dropdown-item danger" onclick="logout()">🚪 로그아웃</div>
+    </div>
   </div>
   <button class="hamburger" onclick="toggleMobileMenu()">
     <span></span><span></span><span></span>
@@ -480,11 +507,11 @@
 <div id="mobileMenu" class="mobile-menu">
   <button class="btn ghost" onclick="navLogoClick();closeMobileMenu()">← 뒤로</button>
   <button class="btn ghost" onclick="toggleAdmin();closeMobileMenu()">관리</button>
-  <div style="display:flex;gap:8px;">
-    <button class="btn lang-btn" id="m-btn-ko" onclick="setLanguage('ko');closeMobileMenu()">한</button>
-    <button class="btn lang-btn" id="m-btn-zh" onclick="setLanguage('zh');closeMobileMenu()">中</button>
-    <button class="btn lang-btn" id="m-btn-ru" onclick="setLanguage('ru');closeMobileMenu()">РУ</button>
-    <button class="btn lang-btn" id="m-btn-en" onclick="setLanguage('en');closeMobileMenu()">EN</button>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <button class="btn lang-btn" id="m-btn-ko" onclick="setLanguage('ko');closeMobileMenu()">한국어</button>
+    <button class="btn lang-btn" id="m-btn-zh" onclick="setLanguage('zh');closeMobileMenu()">中文</button>
+    <button class="btn lang-btn" id="m-btn-ru" onclick="setLanguage('ru');closeMobileMenu()">Рус</button>
+    <button class="btn lang-btn" id="m-btn-en" onclick="setLanguage('en');closeMobileMenu()">English</button>
   </div>
   <div style="display:flex;align-items:center;gap:10px;">
     <span style="font-size:0.85rem;font-weight:600;color:var(--sub);">다크모드</span>
@@ -888,11 +915,26 @@
   function fmtMsg(text) { if (!text) return ''; let s = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); return s.replace(/(https?:\/\/[^\s]+)/g,'<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'); }
 
   // ── 언어 ──
+  window.toggleLangDD = () => { document.getElementById('langGlobeDD').classList.toggle('hidden'); };
+  window.closeLangDD = () => { document.getElementById('langGlobeDD').classList.add('hidden'); };
+  document.addEventListener('click', e => {
+    const lg = document.getElementById('langGlobe');
+    if (lg && !lg.contains(e.target)) closeLangDD();
+  });
+  function updateLangCheck(lang) {
+    ['ko','zh','ru','en'].forEach(l => {
+      const el = document.getElementById('lck-'+l);
+      if (el) el.innerText = l === lang ? '✓' : '';
+      document.getElementById('m-btn-'+l)?.classList.toggle('active', l===lang);
+    });
+  }
+  updateLangCheck(currentLang);
+
   function setLanguage(lang) {
     const refreshing = !document.getElementById('step2').classList.contains('hidden');
     currentLang = lang;
     localStorage.setItem('ohinfo_lang', lang);
-    ['ko','zh','ru','en'].forEach(l => { document.getElementById('btn-'+l)?.classList.toggle('active',l===lang); document.getElementById('m-btn-'+l)?.classList.toggle('active',l===lang); });
+    updateLangCheck(lang);
     document.getElementById('ui-enter-btn').innerText = uiText[lang]?.enter || uiText.ko.enter;
     document.getElementById('subBtn').innerText = getHidden('f_mode') === 'edit' ? (uiText[lang]?.edit_finish||uiText.ko.edit_finish) : (uiText[lang]?.submit||uiText.ko.submit);
     if (lang !== 'ru') closeKeyboard();
