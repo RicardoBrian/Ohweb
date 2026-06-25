@@ -1208,12 +1208,12 @@
       cnt.innerText = Math.max(0, cur - 1);
       el.classList.remove('voted');
       localStorage.removeItem('voted_'+id);
-      updateDoc(doc(db, 'posts', id), { likes: increment(-1) }).catch(() => {});
+      updateDoc(doc(db, 'posts', id), { likes: increment(-1) }).catch(e => console.error('like-:', e));
     } else {
       cnt.innerText = cur + 1;
       el.classList.add('voted');
       localStorage.setItem('voted_'+id, '1');
-      updateDoc(doc(db, 'posts', id), { likes: increment(1) }).catch(() => {});
+      updateDoc(doc(db, 'posts', id), { likes: increment(1) }).catch(e => console.error('like+:', e));
     }
   }
 

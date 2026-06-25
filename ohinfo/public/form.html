@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>설문폼</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <style>
+    :root {
+      --glass: rgba(255,255,255,0.28); --glass-strong: rgba(255,255,255,0.42);
+      --glass-nav: rgba(255,255,255,0.3); --border: rgba(255,255,255,0.6);
+      --border-card: rgba(255,255,255,0.48); --highlight: inset 0 1px 0 rgba(255,255,255,0.7);
+      --text: #1a1f2e; --sub: #7a849a; --accent: #2a5ce6;
+      --accent-light: rgba(42,92,230,0.12); --blur: blur(28px);
+      --shadow: 0 4px 20px rgba(60,80,160,0.1); --shadow-md: 0 8px 32px rgba(60,80,160,0.18);
+      --radius: 18px; --radius-sm: 11px; --nav-h: 58px;
+    }
+    body.dark {
+      --glass: rgba(255,255,255,0.07); --glass-strong: rgba(255,255,255,0.11);
+      --glass-nav: rgba(10,12,25,0.65); --border: rgba(255,255,255,0.14);
+      --border-card: rgba(255,255,255,0.1); --highlight: inset 0 1px 0 rgba(255,255,255,0.1);
+      --text: #dde2f0; --sub: #525a70; --accent: #4f8df7;
+      --shadow: 0 4px 20px rgba(0,0,0,0.45); --shadow-md: 0 8px 32px rgba(0,0,0,0.55);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: radial-gradient(ellipse at 15% 20%, #b8caff 0%, transparent 50%),
+        radial-gradient(ellipse at 85% 10%, #d4b8ff 0%, transparent 45%),
+        radial-gradient(ellipse at 60% 80%, #b8e0ff 0%, transparent 50%), #cdd8ff;
+      background-attachment: fixed; color: var(--text);
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 16px; line-height: 1.7; min-height: 100vh;
+    }
+    body.dark {
+      background: radial-gradient(ellipse at 15% 20%, #1a2050 0%, transparent 50%),
+        radial-gradient(ellipse at 85% 10%, #1e1040 0%, transparent 45%),
+        radial-gradient(ellipse at 60% 80%, #0d1a35 0%, transparent 50%), #080c1a;
+      background-attachment: fixed;
+    }
+    .hidden { display: none !important; }
+    .nav {
+      position: sticky; top: 0; z-index: 200;
+      background: var(--glass-nav); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 1px 0 rgba(255,255,255,0.35), var(--shadow);
+      padding: 0 20px; height: var(--nav-h);
+      display: flex; align-items: center; gap: 10px;
+    }
+    .nav-brand {
+      font-size: 1.1rem; font-weight: 900; letter-spacing: -0.02em; cursor: pointer;
+      background: linear-gradient(135deg, var(--accent), #7c4dff);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .dark-toggle {
+      width: 42px; height: 24px; border-radius: 50px;
+      background: var(--glass); border: 1px solid var(--border);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight); cursor: pointer; position: relative; transition: 0.3s; flex-shrink: 0; margin-left: auto;
+    }
+    body.dark .dark-toggle { background: rgba(42,92,230,0.6); border-color: rgba(100,140,255,0.4); }
+    .dark-toggle::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.2); transition: transform 0.3s;
+    }
+    body.dark .dark-toggle::after { transform: translateX(18px); }
+    .wrap { max-width: 680px; margin: 0 auto; padding: 32px 20px 80px; }
+    @media (max-width: 600px) { .wrap { padding: 18px 14px 80px; } }
+    .card {
+      background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border); border-radius: 22px; padding: 24px 28px;
+      margin-bottom: 14px; box-shadow: var(--highlight), var(--shadow);
+    }
+    @media (max-width: 600px) { .card { padding: 18px 16px; border-radius: 16px; } }
+    .form-title { font-size: 1.4rem; font-weight: 900; margin-bottom: 6px; }
+    .form-desc { font-size: 0.9rem; color: var(--sub); }
+    .section-divider {
+      border-top: 3px solid var(--accent); border-radius: var(--radius) var(--radius) 0 0;
+      padding: 14px 20px 6px; margin-bottom: 0;
+    }
+    .section-title { font-size: 1rem; font-weight: 800; }
+    .q-wrap { margin-bottom: 6px; }
+    .q-label { font-size: 0.97rem; font-weight: 700; margin-bottom: 10px; display: flex; align-items: flex-start; gap: 4px; }
+    .q-required-star { color: #ef4444; font-size: 0.8rem; }
+    .q-image { max-width: 100%; max-height: 240px; object-fit: contain; border-radius: 10px; margin-bottom: 10px; }
+    .inp {
+      width: 100%; padding: 10px 14px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border-card); background: var(--glass); color: var(--text);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--highlight);
+      font-family: inherit; font-size: 0.93rem; outline: none; transition: border-color 0.2s;
+    }
+    .inp::placeholder { color: var(--sub); }
+    .inp:focus { border-color: rgba(42,92,230,0.5); box-shadow: var(--highlight), 0 0 0 3px rgba(42,92,230,0.13); }
+    textarea.inp { resize: vertical; min-height: 80px; }
+    select.inp {
+      cursor: pointer; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;
+    }
+    /* radio / checkbox custom */
+    .opt-list { display: flex; flex-direction: column; gap: 8px; }
+    .opt-item {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--glass); border: 1px solid var(--border-card);
+      border-radius: var(--radius-sm); padding: 9px 14px; cursor: pointer;
+      transition: background 0.15s, border-color 0.15s; user-select: none;
+    }
+    .opt-item:hover { background: var(--glass-strong); }
+    .opt-item.selected { border-color: var(--accent); background: var(--accent-light); }
+    .opt-icon { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border-card); flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+    .opt-item.selected .opt-icon { border-color: var(--accent); background: var(--accent); }
+    .opt-icon-inner { width: 6px; height: 6px; border-radius: 50%; background: #fff; display: none; }
+    .opt-item.selected .opt-icon-inner { display: block; }
+    .cb-icon { width: 18px; height: 18px; border-radius: 4px; border: 2px solid var(--border-card); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; color: #fff; background: transparent; transition: all 0.15s; }
+    .opt-item.selected .cb-icon { border-color: var(--accent); background: var(--accent); }
+    .opt-text-label { font-size: 0.92rem; }
+    /* section nav */
+    .section-nav { display: flex; gap: 8px; flex-wrap: wrap; justify-content: space-between; align-items: center; margin-top: 24px; }
+    .progress-bar { height: 6px; background: var(--glass); border-radius: 50px; overflow: hidden; margin-bottom: 20px; border: 1px solid var(--border-card); }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #7c4dff); border-radius: 50px; transition: width 0.4s; }
+    /* btn */
+    .btn {
+      font-family: inherit; font-size: 0.88rem; font-weight: 600; cursor: pointer; border-radius: 50px;
+      padding: 9px 22px; border: 1px solid var(--border); background: var(--glass); color: var(--text);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight), var(--shadow); transition: background 0.2s, transform 0.15s; white-space: nowrap;
+    }
+    .btn:hover { background: var(--glass-strong); }
+    .btn:active { transform: scale(0.96); }
+    .btn.accent {
+      background: rgba(42,92,230,0.82); border-color: rgba(100,140,255,0.5); color: #fff;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 20px rgba(42,92,230,0.35);
+    }
+    .btn.accent:hover { background: rgba(42,92,230,0.95); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    /* result */
+    .result-card { text-align: center; }
+    .result-emoji { font-size: 3.5rem; margin-bottom: 12px; }
+    .result-score { font-size: 2.8rem; font-weight: 900; color: var(--accent); line-height: 1; }
+    .result-total { font-size: 1rem; color: var(--sub); margin-top: 4px; margin-bottom: 20px; }
+    .result-items { margin-top: 20px; text-align: left; }
+    .r-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border-card); font-size: 0.88rem; }
+    .r-q { flex: 1; }
+    .r-fb { font-size: 0.78rem; color: var(--sub); margin-top: 2px; }
+    .r-score { font-weight: 700; white-space: nowrap; }
+    .r-score.ok { color: #22c55e; }
+    .r-score.partial { color: #f59e0b; }
+    .r-score.fail { color: #ef4444; }
+    /* error */
+    .error-card { text-align: center; padding: 40px 20px; }
+    .error-card h2 { font-size: 1.2rem; font-weight: 800; margin-bottom: 8px; }
+    .error-card p { font-size: 0.88rem; color: var(--sub); }
+    /* loading */
+    #loadingOverlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.2); z-index: 9999;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .spinner { width: 44px; height: 44px; border-radius: 50%; border: 4px solid rgba(255,255,255,0.3); border-top-color: #fff; animation: spin 0.75s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .err-msg { color: #ef4444; font-size: 0.8rem; margin-top: 4px; min-height: 16px; }
+  </style>
+</head>
+<body>
+<div id="loadingOverlay"><div class="spinner"></div></div>
+
+<nav class="nav">
+  <div class="nav-brand" onclick="window.location.href='home.html'">ohinfo</div>
+  <button class="dark-toggle" onclick="toggleDark()"></button>
+</nav>
+
+<div class="wrap" id="app"></div>
+
+<script type="module">
+import { db } from './firebase-config.js';
+import {
+  collection, query, where, getDocs, getDoc, addDoc, doc, serverTimestamp
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+function toggleDark() { document.body.classList.toggle('dark'); localStorage.setItem('dark', document.body.classList.contains('dark') ? '1' : '0'); }
+if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
+window.toggleDark = toggleDark;
+document.getElementById('loadingOverlay').style.display = 'none';
+function showLoading(v) { document.getElementById('loadingOverlay').style.display = v ? 'flex' : 'none'; }
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+const SESSION = JSON.parse(sessionStorage.getItem('ohinfo_student') || 'null');
+const params = new URLSearchParams(location.search);
+const formId = params.get('id');
+const app = document.getElementById('app');
+
+let formData = null;
+let allQuestions = [];
+let answers = {};     // {[qId]: value}
+let currentSection = 0;
+
+function renderError(title, msg) {
+  app.innerHTML = `<div class="card error-card"><div style="font-size:2rem;margin-bottom:12px;">😕</div><h2>${escHtml(title)}</h2><p>${escHtml(msg)}</p></div>`;
+}
+
+async function init() {
+  if (!formId) { renderError('폼을 찾을 수 없습니다.', 'URL에 폼 ID가 없습니다.'); return; }
+  showLoading(true);
+  try {
+    const snap = await getDoc(doc(db,'forms',formId));
+    if (!snap.exists()) { renderError('폼을 찾을 수 없습니다.', '삭제되었거나 잘못된 링크입니다.'); showLoading(false); return; }
+    formData = snap.data();
+    document.title = formData.title || '설문폼';
+    // 상태 체크
+    if (formData.status === 'draft') { renderError('준비 중', '아직 공개되지 않은 폼입니다.'); showLoading(false); return; }
+    if (formData.status === 'closed') { renderError('마감된 폼', '이미 응답이 마감되었습니다.'); showLoading(false); return; }
+    // 마감일 체크
+    if (formData.deadline) {
+      const dl = formData.deadline.toDate ? formData.deadline.toDate() : new Date(formData.deadline);
+      if (new Date() > dl) { renderError('마감된 폼', `마감일(${dl.toLocaleString()})이 지났습니다.`); showLoading(false); return; }
+    }
+    // 비로그인 허용 여부
+    if (!formData.isPublic && !SESSION) {
+      renderError('로그인 필요', '이 폼은 로그인한 학생만 응답할 수 있습니다.');
+      app.innerHTML += `<div style="text-align:center;margin-top:16px;"><a href="index.html" class="btn accent">로그인하러 가기</a></div>`;
+      showLoading(false); return;
+    }
+    // 1인 1회 체크
+    if (formData.limitOnce && SESSION) {
+      const dup = await getDocs(query(collection(db,'form_responses'), where('formId','==',formId), where('studentId','==',SESSION.id)));
+      if (!dup.empty) { renderError('이미 응답하셨습니다.', '이 폼은 1인 1회만 응답할 수 있습니다.'); showLoading(false); return; }
+    }
+    allQuestions = formData.sections?.flatMap(s => s.questions) || [];
+    currentSection = 0;
+    renderForm();
+  } catch(e) { renderError('오류', e.message); }
+  showLoading(false);
+}
+
+function renderForm() {
+  const secs = formData.sections || [];
+  if (!secs.length) { renderError('빈 폼', '질문이 없는 폼입니다.'); return; }
+  const sec = secs[currentSection];
+  const total = secs.length;
+  const pct = total > 1 ? Math.round((currentSection / (total-1)) * 100) : 100;
+
+  let html = '';
+  // 첫 섹션에만 폼 헤더
+  if (currentSection === 0) {
+    html += `<div class="card">
+      <div class="form-title">${escHtml(formData.title||'설문폼')}</div>
+      ${formData.description ? `<div class="form-desc">${escHtml(formData.description)}</div>` : ''}
+      ${SESSION ? `<div style="margin-top:12px;padding:8px 12px;background:var(--glass);border:1px solid var(--border-card);border-radius:8px;font-size:0.8rem;color:var(--sub);">📌 ${escHtml(SESSION.name)} (${SESSION.grade}학년 ${SESSION.class||''}반 ${SESSION.number||''}번)</div>` : ''}
+      ${formData.isQuiz ? '<div style="margin-top:8px;font-size:0.78rem;color:var(--accent);font-weight:700;">🎯 퀴즈 모드 — 자동 채점됩니다.</div>' : ''}
+    </div>`;
+  }
+  // 진행바 (섹션 2개 이상)
+  if (total > 1) {
+    html += `<div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>`;
+  }
+  // 섹션 헤더
+  if (total > 1) {
+    html += `<div class="card section-divider"><div class="section-title">${escHtml(sec.title||`섹션 ${currentSection+1}`)}</div><div style="font-size:0.75rem;color:var(--sub);">섹션 ${currentSection+1} / ${total}</div></div>`;
+  }
+  // 질문들
+  (sec.questions||[]).forEach(q => {
+    html += `<div class="card q-wrap" id="qwrap_${q.id}">
+      <div class="q-label">${escHtml(q.text||'(질문)')}${q.required?'<span class="q-required-star">*</span>':''}</div>
+      ${q.imageUrl ? `<img class="q-image" src="${q.imageUrl}">` : ''}
+      ${renderQInput(q)}
+      <div class="err-msg" id="qerr_${q.id}"></div>
+    </div>`;
+  });
+
+  // 네비 버튼
+  const isLast = currentSection === total - 1;
+  html += `<div class="section-nav">
+    ${currentSection > 0 ? `<button class="btn" onclick="prevSection()">← 이전</button>` : '<span></span>'}
+    ${isLast
+      ? `<button class="btn accent" id="submitBtn" onclick="submitForm()">제출하기</button>`
+      : `<button class="btn accent" onclick="nextSection()">다음 →</button>`
+    }
+  </div>`;
+
+  app.innerHTML = html;
+  // 이전 답변 복원
+  (sec.questions||[]).forEach(q => restoreAnswer(q));
+}
+
+function renderQInput(q) {
+  if (q.type === 'mc') {
+    return `<div class="opt-list">${(q.options||[]).map((o,i) => `
+      <div class="opt-item ${String(answers[q.id])===String(i)?'selected':''}" onclick="selectMC('${q.id}',${i})">
+        <div class="opt-icon"><div class="opt-icon-inner"></div></div>
+        <span class="opt-text-label">${escHtml(o)}</span>
+      </div>`).join('')}</div>`;
+  }
+  if (q.type === 'checkbox') {
+    const sel = Array.isArray(answers[q.id]) ? answers[q.id] : [];
+    return `<div class="opt-list">${(q.options||[]).map((o,i) => `
+      <div class="opt-item ${sel.includes(i)?'selected':''}" onclick="toggleCB('${q.id}',${i})">
+        <div class="cb-icon">${sel.includes(i)?'✓':''}</div>
+        <span class="opt-text-label">${escHtml(o)}</span>
+      </div>`).join('')}</div>`;
+  }
+  if (q.type === 'dropdown') {
+    return `<select class="inp" onchange="answers['${q.id}']=parseInt(this.value)">
+      <option value="">선택하세요</option>
+      ${(q.options||[]).map((o,i)=>`<option value="${i}" ${String(answers[q.id])===String(i)?'selected':''}>${escHtml(o)}</option>`).join('')}
+    </select>`;
+  }
+  // short
+  return `<textarea class="inp" rows="3" placeholder="답변을 입력하세요" oninput="answers['${q.id}']=this.value">${escHtml(answers[q.id]||'')}</textarea>`;
+}
+
+function restoreAnswer(q) {
+  if (q.type === 'dropdown') {
+    const el = document.querySelector(`#qwrap_${q.id} select`);
+    if (el && answers[q.id] !== undefined) el.value = String(answers[q.id]);
+  }
+}
+
+window.selectMC = (qId, idx) => {
+  answers[qId] = idx;
+  const q = allQuestions.find(q=>q.id===qId);
+  if (q) {
+    document.querySelectorAll(`#qwrap_${qId} .opt-item`).forEach((el,i) => {
+      el.classList.toggle('selected', i===idx);
+    });
+  }
+  clearErr(qId);
+};
+
+window.toggleCB = (qId, idx) => {
+  if (!Array.isArray(answers[qId])) answers[qId] = [];
+  const arr = answers[qId];
+  const pos = arr.indexOf(idx);
+  if (pos >= 0) arr.splice(pos,1); else arr.push(idx);
+  const el = document.querySelectorAll(`#qwrap_${qId} .opt-item`)[idx];
+  if (el) { el.classList.toggle('selected', arr.includes(idx)); el.querySelector('.cb-icon').innerText = arr.includes(idx)?'✓':''; }
+  clearErr(qId);
+};
+
+function clearErr(qId) { const el = document.getElementById('qerr_'+qId); if (el) el.innerText = ''; }
+
+function validateSection(sec) {
+  let ok = true;
+  (sec.questions||[]).forEach(q => {
+    if (!q.required) return;
+    const a = answers[q.id];
+    let empty = false;
+    if (q.type === 'mc' || q.type === 'dropdown') empty = a === undefined || a === null || a === '';
+    else if (q.type === 'checkbox') empty = !Array.isArray(a) || a.length === 0;
+    else empty = !String(a||'').trim();
+    if (empty) {
+      const el = document.getElementById('qerr_'+q.id);
+      if (el) el.innerText = '* 필수 질문입니다.';
+      ok = false;
+    }
+  });
+  return ok;
+}
+
+window.nextSection = () => {
+  const sec = formData.sections[currentSection];
+  if (!validateSection(sec)) { window.scrollTo({top:0,behavior:'smooth'}); return; }
+  currentSection++;
+  renderForm();
+  window.scrollTo({top:0,behavior:'smooth'});
+};
+
+window.prevSection = () => {
+  currentSection--;
+  renderForm();
+  window.scrollTo({top:0,behavior:'smooth'});
+};
+
+window.submitForm = async () => {
+  const sec = formData.sections[currentSection];
+  if (!validateSection(sec)) { window.scrollTo({top:0,behavior:'smooth'}); return; }
+  const btn = document.getElementById('submitBtn');
+  if (btn) btn.disabled = true;
+  showLoading(true);
+  try {
+    // 퀴즈 채점
+    let totalScore = 0, totalPoints = 0;
+    const resultItems = [];
+    if (formData.isQuiz) {
+      allQuestions.forEach(q => {
+        const pts = q.points || 0;
+        totalPoints += pts;
+        const a = answers[q.id];
+        let score = 0, feedback = '';
+        if (['mc','dropdown'].includes(q.type)) {
+          if (String(a) === String(q.answer)) { score = pts; feedback = '정답'; } else { feedback = `오답 (정답: ${escHtml(q.options?.[q.answer]||q.answer)})`; }
+        } else if (q.type === 'checkbox') {
+          // checkbox quiz: exact match of selected indices
+          const ans = Array.isArray(q.answer) ? q.answer : [q.answer];
+          const sel = Array.isArray(a) ? a : [];
+          if (JSON.stringify([...sel].sort()) === JSON.stringify([...ans].sort())) { score = pts; feedback = '정답'; } else { feedback = `오답`; }
+        } else if (q.type === 'short') {
+          if (String(a||'').trim().toLowerCase() === String(q.answer||'').trim().toLowerCase()) { score = pts; feedback = '정답'; } else { feedback = `오답 (정답: ${escHtml(q.answer)})`; }
+        }
+        totalScore += score;
+        resultItems.push({ qId: q.id, text: q.text, score, maxScore: pts, feedback });
+      });
+    }
+    await addDoc(collection(db,'form_responses'), {
+      formId,
+      studentId: SESSION?.id || null,
+      studentName: SESSION ? `${SESSION.name} (${SESSION.schoolName||''}${SESSION.grade}학년${SESSION.class||''}반${SESSION.number||''}번)` : null,
+      answers,
+      totalScore: formData.isQuiz ? totalScore : null,
+      totalPoints: formData.isQuiz ? totalPoints : null,
+      submittedAt: serverTimestamp(),
+    });
+    showLoading(false);
+    if (formData.isQuiz) renderQuizResult(totalScore, totalPoints, resultItems);
+    else renderDone();
+  } catch(e) { showLoading(false); if (btn) btn.disabled = false; alert('제출 오류: '+e.message); }
+};
+
+function renderDone() {
+  app.innerHTML = `<div class="card result-card">
+    <div class="result-emoji">🎉</div>
+    <div style="font-size:1.25rem;font-weight:900;margin-bottom:8px;">응답이 제출되었습니다!</div>
+    <div style="font-size:0.88rem;color:var(--sub);">소중한 의견 감사합니다.</div>
+    <div style="margin-top:24px;"><button class="btn accent" onclick="window.location.href='home.html'">홈으로</button></div>
+  </div>`;
+}
+
+function renderQuizResult(score, total, items) {
+  const pct = total > 0 ? Math.round(score/total*100) : 0;
+  const emoji = pct >= 90 ? '🏆' : pct >= 70 ? '🎉' : pct >= 50 ? '📚' : '💪';
+  app.innerHTML = `<div class="card result-card">
+    <div class="result-emoji">${emoji}</div>
+    <div class="result-score">${score}</div>
+    <div class="result-total">/ ${total}점 (${pct}%)</div>
+    <div class="result-items">
+      ${items.map(r => {
+        const cls = r.score===r.maxScore?'ok':r.score>0?'partial':'fail';
+        return `<div class="r-item">
+          <div class="r-q">${escHtml(r.text||'(질문)')}<div class="r-fb">${escHtml(r.feedback)}</div></div>
+          <div class="r-score ${cls}">${r.score}/${r.maxScore}점</div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="margin-top:24px;"><button class="btn accent" onclick="window.location.href='home.html'">홈으로</button></div>
+  </div>`;
+}
+
+init();
+</script>
+</body>
+</html>
