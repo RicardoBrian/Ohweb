@@ -380,6 +380,8 @@
     <button class="nav-tab active" id="tab-schools" onclick="showSection('schools')">🏫 학교</button>
     <button class="nav-tab" id="tab-students" onclick="showSection('students')">👥 학생</button>
     <button class="nav-tab" id="tab-apps" onclick="showSection('apps')">📱 앱 설정</button>
+<button class="nav-tab" id="tab-paddlet" onclick="showSection('paddlet')">📌 패들릿</button>
+    <button class="nav-tab" id="tab-exam" onclick="showSection('exam')">📋 시험</button>
     <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
     <button class="btn ghost sm" onclick="logout()">로그아웃</button>
   </div>
@@ -457,6 +459,38 @@
     </div>
 
     <div class="card">
+      <h2><span class="icon">➕</span> 학생 개별 추가</h2>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+        <div>
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">학교</label>
+          <select class="inp" id="addSchool" style="width:100%;"></select>
+        </div>
+        <div>
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">이름</label>
+          <input class="inp" id="addName" type="text" placeholder="이름" style="width:100%;">
+        </div>
+        <div>
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">학년</label>
+          <select class="inp" id="addGrade" style="width:100%;">
+            <option value="1">1학년</option><option value="2">2학년</option><option value="3">3학년</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">반</label>
+          <select class="inp" id="addClass" style="width:100%;">
+            <option value="1">1반</option><option value="2">2반</option><option value="3">3반</option><option value="4">4반</option><option value="5">5반</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">번호</label>
+          <input class="inp" id="addNumber" type="number" min="1" placeholder="번호" style="width:100%;">
+        </div>
+      </div>
+      <button class="btn accent sm" onclick="addStudent()">추가</button>
+      <div id="addStudentErr" style="font-size:0.82rem;color:#ef4444;margin-top:8px;"></div>
+    </div>
+
+    <div class="card">
       <h2><span class="icon">👥</span> 학생 목록</h2>
       <div class="select-controls">
         <label>학교</label>
@@ -464,12 +498,12 @@
         <label>학년</label>
         <select class="inp" id="filterGrade" onchange="loadStudents()">
           <option value="">전체</option>
-          <option>1학년</option><option>2학년</option><option>3학년</option>
+          <option value="1">1학년</option><option value="2">2학년</option><option value="3">3학년</option>
         </select>
         <label>반</label>
         <select class="inp" id="filterClass" onchange="loadStudents()">
           <option value="">전체</option>
-          <option>1반</option><option>2반</option><option>3반</option><option>4반</option><option>5반</option>
+          <option value="1">1반</option><option value="2">2반</option><option value="3">3반</option><option value="4">4반</option><option value="5">5반</option>
         </select>
       </div>
       <div id="studentList"><div class="empty-state"><div class="empty-icon">👥</div>학생이 없습니다.</div></div>
@@ -491,12 +525,12 @@
         <label>학년</label>
         <select class="inp" id="appGrade" onchange="loadAppSettings()">
           <option value="">전체</option>
-          <option>1학년</option><option>2학년</option><option>3학년</option>
+          <option value="1">1학년</option><option value="2">2학년</option><option value="3">3학년</option>
         </select>
         <label>반</label>
         <select class="inp" id="appClass" onchange="loadAppSettings()">
           <option value="">전체</option>
-          <option>1반</option><option>2반</option><option>3반</option><option>4반</option><option>5반</option>
+          <option value="1">1반</option><option value="2">2반</option><option value="3">3반</option><option value="4">4반</option><option value="5">5반</option>
         </select>
       </div>
     </div>
@@ -506,13 +540,324 @@
     </div>
   </div>
 
+  <!-- 패들릿 관리 섹션 -->
+  <div class="section" id="section-paddlet">
+    <div class="section-header">
+      <h1>패들릿 수업 관리</h1>
+      <p>학생들이 이용할 패들릿 수업을 만들고 관리합니다.</p>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">➕</span> 수업 추가 / 수정</h2>
+      <input type="hidden" id="adm_docId">
+      <div id="adm_edit_info" style="display:none;padding:8px 12px;background:var(--accent-light);border-radius:8px;font-size:0.82rem;font-weight:700;color:var(--accent);margin-bottom:12px;"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div style="grid-column:1/-1;">
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">수업명</label>
+          <input class="inp" id="adm_name" placeholder="수업명" style="width:100%;">
+        </div>
+        <div style="grid-column:1/-1;">
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">설명</label>
+          <textarea class="inp" id="adm_desc" rows="2" placeholder="수업 설명" style="width:100%;resize:vertical;"></textarea>
+        </div>
+        <div style="grid-column:1/-1;">
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">선생님 안내 (게시판 상단 고정)</label>
+          <textarea class="inp" id="adm_ex" rows="2" placeholder="선생님 안내 메시지" style="width:100%;resize:vertical;"></textarea>
+        </div>
+        <div style="grid-column:1/-1;">
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">공지 팝업 (입장 시 표시)</label>
+          <textarea class="inp" id="adm_popup" rows="2" placeholder="비워두면 미표시" style="width:100%;resize:vertical;"></textarea>
+        </div>
+      </div>
+      <div style="margin-bottom:12px;">
+        <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:6px;">학년</label>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+          <label style="display:flex;align-items:center;gap:4px;font-size:0.88rem;"><input type="checkbox" class="adm-g" value="1"> 1학년</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:0.88rem;"><input type="checkbox" class="adm-g" value="2"> 2학년</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:0.88rem;"><input type="checkbox" class="adm-g" value="3"> 3학년</label>
+        </div>
+      </div>
+      <div style="margin-bottom:16px;">
+        <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:6px;">반</label>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+          <label style="display:flex;align-items:center;gap:4px;font-size:0.88rem;"><input type="checkbox" class="adm-b" value="1"> 1반</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:0.88rem;"><input type="checkbox" class="adm-b" value="2"> 2반</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:0.88rem;"><input type="checkbox" class="adm-b" value="3"> 3반</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:0.88rem;"><input type="checkbox" class="adm-b" value="4"> 4반</label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:0.88rem;"><input type="checkbox" class="adm-b" value="5"> 5반</label>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn accent sm" onclick="saveAdminClass()">저장</button>
+        <button id="adm_cancel_btn" class="btn ghost sm hidden" onclick="resetAdminForm()">취소</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon">📋</span> 수업 목록</h2>
+      <div id="adminList"><div class="empty-state"><div class="empty-icon">📌</div>등록된 수업이 없습니다.</div></div>
+    </div>
+  </div>
+
+  <!-- 시험 관리 섹션 -->
+  <div class="section" id="section-exam">
+    <div class="section-header">
+      <h1>시험 관리</h1>
+      <p>시험을 만들고 문제를 추가하여 학급에 배정합니다.</p>
+    </div>
+
+    <!-- 시험 탭 -->
+    <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+      <button class="btn accent sm" id="examSubTab-list" onclick="showExamTab('list')">📋 시험 목록</button>
+      <button class="btn ghost sm" id="examSubTab-questions" onclick="showExamTab('questions')">❓ 문제 관리</button>
+      <button class="btn ghost sm" id="examSubTab-assign" onclick="showExamTab('assign')">🎯 배정 관리</button>
+      <button class="btn ghost sm" id="examSubTab-results" onclick="showExamTab('results')">📊 결과 조회</button>
+    </div>
+
+    <!-- 시험 목록 탭 -->
+    <div id="examTab-list">
+      <div class="card">
+        <h2><span class="icon">➕</span> 시험 추가</h2>
+        <input type="hidden" id="exam_docId">
+        <div style="margin-bottom:12px;">
+          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">시험 제목</label>
+          <input class="inp" id="exam_title" placeholder="예: 1학기 기말고사">
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">설명 (선택)</label>
+          <textarea class="inp" id="exam_desc" rows="2" placeholder="시험 설명" style="resize:vertical;"></textarea>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn accent sm" onclick="saveExam()">저장</button>
+          <button id="exam_cancel_btn" class="btn ghost sm hidden" onclick="resetExamForm()">취소</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2><span class="icon">📋</span> 시험 목록</h2>
+        <div id="examList"><div class="empty-state"><div class="empty-icon">📋</div>등록된 시험이 없습니다.</div></div>
+      </div>
+    </div>
+
+    <!-- 문제 관리 탭 -->
+    <div id="examTab-questions" class="hidden">
+      <div class="card">
+        <h2><span class="icon">❓</span> 문제 추가 / 수정</h2>
+        <input type="hidden" id="q_docId">
+        <div style="margin-bottom:12px;">
+          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">대상 시험</label>
+          <select class="inp" id="q_examId" style="width:100%;" onchange="loadQList()">
+            <option value="">시험을 선택하세요</option>
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">문제 유형</label>
+            <select class="inp" id="q_type" onchange="toggleQTypeFields()">
+              <option value="mc">객관식 (MC)</option>
+              <option value="sa">단답형 (SA)</option>
+              <option value="code">코딩 (Code)</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">배점</label>
+            <input class="inp" id="q_points" type="number" min="1" value="10" placeholder="10">
+          </div>
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">문제 제목 (한국어)</label>
+          <textarea class="inp" id="q_title" rows="2" placeholder="문제 제목" style="resize:vertical;"></textarea>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">문제 제목 (中文)</label>
+            <textarea class="inp" id="q_titleZh" rows="2" placeholder="(선택)" style="resize:vertical;"></textarea>
+          </div>
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">문제 제목 (РУ)</label>
+            <textarea class="inp" id="q_titleRu" rows="2" placeholder="(선택)" style="resize:vertical;"></textarea>
+          </div>
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">문제 내용 (한국어)</label>
+          <textarea class="inp" id="q_content" rows="3" placeholder="문제 본문 (선택)" style="resize:vertical;"></textarea>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">내용 (中文)</label>
+            <textarea class="inp" id="q_contentZh" rows="3" placeholder="(선택)" style="resize:vertical;"></textarea>
+          </div>
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">내용 (РУ)</label>
+            <textarea class="inp" id="q_contentRu" rows="3" placeholder="(선택)" style="resize:vertical;"></textarea>
+          </div>
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">이미지 URL (선택)</label>
+          <input class="inp" id="q_imageUrl" placeholder="https://...">
+        </div>
+
+        <!-- 객관식 필드 -->
+        <div id="qf_mc">
+          <div style="margin-bottom:12px;">
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">선택지 (한 줄에 하나씩)</label>
+            <textarea class="inp" id="q_options" rows="5" placeholder="1번 선택지&#10;2번 선택지&#10;3번 선택지&#10;4번 선택지" style="resize:vertical;"></textarea>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+            <div>
+              <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">선택지 (中文, 한 줄씩)</label>
+              <textarea class="inp" id="q_optionsZh" rows="4" placeholder="(선택)" style="resize:vertical;"></textarea>
+            </div>
+            <div>
+              <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">선택지 (РУ, 한 줄씩)</label>
+              <textarea class="inp" id="q_optionsRu" rows="4" placeholder="(선택)" style="resize:vertical;"></textarea>
+            </div>
+          </div>
+          <div style="margin-bottom:12px;">
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">정답 번호 (0부터, 예: 0=1번)</label>
+            <input class="inp" id="q_answer_mc" type="number" min="0" value="0" style="width:120px;">
+          </div>
+        </div>
+
+        <!-- 단답형 필드 -->
+        <div id="qf_sa" class="hidden">
+          <div style="margin-bottom:12px;">
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">정답</label>
+            <input class="inp" id="q_answer_sa" placeholder="정답 텍스트">
+          </div>
+        </div>
+
+        <!-- 코딩 필드 -->
+        <div id="qf_code" class="hidden">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+            <div>
+              <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">입력 형식 설명</label>
+              <input class="inp" id="q_inDesc" placeholder="예: 정수 n 입력">
+            </div>
+            <div>
+              <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">출력 형식 설명</label>
+              <input class="inp" id="q_outDesc" placeholder="예: 결과 출력">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+            <div>
+              <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">예시 입력</label>
+              <textarea class="inp" id="q_inEx" rows="3" style="resize:vertical;font-family:monospace;"></textarea>
+            </div>
+            <div>
+              <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">예시 출력</label>
+              <textarea class="inp" id="q_outEx" rows="3" style="resize:vertical;font-family:monospace;"></textarea>
+            </div>
+          </div>
+          <div style="margin-bottom:12px;">
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">기본 코드 (boilerplate)</label>
+            <textarea class="inp" id="q_boilerplate" rows="4" style="resize:vertical;font-family:monospace;"></textarea>
+          </div>
+          <div style="margin-bottom:12px;">
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">테스트케이스 (JSON: [{"input":"","expected":""},...])</label>
+            <textarea class="inp" id="q_testCases" rows="4" placeholder='[{"input":"3","expected":"9"},{"input":"5","expected":"25"}]' style="resize:vertical;font-family:monospace;"></textarea>
+          </div>
+        </div>
+
+        <div style="margin-bottom:12px;">
+          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">순서 (낮을수록 먼저)</label>
+          <input class="inp" id="q_order" type="number" value="1" style="width:100px;">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn accent sm" onclick="saveQuestion()">저장</button>
+          <button id="q_cancel_btn" class="btn ghost sm hidden" onclick="resetQForm()">취소</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2><span class="icon">📝</span> 문제 목록</h2>
+        <div style="margin-bottom:12px;">
+          <select class="inp" id="qlist_examId" style="width:100%;" onchange="loadQList()">
+            <option value="">시험을 선택하세요</option>
+          </select>
+        </div>
+        <div id="qList"><div class="empty-state"><div class="empty-icon">❓</div>문제를 선택하세요.</div></div>
+      </div>
+    </div>
+
+    <!-- 배정 관리 탭 -->
+    <div id="examTab-assign" class="hidden">
+      <div class="card">
+        <h2><span class="icon">🎯</span> 배정 추가</h2>
+        <input type="hidden" id="as_docId">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">시험</label>
+            <select class="inp" id="as_examId">
+              <option value="">시험 선택</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">시험 코드 (학생 입력)</label>
+            <input class="inp" id="as_code" placeholder="예: A1B2C3" style="text-transform:uppercase;letter-spacing:0.1em;font-weight:700;" oninput="this.value=this.value.toUpperCase()">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">학년</label>
+            <select class="inp" id="as_grade">
+              <option value="1">1학년</option>
+              <option value="2">2학년</option>
+              <option value="3">3학년</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">반</label>
+            <select class="inp" id="as_class">
+              <option value="1">1반</option>
+              <option value="2">2반</option>
+              <option value="3">3반</option>
+              <option value="4">4반</option>
+              <option value="5">5반</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">제한시간 (분, 0=무제한)</label>
+            <input class="inp" id="as_duration" type="number" min="0" value="45" placeholder="45">
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn accent sm" onclick="saveAssignment()">저장</button>
+          <button id="as_cancel_btn" class="btn ghost sm hidden" onclick="resetAsForm()">취소</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2><span class="icon">📋</span> 배정 목록</h2>
+        <div id="assignList"><div class="empty-state"><div class="empty-icon">🎯</div>등록된 배정이 없습니다.</div></div>
+      </div>
+    </div>
+
+    <!-- 결과 조회 탭 -->
+    <div id="examTab-results" class="hidden">
+      <div class="card">
+        <h2><span class="icon">📊</span> 결과 조회</h2>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">배정 선택</label>
+            <select class="inp" id="res_asId" onchange="loadResults()">
+              <option value="">배정을 선택하세요</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:flex-end;">
+            <button class="btn ghost sm" onclick="exportResults()">📥 CSV 내보내기</button>
+          </div>
+        </div>
+        <div id="resultTable"><div class="empty-state"><div class="empty-icon">📊</div>배정을 선택하세요.</div></div>
+      </div>
+    </div>
+
+  </div>
+
 </div>
 
 <script type="module">
   import { db } from './firebase-config.js';
   import {
     collection, addDoc, getDocs, deleteDoc, doc,
-    query, where, orderBy, setDoc, getDoc, serverTimestamp, writeBatch
+    query, where, orderBy, setDoc, getDoc, serverTimestamp, writeBatch, updateDoc
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   // 인증 확인
@@ -614,6 +959,8 @@
       const first = el.querySelector('option')?.outerHTML || '';
       el.innerHTML = first + opts;
     });
+    const addSchoolEl = document.getElementById('addSchool');
+    addSchoolEl.innerHTML = '<option value="">학교 선택</option>' + opts;
   }
 
   window.addSchool = async () => {
@@ -713,18 +1060,30 @@
   // ── 학생 목록 ──
   window.loadStudents = async () => {
     const schoolId = document.getElementById('filterSchool').value;
-    const grade = document.getElementById('filterGrade').value;
-    const cls = document.getElementById('filterClass').value;
+    const grade    = document.getElementById('filterGrade').value;
+    const cls      = document.getElementById('filterClass').value;
 
+    // schoolId 하나만 서버 필터 → 나머지는 클라이언트 필터 (인덱스 불필요)
     let q = collection(db, 'students');
     const constraints = [];
     if (schoolId) constraints.push(where('schoolId', '==', schoolId));
-    if (grade)    constraints.push(where('grade', '==', grade));
-    if (cls)      constraints.push(where('class', '==', cls));
-    constraints.push(orderBy('name'));
 
-    const snap = await getDocs(query(q, ...constraints));
-    const students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const snap = await getDocs(constraints.length ? query(q, ...constraints) : q);
+    let students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // 클라이언트 필터 (DB값이 "1" 또는 "1학년" 형태 모두 대응)
+    const nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
+    if (grade) students = students.filter(s => nv(s.grade) === nv(grade));
+    if (cls)   students = students.filter(s => nv(s.class) === nv(cls));
+
+    // 학년→반→번호 정렬
+    students.sort((a,b) => {
+      const g = (a.grade||'').localeCompare(b.grade||'', 'ko');
+      if (g !== 0) return g;
+      const c = (a.class||'').localeCompare(b.class||'', 'ko');
+      if (c !== 0) return c;
+      return (parseInt(a.number)||0) - (parseInt(b.number)||0);
+    });
 
     const el = document.getElementById('studentList');
     if (!students.length) {
@@ -735,15 +1094,15 @@
       <div style="margin-bottom:10px; font-size:0.82rem; color:var(--sub); font-weight:700;">${students.length}명</div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>이름</th><th>번호</th><th>학년</th><th>반</th><th>학교</th><th></th></tr></thead>
+          <thead><tr><th>학교</th><th>학년</th><th>반</th><th>번호</th><th>이름</th><th></th></tr></thead>
           <tbody>
             ${students.map(s => `
               <tr>
-                <td style="font-weight:700;">${s.name}</td>
-                <td>${s.number||s.studentId||''}</td>
-                <td>${s.grade}</td>
-                <td>${s.class}</td>
                 <td style="font-size:0.82rem;color:var(--sub);">${s.schoolName||''}</td>
+                <td>${s.grade||''}</td>
+                <td>${s.class||''}</td>
+                <td>${s.number||''}</td>
+                <td style="font-weight:700;">${s.name||''}</td>
                 <td><button class="btn danger sm" onclick="deleteStudent('${s.id}','${s.name}')">삭제</button></td>
               </tr>
             `).join('')}
@@ -766,6 +1125,35 @@
       }
       showLoading(false);
     });
+  };
+
+  // ── 학생 개별 추가 ──
+  window.addStudent = async () => {
+    const schoolId = document.getElementById('addSchool').value;
+    const name = document.getElementById('addName').value.trim();
+    const grade = document.getElementById('addGrade').value;
+    const cls = document.getElementById('addClass').value;
+    const number = document.getElementById('addNumber').value.trim();
+    const err = document.getElementById('addStudentErr');
+    err.innerText = '';
+    if (!schoolId) { err.innerText = '학교를 선택하세요.'; return; }
+    if (!name)     { err.innerText = '이름을 입력하세요.'; return; }
+    if (!number)   { err.innerText = '번호를 입력하세요.'; return; }
+    const school = schools.find(s => s.id === schoolId);
+    showLoading(true);
+    try {
+      await addDoc(collection(db, 'students'), {
+        schoolId, schoolName: school?.name || '',
+        grade, class: cls, number, name,
+        registered: false, password: null,
+        createdAt: serverTimestamp()
+      });
+      toast(`${name} 추가 완료!`, 'success');
+      document.getElementById('addName').value = '';
+      document.getElementById('addNumber').value = '';
+      await loadStudents();
+    } catch(e) { err.innerText = '오류: ' + e.message; }
+    showLoading(false);
   };
 
   // ── 앱 설정 ──
@@ -856,6 +1244,449 @@
   }
 
   init();
+
+  // ── 패들릿 수업 관리 ──
+  window.loadAdminList = async () => {
+    const snap = await getDocs(collection(db, 'paddlet_classes'));
+    const list = snap.docs.map(d => ({id:d.id,...d.data()}));
+    const el = document.getElementById('adminList');
+    if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📌</div>등록된 수업이 없습니다.</div>'; return; }
+    el.innerHTML = list.map(c => `
+      <div class="list-item">
+        <div>
+          <div class="list-item-name">📌 ${c.name}</div>
+          <div class="list-item-sub">${(c.grades||[]).map(g=>g+'학년').join('·')} / ${(c.groups||[]).map(g=>g+'반').join('·')}</div>
+        </div>
+        <div class="list-item-actions" style="display:flex;align-items:center;gap:8px;">
+          <select onchange="toggleClassStatus('${c.id}',this.value)" style="font-size:0.78rem;padding:4px 8px;border-radius:8px;border:1.5px solid var(--border-card);background:var(--glass);cursor:pointer;font-weight:700;color:${(c.status==='ON'||c.status===true)?'#22c55e':'#ef4444'}">
+            <option value="ON" ${(c.status==='ON'||c.status===true)?'selected':''}>ON</option>
+            <option value="OFF" ${(c.status==='OFF'||c.status===false)?'selected':''}>OFF</option>
+          </select>
+          <button class="btn ghost sm" onclick='editAdminUI(${JSON.stringify({...c}).replace(/'/g,"&#39;")})'>수정</button>
+          <button class="btn danger sm" onclick="delAdminClass('${c.id}')">삭제</button>
+        </div>
+      </div>`).join('');
+  };
+
+  window.saveAdminClass = async () => {
+    const docId = document.getElementById('adm_docId').value;
+    const grades = [...document.querySelectorAll('.adm-g:checked')].map(i=>i.value);
+    const groups = [...document.querySelectorAll('.adm-b:checked')].map(i=>i.value);
+    const name = document.getElementById('adm_name').value.trim();
+    if (!name) { toast('수업명을 입력하세요.', 'error'); return; }
+    if (!grades.length || !groups.length) { toast('학년과 반을 각각 하나 이상 선택하세요.', 'error'); return; }
+    const data = { name, desc: document.getElementById('adm_desc').value, ex: document.getElementById('adm_ex').value, popup: document.getElementById('adm_popup').value, grades, groups, status: 'ON' };
+    showLoading(true);
+    try {
+      if (docId) await updateDoc(doc(db,'paddlet_classes',docId), data);
+      else await addDoc(collection(db,'paddlet_classes'), {...data, createdAt: serverTimestamp()});
+      toast('저장되었습니다.', 'success');
+      resetAdminForm();
+      await window.loadAdminList();
+    } catch(e) { toast('오류: '+e.message, 'error'); }
+    showLoading(false);
+  };
+
+  window.toggleClassStatus = async (docId, status) => {
+    showLoading(true);
+    await updateDoc(doc(db,'paddlet_classes',docId), {status});
+    await window.loadAdminList();
+    showLoading(false);
+  };
+
+  window.editAdminUI = (c) => {
+    document.getElementById('adm_docId').value = c.id;
+    document.getElementById('adm_name').value = c.name;
+    document.getElementById('adm_desc').value = c.desc||'';
+    document.getElementById('adm_ex').value = c.ex||'';
+    document.getElementById('adm_popup').value = c.popup||'';
+    document.querySelectorAll('.adm-g').forEach(i => i.checked=(c.grades||[]).includes(i.value));
+    document.querySelectorAll('.adm-b').forEach(i => i.checked=(c.groups||[]).includes(i.value));
+    const info = document.getElementById('adm_edit_info');
+    info.style.display='block'; info.innerText=`수정 중: ${c.name}`;
+    document.getElementById('adm_cancel_btn').classList.remove('hidden');
+  };
+
+  window.delAdminClass = (docId) => {
+    confirmDialog('수업 삭제', '이 수업을 삭제하시겠습니까?', async () => {
+      showLoading(true);
+      await deleteDoc(doc(db,'paddlet_classes',docId));
+      await window.loadAdminList();
+      showLoading(false);
+    });
+  };
+
+  window.resetAdminForm = () => {
+    document.getElementById('adm_docId').value='';
+    document.getElementById('adm_name').value='';
+    document.getElementById('adm_desc').value='';
+    document.getElementById('adm_ex').value='';
+    document.getElementById('adm_popup').value='';
+    document.querySelectorAll('.adm-g, .adm-b').forEach(i=>i.checked=false);
+    document.getElementById('adm_edit_info').style.display='none';
+    document.getElementById('adm_cancel_btn').classList.add('hidden');
+  };
+
+  // 패들릿 섹션 진입 시 목록 로드
+  const origShowSection = window.showSection;
+  window.showSection = (name) => {
+    origShowSection(name);
+    if (name === 'paddlet') window.loadAdminList();
+    if (name === 'exam') initExamSection();
+  };
+
+  // ── 시험 관리 ──
+  let exams = [];
+  let activeExamSubTab = 'list';
+
+  window.showExamTab = (tab) => {
+    activeExamSubTab = tab;
+    ['list','questions','assign','results'].forEach(t => {
+      document.getElementById('examTab-'+t).classList.toggle('hidden', t !== tab);
+      const btn = document.getElementById('examSubTab-'+t);
+      if (btn) { btn.classList.toggle('accent', t === tab); btn.classList.toggle('ghost', t !== tab); }
+    });
+    if (tab === 'questions') populateExamSelects();
+    if (tab === 'assign') { populateExamSelects(); loadAssignList(); }
+    if (tab === 'results') { loadAssignSelect(); }
+  };
+
+  async function initExamSection() {
+    await loadExamList();
+    window.showExamTab('list');
+  }
+
+  async function loadExamList() {
+    const snap = await getDocs(query(collection(db, 'exams'), orderBy('createdAt', 'desc')));
+    exams = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderExamList();
+  }
+
+  function renderExamList() {
+    const el = document.getElementById('examList');
+    if (!exams.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div>등록된 시험이 없습니다.</div>'; return; }
+    el.innerHTML = exams.map(e => `
+      <div class="list-item">
+        <div class="list-item-info">
+          <div class="list-item-name">📋 ${e.title}</div>
+          ${e.desc ? `<div class="list-item-sub">${e.desc}</div>` : ''}
+        </div>
+        <div class="list-item-actions">
+          <button class="btn ghost sm" onclick='editExam(${JSON.stringify({id:e.id,title:e.title,desc:e.desc||""})})'>수정</button>
+          <button class="btn danger sm" onclick="deleteExam('${e.id}','${e.title.replace(/'/g,"\\'")}')">삭제</button>
+        </div>
+      </div>`).join('');
+  }
+
+  function populateExamSelects() {
+    ['q_examId','qlist_examId','as_examId'].forEach(id => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">시험 선택</option>' + exams.map(e => `<option value="${e.id}" ${e.id===cur?'selected':''}>${e.title}</option>`).join('');
+    });
+  }
+
+  window.saveExam = async () => {
+    const docId = document.getElementById('exam_docId').value;
+    const title = document.getElementById('exam_title').value.trim();
+    if (!title) { toast('시험 제목을 입력하세요.', 'error'); return; }
+    const data = { title, desc: document.getElementById('exam_desc').value.trim() };
+    showLoading(true);
+    try {
+      if (docId) await updateDoc(doc(db,'exams',docId), data);
+      else await addDoc(collection(db,'exams'), { ...data, createdAt: serverTimestamp() });
+      toast('저장되었습니다.', 'success');
+      resetExamForm();
+      await loadExamList();
+    } catch(e) { toast('오류: '+e.message, 'error'); }
+    showLoading(false);
+  };
+
+  window.editExam = (e) => {
+    document.getElementById('exam_docId').value = e.id;
+    document.getElementById('exam_title').value = e.title;
+    document.getElementById('exam_desc').value = e.desc || '';
+    document.getElementById('exam_cancel_btn').classList.remove('hidden');
+  };
+
+  window.deleteExam = (id, title) => {
+    confirmDialog('시험 삭제', `"${title}"을(를) 삭제하시겠습니까?`, async () => {
+      showLoading(true);
+      await deleteDoc(doc(db,'exams',id));
+      await loadExamList();
+      showLoading(false);
+    });
+  };
+
+  window.resetExamForm = () => {
+    document.getElementById('exam_docId').value = '';
+    document.getElementById('exam_title').value = '';
+    document.getElementById('exam_desc').value = '';
+    document.getElementById('exam_cancel_btn').classList.add('hidden');
+  };
+
+  // ── 문제 관리 ──
+  window.toggleQTypeFields = () => {
+    const type = document.getElementById('q_type').value;
+    document.getElementById('qf_mc').classList.toggle('hidden', type !== 'mc');
+    document.getElementById('qf_sa').classList.toggle('hidden', type !== 'sa');
+    document.getElementById('qf_code').classList.toggle('hidden', type !== 'code');
+  };
+
+  window.loadQList = async () => {
+    const examId = document.getElementById('q_examId')?.value || document.getElementById('qlist_examId')?.value;
+    if (!examId) return;
+    // sync both selects
+    const a = document.getElementById('q_examId'); if (a) a.value = examId;
+    const b = document.getElementById('qlist_examId'); if (b) b.value = examId;
+    const snap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId), orderBy('order','asc')));
+    const qs = snap.docs.map(d=>({id:d.id,...d.data()}));
+    const el = document.getElementById('qList');
+    if (!qs.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">❓</div>문제가 없습니다.</div>'; return; }
+    const typeLabels = { mc:'객관식', sa:'단답형', code:'코딩' };
+    el.innerHTML = qs.map((q,i) => `
+      <div class="list-item">
+        <div class="list-item-info">
+          <div class="list-item-name">Q${i+1}. [${typeLabels[q.type]||q.type}] ${q.title||''}</div>
+          <div class="list-item-sub">${q.points||0}점 · 순서:${q.order}</div>
+        </div>
+        <div class="list-item-actions">
+          <button class="btn ghost sm" onclick='editQuestion(${JSON.stringify({...q}).replace(/'/g,"&#39;")})'>수정</button>
+          <button class="btn danger sm" onclick="deleteQuestion('${q.id}')">삭제</button>
+        </div>
+      </div>`).join('');
+  };
+
+  window.saveQuestion = async () => {
+    const examId = document.getElementById('q_examId').value;
+    if (!examId) { toast('시험을 선택하세요.', 'error'); return; }
+    const docId = document.getElementById('q_docId').value;
+    const type = document.getElementById('q_type').value;
+    const title = document.getElementById('q_title').value.trim();
+    if (!title) { toast('문제 제목을 입력하세요.', 'error'); return; }
+    const data = {
+      examId, type,
+      title, titleZh: document.getElementById('q_titleZh').value.trim(), titleRu: document.getElementById('q_titleRu').value.trim(),
+      content: document.getElementById('q_content').value.trim(),
+      contentZh: document.getElementById('q_contentZh').value.trim(), contentRu: document.getElementById('q_contentRu').value.trim(),
+      imageUrl: document.getElementById('q_imageUrl').value.trim(),
+      points: parseInt(document.getElementById('q_points').value) || 10,
+      order: parseInt(document.getElementById('q_order').value) || 1,
+    };
+    if (type === 'mc') {
+      data.options = document.getElementById('q_options').value.split('\n').map(s=>s.trim()).filter(Boolean);
+      data.optionsZh = document.getElementById('q_optionsZh').value.split('\n').map(s=>s.trim()).filter(Boolean);
+      data.optionsRu = document.getElementById('q_optionsRu').value.split('\n').map(s=>s.trim()).filter(Boolean);
+      data.answer = String(parseInt(document.getElementById('q_answer_mc').value) || 0);
+    } else if (type === 'sa') {
+      data.answer = document.getElementById('q_answer_sa').value.trim();
+    } else if (type === 'code') {
+      data.inDesc = document.getElementById('q_inDesc').value.trim();
+      data.outDesc = document.getElementById('q_outDesc').value.trim();
+      data.inEx = document.getElementById('q_inEx').value.trim();
+      data.outEx = document.getElementById('q_outEx').value.trim();
+      data.boilerplate = document.getElementById('q_boilerplate').value;
+      try { data.testCases = JSON.parse(document.getElementById('q_testCases').value || '[]'); }
+      catch(e) { toast('테스트케이스 JSON 형식 오류.', 'error'); return; }
+    }
+    showLoading(true);
+    try {
+      if (docId) await updateDoc(doc(db,'exam_questions',docId), data);
+      else await addDoc(collection(db,'exam_questions'), { ...data, createdAt: serverTimestamp() });
+      toast('저장되었습니다.', 'success');
+      resetQForm();
+      await loadQList();
+    } catch(e) { toast('오류: '+e.message, 'error'); }
+    showLoading(false);
+  };
+
+  window.editQuestion = (q) => {
+    document.getElementById('q_docId').value = q.id;
+    document.getElementById('q_examId').value = q.examId;
+    document.getElementById('q_type').value = q.type;
+    document.getElementById('q_title').value = q.title||'';
+    document.getElementById('q_titleZh').value = q.titleZh||'';
+    document.getElementById('q_titleRu').value = q.titleRu||'';
+    document.getElementById('q_content').value = q.content||'';
+    document.getElementById('q_contentZh').value = q.contentZh||'';
+    document.getElementById('q_contentRu').value = q.contentRu||'';
+    document.getElementById('q_imageUrl').value = q.imageUrl||'';
+    document.getElementById('q_points').value = q.points||10;
+    document.getElementById('q_order').value = q.order||1;
+    if (q.type === 'mc') {
+      document.getElementById('q_options').value = (q.options||[]).join('\n');
+      document.getElementById('q_optionsZh').value = (q.optionsZh||[]).join('\n');
+      document.getElementById('q_optionsRu').value = (q.optionsRu||[]).join('\n');
+      document.getElementById('q_answer_mc').value = q.answer||'0';
+    } else if (q.type === 'sa') {
+      document.getElementById('q_answer_sa').value = q.answer||'';
+    } else if (q.type === 'code') {
+      document.getElementById('q_inDesc').value = q.inDesc||'';
+      document.getElementById('q_outDesc').value = q.outDesc||'';
+      document.getElementById('q_inEx').value = q.inEx||'';
+      document.getElementById('q_outEx').value = q.outEx||'';
+      document.getElementById('q_boilerplate').value = q.boilerplate||'';
+      document.getElementById('q_testCases').value = JSON.stringify(q.testCases||[]);
+    }
+    window.toggleQTypeFields();
+    document.getElementById('q_cancel_btn').classList.remove('hidden');
+    window.showExamTab('questions');
+    document.getElementById('q_title').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
+  window.deleteQuestion = (id) => {
+    confirmDialog('문제 삭제', '이 문제를 삭제하시겠습니까?', async () => {
+      showLoading(true);
+      await deleteDoc(doc(db,'exam_questions',id));
+      await loadQList();
+      showLoading(false);
+    });
+  };
+
+  window.resetQForm = () => {
+    ['q_docId','q_title','q_titleZh','q_titleRu','q_content','q_contentZh','q_contentRu','q_imageUrl','q_options','q_optionsZh','q_optionsRu','q_answer_mc','q_answer_sa','q_inDesc','q_outDesc','q_inEx','q_outEx','q_boilerplate','q_testCases'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    document.getElementById('q_points').value='10';
+    document.getElementById('q_order').value='1';
+    document.getElementById('q_type').value='mc';
+    window.toggleQTypeFields();
+    document.getElementById('q_cancel_btn').classList.add('hidden');
+  };
+
+  // ── 배정 관리 ──
+  window.saveAssignment = async () => {
+    const docId = document.getElementById('as_docId').value;
+    const examId = document.getElementById('as_examId').value;
+    const code = document.getElementById('as_code').value.trim().toUpperCase();
+    const grade = document.getElementById('as_grade').value;
+    const cls = document.getElementById('as_class').value;
+    const duration = parseInt(document.getElementById('as_duration').value) || 0;
+    if (!examId) { toast('시험을 선택하세요.', 'error'); return; }
+    if (!code) { toast('시험 코드를 입력하세요.', 'error'); return; }
+    const data = { examId, code, grade, class: cls, duration, status: 'ON' };
+    showLoading(true);
+    try {
+      if (docId) await updateDoc(doc(db,'exam_assignments',docId), data);
+      else await addDoc(collection(db,'exam_assignments'), { ...data, createdAt: serverTimestamp() });
+      toast('저장되었습니다.', 'success');
+      resetAsForm();
+      await loadAssignList();
+    } catch(e) { toast('오류: '+e.message, 'error'); }
+    showLoading(false);
+  };
+
+  async function loadAssignList() {
+    const snap = await getDocs(query(collection(db,'exam_assignments'), orderBy('createdAt','desc')));
+    const list = snap.docs.map(d=>({id:d.id,...d.data()}));
+    const el = document.getElementById('assignList');
+    if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">🎯</div>등록된 배정이 없습니다.</div>'; return; }
+    el.innerHTML = list.map(a => {
+      const exam = exams.find(e=>e.id===a.examId);
+      return `<div class="list-item">
+        <div class="list-item-info">
+          <div class="list-item-name">🎯 <b style="letter-spacing:0.1em;">${a.code}</b> — ${exam?.title||a.examId}</div>
+          <div class="list-item-sub">${a.grade}학년 ${a.class}반 · ${a.duration>0?a.duration+'분':'무제한'}</div>
+        </div>
+        <div class="list-item-actions" style="display:flex;gap:8px;align-items:center;">
+          <select onchange="toggleAsStatus('${a.id}',this.value)" style="font-size:0.78rem;padding:4px 8px;border-radius:8px;border:1.5px solid var(--border-card);background:var(--glass);cursor:pointer;font-weight:700;color:${a.status==='ON'?'#22c55e':'#ef4444'}">
+            <option value="ON" ${a.status==='ON'?'selected':''}>ON</option>
+            <option value="OFF" ${a.status==='OFF'?'selected':''}>OFF</option>
+          </select>
+          <button class="btn danger sm" onclick="deleteAssign('${a.id}')">삭제</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  window.toggleAsStatus = async (id, status) => {
+    showLoading(true);
+    await updateDoc(doc(db,'exam_assignments',id), { status });
+    await loadAssignList();
+    showLoading(false);
+  };
+
+  window.deleteAssign = (id) => {
+    confirmDialog('배정 삭제', '이 배정을 삭제하시겠습니까?', async () => {
+      showLoading(true);
+      await deleteDoc(doc(db,'exam_assignments',id));
+      await loadAssignList();
+      showLoading(false);
+    });
+  };
+
+  window.resetAsForm = () => {
+    document.getElementById('as_docId').value='';
+    document.getElementById('as_examId').value='';
+    document.getElementById('as_code').value='';
+    document.getElementById('as_duration').value='45';
+    document.getElementById('as_cancel_btn').classList.add('hidden');
+  };
+
+  // ── 결과 조회 ──
+  async function loadAssignSelect() {
+    const snap = await getDocs(query(collection(db,'exam_assignments'), orderBy('createdAt','desc')));
+    const list = snap.docs.map(d=>({id:d.id,...d.data()}));
+    const sel = document.getElementById('res_asId');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">배정을 선택하세요</option>' + list.map(a => {
+      const exam = exams.find(e=>e.id===a.examId);
+      return `<option value="${a.id}" ${a.id===cur?'selected':''}>${a.code} — ${exam?.title||''} (${a.grade}학년${a.class}반)</option>`;
+    }).join('');
+  }
+
+  window.loadResults = async () => {
+    const asId = document.getElementById('res_asId').value;
+    const el = document.getElementById('resultTable');
+    if (!asId) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div>배정을 선택하세요.</div>'; return; }
+    showLoading(true);
+    try {
+      const progSnap = await getDocs(query(collection(db,'exam_progress'), where('asId','==',asId)));
+      const progs = progSnap.docs.map(d=>({id:d.id,...d.data()}));
+      if (!progs.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div>결과가 없습니다.</div>'; showLoading(false); return; }
+      // 정렬: 학년→반→번호
+      progs.sort((a,b) => {
+        if (a.grade!==b.grade) return String(a.grade).localeCompare(String(b.grade));
+        if (a.class!==b.class) return String(a.class).localeCompare(String(b.class));
+        return parseInt(a.num||0) - parseInt(b.num||0);
+      });
+      const html = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+        <thead><tr style="border-bottom:2px solid var(--border-card);">
+          <th style="text-align:left;padding:8px 12px;color:var(--sub);">학년/반/번호</th>
+          <th style="text-align:left;padding:8px 12px;color:var(--sub);">이름</th>
+          <th style="text-align:right;padding:8px 12px;color:var(--sub);">점수</th>
+          <th style="text-align:right;padding:8px 12px;color:var(--sub);">이탈</th>
+          <th style="text-align:left;padding:8px 12px;color:var(--sub);">상태</th>
+        </tr></thead>
+        <tbody>${progs.map(p=>`<tr style="border-bottom:1px solid var(--border-card);">
+          <td style="padding:8px 12px;">${p.grade||'-'}학년 ${p.class||'-'}반 ${p.num||'-'}번</td>
+          <td style="padding:8px 12px;font-weight:700;">${p.name||'-'}</td>
+          <td style="padding:8px 12px;text-align:right;font-weight:800;color:var(--accent);">${p.totalScore!==undefined?p.totalScore:'-'}${p.totalPoints?'/'+p.totalPoints:''}</td>
+          <td style="padding:8px 12px;text-align:right;color:${(p.alertCount||0)>3?'#ef4444':'var(--sub)'};">${p.alertCount||0}</td>
+          <td style="padding:8px 12px;"><span style="padding:3px 10px;border-radius:50px;font-size:0.75rem;font-weight:700;background:${p.status==='submitted'?'rgba(34,197,94,0.15)':'rgba(245,158,11,0.15)'};color:${p.status==='submitted'?'#22c55e':'#f59e0b'}">${p.status==='submitted'?'제출':'진행중'}</span></td>
+        </tr>`).join('')}</tbody>
+      </table></div>`;
+      el.innerHTML = html;
+    } catch(e) { el.innerHTML = '<div style="color:#ef4444;padding:20px;">오류: '+e.message+'</div>'; }
+    showLoading(false);
+  };
+
+  window.exportResults = async () => {
+    const asId = document.getElementById('res_asId').value;
+    if (!asId) { toast('배정을 선택하세요.', 'error'); return; }
+    showLoading(true);
+    const progSnap = await getDocs(query(collection(db,'exam_progress'), where('asId','==',asId)));
+    const progs = progSnap.docs.map(d=>d.data());
+    progs.sort((a,b) => parseInt(a.num||0)-parseInt(b.num||0));
+    const rows = [['학년','반','번호','이름','점수','만점','이탈횟수','상태']];
+    progs.forEach(p => rows.push([p.grade,p.class,p.num,p.name,p.totalScore??'',p.totalPoints??'',p.alertCount||0,p.status]));
+    const csv = rows.map(r=>r.map(c=>`"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob(['﻿'+csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `exam_results_${asId}.csv`;
+    a.click();
+    showLoading(false);
+  };
 </script>
 </body>
 </html>
