@@ -1551,14 +1551,20 @@
     });
     const asSch = document.getElementById('as_schoolName');
     if (asSch) {
-      // 학생 DB에서 학교 목록 로드 (아직 안 로드된 경우 직접 조회)
       let schools = _appStudents.map(s=>s.schoolName).filter(Boolean);
       if (!schools.length) {
-        try {
-          const snap = await getDocs(collection(db, 'students'));
-          _appStudents = snap.docs.map(d=>d.data());
-          schools = _appStudents.map(s=>s.schoolName).filter(Boolean);
-        } catch(e) {}
+        // sessionStorage 캐시 먼저 확인
+        const cached = sessionStorage.getItem('_ohStudentSchools');
+        if (cached) {
+          schools = JSON.parse(cached);
+        } else {
+          try {
+            const snap = await getDocs(collection(db, 'students'));
+            _appStudents = snap.docs.map(d=>d.data());
+            schools = _appStudents.map(s=>s.schoolName).filter(Boolean);
+            sessionStorage.setItem('_ohStudentSchools', JSON.stringify([...new Set(schools)].sort()));
+          } catch(e) {}
+        }
       }
       const uniqueSchools = [...new Set(schools)].sort();
       asSch.innerHTML = '<option value="">전체 학교</option>' + uniqueSchools.map(s=>`<option value="${s}">${s}</option>`).join('');
