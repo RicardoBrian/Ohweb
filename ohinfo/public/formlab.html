@@ -222,7 +222,7 @@
 <script type="module">
 import { db } from './firebase-config.js';
 import {
-  collection, query, where, orderBy, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, doc, serverTimestamp
+  collection, query, where, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, doc, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 // ── 유틸 ──
@@ -259,10 +259,10 @@ async function loadMyForms() {
   try {
     const snap = await getDocs(query(
       collection(db, 'student_forms'),
-      where('ownerId', '==', SESSION.id),
-      orderBy('createdAt', 'desc')
+      where('ownerId', '==', SESSION.id)
     ));
-    const forms = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const forms = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
     const el = document.getElementById('myFormList');
     if (!forms.length) { el.innerHTML = '<div class="empty-msg">아직 만든 설문이 없습니다.<br>새 설문을 만들어보세요!</div>'; showLoading(false); return; }
     el.innerHTML = forms.map(f => {
@@ -448,8 +448,9 @@ window.openResults = async (formId) => {
     if (!fSnap.exists()) { showLoading(false); return; }
     currentFormId = formId;
     currentFormData = { id: formId, ...fSnap.data() };
-    const rSnap = await getDocs(query(collection(db,'student_form_responses'), where('formId','==',formId), orderBy('submittedAt','desc')));
-    responses = rSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const rSnap = await getDocs(query(collection(db,'student_form_responses'), where('formId','==',formId)));
+    responses = rSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.submittedAt?.seconds || 0) - (a.submittedAt?.seconds || 0));
 
     document.getElementById('resTitle').innerText = currentFormData.title || '(제목 없음)';
     document.getElementById('resMeta').innerText = `응답 ${responses.length}개 · ${currentFormData.allowAnon?'비로그인 허용':'로그인 필요'} · ${currentFormData.showResultToRespondent?'결과 공개':'결과 비공개'}`;
