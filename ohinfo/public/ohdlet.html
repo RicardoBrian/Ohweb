@@ -581,9 +581,25 @@
 <script type="module">
   import { db } from './firebase-config.js';
   import {
-    collection, getDocs, addDoc, updateDoc, deleteDoc,
-    query, where, doc, serverTimestamp, increment, getDoc
+    collection, getDocs, query, where
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  // ── Apps Script 엔드포인트 ──
+  const GAS_URL = 'https://script.google.com/macros/s/AKfycbx42-pDTOFvNEX8UhuVAfdCzWDPDjwGNi4YN1Jp-6BK_YyIQQYoIGwIV0ifk6eMFiuZ/exec';
+
+  async function gasGet(params) {
+    const url = GAS_URL + '?' + new URLSearchParams(params);
+    const res = await fetch(url);
+    return res.json();
+  }
+
+  async function gasPost(body) {
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+    return res.json();
+  }
 
   // ── 수업 목록 로드 ──
   window.updateClassList = async () => {
@@ -631,17 +647,13 @@
       document.getElementById('sidebarTitle').innerText = title;
       document.getElementById('sidebarDesc').innerText = desc;
 
-      // 게시글 (classTitle만 where — 나머지는 클라이언트 필터)
-      const postsSnap = await getDocs(query(collection(db,'paddlet_posts'), where('classTitle','==',f_class)));
+      // 게시글 — Apps Script에서 로드
       const ng = v => String(v||'').replace(/학년/g,'').trim();
       const nc = v => String(v||'').replace(/반/g,'').trim();
-      currentPosts = postsSnap.docs
-        .map(d => {const data=d.data(); return {id:d.id,...data,time:fmtTime(data.createdAt),likes:data.likes||0};})
-        .filter(p => ng(p.grade)===ng(f_grade) && nc(p.group)===nc(f_group))
-        .sort((a,b)=>{
-          if(a.pinned&&!b.pinned)return-1; if(!a.pinned&&b.pinned)return 1;
-          return (b.createdAt?.toMillis?.()??0)-(a.createdAt?.toMillis?.()??0);
-        });
+      const postRes = await gasGet({ action: 'getPosts', classTitle: f_class });
+      currentPosts = (postRes.posts || [])
+        .map(p => ({...p, time: fmtTime(p.createdAt), likes: Number(p.likes)||0}))
+        .filter(p => ng(p.grade)===ng(f_grade) && nc(p.group)===nc(f_group));
       currentExample = example;
       render(example, sortedPosts());
       if(popup) showPopup(popup);
@@ -650,56 +662,18 @@
     }
   };
 
-  // ── DeepL 번역 ──
-  const DEEPL_KEY = 'cf131ad1-2cd2-455b-8915-dd32ddfce706:fx';
-  const DEEPL_SRC = { ko:'KO', zh:'ZH', ru:'RU', en:'EN' };
-  const DEEPL_TGT = { ko:'KO', zh:'ZH', ru:'RU', en:'EN-US' };
-  async function deepl(text, targetLang, sourceLang) {
-    if (!text || !text.trim()) return text;
-    try {
-      const body = { text: [text], target_lang: DEEPL_TGT[targetLang] };
-      if (sourceLang && DEEPL_SRC[sourceLang]) body.source_lang = DEEPL_SRC[sourceLang];
-      const res = await fetch('https://api-free.deepl.com/v2/translate', {
-        method: 'POST',
-        headers: { 'Authorization': `DeepL-Auth-Key ${DEEPL_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      });
-      const json = await res.json();
-      return json.translations?.[0]?.text || text;
-    } catch { return text; }
-  }
-  async function translatePost(subject, message, srcLang) {
-    const langs = ['ko','zh','ru','en'].filter(l => l !== srcLang);
-    const pairs = await Promise.all(langs.flatMap(l => [
-      deepl(subject, l, srcLang),
-      deepl(message, l, srcLang)
-    ]));
-    const result = { subKo: subject, msgKo: message, subZh: subject, msgZh: message, subRu: subject, msgRu: message, subEn: subject, msgEn: message };
-    // overwrite source lang fields with originals
-    result[`sub${srcLang.charAt(0).toUpperCase()+srcLang.slice(1)}`] = subject;
-    result[`msg${srcLang.charAt(0).toUpperCase()+srcLang.slice(1)}`] = message;
-    langs.forEach((l, i) => {
-      const cap = l.charAt(0).toUpperCase()+l.slice(1);
-      result[`sub${cap}`] = pairs[i*2];
-      result[`msg${cap}`] = pairs[i*2+1];
-    });
-    return result;
-  }
-
   // ── 게시글 등록/수정 ──
   window.submitPost = async (event) => {
     event.preventDefault(); toggleLoading(true); document.getElementById('subBtn').disabled=true;
     const subject=document.getElementById('p_sub').value;
     const message=document.getElementById('p_msg').value;
     try {
-      const tr = await translatePost(subject, message, currentLang);
       if(f_mode==='edit') {
-        const ref=doc(db,'paddlet_posts',f_postId);
-        const snap=await getDoc(ref);
-        if(!snap.exists()||snap.data().studentId!==SESSION.id){alert('본인 게시물만 수정할 수 있습니다.');toggleLoading(false);document.getElementById('subBtn').disabled=false;return;}
-        await updateDoc(ref,{subject,message,origSub:subject,origMsg:message,...tr,imgs:imgList,updatedAt:serverTimestamp()});
+        const res = await gasPost({ action:'editPost', id:f_postId, studentId:SESSION.id, sub:subject, msg:message, srcLang:currentLang, imgs:imgList });
+        if(res.error){alert('오류: '+res.error);toggleLoading(false);document.getElementById('subBtn').disabled=false;return;}
       } else {
-        await addDoc(collection(db,'paddlet_posts'),{classTitle:f_class,grade:f_grade,group:f_group,num:SESSION.num,name:SESSION.name,studentId:SESSION.id,subject,message,origSub:subject,origMsg:message,...tr,imgs:imgList,likes:0,pinned:false,createdAt:serverTimestamp()});
+        const res = await gasPost({ action:'addPost', classTitle:f_class, grade:f_grade, group:f_group, num:SESSION.num, name:SESSION.name, studentId:SESSION.id, sub:subject, msg:message, srcLang:currentLang, imgs:imgList });
+        if(res.error){alert('오류: '+res.error);toggleLoading(false);document.getElementById('subBtn').disabled=false;return;}
       }
       document.getElementById('postForm').reset(); cancelEdit();
       await window.manualRefresh();
@@ -712,8 +686,10 @@
     const post=currentPosts.find(p=>p.id===postId); if(!post)return;
     if(post.studentId!==SESSION.id){alert('본인 게시물만 수정할 수 있습니다.');return;}
     f_mode='edit'; f_postId=post.id;
-    document.getElementById('p_sub').value=post.origSub||post.subject;
-    document.getElementById('p_msg').value=post.origMsg||post.message;
+    const srcField = post.srcLang ? `sub${post.srcLang.charAt(0).toUpperCase()+post.srcLang.slice(1)}` : 'subKo';
+    const msgField = post.srcLang ? `msg${post.srcLang.charAt(0).toUpperCase()+post.srcLang.slice(1)}` : 'msgKo';
+    document.getElementById('p_sub').value=post[srcField]||post.subKo||'';
+    document.getElementById('p_msg').value=post[msgField]||post.msgKo||'';
     imgList=Array.isArray(post.imgs)?[...post.imgs]:[];
     updatePreview();
     document.getElementById('subBtn').innerText=uiText[currentLang].edit_finish;
@@ -726,13 +702,16 @@
     if(post.studentId!==SESSION.id){alert('본인 게시물만 삭제할 수 있습니다.');return;}
     if(!confirm('삭제하시겠습니까?'))return;
     toggleLoading(true);
-    try{await deleteDoc(doc(db,'paddlet_posts',id));await window.manualRefresh();}
-    catch(e){alert('오류: '+e.message);}
+    try{
+      const res = await gasPost({ action:'deletePost', id, studentId:SESSION.id });
+      if(res.error) alert('오류: '+res.error);
+      else await window.manualRefresh();
+    } catch(e){alert('오류: '+e.message);}
     toggleLoading(false);
   };
 
   window.fbToggleLike = async (postId, isCancel) => {
-    await updateDoc(doc(db,'paddlet_posts',postId),{likes:increment(isCancel?-1:1)});
+    await gasPost({ action:'likePost', id:postId, delta: isCancel ? -1 : 1 });
   };
 
   window.updateClassList();
