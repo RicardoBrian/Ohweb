@@ -753,21 +753,14 @@
 
   async function updateClassList() {
     try {
-      const q = query(
-        collection(db, 'classes'),
-        where('grade', '==', SESSION.grade),
-        where('group', '==', SESSION.group),
-        where('status', '==', 'ON'),
-        orderBy('name')
-      );
-      const snap = await getDocs(q);
+      const snap = await getDocs(collection(db, 'classes'));
+      const classes = snap.docs.map(d => d.data())
+        .filter(c => c.status === 'ON' && c.grade === SESSION.grade && c.group === SESSION.group)
+        .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'));
       const sel = document.getElementById('classList');
       sel.innerHTML = `<option>${uiText[currentLang]?.opt||uiText.ko.opt}</option>`;
-      snap.forEach(docSnap => {
-        const c = docSnap.data();
-        sel.innerHTML += `<option value="${c.name}">${c.name}</option>`;
-      });
-    } catch(e) {}
+      classes.forEach(c => { sel.innerHTML += `<option value="${c.name}">${c.name}</option>`; });
+    } catch(e) { console.error('updateClassList:', e); }
   }
 
   function goHome() { document.getElementById('step2').classList.add('hidden'); document.getElementById('step1').classList.remove('hidden'); document.getElementById('adminPanel').classList.add('hidden'); cancelEdit(); closeKeyboard(); window.scrollTo(0,0); }
@@ -798,37 +791,17 @@
 
       // 수업 정보 조회 (grade+group 조건 우선, 없으면 이름만으로 검색)
       let cls = {};
-      const clsQ = query(
-        collection(db, 'classes'),
-        where('name', '==', classTitle),
-        where('grade', '==', SESSION.grade),
-        where('group', '==', SESSION.group)
-      );
-      const clsSnap = await getDocs(clsQ);
+      const clsSnap = await getDocs(query(collection(db, 'classes'), where('name', '==', classTitle)));
       if (!clsSnap.empty) {
-        cls = clsSnap.docs[0].data();
-      } else {
-        const clsQ2 = query(collection(db, 'classes'), where('name', '==', classTitle));
-        const clsSnap2 = await getDocs(clsQ2);
-        if (!clsSnap2.empty) cls = clsSnap2.docs[0].data();
+        cls = clsSnap.docs.find(d => d.data().grade === SESSION.grade && d.data().group === SESSION.group)?.data()
+              || clsSnap.docs[0].data();
       }
 
-      // 게시물 조회
-      const postsQ = query(
-        collection(db, 'posts'),
-        where('classTitle', '==', classTitle),
-        where('deleted', '==', false)
-      );
-      const postsSnap = await getDocs(postsQ);
-      const rawPosts = postsSnap.docs.map(d => {
-        const p = d.data();
-        return {
-          ...p,
-          id: d.id,
-          imgs: Array.isArray(p.imgs) ? p.imgs : [],
-          createdAt: p.createdAt?.toDate?.()?.toISOString() || ''
-        };
-      });
+      // 게시물 조회 (인덱스 불필요: classTitle만 필터, deleted는 클라이언트)
+      const postsSnap = await getDocs(query(collection(db, 'posts'), where('classTitle', '==', classTitle)));
+      const rawPosts = postsSnap.docs
+        .map(d => ({ ...d.data(), id: d.id, imgs: Array.isArray(d.data().imgs) ? d.data().imgs : [], createdAt: d.data().createdAt?.toDate?.()?.toISOString() || '' }))
+        .filter(p => !p.deleted);
       // 클라이언트 정렬: pinned desc, createdAt desc
       rawPosts.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (b.createdAt > a.createdAt ? 1 : -1));
 
