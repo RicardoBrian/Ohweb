@@ -1640,10 +1640,10 @@
     document.getElementById('qf_code').classList.toggle('hidden', type !== 'code');
   };
 
-  window.loadQList = async () => {
-    const examId = document.getElementById('q_examId')?.value || document.getElementById('qlist_examId')?.value;
+  window.loadQList = async (forceId) => {
+    // forceId 우선, 없으면 qlist_examId, 없으면 q_examId
+    const examId = forceId || document.getElementById('qlist_examId')?.value || document.getElementById('q_examId')?.value;
     if (!examId) return;
-    // sync both selects
     const a = document.getElementById('q_examId'); if (a) a.value = examId;
     const b = document.getElementById('qlist_examId'); if (b) b.value = examId;
     const el = document.getElementById('qList');
@@ -1735,9 +1735,7 @@
       toast('저장되었습니다.', 'success');
       const savedExamId = examId;
       resetQForm();
-      document.getElementById('q_examId').value = savedExamId;
-      document.getElementById('qlist_examId').value = savedExamId;
-      await loadQList();
+      await loadQList(savedExamId);
     } catch(e) { toast('오류: '+e.message, 'error'); }
     showLoading(false);
   };
