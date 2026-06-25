@@ -495,7 +495,7 @@
             <input type="file" id="fileInput" class="hidden" accept="image/*" multiple onchange="handleFiles(this.files)">
             <button id="subBtn" type="submit" class="btn accent full">게시물 등록</button>
             <button id="cancelEditBtn" type="button" class="btn full hidden" style="margin-top:7px;" onclick="cancelEdit()">수정 취소</button>
-            <div id="trStatus" style="font-size:0.75rem;margin-top:6px;padding:5px 8px;border-radius:8px;display:none;"></div>
+
           </form>
         </div>
 
@@ -946,23 +946,9 @@
     try {
       // 번역 (실패해도 게시물 저장은 계속)
       let translations = { subZh:'', msgZh:'', subRu:'', msgRu:'', subEn:'', msgEn:'' };
-      const trEl = document.getElementById('trStatus');
       if (srcLang === 'ko' && (sub || msg)) {
-        trEl.style.display = 'block';
-        trEl.style.background = 'rgba(42,92,230,0.1)';
-        trEl.style.color = 'var(--accent)';
-        trEl.innerText = '번역 중...';
-        try {
-          translations = await translatePost(sub, msg);
-          trEl.style.background = 'rgba(34,197,94,0.12)';
-          trEl.style.color = '#16a34a';
-          trEl.innerText = '✓ 번역 완료 (zh/ru/en)';
-        } catch(te) {
-          trEl.style.background = 'rgba(239,68,68,0.1)';
-          trEl.style.color = '#ef4444';
-          trEl.innerText = '번역 실패: ' + te.message;
-        }
-      } else { trEl.style.display = 'none'; }
+        try { translations = await translatePost(sub, msg); } catch(te) { /* 번역 실패시 빈값 유지 */ }
+      }
 
       const subKoFinal = srcLang === 'ko' ? sub : '';
       const msgKoFinal = srcLang === 'ko' ? msg : '';
