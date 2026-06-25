@@ -960,8 +960,9 @@
 
   function populateSchoolSelects() {
     const opts = schools.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-    ['filterSchool', 'appSchool'].forEach(id => {
+    ['appSchool'].forEach(id => {
       const el = document.getElementById(id);
+      if (!el) return;
       const first = el.querySelector('option')?.outerHTML || '';
       el.innerHTML = first + opts;
     });
