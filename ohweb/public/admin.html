@@ -740,7 +740,10 @@
         </div>
       </div>
       <div class="card">
-        <h2><span class="icon">📝</span> 문제 목록</h2>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <h2 style="margin:0;"><span class="icon">📝</span> 문제 목록</h2>
+          <button class="btn ghost sm" onclick="fixMissingTranslations()">🌐 번역 보완</button>
+        </div>
         <div style="margin-bottom:12px;">
           <select class="inp" id="qlist_examId" style="width:100%;" onchange="loadQList()">
             <option value="">시험을 선택하세요</option>
@@ -1887,8 +1890,13 @@
     if (!asId) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div>배정을 선택하세요.</div>'; return; }
     showLoading(true);
     try {
-      const progSnap = await getDocs(query(collection(db,'exam_progress'), where('asId','==',asId)));
-      const progs = progSnap.docs.map(d=>({id:d.id,...d.data()}));
+      let progSnap = await getDocs(query(collection(db,'exam_progress'), where('asId','==',asId)));
+      let progs = progSnap.docs.map(d=>({id:d.id,...d.data()}));
+      // fallback: doc ID prefix (migrated/old docs that lack asId field)
+      if (!progs.length) {
+        const allSnap = await getDocs(collection(db,'exam_progress'));
+        progs = allSnap.docs.filter(d=>d.id.startsWith(asId+'_')).map(d=>({id:d.id,...d.data()}));
+      }
       if (!progs.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div>결과가 없습니다.</div>'; showLoading(false); return; }
       // 정렬: 학년→반→번호
       progs.sort((a,b) => {
@@ -1903,6 +1911,7 @@
           <th style="text-align:right;padding:8px 12px;color:var(--sub);">점수</th>
           <th style="text-align:right;padding:8px 12px;color:var(--sub);">이탈</th>
           <th style="text-align:left;padding:8px 12px;color:var(--sub);">상태</th>
+          <th style="text-align:center;padding:8px 12px;color:var(--sub);">채점</th>
         </tr></thead>
         <tbody>${progs.map(p=>`<tr style="border-bottom:1px solid var(--border-card);">
           <td style="padding:8px 12px;">${p.grade||'-'}학년 ${p.class||'-'}반 ${p.num||'-'}번</td>
@@ -1910,6 +1919,7 @@
           <td style="padding:8px 12px;text-align:right;font-weight:800;color:var(--accent);">${p.totalScore!==undefined?p.totalScore:'-'}${p.totalPoints?'/'+p.totalPoints:''}</td>
           <td style="padding:8px 12px;text-align:right;color:${(p.alertCount||0)>3?'#ef4444':'var(--sub)'};">${p.alertCount||0}</td>
           <td style="padding:8px 12px;"><span style="padding:3px 10px;border-radius:50px;font-size:0.75rem;font-weight:700;background:${p.status==='submitted'?'rgba(34,197,94,0.15)':'rgba(245,158,11,0.15)'};color:${p.status==='submitted'?'#22c55e':'#f59e0b'}">${p.status==='submitted'?'제출':'진행중'}</span></td>
+          <td style="padding:8px 12px;text-align:center;"><button class="btn ghost sm" onclick="gradeStudent('${asId}','${p.studentId||p.id.split('_').slice(1).join('_')||''}','${p.id}')">채점</button></td>
         </tr>`).join('')}</tbody>
       </table></div>`;
       el.innerHTML = html;
@@ -1932,6 +1942,113 @@
     a.href = URL.createObjectURL(blob);
     a.download = `exam_results_${asId}.csv`;
     a.click();
+    showLoading(false);
+  };
+
+  // ── 채점 모달 ──
+  window.gradeStudent = async (asId, studentId, progDocId) => {
+    showLoading(true);
+    try {
+      // exam_results 조회: asId+studentId 또는 asId만으로 fallback
+      let resultsSnap = await getDocs(query(collection(db,'exam_results'),
+        where('asId','==',asId), where('studentId','==',studentId)));
+      let items = resultsSnap.docs.map(d=>({docId:d.id,...d.data()}))
+        .sort((a,b)=>(a.qIdx||0)-(b.qIdx||0));
+      showLoading(false);
+
+      const modal = document.createElement('div');
+      modal.style.cssText = 'position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);padding:16px;';
+      const inner = document.createElement('div');
+      inner.style.cssText = 'background:var(--glass-strong);backdrop-filter:var(--blur);border:1px solid var(--border);border-radius:var(--radius);padding:24px;max-width:600px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:var(--shadow-md);';
+
+      const progDoc = items[0] || {};
+      const name = progDoc.name || progDocId;
+      inner.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <h3 style="font-size:1rem;font-weight:800;">${name} 채점</h3>
+          <button class="btn ghost sm" onclick="this.closest('[style*=fixed]').remove()">✕ 닫기</button>
+        </div>
+        ${items.length === 0 ? '<div style="color:var(--sub);text-align:center;padding:32px;">제출 데이터가 없습니다.</div>' :
+          items.map((r,ri) => `
+            <div style="border:1px solid var(--border-card);border-radius:var(--radius-sm);padding:12px;margin-bottom:10px;">
+              <div style="font-size:0.78rem;font-weight:700;color:var(--sub);margin-bottom:4px;">Q${(r.qIdx||ri)+1} · ${r.type||''}</div>
+              <div style="font-size:0.85rem;font-weight:700;margin-bottom:6px;">${escHtml(r.title||'')}</div>
+              <div style="background:var(--glass);border-radius:8px;padding:8px 12px;font-size:0.83rem;margin-bottom:8px;white-space:pre-wrap;word-break:break-all;">${escHtml(r.value||'(미답)')}</div>
+              <div style="font-size:0.78rem;color:var(--sub);margin-bottom:6px;">자동채점: ${escHtml(r.feedback||'-')}</div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <label style="font-size:0.78rem;font-weight:700;color:var(--sub);">점수:</label>
+                <input type="number" class="inp" value="${r.score||0}" min="0" max="${r.maxScore||0}" data-docid="${r.docId}" data-max="${r.maxScore||0}"
+                  style="width:70px;padding:4px 8px;font-size:0.85rem;" id="gscore_${ri}">
+                <span style="font-size:0.78rem;color:var(--sub);">/ ${r.maxScore||0}점</span>
+              </div>
+            </div>`).join('')}
+        <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end;">
+          <button class="btn ghost sm" onclick="this.closest('[style*=fixed]').remove()">취소</button>
+          <button class="btn accent sm" onclick="saveGrades('${progDocId}',${items.length})">저장</button>
+        </div>`;
+      modal.appendChild(inner);
+      document.body.appendChild(modal);
+    } catch(e) { toast('오류: '+e.message, 'error'); showLoading(false); }
+  };
+
+  function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  window.saveGrades = async (progDocId, count) => {
+    showLoading(true);
+    try {
+      const batch = writeBatch(db);
+      let total = 0;
+      let totalPoints = 0;
+      for (let i = 0; i < count; i++) {
+        const inp = document.getElementById('gscore_'+i);
+        if (!inp) continue;
+        const docId = inp.dataset.docid;
+        const score = parseInt(inp.value) || 0;
+        const max = parseInt(inp.dataset.max) || 0;
+        total += score; totalPoints += max;
+        if (docId) batch.update(doc(db,'exam_results',docId), { score });
+      }
+      batch.update(doc(db,'exam_progress',progDocId), { totalScore: total, totalPoints });
+      await batch.commit();
+      toast('채점 저장 완료', 'success');
+      document.querySelectorAll('[style*=fixed]').forEach(el => { if (el.style.zIndex >= 9000) el.remove(); });
+      await loadResults();
+    } catch(e) { toast('저장 오류: '+e.message, 'error'); }
+    showLoading(false);
+  };
+
+  // ── 누락 번역 보완 ──
+  window.fixMissingTranslations = async () => {
+    const examId = document.getElementById('qlist_examId').value;
+    if (!examId) { toast('시험을 먼저 선택하세요.', 'error'); return; }
+    showLoading(true);
+    try {
+      const qSnap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId)));
+      const missing = qSnap.docs.filter(d => {
+        const q = d.data();
+        return !q.titleZh && !q.contentZh;
+      });
+      if (!missing.length) { toast('모든 문제에 번역이 있습니다.', 'success'); showLoading(false); return; }
+      for (const qDoc of missing) {
+        const q = qDoc.data();
+        const toTr = [q.title, q.content].filter(Boolean);
+        const optsKo = q.type === 'mc' ? (q.options || []) : [];
+        const allTexts = [...toTr, ...optsKo];
+        if (!allTexts.length) continue;
+        const update = {};
+        const langCodes = [['zh-cn','Zh'],['ru','Ru'],['en','En']];
+        await Promise.all(langCodes.map(async ([code, cap]) => {
+          const res = await translateTexts(allTexts, code);
+          let idx = 0;
+          if (q.title) update['title'+cap] = res[idx++] || '';
+          if (q.content) update['content'+cap] = res[idx++] || '';
+          if (optsKo.length) update['options'+cap] = res.slice(idx);
+        }));
+        await updateDoc(doc(db,'exam_questions',qDoc.id), update);
+      }
+      toast(`${missing.length}개 문제 번역 완료`, 'success');
+      await loadQList(examId);
+    } catch(e) { toast('번역 오류: '+e.message, 'error'); }
     showLoading(false);
   };
 </script>
