@@ -1082,6 +1082,8 @@
     const cls = document.getElementById('classList').value;
     const opt = uiText[currentLang]?.opt || uiText.ko.opt;
     if (cls === opt || !cls) return;
+    const redirect = sessionStorage.getItem('ohinfo_redirect');
+    if (redirect) { sessionStorage.removeItem('ohinfo_redirect'); location.href = redirect; return; }
     setHidden('f_mode','add'); setHidden('f_postId','');
     setHidden('f_grade', SESSION.grade);
     setHidden('f_group', SESSION.group);

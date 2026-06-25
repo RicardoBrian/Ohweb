@@ -230,7 +230,9 @@ async function init() {
   SESSION = getSession();
   if (FORM.requireLogin !== false) {
     if (!SESSION) {
-      showErr('🔐','로그인 필요','학생 계정으로 로그인한 후 참여할 수 있습니다.'); return;
+      sessionStorage.setItem('ohinfo_redirect', location.href);
+      location.href = 'ohdlet.html';
+      return;
     }
   }
 
