@@ -6,9 +6,9 @@
   <title>시험 — ohinfo</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
   <style>
     :root {
       --glass: rgba(255,255,255,0.28);
@@ -380,18 +380,11 @@ async function loadMyExams() {
   const area = document.getElementById('examListArea');
   area.innerHTML = '<div style="color:var(--sub);font-size:0.85rem;">불러오는 중...</div>';
   try {
-    // grade/class 둘 다 쿼리 (Firestore 복합 쿼리 fallback)
-    let snap;
-    try {
-      snap = await getDocs(query(
-        collection(db, 'exam_assignments'),
-        where('grade', '==', SESSION.grade),
-        where('class', '==', SESSION.cls),
-        where('status', '==', 'ON')
-      ));
-    } catch(e) {
-      snap = await getDocs(query(collection(db, 'exam_assignments'), where('status', '==', 'ON')));
-    }
+    // grade 단일 쿼리 → 클라이언트 필터 (복합인덱스 불필요)
+    const snap = await getDocs(query(
+      collection(db, 'exam_assignments'),
+      where('grade', '==', SESSION.grade)
+    ));
     const assignments = snap.docs.map(d=>({id:d.id,...d.data()})).filter(a => {
       const gradeOk = _nv(String(a.grade||'')) === SESSION.grade;
       const clsOk   = _nv(String(a.class||'')) === SESSION.cls;
