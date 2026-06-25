@@ -555,7 +555,13 @@
   </div>
 </div>
 
-<script>
+<script type="module">
+  import { db } from './firebase-config.js';
+  import {
+    collection, query, where, orderBy, getDocs,
+    addDoc, updateDoc, deleteDoc, doc, serverTimestamp, increment
+  } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
   // ── 세션 체크 ──
   const _st = JSON.parse(sessionStorage.getItem('ohinfo_student') || 'null');
   if (!_st) { window.location.href = 'index.html'; }
@@ -577,7 +583,6 @@
   let modalImgList = [];
   let modalImgIndex = 0;
   const MASTER_PW = "9600";
-  const GAS_URL = 'https://script.google.com/macros/s/AKfycbyRdzjvK0vmVh9lEmwCdKoR_NvxXIOXPYpaSA1Wnir-77JTVChBL5rbJAJJk10B_cev/exec';
 
   const uiText = {
     ko: { opt:"수업을 선택하세요", enter:"입장하기", submit:"게시물 등록", edit_finish:"수정 완료" },
@@ -586,25 +591,30 @@
     en: { opt:"Select class", enter:"Enter", submit:"Post", edit_finish:"Save edit" }
   };
 
-  // ── GAS API (JSONP) ──
-  let _gasSeq = 0;
-  function gasGet(params) {
-    return new Promise((resolve, reject) => {
-      const cb = '_cb' + (++_gasSeq);
-      const url = GAS_URL + '?' + new URLSearchParams({...params, callback: cb});
-      const s = document.createElement('script');
-      window[cb] = d => { delete window[cb]; s.remove(); resolve(d); };
-      s.onerror = reject; s.src = url; document.head.appendChild(s);
+  // ── DeepL 번역 ──
+  const DEEPL_KEY = 'cf131ad1-2cd2-455b-8915-dd32ddfce706:fx';
+  const DEEPL_URL = 'https://api-free.deepl.com/v2/translate';
+  async function deepl(texts, targetLang) {
+    const res = await fetch(DEEPL_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `DeepL-Auth-Key ${DEEPL_KEY}` },
+      body: JSON.stringify({ text: texts, source_lang: 'KO', target_lang: targetLang })
     });
+    const data = await res.json();
+    return (data.translations || []).map(t => t.text);
   }
-  function gasPost(body) {
-    return new Promise((resolve, reject) => {
-      const cb = '_cb' + Date.now();
-      const url = GAS_URL + '?' + new URLSearchParams({ action: body.action, payload: JSON.stringify(body), callback: cb });
-      const s = document.createElement('script');
-      window[cb] = d => { delete window[cb]; s.remove(); resolve(d); };
-      s.onerror = reject; s.src = url; document.head.appendChild(s);
-    });
+
+  async function translatePost(subKo, msgKo) {
+    const [zhRes, ruRes, enRes] = await Promise.all([
+      deepl([subKo, msgKo], 'ZH'),
+      deepl([subKo, msgKo], 'RU'),
+      deepl([subKo, msgKo], 'EN-US')
+    ]);
+    return {
+      subZh: zhRes[0] || '', msgZh: zhRes[1] || '',
+      subRu: ruRes[0] || '', msgRu: ruRes[1] || '',
+      subEn: enRes[0] || '', msgEn: enRes[1] || ''
+    };
   }
 
   function langSfx(l) { return ({ko:'Ko',zh:'Zh',ru:'Ru',en:'En'})[l] || 'Ko'; }
@@ -741,13 +751,23 @@
   function getHidden(id) { const el = document.getElementById(id); return el ? el.value : ''; }
   function setHidden(id, val) { let el = document.getElementById(id); if (!el) { el = document.createElement('input'); el.type='hidden'; el.id=id; document.body.appendChild(el); } el.value = val; }
 
-  function updateClassList() {
-    gasGet({action:'getClasses', grade:SESSION.grade, group:SESSION.group})
-      .then(data => {
-        const sel = document.getElementById('classList');
-        sel.innerHTML = `<option>${uiText[currentLang]?.opt||uiText.ko.opt}</option>`;
-        (data.classes||[]).forEach(c => sel.innerHTML += `<option value="${c.name}">${c.name}</option>`);
-      }).catch(()=>{});
+  async function updateClassList() {
+    try {
+      const q = query(
+        collection(db, 'classes'),
+        where('grade', '==', SESSION.grade),
+        where('group', '==', SESSION.group),
+        where('status', '==', 'ON'),
+        orderBy('name')
+      );
+      const snap = await getDocs(q);
+      const sel = document.getElementById('classList');
+      sel.innerHTML = `<option>${uiText[currentLang]?.opt||uiText.ko.opt}</option>`;
+      snap.forEach(docSnap => {
+        const c = docSnap.data();
+        sel.innerHTML += `<option value="${c.name}">${c.name}</option>`;
+      });
+    } catch(e) {}
   }
 
   function goHome() { document.getElementById('step2').classList.add('hidden'); document.getElementById('step1').classList.remove('hidden'); document.getElementById('adminPanel').classList.add('hidden'); cancelEdit(); closeKeyboard(); window.scrollTo(0,0); }
@@ -775,18 +795,50 @@
     showSkeleton();
     try {
       const classTitle = getHidden('f_class');
-      const [clsData, postsData] = await Promise.all([
-        gasGet({action:'getClassByTitle', title:classTitle, grade:SESSION.grade, group:SESSION.group}),
-        gasGet({action:'getPosts', classTitle})
-      ]);
-      const cls = clsData.cls || {};
+
+      // 수업 정보 조회 (grade+group 조건 우선, 없으면 이름만으로 검색)
+      let cls = {};
+      const clsQ = query(
+        collection(db, 'classes'),
+        where('name', '==', classTitle),
+        where('grade', '==', SESSION.grade),
+        where('group', '==', SESSION.group)
+      );
+      const clsSnap = await getDocs(clsQ);
+      if (!clsSnap.empty) {
+        cls = clsSnap.docs[0].data();
+      } else {
+        const clsQ2 = query(collection(db, 'classes'), where('name', '==', classTitle));
+        const clsSnap2 = await getDocs(clsQ2);
+        if (!clsSnap2.empty) cls = clsSnap2.docs[0].data();
+      }
+
+      // 게시물 조회
+      const postsQ = query(
+        collection(db, 'posts'),
+        where('classTitle', '==', classTitle),
+        where('deleted', '==', false)
+      );
+      const postsSnap = await getDocs(postsQ);
+      const rawPosts = postsSnap.docs.map(d => {
+        const p = d.data();
+        return {
+          ...p,
+          id: d.id,
+          imgs: Array.isArray(p.imgs) ? p.imgs : [],
+          createdAt: p.createdAt?.toDate?.()?.toISOString() || ''
+        };
+      });
+      // 클라이언트 정렬: pinned desc, createdAt desc
+      rawPosts.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (b.createdAt > a.createdAt ? 1 : -1));
+
       const sfx = langSfx(currentLang);
       const example = cls['ex'+sfx] || cls.ex || '';
       document.getElementById('boardTitle').innerText = cls.name || classTitle;
       document.getElementById('boardDesc').innerText = cls.desc || '';
       document.getElementById('sidebarTitle').innerText = cls.name || classTitle;
       document.getElementById('sidebarDesc').innerText = cls.desc || '';
-      currentPosts = (postsData.posts||[]).map(p => ({
+      currentPosts = rawPosts.map(p => ({
         ...p,
         subject: p['sub'+sfx] || p.subKo || '',
         message: p['msg'+sfx] || p.msgKo || '',
@@ -857,9 +909,37 @@
   document.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; }, {passive:true});
   document.addEventListener('touchend', e => { if (touchX===null)return; const dx=e.changedTouches[0].clientX-touchX; if(Math.abs(dx)<40){touchX=null;return;} const slider=e.target.closest('.img-slider'); if(!slider){touchX=null;return;} const id=slider.id.replace('slider_',''); const track=document.getElementById('track_'+id); if(!track){touchX=null;return;} const len=track.children.length; dx<0?slideNext(id,len):slidePrev(id,len); touchX=null; }, {passive:true});
 
-  function toggleLikeUI(id,el) { const hasLiked=localStorage.getItem('voted_'+id); const cnt=el.querySelector('.like-count'); let cur=parseInt(cnt.innerText); el.classList.add('animate'); setTimeout(()=>el.classList.remove('animate'),350); if(hasLiked){cnt.innerText=Math.max(0,cur-1);el.classList.remove('voted');localStorage.removeItem('voted_'+id);gasPost({action:'likePost',id,delta:-1}).catch(()=>{});}else{cnt.innerText=cur+1;el.classList.add('voted');localStorage.setItem('voted_'+id,'1');gasPost({action:'likePost',id,delta:1}).catch(()=>{});} }
+  function toggleLikeUI(id, el) {
+    const hasLiked = localStorage.getItem('voted_'+id);
+    const cnt = el.querySelector('.like-count');
+    let cur = parseInt(cnt.innerText);
+    el.classList.add('animate');
+    setTimeout(() => el.classList.remove('animate'), 350);
+    if (hasLiked) {
+      cnt.innerText = Math.max(0, cur - 1);
+      el.classList.remove('voted');
+      localStorage.removeItem('voted_'+id);
+      updateDoc(doc(db, 'posts', id), { likes: increment(-1) }).catch(() => {});
+    } else {
+      cnt.innerText = cur + 1;
+      el.classList.add('voted');
+      localStorage.setItem('voted_'+id, '1');
+      updateDoc(doc(db, 'posts', id), { likes: increment(1) }).catch(() => {});
+    }
+  }
 
-  async function handlePinClick(postId) { const pw=await askPassword('관리자 비밀번호'); if(pw!==MASTER_PW)return; const post=currentPosts.find(p=>p.id===postId); if(!post)return; const isPinned=!post.pinned; gasPost({action:'pinPost',id:postId,isPinned}).then(()=>{post.pinned=isPinned;render(currentExample,sortedPosts());}).catch(err=>alert(err.message)); }
+  async function handlePinClick(postId) {
+    const pw = await askPassword('관리자 비밀번호');
+    if (pw !== MASTER_PW) return;
+    const post = currentPosts.find(p => p.id === postId);
+    if (!post) return;
+    const isPinned = !post.pinned;
+    try {
+      await updateDoc(doc(db, 'posts', postId), { pinned: isPinned });
+      post.pinned = isPinned;
+      render(currentExample, sortedPosts());
+    } catch(err) { alert(err.message); }
+  }
 
   function handleFiles(files) { Array.from(files).forEach(file=>{if(imgList.length>=4)return;const r=new FileReader();r.onload=e=>{const img=new Image();img.onload=()=>{const c=document.createElement('canvas');const max=500;let w=img.width,h=img.height;if(w>max||h>max){if(w>h){h*=max/w;w=max;}else{w*=max/h;h=max;}}c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);imgList.push(c.toDataURL('image/jpeg',0.6));updatePreview();};img.src=e.target.result;};r.readAsDataURL(file);}); }
   function updatePreview(){document.getElementById('previewArea').innerHTML=imgList.map((s,i)=>`<div class="preview-item"><img src="${s}"><button type="button" class="del-btn" onclick="removeImg(${i})">×</button></div>`).join('');}
@@ -867,22 +947,71 @@
   window.addEventListener('paste',e=>{if(document.getElementById('step2').classList.contains('hidden'))return;const items=(e.clipboardData||e.originalEvent.clipboardData).items;for(let item of items){if(item.type.startsWith('image/'))handleFiles([item.getAsFile()]);}});
 
   async function submitPost(event) {
-    event.preventDefault(); toggleLoading(true); document.getElementById('subBtn').disabled=true;
+    event.preventDefault();
+    toggleLoading(true);
+    document.getElementById('subBtn').disabled = true;
     const mode = getHidden('f_mode');
     const sub = document.getElementById('p_sub').value;
     const msg = document.getElementById('p_msg').value;
+    const srcLang = currentLang;
+
+    // 한국어 기준으로 변환
+    const sfx = langSfx(srcLang);
+    const subKo = sfx === 'Ko' ? sub : '';
+    const msgKo = sfx === 'Ko' ? msg : '';
+    const subLang = sfx !== 'Ko' ? sub : '';
+    const msgLang = sfx !== 'Ko' ? msg : '';
+
     try {
-      let res;
-      if (mode === 'edit') {
-        res = await gasPost({action:'editPost', id:getHidden('f_postId'), studentId:SESSION.id, sub, msg, srcLang:currentLang, imgs:imgList});
-      } else {
-        res = await gasPost({action:'addPost', classTitle:getHidden('f_class'), grade:getHidden('f_grade'), group:getHidden('f_group'), num:document.getElementById('p_num').value, name:document.getElementById('p_name').value, studentId:SESSION.id, sub, msg, srcLang:currentLang, imgs:imgList});
+      // 번역 (한국어로 입력된 경우만 / 아니면 해당 언어 필드에 저장)
+      let translations = { subZh:'', msgZh:'', subRu:'', msgRu:'', subEn:'', msgEn:'' };
+      if (srcLang === 'ko' && (sub || msg)) {
+        translations = await translatePost(sub, msg);
       }
-      if (res.error) throw new Error(res.error);
+
+      const subKoFinal = srcLang === 'ko' ? sub : '';
+      const msgKoFinal = srcLang === 'ko' ? msg : '';
+      const subZhFinal = srcLang === 'zh' ? sub : translations.subZh;
+      const msgZhFinal = srcLang === 'zh' ? msg : translations.msgZh;
+      const subRuFinal = srcLang === 'ru' ? sub : translations.subRu;
+      const msgRuFinal = srcLang === 'ru' ? msg : translations.msgRu;
+      const subEnFinal = srcLang === 'en' ? sub : translations.subEn;
+      const msgEnFinal = srcLang === 'en' ? msg : translations.msgEn;
+
+      if (mode === 'edit') {
+        const postId = getHidden('f_postId');
+        await updateDoc(doc(db, 'posts', postId), {
+          srcLang,
+          subKo: subKoFinal, msgKo: msgKoFinal,
+          subZh: subZhFinal, msgZh: msgZhFinal,
+          subRu: subRuFinal, msgRu: msgRuFinal,
+          subEn: subEnFinal, msgEn: msgEnFinal,
+          imgs: imgList
+        });
+      } else {
+        await addDoc(collection(db, 'posts'), {
+          classTitle: getHidden('f_class'),
+          grade: getHidden('f_grade'),
+          group: getHidden('f_group'),
+          num: document.getElementById('p_num').value,
+          name: document.getElementById('p_name').value,
+          studentId: SESSION.id,
+          srcLang,
+          subKo: subKoFinal, msgKo: msgKoFinal,
+          subZh: subZhFinal, msgZh: msgZhFinal,
+          subRu: subRuFinal, msgRu: msgRuFinal,
+          subEn: subEnFinal, msgEn: msgEnFinal,
+          imgs: imgList,
+          likes: 0,
+          pinned: false,
+          deleted: false,
+          createdAt: serverTimestamp()
+        });
+      }
       await manualRefresh();
       document.getElementById('postForm').reset(); fillSession(); cancelEdit();
-      setTimeout(()=>{const first=document.querySelector('.grid-board .post-card:not(.teacher-card)');if(first)first.scrollIntoView({behavior:'smooth',block:'center'});},150);
-    } catch(err) { alert(err.message); document.getElementById('subBtn').disabled=false; }
+      setTimeout(() => { const first = document.querySelector('.grid-board .post-card:not(.teacher-card)'); if (first) first.scrollIntoView({behavior:'smooth',block:'center'}); }, 150);
+    } catch(err) { alert(err.message); document.getElementById('subBtn').disabled = false; }
     toggleLoading(false);
   }
 
@@ -902,19 +1031,102 @@
     document.querySelector('.board-sidebar').scrollIntoView({behavior:'smooth',block:'start'});
   }
   function cancelEdit(){document.getElementById('postForm').reset();fillSession();setHidden('f_mode','add');setHidden('f_postId','');imgList=[];updatePreview();document.getElementById('subBtn').innerText=uiText[currentLang]?.submit||uiText.ko.submit;document.getElementById('subBtn').disabled=false;document.getElementById('cancelEditBtn').classList.add('hidden');}
-  async function openDelete(id){
-    if(!confirm('게시물을 삭제하시겠습니까?'))return;
+
+  async function openDelete(id) {
+    if (!confirm('게시물을 삭제하시겠습니까?')) return;
     toggleLoading(true);
-    const res=await gasPost({action:'deletePost',id,studentId:SESSION.id});
-    if(res.error){alert(res.error);toggleLoading(false);return;}
-    await manualRefresh();toggleLoading(false);
+    try {
+      await updateDoc(doc(db, 'posts', id), { deleted: true });
+      await manualRefresh();
+    } catch(e) { alert(e.message); }
+    toggleLoading(false);
   }
 
-  function loadAdminList(){gasGet({action:'getClasses'}).then(data=>{const list=data.classes||[];document.getElementById('adminList').innerHTML=list.map(c=>`<div class="admin-item"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><select onchange="toggleClassStatus('${c.id}',this.value)" class="status-pill ${c.status==='ON'?'on':'off'}"><option value="ON" ${c.status==='ON'?'selected':''}>ON</option><option value="OFF" ${c.status==='OFF'?'selected':''}>OFF</option></select><span style="font-size:0.88rem;">${c.grades.join(',')}학년 ${c.groups.join(',')}반 — <b>${c.name}</b></span></div><div style="display:flex;gap:12px;"><a onclick='editAdminUI(${JSON.stringify(c)})' style="font-size:0.82rem;font-weight:700;color:var(--accent);cursor:pointer;">수정</a><a onclick="delAdminClass('${c.id}')" style="font-size:0.82rem;font-weight:700;color:#ef4444;cursor:pointer;">삭제</a></div></div>`).join('');}).catch(()=>{});}
-  function toggleClassStatus(id,status){toggleLoading(true);gasPost({action:'toggleClassStatus',id,status}).then(()=>{loadAdminList();updateClassList();toggleLoading(false);}).catch(()=>toggleLoading(false));}
-  function editAdminUI(c){document.getElementById('adm_row').value=c.id;document.getElementById('adm_grade_hidden').value=(c.grades||[]).join(',');document.getElementById('adm_group_hidden').value=(c.groups||[]).join(',');document.getElementById('adm_name').value=c.name;document.getElementById('adm_desc').value=c.desc||'';document.getElementById('adm_ex').value=c.ex||'';document.getElementById('adm_popup').value=c.popup||'';document.getElementById('adm_target_area').classList.add('hidden');const info=document.getElementById('adm_edit_info');info.classList.remove('hidden');info.innerText=`수정 중: [${(c.grades||[]).join(',')}학년 ${(c.groups||[]).join(',')}반] ${c.name}`;document.getElementById('adm_cancel_btn').classList.remove('hidden');window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});}
-  function saveAdminClass(){const classId=document.getElementById('adm_row').value;const name=document.getElementById('adm_name').value;const desc=document.getElementById('adm_desc').value;const ex=document.getElementById('adm_ex').value;const popup=document.getElementById('adm_popup').value;if(classId){const grades=document.getElementById('adm_grade_hidden').value.split(',').filter(Boolean);const groups=document.getElementById('adm_group_hidden').value.split(',').filter(Boolean);toggleLoading(true);gasPost({action:'updateClass',id:classId,grades,groups,name,desc,ex,popup}).then(()=>{alert('저장되었습니다.');resetAdminForm();loadAdminList();updateClassList();toggleLoading(false);}).catch(err=>{alert(err.message);toggleLoading(false);});}else{const gL=[...document.querySelectorAll('.adm-g:checked')].map(i=>i.value.replace('학년',''));const bL=[...document.querySelectorAll('.adm-b:checked')].map(i=>i.value.replace('반',''));if(!gL.length||!bL.length){alert('학년과 반을 각각 최소 하나씩 선택해주세요.');return;}toggleLoading(true);gasPost({action:'addClass',grades:gL,groups:bL,name,desc,ex,popup}).then(()=>{alert('저장되었습니다.');resetAdminForm();loadAdminList();updateClassList();toggleLoading(false);}).catch(err=>{alert(err.message);toggleLoading(false);});}}
-  function delAdminClass(id){if(!confirm('삭제하시겠습니까?'))return;toggleLoading(true);gasPost({action:'deleteClass',id}).then(()=>{loadAdminList();toggleLoading(false);}).catch(()=>toggleLoading(false));}
+  async function loadAdminList() {
+    try {
+      const q = query(collection(db, 'classes'), orderBy('createdAt'));
+      const snap = await getDocs(q);
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      document.getElementById('adminList').innerHTML = list.map(c => `<div class="admin-item"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><select onchange="toggleClassStatus('${c.id}',this.value)" class="status-pill ${c.status==='ON'?'on':'off'}"><option value="ON" ${c.status==='ON'?'selected':''}>ON</option><option value="OFF" ${c.status==='OFF'?'selected':''}>OFF</option></select><span style="font-size:0.88rem;">${c.grade}학년 ${c.group}반 — <b>${c.name}</b></span></div><div style="display:flex;gap:12px;"><a onclick='editAdminUI(${JSON.stringify(c)})' style="font-size:0.82rem;font-weight:700;color:var(--accent);cursor:pointer;">수정</a><a onclick="delAdminClass('${c.id}')" style="font-size:0.82rem;font-weight:700;color:#ef4444;cursor:pointer;">삭제</a></div></div>`).join('');
+    } catch(e) {}
+  }
+
+  async function toggleClassStatus(id, status) {
+    toggleLoading(true);
+    try {
+      await updateDoc(doc(db, 'classes', id), { status });
+      await loadAdminList();
+      await updateClassList();
+    } catch(e) {}
+    toggleLoading(false);
+  }
+
+  function editAdminUI(c) {
+    document.getElementById('adm_row').value = c.id;
+    document.getElementById('adm_grade_hidden').value = c.grade || '';
+    document.getElementById('adm_group_hidden').value = c.group || '';
+    document.getElementById('adm_name').value = c.name;
+    document.getElementById('adm_desc').value = c.desc || '';
+    document.getElementById('adm_ex').value = c.ex || '';
+    document.getElementById('adm_popup').value = c.popup || '';
+    document.getElementById('adm_target_area').classList.add('hidden');
+    const info = document.getElementById('adm_edit_info');
+    info.classList.remove('hidden');
+    info.innerText = `수정 중: [${c.grade}학년 ${c.group}반] ${c.name}`;
+    document.getElementById('adm_cancel_btn').classList.remove('hidden');
+    window.scrollTo({top: document.body.scrollHeight, behavior:'smooth'});
+  }
+
+  async function saveAdminClass() {
+    const classId = document.getElementById('adm_row').value;
+    const name = document.getElementById('adm_name').value;
+    const desc = document.getElementById('adm_desc').value;
+    const ex = document.getElementById('adm_ex').value;
+    const popup = document.getElementById('adm_popup').value;
+    if (classId) {
+      const grade = document.getElementById('adm_grade_hidden').value;
+      const group = document.getElementById('adm_group_hidden').value;
+      toggleLoading(true);
+      try {
+        await updateDoc(doc(db, 'classes', classId), { grade, group, name, desc, ex, popup });
+        alert('저장되었습니다.');
+        resetAdminForm();
+        await loadAdminList();
+        await updateClassList();
+      } catch(err) { alert(err.message); }
+      toggleLoading(false);
+    } else {
+      const gL = [...document.querySelectorAll('.adm-g:checked')].map(i => i.value.replace('학년', ''));
+      const bL = [...document.querySelectorAll('.adm-b:checked')].map(i => i.value.replace('반', ''));
+      if (!gL.length || !bL.length) { alert('학년과 반을 각각 최소 하나씩 선택해주세요.'); return; }
+      toggleLoading(true);
+      try {
+        const promises = [];
+        for (const grade of gL) {
+          for (const group of bL) {
+            promises.push(addDoc(collection(db, 'classes'), { grade, group, name, desc, ex, popup, status: 'ON', createdAt: serverTimestamp() }));
+          }
+        }
+        await Promise.all(promises);
+        alert('저장되었습니다.');
+        resetAdminForm();
+        await loadAdminList();
+        await updateClassList();
+      } catch(err) { alert(err.message); }
+      toggleLoading(false);
+    }
+  }
+
+  async function delAdminClass(id) {
+    if (!confirm('삭제하시겠습니까?')) return;
+    toggleLoading(true);
+    try {
+      await deleteDoc(doc(db, 'classes', id));
+      await loadAdminList();
+    } catch(e) {}
+    toggleLoading(false);
+  }
+
   function resetAdminForm(){['adm_row','adm_grade_hidden','adm_group_hidden','adm_name','adm_desc','adm_ex','adm_popup'].forEach(id=>document.getElementById(id).value='');document.querySelectorAll('#adm_target_area input').forEach(i=>i.checked=false);document.getElementById('adm_target_area').classList.remove('hidden');document.getElementById('adm_edit_info').classList.add('hidden');document.getElementById('adm_cancel_btn').classList.add('hidden');}
 
   function fillSession() {
@@ -927,6 +1139,44 @@
     buildKeyboard(); bindKeyboardTargets(); updateClassList(); setLanguage('ko');
     fillSession();
   };
+
+  // ── window 노출 (onclick 속성 호환) ──
+  window.toggleDark = toggleDark;
+  window.toggleMobileMenu = toggleMobileMenu;
+  window.closeMobileMenu = closeMobileMenu;
+  window.setLanguage = setLanguage;
+  window.startBoard = startBoard;
+  window.goHome = goHome;
+  window.toggleAdmin = toggleAdmin;
+  window.manualRefresh = manualRefresh;
+  window.setSort = setSort;
+  window.filterPosts = filterPosts;
+  window.submitPost = submitPost;
+  window.cancelEdit = cancelEdit;
+  window.handleEditClick = handleEditClick;
+  window.openDelete = openDelete;
+  window.toggleLikeUI = toggleLikeUI;
+  window.handlePinClick = handlePinClick;
+  window.openModal = openModal;
+  window.closeModal = closeModal;
+  window.handleModalClick = handleModalClick;
+  window.modalNav = modalNav;
+  window.closePopup = closePopup;
+  window.pwConfirm = pwConfirm;
+  window.pwCancel = pwCancel;
+  window.handleFiles = handleFiles;
+  window.saveAdminClass = saveAdminClass;
+  window.resetAdminForm = resetAdminForm;
+  window.toggleClassStatus = toggleClassStatus;
+  window.editAdminUI = editAdminUI;
+  window.delAdminClass = delAdminClass;
+  window.kbInsert = kbInsert;
+  window.toggleShift = toggleShift;
+  window.kbBackspace = kbBackspace;
+  window.closeKeyboard = closeKeyboard;
+  window.slidePrev = slidePrev;
+  window.slideNext = slideNext;
+  window.slideTo = slideTo;
 </script>
 </body>
 </html>
