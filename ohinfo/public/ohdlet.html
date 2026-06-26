@@ -495,7 +495,6 @@
 
 <nav class="nav">
   <div class="nav-logo" onclick="navLogoClick()"><img src="logo.png" alt="ohinfo"></div>
-  <button class="btn ghost nav-admin" onclick="toggleAdmin()">관리</button>
   <div class="nav-end">
     <div class="lang-globe" id="langGlobe">
       <button class="lang-globe-btn" onclick="toggleLangDD()" title="언어">🌐</button>
@@ -521,7 +520,6 @@
 
 <div id="mobileMenu" class="mobile-menu">
   <button class="btn ghost" onclick="navLogoClick();closeMobileMenu()">← 뒤로</button>
-  <button class="btn ghost" onclick="toggleAdmin();closeMobileMenu()">관리</button>
   <div style="display:flex;gap:8px;flex-wrap:wrap;">
     <button class="btn lang-btn" id="m-btn-ko" onclick="setLanguage('ko');closeMobileMenu()">한국어</button>
     <button class="btn lang-btn" id="m-btn-zh" onclick="setLanguage('zh');closeMobileMenu()">中文</button>
