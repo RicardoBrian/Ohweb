@@ -1416,12 +1416,13 @@
           <div class="list-item-name">📌 ${c.name}</div>
           <div class="list-item-sub">${c.grade}학년 / ${c.group}반 <span style="font-size:0.75rem;padding:2px 7px;border-radius:6px;font-weight:700;background:${c.status==='ON'?'rgba(34,197,94,0.15)':'rgba(239,68,68,0.12)'};color:${c.status==='ON'?'#16a34a':'#ef4444'}">${c.status}</span></div>
         </div>
-        <div class="list-item-actions" style="display:flex;align-items:center;gap:8px;">
+        <div class="list-item-actions" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <select onchange="toggleClassStatus('${c.id}',this.value)" style="font-size:0.78rem;padding:4px 8px;border-radius:8px;border:1.5px solid var(--border-card);background:var(--glass);cursor:pointer;font-weight:700;color:${c.status==='ON'?'#22c55e':'#ef4444'}">
             <option value="ON" ${c.status==='ON'?'selected':''}>ON</option>
             <option value="OFF" ${c.status!=='ON'?'selected':''}>OFF</option>
           </select>
           <button class="btn ghost sm" onclick='editAdminUI(${JSON.stringify(c).replace(/'/g,"&#39;")})'>수정</button>
+          <button class="btn ghost sm" style="color:var(--accent)" onclick="openTranslateModal('${c.id}','${c.name.replace(/'/g,"\\'")}')">🌐 번역</button>
           <button class="btn danger sm" onclick="delAdminClass('${c.id}')">삭제</button>
         </div>
       </div>`;
@@ -2118,6 +2119,151 @@
     } catch(e) { toast('번역 오류: '+e.message, 'error'); }
     showLoading(false);
   };
+
+  // ── 패들릿 일괄 번역 ──
+  async function gtranslate(texts, targetLang, sourceLang) {
+    const res = await fetch('/.netlify/functions/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texts, targetLang, sourceLang })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error || !data.translations) throw new Error(data.error || data.message || `HTTP ${res.status}`);
+    return data.translations.map(t => t.text);
+  }
+
+  async function translateAllLangs(sub, msg, srcLang) {
+    const sl = srcLang === 'zh' ? 'zh-cn' : (srcLang || 'ko');
+    const targets = ['ko','zh-cn','ru','en'].filter(t => t !== sl);
+    const results = await Promise.all(targets.map(tl => gtranslate([sub||'', msg||''], tl, sl)));
+    const map = {};
+    targets.forEach((tl, i) => { map[tl] = results[i]; });
+    const g = (tl) => map[tl] || ['',''];
+    return {
+      subKo: srcLang==='ko' ? sub : (g('ko')[0]||''),
+      msgKo: srcLang==='ko' ? msg : (g('ko')[1]||''),
+      subZh: srcLang==='zh' ? sub : (g('zh-cn')[0]||''),
+      msgZh: srcLang==='zh' ? msg : (g('zh-cn')[1]||''),
+      subRu: srcLang==='ru' ? sub : (g('ru')[0]||''),
+      msgRu: srcLang==='ru' ? msg : (g('ru')[1]||''),
+      subEn: srcLang==='en' ? sub : (g('en')[0]||''),
+      msgEn: srcLang==='en' ? msg : (g('en')[1]||''),
+    };
+  }
+
+  let _txClassId = '', _txPosts = [], _txChecked = new Set();
+
+  window.openTranslateModal = async (classId, className) => {
+    _txClassId = classId; _txPosts = []; _txChecked = new Set();
+    const modal = document.getElementById('translateModal');
+    document.getElementById('txClassName').textContent = className;
+    document.getElementById('txList').innerHTML = '<div style="padding:20px;text-align:center;color:var(--sub)">불러오는 중...</div>';
+    document.getElementById('txProgress').textContent = '';
+    document.getElementById('txRunBtn').disabled = false;
+    modal.classList.remove('hidden');
+    try {
+      const snap = await getDocs(query(collection(db,'posts'), where('classTitle','==',className)));
+      _txPosts = snap.docs.map(d => ({id:d.id,...d.data()}));
+      // 번역 누락 감지: subKo 비어있거나, 어느 언어 번역이라도 비어있는 게시물
+      const isMissing = p => {
+        const src = p.srcLang || 'ko';
+        if (src==='ko' && (!p.subKo && !p.msgKo)) return false; // 글 자체가 없음
+        return !p.subKo || !p.subZh || !p.subRu || !p.subEn;
+      };
+      const missing = _txPosts.filter(isMissing);
+      _txChecked = new Set(missing.map(p => p.id));
+      renderTxList(missing, _txPosts);
+    } catch(e) {
+      document.getElementById('txList').innerHTML = `<div style="color:#ef4444;padding:10px">${e.message}</div>`;
+    }
+  };
+
+  function renderTxList(missing, all) {
+    const el = document.getElementById('txList');
+    if (!all.length) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--sub)">게시물이 없습니다.</div>'; return; }
+    const rows = all.map(p => {
+      const src = p.srcLang || 'ko';
+      const srcTxt = ({ko:'한국어',zh:'중국어',ru:'러시아어',en:'영어'})[src] || src;
+      const sub = p[`sub${({ko:'Ko',zh:'Zh',ru:'Ru',en:'En'})[src]}`] || p.subKo || '';
+      const langs = ['Ko','Zh','Ru','En'];
+      const missing = langs.filter(l => !p['sub'+l] && !p['msg'+l]);
+      const badge = missing.length ? `<span style="font-size:0.7rem;padding:2px 7px;border-radius:50px;background:rgba(239,68,68,0.12);color:#ef4444;margin-left:6px;">누락: ${missing.join(',')}</span>` : `<span style="font-size:0.7rem;padding:2px 7px;border-radius:50px;background:rgba(34,197,94,0.12);color:#16a34a;margin-left:6px;">완료</span>`;
+      const checked = _txChecked.has(p.id);
+      return `<label style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:10px;border:1px solid var(--border-card);background:var(--glass);margin-bottom:6px;cursor:pointer;">
+        <input type="checkbox" ${checked?'checked':''} onchange="txToggle('${p.id}',this.checked)" style="width:16px;height:16px;accent-color:var(--accent)">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:0.85rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sub||'(제목 없음)'}</div>
+          <div style="font-size:0.72rem;color:var(--sub)">원문: ${srcTxt} · ${p.name||''} ${badge}</div>
+        </div>
+      </label>`;
+    });
+    const missCnt = all.filter(p => _txChecked.has(p.id)).length;
+    el.innerHTML = `<div style="font-size:0.82rem;color:var(--sub);margin-bottom:10px">전체 ${all.length}건 · 번역 필요 <strong style="color:var(--accent)">${missing.length}건</strong> 선택됨</div>` + rows.join('');
+  }
+
+  window.txToggle = (id, checked) => { if(checked) _txChecked.add(id); else _txChecked.delete(id); };
+  window.txSelectAll = (checked) => {
+    _txPosts.forEach(p => { if(checked) _txChecked.add(p.id); else _txChecked.delete(p.id); });
+    document.querySelectorAll('#txList input[type=checkbox]').forEach(cb => cb.checked = checked);
+  };
+  window.closeTranslateModal = () => document.getElementById('translateModal').classList.add('hidden');
+
+  window.runTranslate = async () => {
+    const ids = [..._txChecked];
+    if (!ids.length) { toast('번역할 게시물을 선택하세요.', 'error'); return; }
+    document.getElementById('txRunBtn').disabled = true;
+    const prog = document.getElementById('txProgress');
+    let done = 0;
+    for (const id of ids) {
+      const p = _txPosts.find(x => x.id === id);
+      if (!p) continue;
+      const srcLang = p.srcLang || 'ko';
+      const sfx = ({ko:'Ko',zh:'Zh',ru:'Ru',en:'En'})[srcLang] || 'Ko';
+      const sub = p['sub'+sfx] || p.subKo || '';
+      const msg = p['msg'+sfx] || p.msgKo || '';
+      prog.textContent = `${done+1}/${ids.length} 번역 중...`;
+      try {
+        const tr = await translateAllLangs(sub, msg, srcLang);
+        await updateDoc(doc(db,'posts',id), tr);
+        done++;
+      } catch(e) {
+        console.error('tx error:', p.id, e);
+        prog.textContent = `오류 (${p.id}): ${e.message}`;
+        await new Promise(r => setTimeout(r, 500));
+      }
+      await new Promise(r => setTimeout(r, 120));
+    }
+    prog.textContent = `✅ ${done}건 번역 완료!`;
+    document.getElementById('txRunBtn').disabled = false;
+    toast(`${done}건 번역 완료!`, 'success');
+    // 목록 갱신
+    await openTranslateModal(_txClassId, document.getElementById('txClassName').textContent);
+  };
 </script>
+
+<!-- 번역 모달 -->
+<div id="translateModal" class="hidden" style="position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.4);backdrop-filter:blur(6px);" onclick="if(event.target===this)closeTranslateModal()">
+  <div style="background:var(--card-bg, #fff);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--border);border-radius:22px;box-shadow:var(--shadow-md);width:min(600px,94vw);max-height:80vh;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="padding:20px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+      <div>
+        <div style="font-size:1.05rem;font-weight:900;">🌐 일괄 번역</div>
+        <div style="font-size:0.8rem;color:var(--sub);margin-top:2px;" id="txClassName"></div>
+      </div>
+      <button onclick="closeTranslateModal()" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--sub);line-height:1;">✕</button>
+    </div>
+    <div style="padding:14px 24px 8px;flex-shrink:0;display:flex;align-items:center;gap:10px;">
+      <label style="font-size:0.82rem;font-weight:600;display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <input type="checkbox" onchange="txSelectAll(this.checked)" style="width:15px;height:15px;accent-color:var(--accent)"> 전체 선택
+      </label>
+      <span style="flex:1"></span>
+      <div id="txProgress" style="font-size:0.82rem;font-weight:700;color:var(--accent)"></div>
+    </div>
+    <div id="txList" style="flex:1;overflow-y:auto;padding:6px 24px 10px;"></div>
+    <div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;flex-shrink:0;">
+      <button class="btn ghost sm" onclick="closeTranslateModal()">닫기</button>
+      <button class="btn accent sm" id="txRunBtn" onclick="runTranslate()">선택 번역 실행</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
