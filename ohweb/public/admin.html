@@ -986,7 +986,7 @@
 
   // ── 네비 이벤트 연결 ──
   document.querySelectorAll('.nav-tab[data-section]').forEach(btn => {
-    btn.addEventListener('click', () => showSection(btn.dataset.section));
+    btn.addEventListener('click', () => window.showSection(btn.dataset.section));
   });
   document.getElementById('darkToggleBtn').addEventListener('click', () => {
     document.body.classList.toggle('dark');
@@ -1004,7 +1004,7 @@
   });
   document.getElementById('waffleDD').addEventListener('click', (e) => e.stopPropagation());
   document.querySelectorAll('.waffle-app[data-section]').forEach(btn => {
-    btn.addEventListener('click', () => { closeWaffle(); showSection(btn.dataset.section); });
+    btn.addEventListener('click', () => { closeWaffle(); window.showSection(btn.dataset.section); });
   });
   document.querySelectorAll('.waffle-app[data-href]').forEach(btn => {
     btn.addEventListener('click', () => { closeWaffle(); location.href = btn.dataset.href; });
