@@ -989,12 +989,9 @@
   if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
 
   // ── 와플 메뉴 ──
-  window.toggleWaffle = () => {
-    document.getElementById('waffleDD').classList.toggle('hidden');
-  };
-  window.closeWaffle = () => {
-    document.getElementById('waffleDD').classList.add('hidden');
-  };
+  const closeWaffle = () => { document.getElementById('waffleDD').classList.add('hidden'); };
+  window.closeWaffle = closeWaffle;
+  window.toggleWaffle = () => { document.getElementById('waffleDD').classList.toggle('hidden'); };
   document.addEventListener('click', (e) => {
     if (!document.getElementById('waffleWrap').contains(e.target)) closeWaffle();
   });
