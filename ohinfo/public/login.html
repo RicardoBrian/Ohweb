@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>로그인</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <style>
+    :root {
+      --glass: rgba(255,255,255,0.28); --glass-strong: rgba(255,255,255,0.42);
+      --glass-nav: rgba(255,255,255,0.3); --border: rgba(255,255,255,0.6);
+      --border-card: rgba(255,255,255,0.48); --highlight: inset 0 1px 0 rgba(255,255,255,0.7);
+      --text: #1a1f2e; --sub: #7a849a; --accent: #2a5ce6; --accent-light: rgba(42,92,230,0.12);
+      --blur: blur(28px); --shadow: 0 4px 20px rgba(60,80,160,0.1);
+      --shadow-md: 0 8px 32px rgba(60,80,160,0.18); --radius: 18px; --radius-sm: 11px; --nav-h: 58px;
+    }
+    body.dark {
+      --glass: rgba(255,255,255,0.07); --glass-strong: rgba(255,255,255,0.11);
+      --glass-nav: rgba(10,12,25,0.65); --border: rgba(255,255,255,0.14);
+      --border-card: rgba(255,255,255,0.1); --highlight: inset 0 1px 0 rgba(255,255,255,0.1);
+      --text: #dde2f0; --sub: #525a70; --accent: #4f8df7; --accent-light: rgba(79,141,247,0.15);
+      --shadow: 0 4px 20px rgba(0,0,0,0.45); --shadow-md: 0 8px 32px rgba(0,0,0,0.55);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: radial-gradient(ellipse at 15% 20%, #b8caff 0%, transparent 50%),
+        radial-gradient(ellipse at 85% 10%, #d4b8ff 0%, transparent 45%),
+        radial-gradient(ellipse at 60% 80%, #b8e0ff 0%, transparent 50%), #cdd8ff;
+      background-attachment: fixed; color: var(--text);
+      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 16px; line-height: 1.7; min-height: 100vh;
+      display: flex; flex-direction: column;
+    }
+    body.dark { background: radial-gradient(ellipse at 15% 20%,#1a2050 0%,transparent 50%), radial-gradient(ellipse at 85% 10%,#1e1040 0%,transparent 45%), radial-gradient(ellipse at 60% 80%,#0d1a35 0%,transparent 50%), #080c1a; background-attachment:fixed; }
+
+    /* NAV */
+    .nav { position: sticky; top: 0; z-index: 200; background: var(--glass-nav); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border-bottom: 1px solid var(--border); box-shadow: 0 1px 0 rgba(255,255,255,0.35),var(--shadow); padding: 0 20px; height: var(--nav-h); display: flex; align-items: center; gap: 10px; }
+    .nav-brand { font-size: 1.1rem; font-weight: 900; letter-spacing: -0.02em; background: linear-gradient(135deg,var(--accent),#7c4dff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; white-space: nowrap; flex-shrink: 0; }
+    .nav-end { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    .lang-globe { position: relative; flex-shrink: 0; }
+    .lang-globe-btn { font-family: inherit; font-size: 1rem; cursor: pointer; border-radius: 50%; width: 32px; height: 32px; border: 1px solid var(--border-card); background: var(--glass); color: var(--sub); display: flex; align-items: center; justify-content: center; transition: 0.2s; box-shadow: var(--highlight); }
+    .lang-globe-btn:hover { background: var(--glass-strong); color: var(--text); }
+    .lang-globe-dd { position: absolute; top: calc(100% + 8px); right: 0; background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border-card); border-radius: var(--radius-sm); box-shadow: var(--shadow-md); overflow: hidden; min-width: 110px; z-index: 400; }
+    .lang-globe-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; font-size: 0.85rem; font-weight: 700; cursor: pointer; color: var(--text); transition: 0.15s; }
+    .lang-globe-item:hover { background: var(--accent-light); }
+    .lang-globe-item .check { color: var(--accent); font-size: 0.8rem; }
+    .dark-toggle { width: 42px; height: 24px; border-radius: 50px; background: var(--glass); border: 1px solid var(--border); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--highlight); cursor: pointer; position: relative; transition: 0.3s; flex-shrink: 0; }
+    body.dark .dark-toggle { background: rgba(42,92,230,0.6); border-color: rgba(100,140,255,0.4); }
+    .dark-toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.2); transition: transform 0.3s; }
+    body.dark .dark-toggle::after { transform: translateX(18px); }
+
+    /* LAYOUT */
+    .wrap { flex: 1; display: flex; align-items: center; justify-content: center; padding: 32px 20px; }
+    .login-card { background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border); border-radius: 24px; padding: 36px 32px; width: 100%; max-width: 400px; box-shadow: var(--highlight),var(--shadow-md); }
+    @media(max-width:480px){ .login-card { padding: 24px 18px; border-radius: 18px; } }
+    .login-title { font-size: 1.35rem; font-weight: 900; margin-bottom: 4px; }
+    .login-sub { font-size: 0.85rem; color: var(--sub); margin-bottom: 24px; }
+    .field { margin-bottom: 12px; }
+    .field > label { display: block; font-size: 0.71rem; font-weight: 700; color: var(--sub); margin-bottom: 5px; letter-spacing: 0.05em; text-transform: uppercase; }
+    .inp { width: 100%; padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-card); background: var(--glass); color: var(--text); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--highlight); font-family: inherit; font-size: 0.93rem; outline: none; transition: border-color 0.2s; }
+    .inp::placeholder { color: var(--sub); }
+    .inp:focus { border-color: rgba(42,92,230,0.5); box-shadow: var(--highlight),0 0 0 3px rgba(42,92,230,0.13); }
+    select.inp { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .btn { font-family: inherit; font-size: 0.95rem; font-weight: 700; cursor: pointer; border-radius: 50px; padding: 12px 24px; border: 1px solid var(--border); background: var(--glass); color: var(--text); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--highlight),var(--shadow); transition: background 0.2s,transform 0.15s; width: 100%; margin-top: 6px; }
+    .btn:hover { background: var(--glass-strong); }
+    .btn:active { transform: scale(0.97); }
+    .btn.accent { background: rgba(42,92,230,0.82); border-color: rgba(100,140,255,0.5); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,0.3),0 4px 20px rgba(42,92,230,0.35); }
+    .btn.accent:hover { background: rgba(42,92,230,0.95); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .err { color: #ef4444; font-size: 0.82rem; margin-top: 8px; min-height: 20px; text-align: center; }
+    .redirect-notice { font-size: 0.8rem; color: var(--sub); text-align: center; margin-top: 14px; padding: 8px 12px; background: var(--glass); border: 1px solid var(--border-card); border-radius: var(--radius-sm); line-height: 1.5; }
+    .redirect-notice strong { color: var(--accent); }
+  </style>
+</head>
+<body>
+<nav class="nav" onclick="closeLangDD()">
+  <div class="nav-brand">ohinfo</div>
+  <div class="nav-end">
+    <div class="lang-globe" id="langGlobe">
+      <button class="lang-globe-btn" onclick="event.stopPropagation();toggleLangDD()" title="언어">🌐</button>
+      <div class="lang-globe-dd hidden" id="langGlobeDD" onclick="event.stopPropagation()">
+        <div class="lang-globe-item" onclick="setLang('ko')"><span>한국어</span><span class="check" id="lck-ko"></span></div>
+        <div class="lang-globe-item" onclick="setLang('zh')"><span>中文</span><span class="check" id="lck-zh"></span></div>
+        <div class="lang-globe-item" onclick="setLang('ru')"><span>Рус</span><span class="check" id="lck-ru"></span></div>
+        <div class="lang-globe-item" onclick="setLang('en')"><span>English</span><span class="check" id="lck-en"></span></div>
+      </div>
+    </div>
+    <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="login-card">
+    <div class="login-title" id="uiTitle">🔐 로그인</div>
+    <div class="login-sub" id="uiSub">설문에 참여하려면 로그인하세요</div>
+
+    <div id="redirectNotice" class="redirect-notice hidden">
+      <span id="uiNotice">로그인 후 설문 페이지로 이동합니다</span>
+    </div>
+
+    <div style="margin-top:16px">
+      <div class="field">
+        <label id="uiSchoolLbl">학교명</label>
+        <input class="inp" id="loginSchool" type="text" id="uiSchoolPh" placeholder="학교 이름 입력">
+      </div>
+      <div class="row-2">
+        <div class="field">
+          <label id="uiGradeLbl">학년</label>
+          <select class="inp" id="loginGrade">
+            <option value="1">1학년</option>
+            <option value="2">2학년</option>
+            <option value="3">3학년</option>
+          </select>
+        </div>
+        <div class="field">
+          <label id="uiClassLbl">반</label>
+          <select class="inp" id="loginClass">
+            <option value="1">1반</option><option value="2">2반</option>
+            <option value="3">3반</option><option value="4">4반</option>
+            <option value="5">5반</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label id="uiNumLbl">번호</label>
+        <select class="inp" id="loginNumber">
+          <option value="" id="uiNumOpt">선택</option>
+        </select>
+      </div>
+      <div class="field">
+        <label id="uiPwLbl">비밀번호</label>
+        <input class="inp" id="loginPw" type="password" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="btn accent" id="loginBtn" onclick="doLogin()">로그인</button>
+      <div class="err" id="loginErr"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { db } from './firebase-config.js';
+import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+// ── dark ──
+const savedDark = localStorage.getItem('dark');
+if (savedDark === '1' || (!savedDark && window.matchMedia('(prefers-color-scheme:dark)').matches)) document.body.classList.add('dark');
+window.toggleDark = () => { document.body.classList.toggle('dark'); localStorage.setItem('dark', document.body.classList.contains('dark') ? '1' : '0'); };
+
+// ── i18n ──
+const T = {
+  ko: { title:'🔐 로그인', sub:'설문에 참여하려면 로그인하세요', notice:'로그인 후 설문 페이지로 이동합니다',
+    school:'학교명', schoolPh:'학교 이름 입력', grade:'학년', cls:'반', num:'번호', numOpt:'선택',
+    pw:'비밀번호', pwPh:'비밀번호 입력', btn:'로그인',
+    gradeOpt: n => n + '학년', clsOpt: n => n + '반',
+    errSchool:'학교 이름을 입력하세요.', errNum:'번호를 선택하세요.', errPw:'비밀번호를 입력하세요.',
+    errNotFound:'학생 정보를 찾을 수 없습니다.', errNotReg:'아직 등록되지 않은 계정입니다.', errWrongPw:'비밀번호가 맞지 않습니다.',
+    loading:'확인 중...', ok:'로그인' },
+  zh: { title:'🔐 登录', sub:'请登录以参与问卷', notice:'登录后将跳转至问卷页面',
+    school:'学校名', schoolPh:'输入学校名称', grade:'年级', cls:'班', num:'学号', numOpt:'选择',
+    pw:'密码', pwPh:'输入密码', btn:'登录',
+    gradeOpt: n => n + '年级', clsOpt: n => n + '班',
+    errSchool:'请输入学校名称。', errNum:'请选择学号。', errPw:'请输入密码。',
+    errNotFound:'未找到学生信息。', errNotReg:'账号尚未注册。', errWrongPw:'密码错误。',
+    loading:'验证中...', ok:'登录' },
+  ru: { title:'🔐 Вход', sub:'Войдите, чтобы пройти опрос', notice:'После входа вы будете перенаправлены на опрос',
+    school:'Школа', schoolPh:'Введите название школы', grade:'Класс', cls:'Группа', num:'Номер', numOpt:'Выбрать',
+    pw:'Пароль', pwPh:'Введите пароль', btn:'Войти',
+    gradeOpt: n => n + ' кл.', clsOpt: n => n + ' гр.',
+    errSchool:'Введите название школы.', errNum:'Выберите номер.', errPw:'Введите пароль.',
+    errNotFound:'Ученик не найден.', errNotReg:'Аккаунт не зарегистрирован.', errWrongPw:'Неверный пароль.',
+    loading:'Проверка...', ok:'Войти' },
+  en: { title:'🔐 Login', sub:'Sign in to participate in the survey', notice:'You will be redirected to the survey after login',
+    school:'School', schoolPh:'Enter school name', grade:'Grade', cls:'Class', num:'Number', numOpt:'Select',
+    pw:'Password', pwPh:'Enter password', btn:'Login',
+    gradeOpt: n => 'Grade ' + n, clsOpt: n => 'Class ' + n,
+    errSchool:'Please enter your school name.', errNum:'Please select your number.', errPw:'Please enter your password.',
+    errNotFound:'Student not found.', errNotReg:'Account not registered yet.', errWrongPw:'Incorrect password.',
+    loading:'Checking...', ok:'Login' },
+};
+
+let lang = localStorage.getItem('ohinfo_lang') || 'ko';
+
+function applyLang() {
+  const t = T[lang];
+  document.getElementById('uiTitle').textContent   = t.title;
+  document.getElementById('uiSub').textContent     = t.sub;
+  document.getElementById('uiNotice').textContent  = t.notice;
+  document.getElementById('uiSchoolLbl').textContent = t.school;
+  document.getElementById('loginSchool').placeholder = t.schoolPh;
+  document.getElementById('uiGradeLbl').textContent  = t.grade;
+  document.getElementById('uiClassLbl').textContent  = t.cls;
+  document.getElementById('uiNumLbl').textContent    = t.num;
+  document.getElementById('uiPwLbl').textContent     = t.pw;
+  document.getElementById('loginPw').placeholder     = t.pwPh;
+  document.getElementById('loginBtn').textContent    = t.btn;
+  // grade / class options
+  const gSel = document.getElementById('loginGrade');
+  [...gSel.options].forEach((o, i) => { o.textContent = t.gradeOpt(i + 1); });
+  const cSel = document.getElementById('loginClass');
+  [...cSel.options].forEach((o, i) => { o.textContent = t.clsOpt(i + 1); });
+  // number placeholder
+  document.getElementById('uiNumOpt').textContent = t.numOpt;
+  updateLangCheck(lang);
+}
+
+function updateLangCheck(l) {
+  ['ko','zh','ru','en'].forEach(k => { document.getElementById('lck-' + k).textContent = k === l ? '✓' : ''; });
+}
+
+window.setLang = function(l) { lang = l; localStorage.setItem('ohinfo_lang', l); closeLangDD(); applyLang(); };
+window.toggleLangDD = () => document.getElementById('langGlobeDD').classList.toggle('hidden');
+window.closeLangDD  = () => document.getElementById('langGlobeDD').classList.add('hidden');
+
+// ── number dropdown 1~50 ──
+(function buildNumOptions() {
+  const sel = document.getElementById('loginNumber');
+  for (let i = 1; i <= 50; i++) {
+    const o = document.createElement('option');
+    o.value = i; o.textContent = i;
+    sel.appendChild(o);
+  }
+})();
+
+// ── redirect notice ──
+const redirectUrl = sessionStorage.getItem('ohinfo_redirect');
+if (redirectUrl) document.getElementById('redirectNotice').classList.remove('hidden');
+
+// ── already logged in → redirect ──
+if (sessionStorage.getItem('ohinfo_student')) {
+  const dest = sessionStorage.getItem('ohinfo_redirect');
+  if (dest) { sessionStorage.removeItem('ohinfo_redirect'); location.href = dest; }
+  else { location.href = 'home.html'; }
+}
+
+function nv(v) { return String(v || '').replace(/학년|년급|학|반|班|кл\./g,'').trim(); }
+
+window.doLogin = async () => {
+  const t = T[lang];
+  const schoolName = document.getElementById('loginSchool').value.trim();
+  const grade = document.getElementById('loginGrade').value;
+  const cls   = document.getElementById('loginClass').value;
+  const number = document.getElementById('loginNumber').value;
+  const pw    = document.getElementById('loginPw').value;
+  const errEl = document.getElementById('loginErr');
+  const btn   = document.getElementById('loginBtn');
+  errEl.textContent = '';
+
+  if (!schoolName) { errEl.textContent = t.errSchool; return; }
+  if (!number)     { errEl.textContent = t.errNum; return; }
+  if (!pw)         { errEl.textContent = t.errPw; return; }
+
+  btn.disabled = true;
+  btn.textContent = t.loading;
+  try {
+    const snap = await getDocs(collection(db, 'students'));
+    const match = snap.docs.find(d => {
+      const s = d.data();
+      return s.schoolName === schoolName
+        && nv(s.grade) === nv(grade)
+        && nv(s.class) === nv(cls)
+        && String(s.number) === String(number);
+    });
+    if (!match) { errEl.textContent = t.errNotFound; btn.disabled = false; btn.textContent = t.ok; return; }
+    const data = match.data();
+    if (!data.registered) { errEl.textContent = t.errNotReg; btn.disabled = false; btn.textContent = t.ok; return; }
+    if (data.password !== pw) { errEl.textContent = t.errWrongPw; document.getElementById('loginPw').value = ''; btn.disabled = false; btn.textContent = t.ok; return; }
+
+    sessionStorage.setItem('ohinfo_student', JSON.stringify({ id: match.id, ...data }));
+    const dest = sessionStorage.getItem('ohinfo_redirect');
+    if (dest) { sessionStorage.removeItem('ohinfo_redirect'); location.href = dest; }
+    else { location.href = 'home.html'; }
+  } catch(e) {
+    errEl.textContent = '오류: ' + e.message;
+    btn.disabled = false; btn.textContent = t.ok;
+  }
+};
+
+applyLang();
+</script>
+</body>
+</html>

@@ -394,7 +394,7 @@ async function init() {
   if (FORM.requireLogin !== false) {
     if (!SESSION) {
       sessionStorage.setItem('ohinfo_redirect', location.href);
-      location.href = 'ohdlet.html'; return;
+      location.href = 'login.html'; return;
     }
   }
 
