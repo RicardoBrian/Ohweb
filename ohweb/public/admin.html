@@ -101,6 +101,35 @@
     @media (max-width: 600px) {
       .nav-tab { padding: 6px 10px; font-size: 0.78rem; }
     }
+
+    /* 와플 버튼 */
+    .waffle-wrap { position: relative; flex-shrink: 0; }
+    .waffle-btn {
+      width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border-card);
+      background: var(--glass); color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center;
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight); transition: background 0.2s;
+    }
+    .waffle-btn:hover { background: var(--glass-strong); }
+    .waffle-dd {
+      position: absolute; top: calc(100% + 8px); right: 0;
+      background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border); border-radius: 18px;
+      padding: 16px; min-width: 200px;
+      box-shadow: var(--highlight), var(--shadow-md); z-index: 500;
+    }
+    .waffle-dd-title { font-size: 0.72rem; font-weight: 700; color: var(--sub); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 12px; }
+    .waffle-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    .waffle-app {
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      padding: 12px 8px; border-radius: 12px; cursor: pointer;
+      background: var(--glass); border: 1px solid var(--border-card);
+      transition: background 0.15s; font-family: inherit;
+    }
+    .waffle-app:hover { background: var(--glass-strong); }
+    .waffle-icon { font-size: 1.5rem; line-height: 1; }
+    .waffle-label { font-size: 0.72rem; font-weight: 700; color: var(--text); white-space: nowrap; }
+
     .dark-toggle {
       width: 42px; height: 24px; border-radius: 50px;
       background: var(--glass); border: 1px solid var(--border);
@@ -394,9 +423,25 @@
     <button class="nav-tab active" id="tab-schools" onclick="showSection('schools')">🏫 학교</button>
     <button class="nav-tab" id="tab-students" onclick="showSection('students')">👥 학생</button>
     <button class="nav-tab" id="tab-apps" onclick="showSection('apps')">📱 앱 설정</button>
-<button class="nav-tab" id="tab-paddlet" onclick="showSection('paddlet')">📌 패들릿</button>
-    <button class="nav-tab" id="tab-exam" onclick="showSection('exam')">📋 시험</button>
-    <button class="nav-tab" onclick="window.location.href='forms.html'">📝 설문폼</button>
+    <div class="waffle-wrap" id="waffleWrap">
+      <button class="waffle-btn" onclick="toggleWaffle()" title="앱 관리">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="0" y="0" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="6.5" y="0" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="13" y="0" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="0" y="6.5" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="6.5" y="6.5" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="13" y="6.5" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="0" y="13" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="6.5" y="13" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="13" y="13" width="5" height="5" rx="1.2" fill="currentColor"/></svg>
+      </button>
+      <div class="waffle-dd hidden" id="waffleDD" onclick="event.stopPropagation()">
+        <div class="waffle-dd-title">앱 관리</div>
+        <div class="waffle-grid">
+          <button class="waffle-app" onclick="closeWaffle();showSection('paddlet')">
+            <span class="waffle-icon">📌</span><span class="waffle-label">패들릿</span>
+          </button>
+          <button class="waffle-app" onclick="closeWaffle();showSection('exam')">
+            <span class="waffle-icon">📋</span><span class="waffle-label">시험</span>
+          </button>
+          <button class="waffle-app" onclick="closeWaffle();location.href='forms.html'">
+            <span class="waffle-icon">📝</span><span class="waffle-label">설문폼</span>
+          </button>
+        </div>
+      </div>
+    </div>
     <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
     <button class="btn ghost sm" onclick="logout()">로그아웃</button>
   </div>
@@ -478,7 +523,9 @@
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
         <div style="grid-column:1/-1;">
           <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">학교</label>
-          <input class="inp" id="addSchoolName" type="text" placeholder="예: 관산중학교" style="width:100%;">
+          <select class="inp" id="addSchoolName" style="width:100%;">
+            <option value="">학교 선택</option>
+          </select>
         </div>
         <div>
           <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">이름</label>
@@ -940,6 +987,17 @@
   };
   if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
 
+  // ── 와플 메뉴 ──
+  window.toggleWaffle = () => {
+    document.getElementById('waffleDD').classList.toggle('hidden');
+  };
+  window.closeWaffle = () => {
+    document.getElementById('waffleDD').classList.add('hidden');
+  };
+  document.addEventListener('click', (e) => {
+    if (!document.getElementById('waffleWrap').contains(e.target)) closeWaffle();
+  });
+
   // ── 로그아웃 ──
   window.logout = () => { sessionStorage.removeItem('ohweb_admin'); window.location.href = 'index.html'; };
 
@@ -979,10 +1037,11 @@
   }
 
   function populateSchoolSelects() {
-    // appSchool 은 등록된 학생의 학교명으로 채움(loadAppStudents). addSchool 은 자유텍스트로 대체됨.
-    const opts = schools.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+    const opts = schools.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
     const addSchoolEl = document.getElementById('addSchool');
     if (addSchoolEl) addSchoolEl.innerHTML = '<option value="">학교 선택</option>' + opts;
+    const addSchoolNameEl = document.getElementById('addSchoolName');
+    if (addSchoolNameEl) addSchoolNameEl.innerHTML = '<option value="">학교 선택</option>' + opts;
   }
 
   window.addSchool = async () => {
