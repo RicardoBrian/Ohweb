@@ -1016,29 +1016,50 @@
   };
 
   // ── CSV 업로드 ──
+  function parseCSVText(text) {
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    const start = /학교|학년|번호|이름/i.test(lines[0]) ? 1 : 0;
+    return lines.slice(start).map(line => {
+      const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+      return { schoolName: cols[0]||'', grade: cols[1]||'', class: cols[2]||'', number: cols[3]||'', name: cols[4]||'' };
+    }).filter(r => r.name);
+  }
+
+  function renderCSVPreview() {
+    document.getElementById('csvPreviewInfo').innerText = `${csvData.length}명 미리보기`;
+    document.getElementById('csvTable').innerHTML = csvData.slice(0, 20).map(r =>
+      `<tr><td>${r.schoolName}</td><td>${r.grade}</td><td>${r.class}</td><td>${r.number}</td><td>${r.name}</td></tr>`
+    ).join('') + (csvData.length > 20 ? `<tr><td colspan="5" style="text-align:center;color:var(--sub);font-size:0.8rem;">... 외 ${csvData.length - 20}명</td></tr>` : '');
+    document.getElementById('csvPreview').classList.remove('hidden');
+  }
+
+  function isGarbled(text) {
+    // EUC-KR로 읽으면 한글이 깨져 UTF-8 대체문자(U+FFFD)나 'ï¿½' 패턴이 나옴
+    return /�|ï¿½/.test(text) || (text.includes('ê°') || text.includes('ë'));
+  }
+
   window.handleCSV = (input) => {
     const file = input.files[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target.result;
-      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-      // 첫 행 헤더 감지 (학교|school|학년 등 포함 시)
-      const start = /학교|학년|번호|이름/i.test(lines[0]) ? 1 : 0;
-      csvData = lines.slice(start).map(line => {
-        const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
-        // 컬럼 순서: 학교, 학년, 반, 번호, 이름
-        return { schoolName: cols[0]||'', grade: cols[1]||'', class: cols[2]||'', number: cols[3]||'', name: cols[4]||'' };
-      }).filter(r => r.name);
-
-      document.getElementById('csvPreviewInfo').innerText = `${csvData.length}명 미리보기`;
-      document.getElementById('csvTable').innerHTML = csvData.slice(0, 20).map(r =>
-        `<tr><td>${r.schoolName}</td><td>${r.grade}</td><td>${r.class}</td><td>${r.number}</td><td>${r.name}</td></tr>`
-      ).join('') + (csvData.length > 20 ? `<tr><td colspan="5" style="text-align:center;color:var(--sub);font-size:0.8rem;">... 외 ${csvData.length - 20}명</td></tr>` : '');
-      document.getElementById('csvPreview').classList.remove('hidden');
+    // 1차: UTF-8로 시도
+    const readerUTF = new FileReader();
+    readerUTF.onload = (e) => {
+      const textUTF = e.target.result;
+      if (!isGarbled(textUTF)) {
+        csvData = parseCSVText(textUTF);
+        renderCSVPreview();
+      } else {
+        // 2차: EUC-KR로 재시도
+        const readerEUC = new FileReader();
+        readerEUC.onload = (e2) => {
+          csvData = parseCSVText(e2.target.result);
+          renderCSVPreview();
+        };
+        readerEUC.readAsText(file, 'EUC-KR');
+      }
     };
-    reader.readAsText(file, 'UTF-8');
+    readerUTF.readAsText(file, 'UTF-8');
   };
 
   window.cancelCSV = () => {
