@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ohinfo</title>
+  <link rel="icon" href="logo.png">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
   <style>
     :root {
@@ -71,11 +72,9 @@
       display: flex; align-items: center; gap: 10px;
     }
     .nav-brand {
-      font-size: 1.2rem; font-weight: 900; letter-spacing: -0.03em;
-      background: linear-gradient(135deg, var(--accent), #7c4dff);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-      flex-shrink: 0;
+      flex-shrink: 0; display: flex; align-items: center;
     }
+    .nav-brand img { height: 32px; width: auto; display: block; }
     /* 글로브 언어 선택 */
     .lang-globe { position: relative; flex-shrink: 0; }
     .lang-globe-btn { font-family: inherit; font-size: 1rem; cursor: pointer; border-radius: 50%; width: 32px; height: 32px; border: 1px solid var(--border-card); background: var(--glass); color: var(--sub); display: flex; align-items: center; justify-content: center; transition: 0.2s; box-shadow: var(--highlight); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
@@ -271,7 +270,7 @@
 <div id="loadingOverlay"><div class="spinner"></div></div>
 
 <nav class="nav">
-  <div class="nav-brand">ohinfo</div>
+  <div class="nav-brand"><img src="logo.png" alt="ohinfo"></div>
   <div class="nav-right">
     <div class="lang-globe" id="langGlobe">
       <button class="lang-globe-btn" onclick="toggleLangDD()" title="언어">🌐</button>

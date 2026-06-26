@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>관산중학교 정보 게시판</title>
-  <link rel="icon" href="/관산중로고.png">
+  <link rel="icon" href="logo.png">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
   <style>
     /* ── 토큰 ── */
@@ -80,12 +80,9 @@
     .nav-admin { flex-shrink: 0; }
     @media (max-width: 520px) { .nav-admin { display: none; } }
     .nav-logo {
-      cursor: pointer;
-      font-size: 1.1rem; font-weight: 900; letter-spacing: -0.02em;
-      background: linear-gradient(135deg, var(--accent), #7c4dff);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-      user-select: none; flex-shrink: 0;
+      cursor: pointer; flex-shrink: 0; display: flex; align-items: center; user-select: none;
     }
+    .nav-logo img { height: 32px; width: auto; display: block; }
 
     /* 글로브 언어 선택 */
     .lang-globe { position: relative; flex-shrink: 0; }
@@ -497,7 +494,7 @@
 </div>
 
 <nav class="nav">
-  <div class="nav-logo" onclick="navLogoClick()">ohinfo</div>
+  <div class="nav-logo" onclick="navLogoClick()"><img src="logo.png" alt="ohinfo"></div>
   <button class="btn ghost nav-admin" onclick="toggleAdmin()">관리</button>
   <div class="nav-end">
     <div class="lang-globe" id="langGlobe">
