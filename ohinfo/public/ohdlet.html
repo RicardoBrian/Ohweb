@@ -838,28 +838,36 @@
     }
   };
 
-  // ── DeepL 번역 ──
-  async function deepl(texts, targetLang) {
+  // ── 번역 ──
+  async function deepl(texts, targetLang, sourceLang = 'ko') {
     const res = await fetch('/.netlify/functions/translate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ texts, targetLang, sourceLang: 'ko' })
+      body: JSON.stringify({ texts, targetLang, sourceLang })
     });
     const data = await res.json();
     if (!res.ok || data.error || !data.translations) throw new Error(data.error || data.message || `HTTP ${res.status}`);
     return data.translations.map(t => t.text);
   }
 
-  async function translatePost(subKo, msgKo) {
-    const [zhRes, ruRes, enRes] = await Promise.all([
-      deepl([subKo, msgKo], 'zh-cn'),
-      deepl([subKo, msgKo], 'ru'),
-      deepl([subKo, msgKo], 'en')
-    ]);
+  // srcLang: 원문 언어 ('ko'|'zh'|'ru'|'en'), sub/msg: 원문
+  // 반환: { subKo, msgKo, subZh, msgZh, subRu, msgRu, subEn, msgEn }
+  async function translatePostAll(sub, msg, srcLang) {
+    const sl = srcLang === 'zh' ? 'zh-cn' : srcLang;
+    const targets = ['ko','zh-cn','ru','en'].filter(t => t !== sl && !(t === 'zh-cn' && sl === 'zh'));
+    const results = await Promise.all(targets.map(tl => deepl([sub, msg], tl, sl)));
+    const map = {};
+    targets.forEach((tl, i) => { map[tl] = results[i]; });
+    const g = (tl) => map[tl] || (sl === tl || (tl === 'zh-cn' && sl === 'zh') ? [sub, msg] : ['','']);
     return {
-      subZh: zhRes[0] || '', msgZh: zhRes[1] || '',
-      subRu: ruRes[0] || '', msgRu: ruRes[1] || '',
-      subEn: enRes[0] || '', msgEn: enRes[1] || ''
+      subKo: srcLang === 'ko' ? sub : (g('ko')[0] || ''),
+      msgKo: srcLang === 'ko' ? msg : (g('ko')[1] || ''),
+      subZh: srcLang === 'zh' ? sub : (g('zh-cn')[0] || ''),
+      msgZh: srcLang === 'zh' ? msg : (g('zh-cn')[1] || ''),
+      subRu: srcLang === 'ru' ? sub : (g('ru')[0] || ''),
+      msgRu: srcLang === 'ru' ? msg : (g('ru')[1] || ''),
+      subEn: srcLang === 'en' ? sub : (g('en')[0] || ''),
+      msgEn: srcLang === 'en' ? msg : (g('en')[1] || ''),
     };
   }
 
@@ -1246,28 +1254,23 @@
     const msg = document.getElementById('p_msg').value;
     const srcLang = currentLang;
 
-    // 한국어 기준으로 변환
-    const sfx = langSfx(srcLang);
-    const subKo = sfx === 'Ko' ? sub : '';
-    const msgKo = sfx === 'Ko' ? msg : '';
-    const subLang = sfx !== 'Ko' ? sub : '';
-    const msgLang = sfx !== 'Ko' ? msg : '';
-
     try {
-      // 번역 (실패해도 게시물 저장은 계속)
-      let translations = { subZh:'', msgZh:'', subRu:'', msgRu:'', subEn:'', msgEn:'' };
-      if (srcLang === 'ko' && (sub || msg)) {
-        try { translations = await translatePost(sub, msg); } catch(te) { /* 번역 실패시 빈값 유지 */ }
+      // 모든 언어로 번역 (실패해도 저장은 계속)
+      let tr = { subKo:'', msgKo:'', subZh:'', msgZh:'', subRu:'', msgRu:'', subEn:'', msgEn:'' };
+      if (sub || msg) {
+        try { tr = await translatePostAll(sub, msg, srcLang); } catch(te) {
+          console.error('translatePostAll:', te);
+          // 번역 실패 시 원문만 해당 언어 필드에 저장
+          const sfx = langSfx(srcLang);
+          tr[`sub${sfx}`] = sub; tr[`msg${sfx}`] = msg;
+        }
       }
-
-      const subKoFinal = srcLang === 'ko' ? sub : '';
-      const msgKoFinal = srcLang === 'ko' ? msg : '';
-      const subZhFinal = srcLang === 'zh' ? sub : translations.subZh;
-      const msgZhFinal = srcLang === 'zh' ? msg : translations.msgZh;
-      const subRuFinal = srcLang === 'ru' ? sub : translations.subRu;
-      const msgRuFinal = srcLang === 'ru' ? msg : translations.msgRu;
-      const subEnFinal = srcLang === 'en' ? sub : translations.subEn;
-      const msgEnFinal = srcLang === 'en' ? msg : translations.msgEn;
+      const { subKoFinal, msgKoFinal, subZhFinal, msgZhFinal, subRuFinal, msgRuFinal, subEnFinal, msgEnFinal } = {
+        subKoFinal: tr.subKo, msgKoFinal: tr.msgKo,
+        subZhFinal: tr.subZh, msgZhFinal: tr.msgZh,
+        subRuFinal: tr.subRu, msgRuFinal: tr.msgRu,
+        subEnFinal: tr.subEn, msgEnFinal: tr.msgEn,
+      };
 
       if (mode === 'edit') {
         const postId = getHidden('f_postId');
