@@ -208,7 +208,6 @@
 <div class="wrap">
   <div class="page-head">
     <h1>설문 관리</h1>
-    <p>학생이 만든 설문을 작성자별로 관리하고 응답을 확인합니다.</p>
   </div>
 
   <div class="stats-row">
@@ -252,9 +251,33 @@ const COLORS = ['#2a5ce6','#7c4dff','#00b8d4','#ff7043','#26a69a','#ec407a','#ff
 // ── State ──
 let allForms = [];
 let responsesByForm = {};   // formId -> [response,...]
+let studentById = {};       // 학생 문서 id -> {schoolName,grade,class,number,name}
 let viewMode = 'group';
 let expandedId = null;
 const collapsedGroups = new Set();
+
+const nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
+const pad2 = v => { const n = parseInt(nv(v),10); return isNaN(n) ? nv(v) : String(n).padStart(2,'0'); };
+
+// 작성자 식별/표시: 학생 매칭되면 "학교 학번 이름", 아니면 ownerName
+function studentNo(s) { return `${nv(s.grade)}${pad2(s.class)}${pad2(s.number)}`; }
+function ownerKey(f) { return f.ownerId ? ('id:'+f.ownerId) : ('nm:'+((f.ownerName||f.createdBy||'').trim()||'?')); }
+function ownerName(f) {
+  const s = f.ownerId && studentById[f.ownerId];
+  if (s) return s.name || f.ownerName || '(이름없음)';
+  return (f.ownerName || f.createdBy || '').trim() || '(작성자 미상)';
+}
+function ownerLabel(f) {
+  const s = f.ownerId && studentById[f.ownerId];
+  if (s) {
+    const parts = [];
+    if (s.schoolName) parts.push(s.schoolName);
+    parts.push(studentNo(s));
+    parts.push(s.name || f.ownerName || '');
+    return parts.join(' ').trim();
+  }
+  return (f.ownerName || f.createdBy || '').trim() || '(작성자 미상)';
+}
 
 // ── Helpers ──
 function safeTitle(t) {
@@ -262,7 +285,6 @@ function safeTitle(t) {
   if (typeof t === 'string') return t || '(제목없음)';
   return t.ko || t.en || t.zh || t.ru || '(제목없음)';
 }
-function ownerOf(f) { return (f.ownerName || f.createdBy || '').trim() || '(작성자 미상)'; }
 function millis(ts) { return ts?.toMillis ? ts.toMillis() : (ts?.seconds ? ts.seconds*1000 : (typeof ts==='number'?ts:0)); }
 function fmtDateTime(ts) {
   const ms = millis(ts); if (!ms) return '';
@@ -310,9 +332,10 @@ async function loadAll() {
   const list = document.getElementById('surveyList');
   list.innerHTML = `<div class="loading-state">설문 목록 불러오는 중…</div>`;
   try {
-    const [formSnap, respSnap] = await Promise.all([
+    const [formSnap, respSnap, studSnap] = await Promise.all([
       getDocs(collection(db, 'student_forms')),
       getDocs(collection(db, 'student_form_responses')),
+      getDocs(collection(db, 'students')),
     ]);
     allForms = formSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     responsesByForm = {};
@@ -321,6 +344,8 @@ async function loadAll() {
       if (!fid) return;
       (responsesByForm[fid] = responsesByForm[fid] || []).push(r);
     });
+    studentById = {};
+    studSnap.docs.forEach(d => { studentById[d.id] = d.data(); });
 
     // 실시간 집계로 응답 수 보정
     allForms.forEach(f => { f._respCount = (responsesByForm[f.id] || []).length; });
@@ -329,16 +354,19 @@ async function loadAll() {
 
     // 통계
     const totalResp = allForms.reduce((s, f) => s + f._respCount, 0);
-    const authors = new Set(allForms.map(ownerOf));
+    const authorKeys = new Set(allForms.map(ownerKey));
     document.getElementById('statForms').innerHTML = `${allForms.length}<span>개</span>`;
     document.getElementById('statResponses').innerHTML = `${totalResp}<span>건</span>`;
-    document.getElementById('statAuthors').innerHTML = `${authors.size}<span>명</span>`;
+    document.getElementById('statAuthors').innerHTML = `${authorKeys.size}<span>명</span>`;
 
-    // 작성자 필터 옵션
+    // 작성자 필터 옵션 (값=ownerKey, 표시=학교 학번 이름)
     const sel = document.getElementById('authorFilter');
     const cur = sel.value;
+    const seen = new Map();
+    allForms.forEach(f => { const k = ownerKey(f); if (!seen.has(k)) seen.set(k, ownerLabel(f)); });
+    const entries = [...seen.entries()].sort((a,b)=>a[1].localeCompare(b[1],'ko'));
     sel.innerHTML = `<option value="">작성자 전체</option>` +
-      [...authors].sort((a,b)=>a.localeCompare(b,'ko')).map(a => `<option value="${escHtml(a)}">${escHtml(a)}</option>`).join('');
+      entries.map(([k,label]) => `<option value="${escHtml(k)}">${escHtml(label)}</option>`).join('');
     sel.value = cur;
 
     renderList();
@@ -354,9 +382,9 @@ function getFiltered() {
   const sf = document.getElementById('statusFilter').value;
   return allForms.filter(f => {
     const title = safeTitle(f.title).toLowerCase();
-    const owner = ownerOf(f);
-    const matchQ = !q || title.includes(q) || owner.toLowerCase().includes(q);
-    const matchA = !af || owner === af;
+    const label = ownerLabel(f).toLowerCase();
+    const matchQ = !q || title.includes(q) || label.includes(q);
+    const matchA = !af || ownerKey(f) === af;
     const matchS = !sf || (f.status || 'open') === sf;
     return matchQ && matchA && matchS;
   });
@@ -382,23 +410,24 @@ function renderFlat(forms) {
 }
 
 function renderGrouped(forms) {
-  // 작성자별 그룹화, 그룹은 가장 최근 활동 순
+  // 작성자별(ownerKey) 그룹화, 그룹은 가장 최근 활동 순
   const groups = {};
-  forms.forEach(f => { (groups[ownerOf(f)] = groups[ownerOf(f)] || []).push(f); });
+  forms.forEach(f => { const k = ownerKey(f); (groups[k] = groups[k] || []).push(f); });
   const order = Object.keys(groups).sort((a, b) => {
     const la = Math.max(...groups[a].map(f => millis(f.createdAt)));
     const lb = Math.max(...groups[b].map(f => millis(f.createdAt)));
     return lb - la;
   });
-  return order.map(name => {
-    const items = groups[name];                       // 이미 시간순(최신 먼저)
+  return order.map(key => {
+    const items = groups[key];                        // 이미 시간순(최신 먼저)
+    const label = ownerLabel(items[0]);
     const resp = items.reduce((s, f) => s + f._respCount, 0);
-    const collapsed = collapsedGroups.has(name) ? ' collapsed' : '';
+    const collapsed = collapsedGroups.has(key) ? ' collapsed' : '';
     return `
-    <div class="group${collapsed}" id="grp-${cssId(name)}">
-      <div class="group-head" onclick="toggleGroup('${jsStr(name)}')">
-        <div class="group-avatar">${escHtml(initials(name))}</div>
-        <span class="group-name">${escHtml(name)}</span>
+    <div class="group${collapsed}" id="grp-${cssId(key)}">
+      <div class="group-head" onclick="toggleGroup('${jsStr(key)}')">
+        <div class="group-avatar">${escHtml(initials(ownerName(items[0])))}</div>
+        <span class="group-name">${escHtml(label)}</span>
         <span class="group-meta">설문 ${items.length} · 응답 ${resp}</span>
         <span class="group-caret">▾</span>
       </div>
@@ -416,7 +445,7 @@ function buildItem(f) {
       <span class="survey-title">${escHtml(safeTitle(f.title))}</span>
       <span class="badge ${st.cls}">${st.text}</span>
       <span class="badge responses">응답 ${f._respCount}</span>
-      <span class="survey-meta">🧑 ${escHtml(ownerOf(f))} · ${date}</span>
+      <span class="survey-meta">🧑 ${escHtml(ownerLabel(f))} · ${date}</span>
     </div>
     <div class="survey-actions">
       <button class="btn sm" onclick="copyLink('${f.id}')">🔗 링크</button>
@@ -542,7 +571,7 @@ window.deleteSurvey = async (id) => {
     const totalResp = allForms.reduce((s, f) => s + (f._respCount||0), 0);
     document.getElementById('statForms').innerHTML = `${allForms.length}<span>개</span>`;
     document.getElementById('statResponses').innerHTML = `${totalResp}<span>건</span>`;
-    document.getElementById('statAuthors').innerHTML = `${new Set(allForms.map(ownerOf)).size}<span>명</span>`;
+    document.getElementById('statAuthors').innerHTML = `${new Set(allForms.map(ownerKey)).size}<span>명</span>`;
     showToast('설문이 삭제되었습니다.');
     renderList();
   } catch (err) { showToast('삭제 실패: ' + err.message); }
