@@ -113,11 +113,12 @@
     .waffle-btn:hover { background: var(--glass-strong); }
     .waffle-dd {
       position: absolute; top: calc(100% + 8px); right: 0;
-      background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      background: #ffffff; backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
       border: 1px solid var(--border); border-radius: 18px;
       padding: 16px; min-width: 200px;
-      box-shadow: var(--highlight), var(--shadow-md); z-index: 500;
+      box-shadow: var(--highlight), var(--shadow-md); z-index: 9500;
     }
+    body.dark .waffle-dd { background: #1a1d2e; }
     .waffle-dd-title { font-size: 0.72rem; font-weight: 700; color: var(--sub); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 12px; }
     .waffle-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
     .waffle-app {
