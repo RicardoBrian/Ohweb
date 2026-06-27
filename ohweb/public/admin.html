@@ -922,7 +922,11 @@
     var d = document.getElementById('waffleDD');
     if (d) d.classList.remove('open');
   }
-  document.addEventListener('click', closeWaffle);
+  // 바깥 클릭 시에만 닫기 (stopPropagation 타이밍에 의존하지 않는 표준 방식)
+  document.addEventListener('click', function (e) {
+    var wrap = document.getElementById('waffleWrap');
+    if (wrap && !wrap.contains(e.target)) closeWaffle();
+  });
 </script>
 
 <script type="module">
