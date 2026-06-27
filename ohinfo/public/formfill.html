@@ -392,11 +392,11 @@ async function init() {
   }
 
   SESSION = getSession();
-  if (FORM.requireLogin !== false) {
-    if (!SESSION) {
-      sessionStorage.setItem('ohinfo_redirect', location.href);
-      location.href = 'login.html'; return;
-    }
+  // 비로그인 응답 허용(allowAnon)이면 로그인 안 받음. 아니면 로그인 필요(기본).
+  const needLogin = !FORM.allowAnon && FORM.requireLogin !== false;
+  if (needLogin && !SESSION) {
+    sessionStorage.setItem('ohinfo_redirect', location.href);
+    location.href = 'login.html'; return;
   }
 
   if (FORM.limitOnce && SESSION) {

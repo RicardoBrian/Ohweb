@@ -103,31 +103,21 @@
     <div style="margin-top:16px">
       <div class="field">
         <label id="uiSchoolLbl">학교명</label>
-        <input class="inp" id="loginSchool" type="text" id="uiSchoolPh" placeholder="학교 이름 입력">
+        <select class="inp" id="loginSchool" onchange="onLoginSchoolChange()"><option value="">학교 선택</option></select>
       </div>
       <div class="row-2">
         <div class="field">
           <label id="uiGradeLbl">학년</label>
-          <select class="inp" id="loginGrade">
-            <option value="1">1학년</option>
-            <option value="2">2학년</option>
-            <option value="3">3학년</option>
-          </select>
+          <select class="inp" id="loginGrade" onchange="onLoginGradeChange()"><option value="">선택</option></select>
         </div>
         <div class="field">
           <label id="uiClassLbl">반</label>
-          <select class="inp" id="loginClass">
-            <option value="1">1반</option><option value="2">2반</option>
-            <option value="3">3반</option><option value="4">4반</option>
-            <option value="5">5반</option>
-          </select>
+          <select class="inp" id="loginClass" onchange="onLoginClassChange()"><option value="">선택</option></select>
         </div>
       </div>
       <div class="field">
         <label id="uiNumLbl">번호</label>
-        <select class="inp" id="loginNumber">
-          <option value="" id="uiNumOpt">선택</option>
-        </select>
+        <select class="inp" id="loginNumber"><option value="" id="uiNumOpt">선택</option></select>
       </div>
       <div class="field">
         <label id="uiPwLbl">비밀번호</label>
@@ -195,13 +185,8 @@ function applyLang() {
   document.getElementById('uiPwLbl').textContent     = t.pw;
   document.getElementById('loginPw').placeholder     = t.pwPh;
   document.getElementById('loginBtn').textContent    = t.btn;
-  // grade / class options
-  const gSel = document.getElementById('loginGrade');
-  [...gSel.options].forEach((o, i) => { o.textContent = t.gradeOpt(i + 1); });
-  const cSel = document.getElementById('loginClass');
-  [...cSel.options].forEach((o, i) => { o.textContent = t.clsOpt(i + 1); });
-  // number placeholder
-  document.getElementById('uiNumOpt').textContent = t.numOpt;
+  // 데이터 기반 드롭다운 라벨 갱신 (선택값 유지)
+  rebuildLoginDropdowns();
   updateLangCheck(lang);
 }
 
@@ -213,14 +198,51 @@ window.setLang = function(l) { lang = l; localStorage.setItem('ohinfo_lang', l);
 window.toggleLangDD = () => document.getElementById('langGlobeDD').classList.toggle('hidden');
 window.closeLangDD  = () => document.getElementById('langGlobeDD').classList.add('hidden');
 
-// ── number dropdown 1~50 ──
-(function buildNumOptions() {
-  const sel = document.getElementById('loginNumber');
-  for (let i = 1; i <= 50; i++) {
-    const o = document.createElement('option');
-    o.value = i; o.textContent = i;
-    sel.appendChild(o);
-  }
+// ── 등록 학생 기반 드롭다운 (학교→학년→반→번호 연동) ──
+let _students = [];
+function _nv(v){ return String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim(); }
+function _distinct(vals){
+  return [...new Set(vals.map(v=>String(v||'').trim()).filter(Boolean))].sort((a,b)=>{
+    const na=parseInt(a,10), nb=parseInt(b,10);
+    if(!isNaN(na)&&!isNaN(nb)&&na!==nb) return na-nb;
+    return a.localeCompare(b,'ko');
+  });
+}
+function _setOpts(sel, values, placeholder, labelFn){
+  const cur = sel.value;
+  sel.innerHTML = `<option value="">${placeholder}</option>` +
+    values.map(v=>`<option value="${String(v).replace(/"/g,'&quot;')}">${labelFn?labelFn(v):v}</option>`).join('');
+  sel.value = values.map(String).includes(cur) ? cur : '';
+}
+function rebuildLoginDropdowns(){
+  const t = T[lang];
+  const sSel=document.getElementById('loginSchool');
+  _setOpts(sSel, _distinct(_students.map(s=>s.schoolName)), t.numOpt || '선택');
+  onLoginSchoolChange(true);
+}
+window.onLoginSchoolChange = (keep) => {
+  const t=T[lang]; const school=document.getElementById('loginSchool').value;
+  const grades=_distinct(_students.filter(s=>!school||(s.schoolName||'').trim()===school).map(s=>_nv(s.grade)));
+  _setOpts(document.getElementById('loginGrade'), grades, t.numOpt||'선택', g=>t.gradeOpt(g));
+  onLoginGradeChange(keep);
+};
+window.onLoginGradeChange = (keep) => {
+  const t=T[lang]; const school=document.getElementById('loginSchool').value; const grade=document.getElementById('loginGrade').value;
+  const classes=_distinct(_students.filter(s=>(!school||(s.schoolName||'').trim()===school)&&(!grade||_nv(s.grade)===_nv(grade))).map(s=>_nv(s.class)));
+  _setOpts(document.getElementById('loginClass'), classes, t.numOpt||'선택', c=>t.clsOpt(c));
+  onLoginClassChange(keep);
+};
+window.onLoginClassChange = () => {
+  const t=T[lang]; const school=document.getElementById('loginSchool').value; const grade=document.getElementById('loginGrade').value; const cls=document.getElementById('loginClass').value;
+  const nums=_distinct(_students.filter(s=>(!school||(s.schoolName||'').trim()===school)&&(!grade||_nv(s.grade)===_nv(grade))&&(!cls||_nv(s.class)===_nv(cls))).map(s=>String(s.number)));
+  _setOpts(document.getElementById('loginNumber'), nums, t.numOpt||'선택');
+};
+(async function loadStudentsForLogin(){
+  try {
+    const snap = await getDocs(collection(db,'students'));
+    _students = snap.docs.map(d=>d.data());
+  } catch(e){ console.error('load students:', e); }
+  rebuildLoginDropdowns();
 })();
 
 // ── redirect notice ──

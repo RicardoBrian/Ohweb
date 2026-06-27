@@ -573,12 +573,15 @@
   // ── 설문폼 목록 ──
   (async () => {
     try {
-      const snap = await getDocs(query(collection(db,'forms'), where('status','==','open'), orderBy('createdAt','desc')));
-      const forms = snap.docs.map(d=>({id:d.id,...d.data()})).filter(f => {
-        if (!f.deadline) return true;
-        const dl = f.deadline.toDate ? f.deadline.toDate() : new Date(f.deadline);
-        return new Date() <= dl;
-      });
+      const snap = await getDocs(collection(db,'student_forms'));
+      const forms = snap.docs.map(d=>({id:d.id,...d.data()}))
+        .filter(f => (f.status||'open') === 'open')
+        .filter(f => {
+          if (!f.deadline) return true;
+          const dl = f.deadline.toDate ? f.deadline.toDate() : new Date(f.deadline);
+          return new Date() <= dl;
+        })
+        .sort((a,b)=>((b.createdAt?.toMillis?b.createdAt.toMillis():0)-(a.createdAt?.toMillis?a.createdAt.toMillis():0)));
       if (!forms.length) return;
       const listEl = document.getElementById('formList');
       const secEl = document.getElementById('formSection');
@@ -586,11 +589,12 @@
       listEl.innerHTML = forms.map(f => {
         const dl = f.deadline ? `· 마감 ${new Date(f.deadline.toDate?f.deadline.toDate():f.deadline).toLocaleDateString()}` : '';
         const quiz = f.isQuiz ? '🎯 퀴즈 ' : '';
-        return `<a href="form.html?id=${f.id}" style="display:flex;align-items:center;gap:12px;padding:13px 16px;margin-bottom:8px;background:var(--glass);border:1px solid var(--border-card);border-radius:14px;text-decoration:none;color:var(--text);transition:background 0.2s;" onmouseover="this.style.background='var(--glass-strong)'" onmouseout="this.style.background='var(--glass)'">
+        const title = typeof f.title === 'string' ? f.title : (f.title?.ko || '(제목 없음)');
+        return `<a href="formfill.html?id=${f.id}" style="display:flex;align-items:center;gap:12px;padding:13px 16px;margin-bottom:8px;background:var(--glass);border:1px solid var(--border-card);border-radius:14px;text-decoration:none;color:var(--text);transition:background 0.2s;" onmouseover="this.style.background='var(--glass-strong)'" onmouseout="this.style.background='var(--glass)'">
           <span style="font-size:1.3rem;">${quiz||'📋'}</span>
           <div style="flex:1;min-width:0;">
-            <div style="font-weight:700;font-size:0.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${f.title||'(제목 없음)'}</div>
-            <div style="font-size:0.75rem;color:var(--sub);">${f.isPublic?'🔓 비로그인 가능':'👤 로그인 필요'} ${dl}</div>
+            <div style="font-weight:700;font-size:0.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${title}</div>
+            <div style="font-size:0.75rem;color:var(--sub);">${f.allowAnon?'🔓 비로그인 가능':'👤 로그인 필요'} ${dl}</div>
           </div>
           <span style="color:var(--accent);font-size:0.85rem;font-weight:700;">참여 →</span>
         </a>`;

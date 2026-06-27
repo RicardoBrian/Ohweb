@@ -541,11 +541,25 @@ function showResTabContent(tab) {
   else renderIndividual(el);
 }
 
+// 응답 호환: answers 가 배열([{question,type,answer}]) 또는 객체(질문id 키) 모두 지원
+function _ansOf(r, q, qi) {
+  const ans = r.answers;
+  if (!ans) return undefined;
+  if (Array.isArray(ans)) {
+    let el = ans[qi];
+    if (el === undefined || (el && typeof el === 'object' && el.question && q.text && el.question !== q.text)) {
+      const byText = ans.find(a => a && typeof a === 'object' && a.question === (q.text||''));
+      if (byText) el = byText;
+    }
+    return (el && typeof el === 'object' && 'answer' in el) ? el.answer : el;
+  }
+  return ans[q.id];
+}
 function renderSummary(el) {
   if (!responses.length) { el.innerHTML = '<div class="empty-msg">아직 응답이 없습니다.</div>'; return; }
   const qs = currentFormData.questions || [];
   el.innerHTML = qs.map((q, qi) => {
-    const answers = responses.map(r => r.answers?.[q.id]).filter(a => a !== undefined && a !== null && a !== '');
+    const answers = responses.map(r => _ansOf(r, q, qi)).filter(a => a !== undefined && a !== null && a !== '');
     const header = `<div class="res-q-title">Q${qi+1}. ${escHtml(q.text||'(질문)')} <span style="font-size:0.72rem;color:var(--sub);">(${answers.length}/${responses.length})</span></div>`;
     if (!answers.length) return `<div class="card res-q-block">${header}<div style="color:var(--sub);font-size:0.82rem;">응답 없음</div></div>`;
 
@@ -600,8 +614,8 @@ function renderIndividual(el) {
       <span style="color:var(--sub);">▾</span>
     </div>
     <div class="resp-detail hidden" id="rd_${i}">
-      ${qs.map(q => {
-        const a = r.answers?.[q.id];
+      ${qs.map((q, qi) => {
+        const a = _ansOf(r, q, qi);
         let disp = '';
         if (['mc','dropdown'].includes(q.type)) disp = a !== undefined ? escHtml(q.options?.[a]||a) : '(미응답)';
         else if (q.type==='checkbox') disp = Array.isArray(a) ? a.map(i=>escHtml(q.options?.[i]||i)).join(', ') : '(미응답)';
@@ -662,8 +676,8 @@ window.exportCsv = () => {
   const rows = responses.map(r => {
     const name = r.respondentName || (r.respondentId ? `#${r.respondentId.slice(-4)}` : '익명');
     const time = r.submittedAt ? new Date(r.submittedAt.toDate?r.submittedAt.toDate():r.submittedAt).toLocaleString() : '';
-    return [name, time, ...qs.map(q => {
-      const a = r.answers?.[q.id];
+    return [name, time, ...qs.map((q, qi) => {
+      const a = _ansOf(r, q, qi);
       if (['mc','dropdown'].includes(q.type)) return q.options?.[a] || a || '';
       if (q.type==='checkbox') return Array.isArray(a) ? a.map(i=>q.options?.[i]||i).join('/') : '';
       return String(a||'');
