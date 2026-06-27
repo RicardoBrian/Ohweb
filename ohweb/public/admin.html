@@ -437,7 +437,6 @@
       <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="0" y="0" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="6.5" y="0" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="13" y="0" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="0" y="6.5" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="6.5" y="6.5" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="13" y="6.5" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="0" y="13" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="6.5" y="13" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="13" y="13" width="5" height="5" rx="1.2" fill="currentColor"/></svg>
     </button>
     <button class="dark-toggle" id="darkToggleBtn" title="다크모드"></button>
-    <button class="btn ghost sm" id="logoutBtn">로그아웃</button>
   </div>
 </nav>
 
@@ -631,24 +630,17 @@
           <textarea class="inp" id="adm_popup" rows="2" placeholder="비워두면 미표시" style="width:100%;resize:vertical;"></textarea>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr;gap:10px;margin-bottom:16px;">
-        <div>
-          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:6px;">학교</label>
-          <select class="inp" id="adm_school" style="width:100%;" onchange="onAdmSchoolChange()"><option value="">학교 선택</option></select>
-        </div>
-        <div>
-          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:6px;">학년</label>
-          <select class="inp" id="adm_grade" style="width:100%;" onchange="onAdmGradeChange()"><option value="">학년</option></select>
-        </div>
-        <div>
-          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:6px;">반</label>
-          <select class="inp" id="adm_class" style="width:100%;"><option value="">반</option></select>
-        </div>
+      <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:6px;">배정할 학급</label>
+      <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr auto;gap:8px;margin-bottom:10px;align-items:end;">
+        <select class="inp" id="adm_school" onchange="onAdmSchoolChange()"><option value="">학교 선택</option></select>
+        <select class="inp" id="adm_grade" onchange="onAdmGradeChange()"><option value="">학년</option></select>
+        <select class="inp" id="adm_class"><option value="">반</option></select>
+        <button class="btn sm" onclick="addPendingClass()">＋ 담기</button>
       </div>
+      <div id="adm_pending" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;"></div>
       <div style="display:flex;gap:8px;align-items:center;">
-        <button class="btn accent sm" onclick="saveAdminClass()">추가</button>
+        <button class="btn accent sm" onclick="saveAdminClass()">저장</button>
         <button id="adm_cancel_btn" class="btn ghost sm hidden" onclick="resetAdminForm()">취소</button>
-        <span style="font-size:0.76rem;color:var(--sub);">추가 후 선택이 유지돼요 — 반만 바꿔 계속 추가하세요.</span>
       </div>
     </div>
 
@@ -1010,18 +1002,12 @@
     if (name === 'apps') window.loadAppStudents();
   };
 
-  // ── 다크모드 초기화 / 토글 / 로그아웃 ──
+  // ── 다크모드 초기화 / 토글 ──
   if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
   document.getElementById('darkToggleBtn').addEventListener('click', () => {
     document.body.classList.toggle('dark');
     localStorage.setItem('dark', document.body.classList.contains('dark') ? '1' : '0');
   });
-  document.getElementById('logoutBtn').addEventListener('click', () => {
-    sessionStorage.removeItem('ohweb_admin'); window.location.href = 'index.html';
-  });
-
-  // ── 로그아웃 ──
-  window.logout = () => { sessionStorage.removeItem('ohweb_admin'); window.location.href = 'index.html'; };
 
   // ── 학교 관리 ──
   async function loadSchools() {
@@ -1440,6 +1426,9 @@
       console.error('init error:', e);
     }
     showLoading(false);
+    // 다른 페이지의 와플에서 #섹션으로 들어온 경우 해당 섹션 표시
+    const target = location.hash.replace('#','');
+    if (target && document.getElementById('section-' + target)) showSection(target);
   }
 
   init();
@@ -1592,28 +1581,48 @@
       values.map(v => `<option value="${String(v).replace(/"/g,'&quot;')}">${v}</option>`).join('');
     sel.value = (keep && values.map(String).includes(cur)) ? cur : '';
   }
+  // 학생 명렬에 실제 입력된 값만 옵션으로 (임의 범위 없음)
   function padGradeOptions(school) {
     const ds = (_padStudents||[]).filter(s => !school || (s.schoolName||'').trim() === school);
-    let gs = distinctSorted(ds.map(s => nv(s.grade)));
-    if (!gs.length) gs = ['1','2','3','4','5','6'];
-    return gs;
+    return distinctSorted(ds.map(s => nv(s.grade)));
   }
   function padClassOptions(school, grade) {
     const ds = (_padStudents||[]).filter(s => (!school || (s.schoolName||'').trim() === school) && (!grade || nv(s.grade) === grade));
-    let cs = distinctSorted(ds.map(s => nv(s.class)));
-    if (!cs.length) cs = Array.from({length:12}, (_,i) => String(i+1));
-    return cs;
+    return distinctSorted(ds.map(s => nv(s.class)));
   }
   async function buildPaddletDropdowns() {
     await ensurePadStudents();
-    // 학교: 등록 학교 + 학생 데이터의 학교명 병합
-    const names = distinctSorted([
-      ...schools.map(s => s.name),
-      ...(_padStudents||[]).map(s => s.schoolName)
-    ]);
+    // 학교도 학생 명렬에 있는 학교만
+    const names = distinctSorted((_padStudents||[]).map(s => s.schoolName));
     fillSelect('adm_school', names, '학교 선택', true);
     onAdmSchoolChange();
+    renderPending();
   }
+
+  // 배정 대기 학급 목록 (저장 누르기 전까지 staging)
+  let _pending = [];
+  function renderPending() {
+    const el = document.getElementById('adm_pending');
+    if (!el) return;
+    if (!_pending.length) {
+      el.innerHTML = '<span style="font-size:0.8rem;color:var(--sub);">담은 학급이 없습니다. 학교·학년·반 선택 후 [＋ 담기]</span>';
+      return;
+    }
+    el.innerHTML = _pending.map((p,i) =>
+      `<span style="display:inline-flex;align-items:center;gap:7px;background:var(--accent-light);color:var(--accent);border:1px solid rgba(42,92,230,0.25);border-radius:50px;padding:5px 12px;font-size:0.82rem;font-weight:700;">${p.school} ${p.grade}-${p.group}<span onclick="removePending(${i})" style="cursor:pointer;opacity:0.7;">✕</span></span>`
+    ).join('');
+  }
+  window.addPendingClass = () => {
+    const school = document.getElementById('adm_school').value.trim();
+    const grade = nv(document.getElementById('adm_grade').value);
+    const group = nv(document.getElementById('adm_class').value);
+    if (!school || !grade || !group) { toast('학교·학년·반을 선택하세요.', 'error'); return; }
+    if (_pending.some(p => p.school===school && p.grade===grade && p.group===group)) { toast('이미 담은 학급입니다.', 'error'); return; }
+    _pending.push({ school, grade, group });
+    renderPending();
+    const c = document.getElementById('adm_class'); c.value = ''; c.focus();
+  };
+  window.removePending = (i) => { _pending.splice(i,1); renderPending(); };
   window.onAdmSchoolChange = () => {
     const school = document.getElementById('adm_school').value;
     fillSelect('adm_grade', padGradeOptions(school), '학년', true);
@@ -1626,38 +1635,40 @@
 
   window.saveAdminClass = async () => {
     const id = document.getElementById('adm_docId').value;
-    const school = document.getElementById('adm_school').value.trim();
-    const grade = nv(document.getElementById('adm_grade').value);
-    const group = nv(document.getElementById('adm_class').value);
     const name = document.getElementById('adm_name').value.trim();
     const desc = document.getElementById('adm_desc').value;
     const ex = document.getElementById('adm_ex').value;
     const popup = document.getElementById('adm_popup').value;
 
     if (!name) { toast('수업명을 입력하세요.', 'error'); return; }
-    if (!school || !grade || !group) { toast('학교·학년·반을 선택하세요.', 'error'); return; }
 
     showLoading(true);
     try {
       // 수업 설명/안내 자동 번역 (zh/ru/en)
       const tr = await translateClassFields(desc, ex);
       if (id) {
-        // 수정 — 단일 문서
+        // 수정 — 단일 문서 (현재 드롭다운 값 사용)
+        const school = document.getElementById('adm_school').value.trim();
+        const grade = nv(document.getElementById('adm_grade').value);
+        const group = nv(document.getElementById('adm_class').value);
+        if (!school || !grade || !group) { toast('학교·학년·반을 선택하세요.', 'error'); showLoading(false); return; }
         await updateDoc(doc(db, 'classes', id), { name, schoolName: school, grade, group, desc, ex, popup, ...tr });
         toast('수정되었습니다.', 'success');
-        window.resetAdminForm();
       } else {
-        // 추가 — 한 반씩. 폼은 그대로 유지(반만 바꿔 연속 추가 가능)
-        await addDoc(collection(db, 'classes'), {
-          name, schoolName: school, grade, group, desc, ex, popup, ...tr,
-          status: 'ON', createdAt: serverTimestamp()
+        // 저장 — 담아둔 모든 학급에 일괄 배정
+        if (!_pending.length) { toast('학급을 담은 뒤 저장하세요.', 'error'); showLoading(false); return; }
+        const batch = writeBatch(db);
+        _pending.forEach(p => {
+          const ref = doc(collection(db, 'classes'));
+          batch.set(ref, {
+            name, schoolName: p.school, grade: p.grade, group: p.group, desc, ex, popup, ...tr,
+            status: 'ON', createdAt: serverTimestamp()
+          });
         });
-        toast(`추가됨: ${school} ${grade}학년 ${group}반`, 'success');
-        // 입력 유지, 반 선택만 초기화해서 다음 반 선택 유도
-        const clsSel = document.getElementById('adm_class');
-        clsSel.value = '';
-        clsSel.focus();
+        await batch.commit();
+        toast(`${_pending.length}개 학급에 배정되었습니다.`, 'success');
       }
+      window.resetAdminForm();
       await window.loadAdminList();
     } catch(e) { toast('오류: ' + e.message, 'error'); }
     showLoading(false);
@@ -1676,6 +1687,7 @@
     document.getElementById('adm_desc').value = c.desc||'';
     document.getElementById('adm_ex').value = c.ex||'';
     document.getElementById('adm_popup').value = c.popup||'';
+    _pending = []; renderPending();   // 수정은 단일 문서라 담기 목록 미사용
     // 드롭다운 구성 후 값 지정 (기존 수업은 학교 없으면 관산중학교로)
     await buildPaddletDropdowns();
     const school = (c.schoolName || '관산중학교');
@@ -1713,6 +1725,8 @@
     document.getElementById('adm_popup').value='';
     document.getElementById('adm_grade').value='';
     document.getElementById('adm_class').value='';
+    _pending = [];
+    renderPending();
     document.getElementById('adm_edit_info').style.display='none';
     document.getElementById('adm_cancel_btn').classList.add('hidden');
   };
