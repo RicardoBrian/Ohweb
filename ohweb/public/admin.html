@@ -450,9 +450,9 @@
     <div class="app-modal-grid">
       <button class="app-modal-item" onclick="goApp('schools')"><span class="app-modal-icon">🏫</span><span>학교</span></button>
       <button class="app-modal-item" onclick="goApp('students')"><span class="app-modal-icon">👥</span><span>학생</span></button>
-      <button class="app-modal-item" onclick="goApp('paddlet')"><span class="app-modal-icon">📌</span><span>패들릿</span></button>
+      <button class="app-modal-item" onclick="goApp('paddlet')"><span class="app-modal-icon">📌</span><span>정보 게시판</span></button>
       <button class="app-modal-item" onclick="goApp('exam')"><span class="app-modal-icon">📋</span><span>시험</span></button>
-      <button class="app-modal-item" onclick="goApp('forms')"><span class="app-modal-icon">📝</span><span>설문폼</span></button>
+      <button class="app-modal-item" onclick="goApp('forms')"><span class="app-modal-icon">📝</span><span>설문지</span></button>
       <button class="app-modal-item" onclick="goApp('apps')"><span class="app-modal-icon">📱</span><span>앱 설정</span></button>
     </div>
   </div>
@@ -605,7 +605,7 @@
   <!-- 패들릿 관리 섹션 -->
   <div class="section" id="section-paddlet">
     <div class="section-header">
-      <h1>패들릿 수업 관리</h1>
+      <h1>정보 게시판 관리</h1>
     </div>
 
     <div class="card">
@@ -932,10 +932,10 @@
 
   // 앱 목록 정의
   const APPS = [
-    { id: 'ohdlet', name: '패들릿', emoji: '📌' },
+    { id: 'ohdlet', name: '정보 게시판', emoji: '📌' },
     { id: 'submit', name: '과제제출', emoji: '📝' },
     { id: 'exam',   name: '시험',    emoji: '📋' },
-    { id: 'form',   name: '설문실습', emoji: '📊' },
+    { id: 'form',   name: '설문지 만들기', emoji: '📊' },
   ];
 
   let schools = [];

@@ -277,7 +277,7 @@
       .board-desc { font-size: 0.88rem; color: var(--sub); margin-top: 4px; line-height: 1.5; }
       .sidebar-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
       .board-header-mobile { display: none; }
-      .grid-board { column-count: 3; column-gap: 16px; }
+      .grid-board { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; align-items: start; }
     }
 
     @media (max-width: 1023px) {
@@ -289,12 +289,12 @@
       .board-header-mobile { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding: 20px 0 14px; flex-wrap: wrap; }
       .board-title { font-size: 1.5rem; font-weight: 800; line-height: 1.2; }
       .board-desc { font-size: 0.88rem; color: var(--sub); margin-top: 4px; }
-      .grid-board { column-count: 2; column-gap: 16px; }
+      .grid-board { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; align-items: start; }
     }
 
     @media (max-width: 600px) {
       .board-layout { padding: 0 16px 80px; }
-      .grid-board { column-count: 1; }
+      .grid-board { grid-template-columns: 1fr; }
     }
 
     /* ── 폼 카드 ── */
@@ -321,12 +321,11 @@
 
     /* ── 포스트 카드 ── */
     .post-card {
-      break-inside: avoid; page-break-inside: avoid;
-      display: inline-block; width: 100%;
+      display: block; width: 100%;
       background: var(--glass);
       backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
       border: 1px solid var(--border-card); border-radius: var(--radius); padding: 20px;
-      margin-bottom: 16px; box-shadow: var(--highlight), var(--shadow);
+      margin-bottom: 0; box-shadow: var(--highlight), var(--shadow);
       transition: box-shadow 0.25s, transform 0.25s;
       opacity: 0; transform: translateY(14px);
       position: relative;
