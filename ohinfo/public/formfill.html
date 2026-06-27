@@ -435,10 +435,18 @@ function buildSections() {
 }
 
 // ── render header ──
+// ── 설문 내용 번역 표시 (저장값은 항상 원문) ──
+function _trForm() { return (FORM && FORM.i18n && FORM.i18n[currentLang]) || null; }
+function _trQ(q) { const tf = _trForm(); return (tf && tf.questions) ? (tf.questions.find(x => x.id === q.id) || null) : null; }
+function _qText(q) { return (_trQ(q)?.text) || q.text || q.title || ''; }
+function _qOpt(q, oi, opt) { const tq = _trQ(q); return (tq && tq.options && tq.options[oi]) ? tq.options[oi] : opt; }
+function _formTitle() { return (_trForm()?.title) || FORM.title || ''; }
+function _formDesc()  { return (_trForm()?.description) || FORM.description || ''; }
+
 function renderFormHeader() {
   const t = T[currentLang];
-  document.getElementById('fillTitle').textContent = FORM.title || '';
-  document.getElementById('fillDesc').textContent  = FORM.description || '';
+  document.getElementById('fillTitle').textContent = _formTitle();
+  document.getElementById('fillDesc').textContent  = _formDesc();
   const tags = [];
   if (FORM.isQuiz)    tags.push(t.quiz);
   if (FORM.deadline)  { const dl = new Date(FORM.deadline); if (!isNaN(dl)) tags.push('⏰ ' + dl.toLocaleDateString() + ' ' + t.deadline); }
@@ -500,7 +508,7 @@ function buildQuestionEl(q, gi) {
   const t = T[currentLang];
 
   // q.text is the field name used in formlab.html builder
-  const qText = q.text || q.title || '';
+  const qText = _qText(q);
   let html = `<div class="q-label">${esc(qText)}${q.required ? '<span class="req">*</span>' : ''}</div>`;
   if (q.imageUrl) html += `<img class="q-img" src="${esc(q.imageUrl)}" alt="">`;
   if (q.description) html += `<div class="q-desc">${esc(q.description)}</div>`;
@@ -509,23 +517,26 @@ function buildQuestionEl(q, gi) {
 
   if (q.type === 'mc') {
     html += '<div class="opt-list">';
-    (q.options || []).filter(o => o !== '').forEach(opt => {
+    (q.options || []).forEach((opt, oi) => {
+      if (opt === '') return;
       const checked = ans === opt;
-      html += `<label class="opt-item${checked?' selected':''}"><input type="radio" name="q${gi}" value="${esc(opt)}" ${checked?'checked':''} onchange="window._ffAns(${gi},'mc',this)"> <span>${esc(opt)}</span></label>`;
+      html += `<label class="opt-item${checked?' selected':''}"><input type="radio" name="q${gi}" value="${esc(opt)}" ${checked?'checked':''} onchange="window._ffAns(${gi},'mc',this)"> <span>${esc(_qOpt(q,oi,opt))}</span></label>`;
     });
     html += '</div>';
   } else if (q.type === 'checkbox') {
     html += '<div class="opt-list">';
     const ansArr = Array.isArray(ans) ? ans : [];
-    (q.options || []).filter(o => o !== '').forEach(opt => {
+    (q.options || []).forEach((opt, oi) => {
+      if (opt === '') return;
       const checked = ansArr.includes(opt);
-      html += `<label class="opt-item${checked?' selected':''}"><input type="checkbox" name="q${gi}" value="${esc(opt)}" ${checked?'checked':''} onchange="window._ffAns(${gi},'checkbox',this)"> <span>${esc(opt)}</span></label>`;
+      html += `<label class="opt-item${checked?' selected':''}"><input type="checkbox" name="q${gi}" value="${esc(opt)}" ${checked?'checked':''} onchange="window._ffAns(${gi},'checkbox',this)"> <span>${esc(_qOpt(q,oi,opt))}</span></label>`;
     });
     html += '</div>';
   } else if (q.type === 'dropdown') {
     html += `<select class="inp" onchange="window._ffAns(${gi},'dropdown',this)"><option value="">${t.select}</option>`;
-    (q.options || []).filter(o => o !== '').forEach(opt => {
-      html += `<option value="${esc(opt)}" ${ans===opt?'selected':''}>${esc(opt)}</option>`;
+    (q.options || []).forEach((opt, oi) => {
+      if (opt === '') return;
+      html += `<option value="${esc(opt)}" ${ans===opt?'selected':''}>${esc(_qOpt(q,oi,opt))}</option>`;
     });
     html += '</select>';
   } else if (q.type === 'short') {

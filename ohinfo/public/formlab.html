@@ -460,6 +460,37 @@ function syncInputs() {
 }
 
 // ── 저장 ──
+// ── 설문 자동 번역 (ko → zh/ru/en) ──
+async function _deepl(texts, targetLang, sourceLang='ko') {
+  const res = await fetch('/.netlify/functions/translate', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ texts, targetLang, sourceLang })
+  });
+  const data = await res.json();
+  if (!res.ok || data.error || !data.translations) throw new Error(data.error || data.message || ('HTTP '+res.status));
+  return data.translations.map(t => t.text);
+}
+// 제목/설명/질문/보기를 zh·ru·en 으로 번역해 { zh:{title,description,questions:[{id,text,options}]}, ru:..., en:... } 반환
+async function buildFormI18n(title, description, qs) {
+  const flat = [title || '', description || ''];
+  qs.forEach(q => { flat.push(q.text || ''); (q.options || []).forEach(o => flat.push(o || '')); });
+  const targets = [['zh','zh-cn'], ['ru','ru'], ['en','en']];
+  const i18n = {};
+  await Promise.all(targets.map(async ([key, tl]) => {
+    let tr;
+    try { tr = await _deepl(flat, tl, 'ko'); } catch(e) { tr = flat.slice(); } // 실패 시 원문 유지
+    let i = 0;
+    const out = { title: tr[i++] || title, description: tr[i++] || description, questions: [] };
+    qs.forEach(q => {
+      const text = tr[i++] || q.text || '';
+      const options = (q.options || []).map(o => tr[i++] || o);
+      out.questions.push({ id: q.id, text, options });
+    });
+    i18n[key] = out;
+  }));
+  return i18n;
+}
+
 window.saveForm = async () => {
   syncInputs();
   const title = document.getElementById('bTitle').value.trim();
@@ -478,6 +509,8 @@ window.saveForm = async () => {
   };
   showLoading(true);
   try {
+    // 자동 번역(zh/ru/en) 생성해 함께 저장
+    try { data.i18n = await buildFormI18n(title, data.description, questions); } catch(e) { console.error('translate:', e); }
     if (currentFormId) {
       await updateDoc(doc(db,'student_forms',currentFormId), data);
     } else {
