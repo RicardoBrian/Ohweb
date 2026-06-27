@@ -588,6 +588,11 @@ function _ansOf(r, q, qi) {
   }
   return ans[q.id];
 }
+// 보기 라벨: 답이 인덱스면 옵션으로, 텍스트면 그대로 (formfill은 텍스트로 저장)
+function _optLabel(q, a) {
+  if (q.options && q.options[a] !== undefined) return q.options[a];
+  return a;
+}
 function renderSummary(el) {
   if (!responses.length) { el.innerHTML = '<div class="empty-msg">아직 응답이 없습니다.</div>'; return; }
   const qs = currentFormData.questions || [];
@@ -598,7 +603,7 @@ function renderSummary(el) {
 
     if (['mc','dropdown'].includes(q.type)) {
       const counts = {}; (q.options||[]).forEach(o => counts[o] = 0);
-      answers.forEach(a => { const o = q.options?.[a]; if (o !== undefined) counts[o] = (counts[o]||0) + 1; });
+      answers.forEach(a => { const o = _optLabel(q, a); counts[o] = (counts[o]||0) + 1; });
       const entries = Object.entries(counts); const total = answers.length;
       return `<div class="card res-q-block">
         ${header}
@@ -610,7 +615,7 @@ function renderSummary(el) {
     }
     if (q.type === 'checkbox') {
       const counts = {}; (q.options||[]).forEach(o => counts[o] = 0);
-      answers.forEach(arr => { (Array.isArray(arr)?arr:[arr]).forEach(idx => { const o = q.options?.[idx]; if (o !== undefined) counts[o] = (counts[o]||0) + 1; }); });
+      answers.forEach(arr => { (Array.isArray(arr)?arr:[arr]).forEach(v => { const o = _optLabel(q, v); counts[o] = (counts[o]||0) + 1; }); });
       const entries = Object.entries(counts); const total = answers.length;
       return `<div class="card res-q-block">
         ${header}
