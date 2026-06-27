@@ -112,22 +112,26 @@
     }
     .waffle-btn:hover { background: var(--glass-strong); }
     .waffle-dd {
+      display: none;
       position: absolute; top: calc(100% + 8px); right: 0;
-      background: #ffffff; backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      background: #ffffff;
       border: 1px solid var(--border); border-radius: 18px;
-      padding: 16px; min-width: 200px;
-      box-shadow: var(--highlight), var(--shadow-md); z-index: 9500;
+      padding: 16px; min-width: 220px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.18); z-index: 9500;
     }
-    body.dark .waffle-dd { background: #1a1d2e; }
+    .waffle-dd.open { display: block; }
+    body.dark .waffle-dd { background: #1a1d2e; border-color: rgba(255,255,255,0.12); }
     .waffle-dd-title { font-size: 0.72rem; font-weight: 700; color: var(--sub); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 12px; }
     .waffle-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
     .waffle-app {
       display: flex; flex-direction: column; align-items: center; gap: 6px;
       padding: 12px 8px; border-radius: 12px; cursor: pointer;
-      background: var(--glass); border: 1px solid var(--border-card);
+      background: #f4f5fa; border: 1px solid var(--border-card);
       transition: background 0.15s; font-family: inherit;
     }
-    .waffle-app:hover { background: var(--glass-strong); }
+    body.dark .waffle-app { background: rgba(255,255,255,0.06); }
+    .waffle-app:hover { background: #e8eaf3; }
+    body.dark .waffle-app:hover { background: rgba(255,255,255,0.12); }
     .waffle-icon { font-size: 1.5rem; line-height: 1; }
     .waffle-label { font-size: 0.72rem; font-weight: 700; color: var(--text); white-space: nowrap; }
 
@@ -421,23 +425,23 @@
 <nav class="nav">
   <div class="nav-brand"><img src="logo.png" alt="Ohweb" style="height:32px;width:auto;display:block;"></div>
   <div class="nav-right">
-    <button class="nav-tab active" id="tab-schools" data-section="schools">🏫 학교</button>
-    <button class="nav-tab" id="tab-students" data-section="students">👥 학생</button>
-    <button class="nav-tab" id="tab-apps" data-section="apps">📱 앱 설정</button>
+    <button class="nav-tab active" id="tab-schools" onclick="showSection('schools')">🏫 학교</button>
+    <button class="nav-tab" id="tab-students" onclick="showSection('students')">👥 학생</button>
+    <button class="nav-tab" id="tab-apps" onclick="showSection('apps')">📱 앱 설정</button>
     <div class="waffle-wrap" id="waffleWrap">
-      <button class="waffle-btn" id="waffleBtn" title="앱 관리">
+      <button class="waffle-btn" id="waffleBtn" title="앱 관리" onclick="toggleWaffle(event)">
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="0" y="0" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="6.5" y="0" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="13" y="0" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="0" y="6.5" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="6.5" y="6.5" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="13" y="6.5" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="0" y="13" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="6.5" y="13" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="13" y="13" width="5" height="5" rx="1.2" fill="currentColor"/></svg>
       </button>
-      <div class="waffle-dd hidden" id="waffleDD" onclick="event.stopPropagation()">
+      <div class="waffle-dd" id="waffleDD" onclick="event.stopPropagation()">
         <div class="waffle-dd-title">앱 관리</div>
         <div class="waffle-grid">
-          <button class="waffle-app" data-section="paddlet">
+          <button class="waffle-app" onclick="showSection('paddlet')">
             <span class="waffle-icon">📌</span><span class="waffle-label">패들릿</span>
           </button>
-          <button class="waffle-app" data-section="exam">
+          <button class="waffle-app" onclick="showSection('exam')">
             <span class="waffle-icon">📋</span><span class="waffle-label">시험</span>
           </button>
-          <button class="waffle-app" data-href="forms.html">
+          <button class="waffle-app" onclick="location.href='forms.html'">
             <span class="waffle-icon">📝</span><span class="waffle-label">설문폼</span>
           </button>
         </div>
@@ -897,6 +901,30 @@
 
 </div>
 
+<!-- 네비게이션 (firebase와 무관한 순수 UI 로직 — 일반 스크립트라 onclick 전역 동작) -->
+<script>
+  function showSection(name) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    var sec = document.getElementById('section-' + name);
+    if (sec) sec.classList.add('active');
+    var tab = document.getElementById('tab-' + name);
+    if (tab) tab.classList.add('active');
+    closeWaffle();
+    // firebase 데이터 로딩 훅 (모듈에서 등록, 없으면 그냥 무시)
+    if (typeof window.onSectionShow === 'function') window.onSectionShow(name);
+  }
+  function toggleWaffle(e) {
+    if (e) e.stopPropagation();
+    document.getElementById('waffleDD').classList.toggle('open');
+  }
+  function closeWaffle() {
+    var d = document.getElementById('waffleDD');
+    if (d) d.classList.remove('open');
+  }
+  document.addEventListener('click', closeWaffle);
+</script>
+
 <script type="module">
   import { db } from './firebase-config.js';
   import {
@@ -973,22 +1001,15 @@
   window.confirmOk = () => { document.getElementById('confirmModal').classList.remove('show'); if (confirmCallback) confirmCallback(); };
   window.confirmCancel = () => { document.getElementById('confirmModal').classList.remove('show'); };
 
-  // ── 섹션 전환 ──
-  window.showSection = (name) => {
-    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
-    document.getElementById('section-' + name).classList.add('active');
-    const tab = document.getElementById('tab-' + name);
-    if (tab) tab.classList.add('active');
+  // ── 섹션 진입 시 firebase 데이터 로딩 (네비 자체는 위 일반 스크립트가 담당) ──
+  window.onSectionShow = (name) => {
+    if (name === 'paddlet') window.loadAdminList();
+    if (name === 'exam') initExamSection();
+    if (name === 'apps') window.loadAppStudents();
   };
 
-  // ── 다크모드 초기화 ──
+  // ── 다크모드 초기화 / 토글 / 로그아웃 ──
   if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
-
-  // ── 네비 이벤트 연결 ──
-  document.querySelectorAll('.nav-tab[data-section]').forEach(btn => {
-    btn.addEventListener('click', () => window.showSection(btn.dataset.section));
-  });
   document.getElementById('darkToggleBtn').addEventListener('click', () => {
     document.body.classList.toggle('dark');
     localStorage.setItem('dark', document.body.classList.contains('dark') ? '1' : '0');
@@ -996,21 +1017,6 @@
   document.getElementById('logoutBtn').addEventListener('click', () => {
     sessionStorage.removeItem('ohweb_admin'); window.location.href = 'index.html';
   });
-
-  // ── 와플 메뉴 ──
-  const closeWaffle = () => { document.getElementById('waffleDD').classList.add('hidden'); };
-  document.getElementById('waffleBtn').addEventListener('click', (e) => {
-    e.stopPropagation();
-    document.getElementById('waffleDD').classList.toggle('hidden');
-  });
-  document.getElementById('waffleDD').addEventListener('click', (e) => e.stopPropagation());
-  document.querySelectorAll('.waffle-app[data-section]').forEach(btn => {
-    btn.addEventListener('click', () => { closeWaffle(); window.showSection(btn.dataset.section); });
-  });
-  document.querySelectorAll('.waffle-app[data-href]').forEach(btn => {
-    btn.addEventListener('click', () => { closeWaffle(); location.href = btn.dataset.href; });
-  });
-  document.addEventListener('click', () => closeWaffle());
 
   // ── 로그아웃 ──
   window.logout = () => { sessionStorage.removeItem('ohweb_admin'); window.location.href = 'index.html'; };
@@ -1598,15 +1604,6 @@
     document.querySelectorAll('.adm-g, .adm-b').forEach(i=>i.checked=false);
     document.getElementById('adm_edit_info').style.display='none';
     document.getElementById('adm_cancel_btn').classList.add('hidden');
-  };
-
-  // 패들릿 섹션 진입 시 목록 로드
-  const origShowSection = window.showSection;
-  window.showSection = (name) => {
-    origShowSection(name);
-    if (name === 'paddlet') window.loadAdminList();
-    if (name === 'exam') initExamSection();
-    if (name === 'apps') window.loadAppStudents();
   };
 
   // ── 시험 관리 ──
