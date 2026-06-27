@@ -543,7 +543,7 @@
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
         <div style="grid-column:1/-1;">
           <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">학교</label>
-          <select class="inp" id="addSchoolName" style="width:100%;">
+          <select class="inp" id="addSchoolName" style="width:100%;" onchange="populateAddDatalists()">
             <option value="">학교 선택</option>
           </select>
         </div>
@@ -553,11 +553,13 @@
         </div>
         <div>
           <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">학년</label>
-          <input class="inp" id="addGrade" type="text" placeholder="예: 1" style="width:100%;">
+          <input class="inp" id="addGrade" type="text" list="addGradeOptions" placeholder="예: 1 (선택 또는 입력)" style="width:100%;" autocomplete="off">
+          <datalist id="addGradeOptions"></datalist>
         </div>
         <div>
           <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">반</label>
-          <input class="inp" id="addClass" type="text" placeholder="예: 3" style="width:100%;">
+          <input class="inp" id="addClass" type="text" list="addClassOptions" placeholder="예: 3 (선택 또는 입력)" style="width:100%;" autocomplete="off">
+          <datalist id="addClassOptions"></datalist>
         </div>
         <div>
           <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">번호</label>
@@ -572,11 +574,11 @@
       <h2><span class="icon">👥</span> 학생 목록</h2>
       <div class="select-controls">
         <label>학교</label>
-        <input class="inp" id="filterSchool" type="text" placeholder="전체" oninput="loadStudents()" style="width:110px;">
+        <select class="inp" id="filterSchool" onchange="onFilterSchoolChange()" style="width:140px;"><option value="">전체</option></select>
         <label>학년</label>
-        <input class="inp" id="filterGrade" type="text" placeholder="전체" oninput="loadStudents()" style="width:90px;">
+        <select class="inp" id="filterGrade" onchange="onFilterGradeChange()" style="width:100px;"><option value="">전체</option></select>
         <label>반</label>
-        <input class="inp" id="filterClass" type="text" placeholder="전체" oninput="loadStudents()" style="width:70px;">
+        <select class="inp" id="filterClass" onchange="loadStudents()" style="width:90px;"><option value="">전체</option></select>
       </div>
       <div id="studentList"><div class="empty-state"><div class="empty-icon">👥</div>학생이 없습니다.</div></div>
     </div>
@@ -1016,6 +1018,7 @@
 
   // ── 섹션 진입 시 firebase 데이터 로딩 (네비 자체는 위 일반 스크립트가 담당) ──
   window.onSectionShow = (name) => {
+    if (name === 'students') window.loadStudents();
     if (name === 'paddlet') window.loadAdminList();
     if (name === 'exam') initExamSection();
     if (name === 'apps') window.loadAppStudents();
@@ -1185,25 +1188,81 @@
   };
 
   // ── 학생 목록 ──
+  // 학생 캐시 (필터·드롭다운은 이 데이터에서 파생)
+  let allStudents = [];
+
+  // 입력된 데이터에서 distinct 값 추출 (숫자 우선 정렬)
+  function distinctSorted(vals) {
+    return [...new Set(vals.map(v => String(v||'').trim()).filter(Boolean))].sort((a,b) => {
+      const na = parseInt(a,10), nb = parseInt(b,10);
+      if (!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
+      return a.localeCompare(b, 'ko');
+    });
+  }
+  function setSelectOptions(sel, values) {
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">전체</option>' +
+      values.map(v => `<option value="${v.replace(/"/g,'&quot;')}">${v}</option>`).join('');
+    sel.value = values.includes(cur) ? cur : '';
+  }
+
   window.loadStudents = async () => {
-    const school   = document.getElementById('filterSchool').value.trim();
-    const grade    = document.getElementById('filterGrade').value.trim();
-    const cls      = document.getElementById('filterClass').value.trim();
-
     const snap = await getDocs(collection(db, 'students'));
-    let students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    allStudents = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    buildStudentFilters();
+    window.populateAddDatalists();
+    renderStudents();
+  };
 
-    // 클라이언트 필터 (DB값이 "1" 또는 "1학년" 형태 모두 대응)
-    const nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
-    if (school) students = students.filter(s => (s.schoolName||'').includes(school));
-    if (grade) students = students.filter(s => nv(s.grade) === nv(grade));
-    if (cls)   students = students.filter(s => nv(s.class) === nv(cls));
+  function buildStudentFilters() {
+    setSelectOptions(document.getElementById('filterSchool'), distinctSorted(allStudents.map(s => s.schoolName)));
+    repopulateFilterGrade();
+    repopulateFilterClass();
+  }
+  function repopulateFilterGrade() {
+    const school = document.getElementById('filterSchool').value;
+    const grades = distinctSorted(
+      allStudents.filter(s => !school || (s.schoolName||'').trim() === school).map(s => nv(s.grade))
+    );
+    setSelectOptions(document.getElementById('filterGrade'), grades);
+  }
+  function repopulateFilterClass() {
+    const school = document.getElementById('filterSchool').value;
+    const grade  = document.getElementById('filterGrade').value;
+    const classes = distinctSorted(
+      allStudents
+        .filter(s => (!school || (s.schoolName||'').trim() === school) && (!grade || nv(s.grade) === grade))
+        .map(s => nv(s.class))
+    );
+    setSelectOptions(document.getElementById('filterClass'), classes);
+  }
+  window.onFilterSchoolChange = () => { repopulateFilterGrade(); repopulateFilterClass(); renderStudents(); };
+  window.onFilterGradeChange  = () => { repopulateFilterClass(); renderStudents(); };
 
-    // 학년→반→번호 정렬
+  // 개별 추가 폼: 선택한 학교의 기존 학년/반을 추천(datalist), 새 값 입력도 허용
+  window.populateAddDatalists = () => {
+    const school = document.getElementById('addSchoolName').value.trim();
+    const inScope = allStudents.filter(s => !school || (s.schoolName||'').trim() === school);
+    const grades  = distinctSorted(inScope.map(s => nv(s.grade)));
+    const classes = distinctSorted(inScope.map(s => nv(s.class)));
+    document.getElementById('addGradeOptions').innerHTML = grades.map(g => `<option value="${g.replace(/"/g,'&quot;')}">`).join('');
+    document.getElementById('addClassOptions').innerHTML = classes.map(c => `<option value="${c.replace(/"/g,'&quot;')}">`).join('');
+  };
+
+  function renderStudents() {
+    const school = document.getElementById('filterSchool').value;
+    const grade  = document.getElementById('filterGrade').value;
+    const cls    = document.getElementById('filterClass').value;
+
+    let students = allStudents.slice();
+    if (school) students = students.filter(s => (s.schoolName||'').trim() === school);
+    if (grade)  students = students.filter(s => nv(s.grade) === grade);
+    if (cls)    students = students.filter(s => nv(s.class) === cls);
+
     students.sort((a,b) => {
-      const g = (a.grade||'').localeCompare(b.grade||'', 'ko');
+      const g = (parseInt(nv(a.grade))||0) - (parseInt(nv(b.grade))||0);
       if (g !== 0) return g;
-      const c = (a.class||'').localeCompare(b.class||'', 'ko');
+      const c = (parseInt(nv(a.class))||0) - (parseInt(nv(b.class))||0);
       if (c !== 0) return c;
       return (parseInt(a.number)||0) - (parseInt(b.number)||0);
     });
@@ -1233,7 +1292,7 @@
         </table>
       </div>
     `;
-  };
+  }
 
   window.deleteStudent = (id, name) => {
     confirmDialog('학생 삭제', `"${name}"을(를) 삭제하시겠습니까?`, async () => {
