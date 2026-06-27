@@ -461,7 +461,7 @@
 <div class="wrap">
 
   <!-- 학교 관리 섹션 -->
-  <div class="section active" id="section-schools">
+  <div class="section" id="section-schools">
     <div class="section-header">
       <h1>학교 관리</h1>
     </div>
@@ -495,7 +495,7 @@
   </div>
 
   <!-- 학생 관리 섹션 -->
-  <div class="section" id="section-students">
+  <div class="section active" id="section-students">
     <div class="section-header">
       <h1>학생 명단</h1>
     </div>
@@ -1426,9 +1426,10 @@
       console.error('init error:', e);
     }
     showLoading(false);
-    // 다른 페이지의 와플에서 #섹션으로 들어온 경우 해당 섹션 표시
+    // 다른 페이지의 와플에서 #섹션으로 들어온 경우 해당 섹션, 아니면 기본 학생 관리
     const target = location.hash.replace('#','');
     if (target && document.getElementById('section-' + target)) showSection(target);
+    else showSection('students');
   }
 
   init();
