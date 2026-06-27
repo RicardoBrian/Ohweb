@@ -47,15 +47,11 @@
       border-bottom: 1px solid var(--border);
       box-shadow: 0 1px 0 rgba(255,255,255,0.35), var(--shadow);
       padding: 0 20px; height: var(--nav-h);
-      display: flex; align-items: center; gap: 10px;
+      display: flex; align-items: center; gap: 12px;
     }
-    .nav-brand {
-      font-size: 1.1rem; font-weight: 900; letter-spacing: -0.02em;
-      background: linear-gradient(135deg, var(--accent), #7c4dff);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-      white-space: nowrap; flex-shrink: 0; cursor: pointer; text-decoration: none;
-    }
-    .nav-title { font-weight: 800; font-size: 0.95rem; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .nav-brand { display: flex; align-items: center; gap: 8px; flex-shrink: 0; text-decoration: none; }
+    .nav-brand img { height: 30px; width: auto; display: block; }
+    .nav-title { font-weight: 800; font-size: 0.95rem; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
     .dark-toggle {
       width: 42px; height: 24px; border-radius: 50px;
       background: var(--glass); border: 1px solid var(--border);
@@ -71,143 +67,124 @@
     body.dark .dark-toggle::after { transform: translateX(18px); }
 
     /* LAYOUT */
-    .wrap { max-width: 800px; margin: 0 auto; padding: 32px 20px 80px; }
+    .wrap { max-width: 880px; margin: 0 auto; padding: 32px 20px 80px; }
     @media (max-width: 600px) { .wrap { padding: 18px 14px 80px; } }
 
-    /* CARD */
-    .card {
-      background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
-      border: 1px solid var(--border); border-radius: 22px; padding: 24px;
-      margin-bottom: 16px; box-shadow: var(--highlight), var(--shadow);
+    .page-head { margin-bottom: 20px; }
+    .page-head h1 { font-size: 1.5rem; font-weight: 900; letter-spacing: -0.03em; }
+    .page-head p { font-size: 0.85rem; color: var(--sub); margin-top: 2px; }
+
+    /* STATS */
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
+    @media (max-width: 560px) { .stats-row { grid-template-columns: 1fr 1fr; } }
+    .stat-card {
+      background: var(--glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-card); border-radius: var(--radius);
+      padding: 16px 18px; box-shadow: var(--highlight), var(--shadow);
     }
-    @media (max-width: 600px) { .card { padding: 18px 16px; border-radius: 16px; } }
+    .stat-label { font-size: 0.68rem; font-weight: 700; color: var(--sub); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 4px; }
+    .stat-value { font-size: 1.7rem; font-weight: 900; line-height: 1; letter-spacing: -0.03em; }
+    .stat-value span { font-size: 0.9rem; font-weight: 600; color: var(--sub); margin-left: 3px; }
+
+    /* TOOLBAR */
+    .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+    .inp {
+      padding: 9px 14px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border-card); background: var(--glass); color: var(--text);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--highlight);
+      font-family: inherit; font-size: 0.9rem; outline: none; transition: border-color 0.2s;
+    }
+    .inp::placeholder { color: var(--sub); }
+    .inp:focus { border-color: rgba(42,92,230,0.5); box-shadow: var(--highlight), 0 0 0 3px rgba(42,92,230,0.13); }
+    .toolbar .search { flex: 1; min-width: 150px; }
+    select.inp {
+      cursor: pointer; appearance: none; padding-right: 30px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 11px center;
+    }
+
+    /* SEGMENTED */
+    .seg { display: inline-flex; background: var(--glass); border: 1px solid var(--border-card); border-radius: 50px; padding: 3px; box-shadow: var(--highlight); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
+    .seg button {
+      font-family: inherit; font-size: 0.8rem; font-weight: 700; color: var(--sub);
+      border: none; background: none; cursor: pointer; padding: 6px 16px; border-radius: 50px; transition: 0.2s; white-space: nowrap;
+    }
+    .seg button.on { background: rgba(42,92,230,0.9); color: #fff; box-shadow: 0 2px 8px rgba(42,92,230,0.3); }
 
     /* BTN */
     .btn {
       font-family: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; border-radius: 50px;
-      padding: 8px 20px; border: 1px solid var(--border); background: var(--glass); color: var(--text);
+      padding: 7px 16px; border: 1px solid var(--border); background: var(--glass); color: var(--text);
       backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
       box-shadow: var(--highlight), var(--shadow); transition: background 0.2s, transform 0.15s; white-space: nowrap;
     }
     .btn:hover { background: var(--glass-strong); }
     .btn:active { transform: scale(0.96); }
-    .btn.accent {
-      background: rgba(42,92,230,0.82); border-color: rgba(100,140,255,0.5); color: #fff;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 20px rgba(42,92,230,0.35);
-    }
-    .btn.accent:hover { background: rgba(42,92,230,0.95); }
     .btn.danger { color: #ef4444; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.08); box-shadow: none; }
-    .btn.ghost { border-color: transparent; background: transparent; box-shadow: none; }
-    .btn.ghost:hover { background: var(--glass); }
-    .btn.sm { padding: 5px 13px; font-size: 0.78rem; }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn.sm { padding: 5px 12px; font-size: 0.76rem; }
 
-    /* INP */
-    .inp {
-      width: 100%; padding: 10px 14px; border-radius: var(--radius-sm);
-      border: 1px solid var(--border-card); background: var(--glass); color: var(--text);
-      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--highlight);
-      font-family: inherit; font-size: 0.93rem; outline: none; transition: border-color 0.2s;
+    /* GROUP (학생별) */
+    .group { margin-bottom: 14px; }
+    .group-head {
+      display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none;
+      padding: 12px 16px; border-radius: var(--radius);
+      background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border); box-shadow: var(--highlight), var(--shadow);
     }
-    .inp::placeholder { color: var(--sub); }
-    .inp:focus { border-color: rgba(42,92,230,0.5); box-shadow: var(--highlight), 0 0 0 3px rgba(42,92,230,0.13); }
-    select.inp {
-      cursor: pointer; appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
-      background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;
+    .group-avatar {
+      width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 0.9rem; color: #fff;
+      background: linear-gradient(135deg, var(--accent), #7c4dff);
     }
-
-    /* SUMMARY STATS */
-    .stats-row {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px;
-    }
-    @media (max-width: 420px) { .stats-row { grid-template-columns: 1fr; } }
-    .stat-card {
-      background: var(--glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
-      border: 1px solid var(--border-card); border-radius: var(--radius);
-      padding: 18px 20px; box-shadow: var(--highlight), var(--shadow);
-    }
-    .stat-label { font-size: 0.71rem; font-weight: 700; color: var(--sub); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 4px; }
-    .stat-value { font-size: 2rem; font-weight: 900; line-height: 1; letter-spacing: -0.03em; color: var(--text); }
-    .stat-value span { font-size: 1rem; font-weight: 600; color: var(--sub); margin-left: 4px; }
-
-    /* TOOLBAR */
-    .toolbar {
-      display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap;
-    }
-    .toolbar .inp { flex: 1; min-width: 160px; }
-    .toolbar select.inp { width: auto; flex: 0 0 auto; min-width: 110px; }
+    .group-name { font-weight: 800; font-size: 0.98rem; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .group-meta { font-size: 0.74rem; color: var(--sub); white-space: nowrap; }
+    .group-caret { color: var(--sub); transition: transform 0.2s; flex-shrink: 0; }
+    .group.collapsed .group-caret { transform: rotate(-90deg); }
+    .group.collapsed .group-body { display: none; }
+    .group-body { padding: 10px 0 2px 8px; }
 
     /* SURVEY ITEM */
     .survey-item {
       background: var(--glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
       border: 1px solid var(--border-card); border-radius: var(--radius-sm);
-      margin-bottom: 10px; overflow: hidden; transition: box-shadow 0.2s;
+      margin-bottom: 9px; overflow: hidden; transition: box-shadow 0.2s;
     }
     .survey-item:hover { box-shadow: var(--shadow-md); }
-    .survey-header {
-      display: flex; align-items: center; gap: 10px; padding: 14px 16px;
-      flex-wrap: wrap; cursor: default;
-    }
-    .survey-title { font-weight: 700; font-size: 0.95rem; flex: 1; min-width: 120px; }
-    .survey-meta { font-size: 0.74rem; color: var(--sub); white-space: nowrap; }
-    .badge {
-      font-size: 0.68rem; font-weight: 700; padding: 2px 9px; border-radius: 50px;
-      white-space: nowrap; flex-shrink: 0;
-    }
+    .survey-header { display: flex; align-items: center; gap: 9px; padding: 13px 15px; flex-wrap: wrap; }
+    .survey-title { font-weight: 700; font-size: 0.92rem; flex: 1; min-width: 120px; }
+    .survey-meta { font-size: 0.73rem; color: var(--sub); white-space: nowrap; }
+    .badge { font-size: 0.67rem; font-weight: 700; padding: 2px 9px; border-radius: 50px; white-space: nowrap; flex-shrink: 0; }
     .badge.open { background: rgba(34,197,94,0.15); color: #15803d; border: 1px solid rgba(34,197,94,0.3); }
     body.dark .badge.open { color: #4ade80; }
     .badge.closed { background: rgba(239,68,68,0.1); color: #b91c1c; border: 1px solid rgba(239,68,68,0.2); }
     body.dark .badge.closed { color: #f87171; }
     .badge.draft { background: rgba(100,100,100,0.1); color: var(--sub); border: 1px solid var(--border-card); }
-    .badge.responses {
-      background: var(--accent-light); color: var(--accent);
-      border: 1px solid rgba(42,92,230,0.2);
-    }
-
-    .survey-actions {
-      display: flex; gap: 6px; padding: 0 16px 12px; flex-wrap: wrap; align-items: center;
-    }
+    .badge.responses { background: var(--accent-light); color: var(--accent); border: 1px solid rgba(42,92,230,0.2); }
+    .survey-actions { display: flex; gap: 6px; padding: 0 15px 12px; flex-wrap: wrap; align-items: center; }
 
     /* RESPONSE PANEL */
-    .response-panel {
-      border-top: 1px solid var(--border-card);
-      padding: 16px; background: rgba(0,0,0,0.02);
-      animation: slideDown 0.2s ease;
-    }
+    .response-panel { border-top: 1px solid var(--border-card); padding: 16px; background: rgba(0,0,0,0.02); animation: slideDown 0.2s ease; }
     body.dark .response-panel { background: rgba(255,255,255,0.02); }
     @keyframes slideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
-
-    .response-panel h4 {
-      font-size: 0.8rem; font-weight: 700; color: var(--sub);
-      text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 14px;
-    }
+    .response-panel h4 { font-size: 0.78rem; font-weight: 700; color: var(--sub); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 14px; }
     .q-block { margin-bottom: 18px; }
-    .q-text { font-size: 0.88rem; font-weight: 700; margin-bottom: 8px; color: var(--text); }
-    .q-type-tag { font-size: 0.66rem; font-weight: 700; color: var(--sub); text-transform: uppercase; margin-left: 6px; }
-
-    /* Bar chart rows */
+    .q-text { font-size: 0.87rem; font-weight: 700; margin-bottom: 8px; }
+    .q-type-tag { font-size: 0.64rem; font-weight: 700; color: var(--sub); text-transform: uppercase; margin-left: 6px; }
+    .q-count { font-size: 0.72rem; font-weight: 600; color: var(--sub); margin-left: 4px; }
     .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
-    .bar-label { font-size: 0.78rem; color: var(--text); min-width: 100px; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bar-label { font-size: 0.78rem; min-width: 90px; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .bar-track { flex: 1; height: 10px; border-radius: 50px; background: var(--glass-strong); border: 1px solid var(--border-card); overflow: hidden; }
     .bar-fill { height: 100%; border-radius: 50px; background: linear-gradient(90deg, var(--accent), #7c4dff); transition: width 0.5s ease; }
-    .bar-count { font-size: 0.72rem; color: var(--sub); min-width: 32px; text-align: right; }
-
-    /* Text responses */
+    .bar-count { font-size: 0.72rem; color: var(--sub); min-width: 34px; text-align: right; }
     .text-responses { display: flex; flex-direction: column; gap: 6px; }
-    .text-resp-item {
-      font-size: 0.82rem; padding: 7px 11px; border-radius: 8px;
-      background: var(--glass); border: 1px solid var(--border-card); color: var(--text);
-    }
+    .text-resp-item { font-size: 0.82rem; padding: 7px 11px; border-radius: 8px; background: var(--glass); border: 1px solid var(--border-card); }
+    .text-resp-item b { color: var(--accent); font-size: 0.72rem; margin-right: 6px; }
     .q-no-data { font-size: 0.8rem; color: var(--sub); font-style: italic; }
-
     .resp-loading { font-size: 0.85rem; color: var(--sub); padding: 8px 0; }
 
-    /* LOADING / EMPTY */
-    .loading-state { text-align: center; padding: 48px 20px; color: var(--sub); font-size: 0.9rem; }
-    .empty-state { text-align: center; padding: 48px 20px; }
+    .loading-state, .empty-state { text-align: center; padding: 48px 20px; color: var(--sub); font-size: 0.9rem; }
     .empty-state .empty-icon { font-size: 3rem; margin-bottom: 12px; }
-    .empty-state p { color: var(--sub); font-size: 0.9rem; }
 
     /* TOAST */
     .toast {
@@ -223,39 +200,43 @@
 <body>
 
 <nav class="nav">
-  <a href="admin.html" class="nav-brand">OHweb</a>
+  <a href="admin.html" class="nav-brand"><img src="logo.png" alt="OHweb"></a>
   <span class="nav-title">설문 관리</span>
   <div class="dark-toggle" onclick="toggleDark()" title="다크모드 전환"></div>
 </nav>
 
 <div class="wrap">
-  <!-- Summary Stats -->
-  <div class="stats-row">
-    <div class="stat-card">
-      <div class="stat-label">전체 설문</div>
-      <div class="stat-value" id="statForms">—<span>개</span></div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">전체 응답</div>
-      <div class="stat-value" id="statResponses">—<span>건</span></div>
-    </div>
+  <div class="page-head">
+    <h1>설문 관리</h1>
+    <p>학생이 만든 설문을 작성자별로 관리하고 응답을 확인합니다.</p>
   </div>
 
-  <!-- Toolbar -->
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-label">전체 설문</div><div class="stat-value" id="statForms">—<span>개</span></div></div>
+    <div class="stat-card"><div class="stat-label">전체 응답</div><div class="stat-value" id="statResponses">—<span>건</span></div></div>
+    <div class="stat-card"><div class="stat-label">작성 학생</div><div class="stat-value" id="statAuthors">—<span>명</span></div></div>
+  </div>
+
   <div class="toolbar">
-    <input class="inp" type="search" id="searchInput" placeholder="설문 제목 검색…" oninput="renderList()">
+    <input class="inp search" type="search" id="searchInput" placeholder="설문 제목·작성자 검색…" oninput="renderList()">
+    <select class="inp" id="authorFilter" onchange="renderList()"><option value="">작성자 전체</option></select>
     <select class="inp" id="statusFilter" onchange="renderList()">
-      <option value="">전체</option>
+      <option value="">상태 전체</option>
       <option value="open">공개</option>
       <option value="closed">마감</option>
       <option value="draft">초안</option>
     </select>
   </div>
 
-  <!-- Survey List -->
-  <div id="surveyList">
-    <div class="loading-state">설문 목록 불러오는 중…</div>
+  <div class="toolbar" style="justify-content:space-between;">
+    <div class="seg" id="viewSeg">
+      <button class="on" data-view="group" onclick="setView('group')">👥 학생별</button>
+      <button data-view="recent" onclick="setView('recent')">🕒 최신순</button>
+    </div>
+    <button class="btn sm" onclick="reload()">↻ 새로고침</button>
   </div>
+
+  <div id="surveyList"><div class="loading-state">설문 목록 불러오는 중…</div></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -263,272 +244,322 @@
 <script type="module">
 import { db } from './firebase-config.js';
 import {
-  collection, getDocs, getDoc, doc, deleteDoc, updateDoc, query, where
+  collection, getDocs, doc, deleteDoc, updateDoc, query, where
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-// ── Helpers ────────────────────────────────────────────────────────────────
+const COLORS = ['#2a5ce6','#7c4dff','#00b8d4','#ff7043','#26a69a','#ec407a','#ffa726','#5c6bc0'];
+
+// ── State ──
+let allForms = [];
+let responsesByForm = {};   // formId -> [response,...]
+let viewMode = 'group';
+let expandedId = null;
+const collapsedGroups = new Set();
+
+// ── Helpers ──
 function safeTitle(t) {
   if (!t) return '(제목없음)';
   if (typeof t === 'string') return t || '(제목없음)';
   return t.ko || t.en || t.zh || t.ru || '(제목없음)';
 }
-
-function fmtDate(ts) {
-  if (!ts) return '';
-  const d = ts.toDate ? ts.toDate() : new Date(ts);
-  return d.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
+function ownerOf(f) { return (f.ownerName || f.createdBy || '').trim() || '(작성자 미상)'; }
+function millis(ts) { return ts?.toMillis ? ts.toMillis() : (ts?.seconds ? ts.seconds*1000 : (typeof ts==='number'?ts:0)); }
+function fmtDateTime(ts) {
+  const ms = millis(ts); if (!ms) return '';
+  const d = new Date(ms);
+  return d.toLocaleString('ko-KR', { year:'2-digit', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
 }
-
 function statusLabel(s) {
-  if (s === 'closed') return { text: '마감', cls: 'closed' };
-  if (s === 'draft') return { text: '초안', cls: 'draft' };
-  return { text: '공개', cls: 'open' };
+  if (s === 'closed') return { text:'마감', cls:'closed' };
+  if (s === 'draft') return { text:'초안', cls:'draft' };
+  return { text:'공개', cls:'open' };
 }
-
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function initials(name) {
+  const n = (name||'').trim();
+  if (!n || n === '(작성자 미상)') return '?';
+  return n.slice(0, 2);
+}
 function showToast(msg, dur = 2200) {
   const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(el._t);
-  el._t = setTimeout(() => el.classList.remove('show'), dur);
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), dur);
 }
 
-// ── State ──────────────────────────────────────────────────────────────────
-let allForms = [];
-let expandedId = null;
-let responsesCache = {};
-
-// ── Load ───────────────────────────────────────────────────────────────────
-async function loadForms() {
-  const snap = await getDocs(collection(db, 'student_forms'));
-  allForms = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  // Sort by createdAt desc client-side
-  allForms.sort((a, b) => {
-    const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
-    const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
-    return tb - ta;
-  });
-
-  // Tally total responses
-  let totalResp = allForms.reduce((sum, f) => sum + (f.responseCount || 0), 0);
-
-  document.getElementById('statForms').innerHTML = `${allForms.length}<span>개</span>`;
-  document.getElementById('statResponses').innerHTML = `${totalResp}<span>건</span>`;
-
-  renderList();
+// 응답 배열/객체 두 형태 모두 지원: 질문 q (index qi) 에 대한 원시 답 반환
+function rawAnswer(resp, q, qi) {
+  const ans = resp.answers;
+  if (!ans) return undefined;
+  if (Array.isArray(ans)) {
+    let el = ans[qi];
+    // 위치가 어긋난 경우 질문 텍스트로 매칭 시도
+    if ((el === undefined) || (el && typeof el === 'object' && el.question && q.text && el.question !== q.text)) {
+      const byText = ans.find(a => a && typeof a === 'object' && a.question === (q.text||''));
+      if (byText) el = byText;
+    }
+    if (el && typeof el === 'object' && 'answer' in el) return el.answer;
+    return el;
+  }
+  return ans[q.id];   // 객체(질문id 키) 형태
 }
 
-// ── Render ─────────────────────────────────────────────────────────────────
-function renderList() {
-  const q = document.getElementById('searchInput').value.toLowerCase();
+// ── Load ──
+async function loadAll() {
+  const list = document.getElementById('surveyList');
+  list.innerHTML = `<div class="loading-state">설문 목록 불러오는 중…</div>`;
+  try {
+    const [formSnap, respSnap] = await Promise.all([
+      getDocs(collection(db, 'student_forms')),
+      getDocs(collection(db, 'student_form_responses')),
+    ]);
+    allForms = formSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    responsesByForm = {};
+    respSnap.docs.forEach(d => {
+      const r = d.data(); const fid = r.formId;
+      if (!fid) return;
+      (responsesByForm[fid] = responsesByForm[fid] || []).push(r);
+    });
+
+    // 실시간 집계로 응답 수 보정
+    allForms.forEach(f => { f._respCount = (responsesByForm[f.id] || []).length; });
+    // 시간순 정렬 (최신 먼저)
+    allForms.sort((a, b) => millis(b.createdAt) - millis(a.createdAt));
+
+    // 통계
+    const totalResp = allForms.reduce((s, f) => s + f._respCount, 0);
+    const authors = new Set(allForms.map(ownerOf));
+    document.getElementById('statForms').innerHTML = `${allForms.length}<span>개</span>`;
+    document.getElementById('statResponses').innerHTML = `${totalResp}<span>건</span>`;
+    document.getElementById('statAuthors').innerHTML = `${authors.size}<span>명</span>`;
+
+    // 작성자 필터 옵션
+    const sel = document.getElementById('authorFilter');
+    const cur = sel.value;
+    sel.innerHTML = `<option value="">작성자 전체</option>` +
+      [...authors].sort((a,b)=>a.localeCompare(b,'ko')).map(a => `<option value="${escHtml(a)}">${escHtml(a)}</option>`).join('');
+    sel.value = cur;
+
+    renderList();
+  } catch (err) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p>불러오기 실패: ${escHtml(err.message)}</p></div>`;
+  }
+}
+
+// ── Filter ──
+function getFiltered() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const af = document.getElementById('authorFilter').value;
   const sf = document.getElementById('statusFilter').value;
-
-  const filtered = allForms.filter(f => {
+  return allForms.filter(f => {
     const title = safeTitle(f.title).toLowerCase();
-    const matchQ = !q || title.includes(q);
-    const status = f.status || 'open';
-    const matchS = !sf || status === sf;
-    return matchQ && matchS;
+    const owner = ownerOf(f);
+    const matchQ = !q || title.includes(q) || owner.toLowerCase().includes(q);
+    const matchA = !af || owner === af;
+    const matchS = !sf || (f.status || 'open') === sf;
+    return matchQ && matchA && matchS;
   });
+}
 
+// ── Render ──
+function renderList() {
   const container = document.getElementById('surveyList');
+  const filtered = getFiltered();
   if (filtered.length === 0) {
     container.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>해당하는 설문이 없습니다.</p></div>`;
     return;
   }
-
-  container.innerHTML = filtered.map(f => buildItem(f)).join('');
-
-  // Re-expand if needed
+  container.innerHTML = viewMode === 'group' ? renderGrouped(filtered) : renderFlat(filtered);
   if (expandedId) {
     const panel = document.getElementById(`panel-${expandedId}`);
-    if (panel) panel.classList.remove('hidden');
+    if (panel) { panel.classList.remove('hidden'); renderResponses(expandedId); }
   }
+}
+
+function renderFlat(forms) {
+  return forms.map(buildItem).join('');
+}
+
+function renderGrouped(forms) {
+  // 작성자별 그룹화, 그룹은 가장 최근 활동 순
+  const groups = {};
+  forms.forEach(f => { (groups[ownerOf(f)] = groups[ownerOf(f)] || []).push(f); });
+  const order = Object.keys(groups).sort((a, b) => {
+    const la = Math.max(...groups[a].map(f => millis(f.createdAt)));
+    const lb = Math.max(...groups[b].map(f => millis(f.createdAt)));
+    return lb - la;
+  });
+  return order.map(name => {
+    const items = groups[name];                       // 이미 시간순(최신 먼저)
+    const resp = items.reduce((s, f) => s + f._respCount, 0);
+    const collapsed = collapsedGroups.has(name) ? ' collapsed' : '';
+    return `
+    <div class="group${collapsed}" id="grp-${cssId(name)}">
+      <div class="group-head" onclick="toggleGroup('${jsStr(name)}')">
+        <div class="group-avatar">${escHtml(initials(name))}</div>
+        <span class="group-name">${escHtml(name)}</span>
+        <span class="group-meta">설문 ${items.length} · 응답 ${resp}</span>
+        <span class="group-caret">▾</span>
+      </div>
+      <div class="group-body">${items.map(buildItem).join('')}</div>
+    </div>`;
+  }).join('');
 }
 
 function buildItem(f) {
   const st = statusLabel(f.status || 'open');
-  const respCount = f.responseCount || 0;
-  const date = fmtDate(f.createdAt);
-  const isExpanded = expandedId === f.id;
-
+  const date = fmtDateTime(f.createdAt);
   return `
   <div class="survey-item" id="item-${f.id}">
     <div class="survey-header">
       <span class="survey-title">${escHtml(safeTitle(f.title))}</span>
       <span class="badge ${st.cls}">${st.text}</span>
-      <span class="badge responses">응답 ${respCount}</span>
-      <span class="survey-meta">${escHtml(f.createdBy || '—')} · ${date}</span>
+      <span class="badge responses">응답 ${f._respCount}</span>
+      <span class="survey-meta">🧑 ${escHtml(ownerOf(f))} · ${date}</span>
     </div>
     <div class="survey-actions">
-      <button class="btn sm" onclick="copyLink('${f.id}')">🔗 링크 복사</button>
+      <button class="btn sm" onclick="copyLink('${f.id}')">🔗 링크</button>
       <button class="btn sm" onclick="togglePanel('${f.id}')">📊 응답 보기</button>
-      <button class="btn sm" onclick="toggleStatus('${f.id}', '${f.status || 'open'}')">${(f.status || 'open') === 'closed' ? '🔓 공개로 변경' : '🔒 마감'}</button>
+      <button class="btn sm" onclick="toggleStatus('${f.id}','${f.status || 'open'}')">${(f.status||'open')==='closed'?'🔓 공개로':'🔒 마감'}</button>
       <button class="btn sm danger" onclick="deleteSurvey('${f.id}')">🗑️ 삭제</button>
     </div>
-    <div class="response-panel hidden" id="panel-${f.id}">
-      <div class="resp-loading">불러오는 중…</div>
-    </div>
+    <div class="response-panel hidden" id="panel-${f.id}"></div>
   </div>`;
 }
 
-function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+function cssId(s) { return encodeURIComponent(s).replace(/[^a-zA-Z0-9]/g, '_'); }
+function jsStr(s) { return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
 
-// ── Actions ────────────────────────────────────────────────────────────────
-window.copyLink = function(id) {
-  const url = `https://ohinfo.netlify.app/formfill.html?id=${id}`;
-  navigator.clipboard.writeText(url).then(() => showToast('링크가 복사되었습니다!')).catch(() => {
-    prompt('아래 링크를 복사하세요:', url);
-  });
-};
-
-window.togglePanel = async function(id) {
-  const panel = document.getElementById(`panel-${id}`);
-  if (!panel) return;
-
-  if (expandedId === id) {
-    panel.classList.add('hidden');
-    expandedId = null;
-    return;
-  }
-
-  // Collapse previous
-  if (expandedId) {
-    const prev = document.getElementById(`panel-${expandedId}`);
-    if (prev) prev.classList.add('hidden');
-  }
-
-  expandedId = id;
-  panel.classList.remove('hidden');
-
-  if (responsesCache[id]) {
-    renderResponses(id, responsesCache[id]);
-    return;
-  }
-
-  panel.innerHTML = `<div class="resp-loading">응답 불러오는 중…</div>`;
-
-  try {
-    const snap = await getDocs(query(collection(db, 'student_form_responses'), where('formId', '==', id)));
-    const responses = snap.docs.map(d => d.data());
-    responsesCache[id] = responses;
-    renderResponses(id, responses);
-  } catch (err) {
-    panel.innerHTML = `<div class="q-no-data">응답을 불러오지 못했습니다: ${escHtml(err.message)}</div>`;
-  }
-};
-
-function renderResponses(id, responses) {
+// ── Responses ──
+function renderResponses(id) {
   const panel = document.getElementById(`panel-${id}`);
   if (!panel) return;
   const form = allForms.find(f => f.id === id);
   if (!form) return;
-
+  const responses = responsesByForm[id] || [];
   const questions = form.questions || [];
+
   if (responses.length === 0) {
     panel.innerHTML = `<h4>응답 결과</h4><div class="q-no-data">아직 응답이 없습니다.</div>`;
     return;
   }
 
-  let html = `<h4>응답 결과 (${responses.length}건)</h4>`;
+  let html = `<h4>응답 결과 · ${responses.length}건</h4>`;
+  questions.forEach((q, qi) => {
+    const qType = q.type || 'short';
+    const qText = typeof q.text === 'string' ? q.text : (q.text?.ko || '(질문)');
+    const raw = responses.map(r => rawAnswer(r, q, qi))
+      .filter(a => a !== undefined && a !== null && a !== '');
 
-  questions.forEach(q => {
-    const qText = typeof q.text === 'string' ? q.text : (q.text?.ko || q.text?.en || '(질문)');
-    const type = q.type || 'text';
-    html += `<div class="q-block">`;
-    html += `<div class="q-text">${escHtml(qText)} <span class="q-type-tag">${escHtml(type)}</span></div>`;
+    html += `<div class="q-block"><div class="q-text">${escHtml(qText)}<span class="q-type-tag">${escHtml(qType)}</span><span class="q-count">(${raw.length}/${responses.length})</span></div>`;
 
-    const answers = responses.map(r => {
-      const a = r.answers?.[q.id];
-      return a;
-    }).filter(a => a !== undefined && a !== null && a !== '');
-
-    if (answers.length === 0) {
+    if (raw.length === 0) {
       html += `<div class="q-no-data">응답 없음</div>`;
-    } else if (type === 'radio' || type === 'select' || type === 'checkbox') {
-      // Count options
+    } else if (qType === 'mc' || qType === 'dropdown') {
       const counts = {};
-      answers.forEach(a => {
-        const vals = Array.isArray(a) ? a : [a];
-        vals.forEach(v => { counts[String(v)] = (counts[String(v)] || 0) + 1; });
-      });
-      const total = Object.values(counts).reduce((s, c) => s + c, 0);
-      const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-      html += sorted.map(([label, count]) => {
-        const pct = total ? Math.round(count / total * 100) : 0;
-        return `<div class="bar-row">
-          <span class="bar-label" title="${escHtml(label)}">${escHtml(label)}</span>
-          <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
-          <span class="bar-count">${count}</span>
-        </div>`;
-      }).join('');
+      raw.forEach(a => { const lbl = optLabel(q, a); counts[lbl] = (counts[lbl]||0)+1; });
+      html += bars(counts, raw.length);
+    } else if (qType === 'checkbox') {
+      const counts = {};
+      raw.forEach(a => { (Array.isArray(a)?a:[a]).forEach(idx => { const lbl = optLabel(q, idx); counts[lbl] = (counts[lbl]||0)+1; }); });
+      html += bars(counts, raw.length);
     } else {
-      // Text-type: show up to 5 responses
-      const shown = answers.slice(0, 5);
-      html += `<div class="text-responses">${shown.map(a => `<div class="text-resp-item">${escHtml(String(a))}</div>`).join('')}</div>`;
-      if (answers.length > 5) html += `<div class="q-no-data" style="margin-top:4px">+${answers.length - 5}개 더 있음</div>`;
+      // short / long / 기타 텍스트
+      const items = responses.map(r => ({ a: rawAnswer(r, q, qi), name: r.respondentName }))
+        .filter(x => x.a !== undefined && x.a !== null && x.a !== '');
+      const shown = items.slice(0, 8);
+      html += `<div class="text-responses">${shown.map(x => `<div class="text-resp-item">${x.name?`<b>${escHtml(x.name)}</b>`:''}${escHtml(String(x.a))}</div>`).join('')}</div>`;
+      if (items.length > 8) html += `<div class="q-no-data" style="margin-top:4px">+${items.length-8}개 더 있음</div>`;
     }
-
     html += `</div>`;
   });
-
   panel.innerHTML = html;
 }
 
-window.toggleStatus = async function(id, currentStatus) {
+function optLabel(q, a) {
+  // mc/dropdown/checkbox 답은 옵션 인덱스. 옵션 없으면 원시값.
+  if (q.options && typeof a === 'number' && q.options[a] !== undefined) return String(q.options[a]);
+  if (q.options && q.options[a] !== undefined) return String(q.options[a]);
+  return String(a);
+}
+function bars(counts, total) {
+  const entries = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  return entries.map(([label,count],i) => {
+    const pct = total ? Math.round(count/total*100) : 0;
+    return `<div class="bar-row">
+      <span class="bar-label" title="${escHtml(label)}">${escHtml(label)}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${COLORS[i%COLORS.length]}"></div></div>
+      <span class="bar-count">${count}</span></div>`;
+  }).join('');
+}
+
+// ── Actions (window) ──
+window.setView = (v) => {
+  viewMode = v;
+  document.querySelectorAll('#viewSeg button').forEach(b => b.classList.toggle('on', b.dataset.view === v));
+  renderList();
+};
+window.toggleGroup = (name) => {
+  if (collapsedGroups.has(name)) collapsedGroups.delete(name); else collapsedGroups.add(name);
+  const el = document.getElementById(`grp-${cssId(name)}`);
+  if (el) el.classList.toggle('collapsed');
+};
+window.togglePanel = (id) => {
+  const panel = document.getElementById(`panel-${id}`);
+  if (!panel) return;
+  if (expandedId === id) { panel.classList.add('hidden'); expandedId = null; return; }
+  if (expandedId) { const prev = document.getElementById(`panel-${expandedId}`); if (prev) prev.classList.add('hidden'); }
+  expandedId = id;
+  panel.classList.remove('hidden');
+  renderResponses(id);
+};
+window.copyLink = (id) => {
+  const url = `https://ohinfo.netlify.app/formfill.html?id=${id}`;
+  navigator.clipboard.writeText(url).then(() => showToast('링크가 복사되었습니다!')).catch(() => prompt('아래 링크를 복사하세요:', url));
+};
+window.toggleStatus = async (id, currentStatus) => {
   const newStatus = currentStatus === 'closed' ? 'open' : 'closed';
   try {
     await updateDoc(doc(db, 'student_forms', id), { status: newStatus });
-    const idx = allForms.findIndex(f => f.id === id);
-    if (idx !== -1) allForms[idx].status = newStatus;
-    showToast(newStatus === 'closed' ? '설문을 마감했습니다.' : '설문을 공개로 변경했습니다.');
+    const f = allForms.find(x => x.id === id); if (f) f.status = newStatus;
+    showToast(newStatus === 'closed' ? '설문을 마감했습니다.' : '공개로 변경했습니다.');
     renderList();
-  } catch (err) {
-    showToast('상태 변경 실패: ' + err.message);
-  }
+  } catch (err) { showToast('상태 변경 실패: ' + err.message); }
 };
-
-window.deleteSurvey = async function(id) {
+window.deleteSurvey = async (id) => {
   const form = allForms.find(f => f.id === id);
   const title = form ? safeTitle(form.title) : id;
   if (!confirm(`"${title}" 설문을 삭제하시겠습니까?\n응답 데이터도 함께 삭제됩니다.`)) return;
-
   try {
-    // Delete responses
     const respSnap = await getDocs(query(collection(db, 'student_form_responses'), where('formId', '==', id)));
     await Promise.all(respSnap.docs.map(d => deleteDoc(d.ref)));
-    // Delete form
     await deleteDoc(doc(db, 'student_forms', id));
     allForms = allForms.filter(f => f.id !== id);
+    delete responsesByForm[id];
     if (expandedId === id) expandedId = null;
-    delete responsesCache[id];
-
-    // Update stats
-    const totalResp = allForms.reduce((sum, f) => sum + (f.responseCount || 0), 0);
+    // 통계 갱신
+    const totalResp = allForms.reduce((s, f) => s + (f._respCount||0), 0);
     document.getElementById('statForms').innerHTML = `${allForms.length}<span>개</span>`;
     document.getElementById('statResponses').innerHTML = `${totalResp}<span>건</span>`;
-
+    document.getElementById('statAuthors').innerHTML = `${new Set(allForms.map(ownerOf)).size}<span>명</span>`;
     showToast('설문이 삭제되었습니다.');
     renderList();
-  } catch (err) {
-    showToast('삭제 실패: ' + err.message);
-  }
+  } catch (err) { showToast('삭제 실패: ' + err.message); }
 };
+window.reload = () => loadAll();
+window.renderList = renderList;
 
-// ── Init ───────────────────────────────────────────────────────────────────
-loadForms();
+// ── Init ──
+loadAll();
 </script>
 
 <script>
 function toggleDark() {
   const isDark = document.body.classList.toggle('dark');
-  localStorage.setItem('ohweb-dark', isDark ? '1' : '0');
+  localStorage.setItem('dark', isDark ? '1' : '0');
 }
-(function() {
-  if (localStorage.getItem('ohweb-dark') === '1') document.body.classList.add('dark');
-})();
+(function(){ if (localStorage.getItem('dark') === '1') document.body.classList.add('dark'); })();
 </script>
 </body>
 </html>
