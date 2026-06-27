@@ -695,11 +695,14 @@
   const _nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
   const SESSION = {
     id: _st?.id || '',
+    schoolName: (_st?.schoolName || '').trim(),
     grade: _nv(_st?.grade || ''),
     group: _nv(_st?.class || ''),
     name: _st?.name || '',
     num: String(_st?.number || '')
   };
+  // 수업의 학교 매칭: 학교 정보 없는 기존 수업은 '관산중학교' 소속으로 간주
+  const _classSchoolOk = c => (c.schoolName || '관산중학교') === SESSION.schoolName;
   let _mpStudent = { ..._st };
 
   // ── 네비 아바타 ──
@@ -1076,7 +1079,7 @@
     try {
       const snap = await getDocs(collection(db, 'classes'));
       const classes = snap.docs.map(d => d.data())
-        .filter(c => c.status === 'ON' && c.grade === SESSION.grade && c.group === SESSION.group)
+        .filter(c => c.status === 'ON' && _classSchoolOk(c) && c.grade === SESSION.grade && c.group === SESSION.group)
         .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'));
       const sel = document.getElementById('classList');
       sel.innerHTML = `<option>${uiText[currentLang]?.opt||uiText.ko.opt}</option>`;
@@ -1121,7 +1124,7 @@
       let cls = {};
       const clsSnap = await getDocs(query(collection(db, 'classes'), where('name', '==', classTitle)));
       if (!clsSnap.empty) {
-        cls = clsSnap.docs.find(d => d.data().grade === SESSION.grade && d.data().group === SESSION.group)?.data()
+        cls = clsSnap.docs.find(d => { const x = d.data(); return _classSchoolOk(x) && x.grade === SESSION.grade && x.group === SESSION.group; })?.data()
               || clsSnap.docs[0].data();
       }
 
