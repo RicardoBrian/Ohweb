@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap');
 /* ============================================================
    OHinfo — Liquid Glass Design System (preview)
    Apple iOS 26 / macOS Tahoe 풍의 굴절 유리 + 가독성 사수
@@ -52,8 +53,8 @@
   --radius: 20px; --radius-sm: 13px; --radius-lg: 26px; --radius-pill: 980px;
   --nav-h: 56px;
   --ease: cubic-bezier(0.4,0.0,0.2,1); --dur: 0.26s;
-  --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
-          "Pretendard", "Pretendard Variable", system-ui, "Helvetica Neue", Arial, sans-serif;
+  --font: "IBM Plex Sans KR", -apple-system, BlinkMacSystemFont, "SF Pro Display",
+          "Pretendard", system-ui, "Helvetica Neue", Arial, sans-serif;
 }
 
 body.dark {

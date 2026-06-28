@@ -1,7 +1,8 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap');
 /* ============================================================
    OHinfo — Apple-style Design System
    하나의 토큰 셋으로 전 페이지를 통일합니다.
-   폰트: Apple 기기에선 실제 SF Pro, 그 외엔 Pretendard 폴백
+   폰트: IBM Plex Sans KR (Google Fonts), 폴백 SF/Pretendard
    ============================================================ */
 
 :root {
@@ -54,8 +55,8 @@
   --dur: 0.24s;
 
   /* ---- Type ---- */
-  --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
-          "Pretendard", "Pretendard Variable", system-ui, "Helvetica Neue", Arial, sans-serif;
+  --font: "IBM Plex Sans KR", -apple-system, BlinkMacSystemFont, "SF Pro Display",
+          "Pretendard", system-ui, "Helvetica Neue", Arial, sans-serif;
 }
 
 body.dark {
