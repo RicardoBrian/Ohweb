@@ -6,62 +6,10 @@
   <title>Ohweb 관리자 대시보드</title>
   <link rel="icon" href="logo.png">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="theme.css">
   <style>
-    :root {
-      --glass: rgba(255,255,255,0.28);
-      --glass-strong: rgba(255,255,255,0.42);
-      --glass-nav: rgba(255,255,255,0.3);
-      --border: rgba(255,255,255,0.6);
-      --border-card: rgba(255,255,255,0.48);
-      --highlight: inset 0 1px 0 rgba(255,255,255,0.7);
-      --text: #1a1f2e;
-      --sub: #7a849a;
-      --accent: #2a5ce6;
-      --accent-light: rgba(42,92,230,0.12);
-      --blur: blur(28px);
-      --shadow: 0 4px 20px rgba(60,80,160,0.1);
-      --shadow-md: 0 8px 32px rgba(60,80,160,0.18);
-      --radius: 18px;
-      --radius-sm: 11px;
-      --nav-h: 58px;
-    }
-    body.dark {
-      --glass: rgba(255,255,255,0.07);
-      --glass-strong: rgba(255,255,255,0.11);
-      --glass-nav: rgba(10,12,25,0.65);
-      --border: rgba(255,255,255,0.14);
-      --border-card: rgba(255,255,255,0.1);
-      --highlight: inset 0 1px 0 rgba(255,255,255,0.1);
-      --text: #dde2f0;
-      --sub: #525a70;
-      --accent: #4f8df7;
-      --accent-light: rgba(79,141,247,0.15);
-      --shadow: 0 4px 20px rgba(0,0,0,0.45);
-      --shadow-md: 0 8px 32px rgba(0,0,0,0.55);
-    }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background:
-        radial-gradient(ellipse at 15% 20%, #b8caff 0%, transparent 50%),
-        radial-gradient(ellipse at 85% 10%, #d4b8ff 0%, transparent 45%),
-        radial-gradient(ellipse at 60% 80%, #b8e0ff 0%, transparent 50%),
-        radial-gradient(ellipse at 5% 90%, #c8d4ff 0%, transparent 40%),
-        #cdd8ff;
-      background-attachment: fixed;
-      color: var(--text);
-      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
-      font-size: 16px;
-      line-height: 1.7;
-      min-height: 100vh;
-    }
-    body.dark {
-      background:
-        radial-gradient(ellipse at 15% 20%, #1a2050 0%, transparent 50%),
-        radial-gradient(ellipse at 85% 10%, #1e1040 0%, transparent 45%),
-        radial-gradient(ellipse at 60% 80%, #0d1a35 0%, transparent 50%),
-        #080c1a;
-      background-attachment: fixed;
-    }
+    body { background: var(--bg); line-height: 1.6; }
     .hidden { display: none !important; }
 
     /* 네비 */
@@ -425,6 +373,24 @@
     <div class="modal-actions">
       <button class="btn ghost" onclick="confirmCancel()">취소</button>
       <button class="btn danger" onclick="confirmOk()">삭제</button>
+    </div>
+  </div>
+</div>
+
+<!-- 학생 정보 수정 모달 -->
+<div class="modal-overlay" id="studentEditModal">
+  <div class="modal-box">
+    <h3>학생 정보 수정</h3>
+    <div id="seInfo" style="font-size:0.82rem;color:var(--sub);margin-bottom:14px;"></div>
+    <input type="hidden" id="seId">
+    <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">이름</label>
+    <input class="inp" id="seName" type="text" placeholder="이름" style="width:100%;margin-bottom:12px;">
+    <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">비밀번호</label>
+    <input class="inp" id="sePw" type="text" placeholder="비밀번호 (비우면 미설정 = 로그인 불가)" style="width:100%;margin-bottom:6px;">
+    <div style="font-size:0.76rem;color:var(--sub);margin-bottom:14px;">비밀번호를 설정하면 학생이 로그인할 수 있어요. 비우면 로그인 불가(미등록) 상태가 됩니다.</div>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="closeStudentEdit()">취소</button>
+      <button class="btn accent" onclick="saveStudentEdit()">저장</button>
     </div>
   </div>
 </div>
@@ -1248,7 +1214,7 @@
       <div style="margin-bottom:10px; font-size:0.82rem; color:var(--sub); font-weight:700;">${students.length}명</div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>학교</th><th>학년</th><th>반</th><th>번호</th><th>이름</th><th></th></tr></thead>
+          <thead><tr><th>학교</th><th>학년</th><th>반</th><th>번호</th><th>이름</th><th>상태</th><th></th></tr></thead>
           <tbody>
             ${students.map(s => `
               <tr>
@@ -1257,7 +1223,13 @@
                 <td>${s.class||''}</td>
                 <td>${s.number||''}</td>
                 <td style="font-weight:700;">${s.name||''}</td>
-                <td><button class="btn danger sm" onclick="deleteStudent('${s.id}','${s.name}')">삭제</button></td>
+                <td>${s.registered
+                  ? '<span style="font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(34,197,94,0.15);color:#16a34a;">등록</span>'
+                  : '<span style="font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(120,120,120,0.12);color:var(--sub);">미등록</span>'}</td>
+                <td style="white-space:nowrap;">
+                  <button class="btn ghost sm" onclick="editStudent('${s.id}')">수정</button>
+                  <button class="btn danger sm" onclick="deleteStudent('${s.id}','${(s.name||'').replace(/'/g,"\\'")}')">삭제</button>
+                </td>
               </tr>
             `).join('')}
           </tbody>
@@ -1265,6 +1237,38 @@
       </div>
     `;
   }
+
+  // ── 학생 이름·비밀번호 수정 ──
+  window.editStudent = (id) => {
+    const s = allStudents.find(x => x.id === id);
+    if (!s) return;
+    document.getElementById('seId').value = id;
+    document.getElementById('seInfo').innerText = `${s.schoolName||''} ${nv(s.grade)}학년 ${nv(s.class)}반 ${s.number||''}번`;
+    document.getElementById('seName').value = s.name || '';
+    document.getElementById('sePw').value = s.password || '';
+    document.getElementById('studentEditModal').classList.add('show');
+  };
+  window.closeStudentEdit = () => document.getElementById('studentEditModal').classList.remove('show');
+  window.saveStudentEdit = async () => {
+    const id = document.getElementById('seId').value;
+    const name = document.getElementById('seName').value.trim();
+    const pw = document.getElementById('sePw').value.trim();
+    if (!name) { toast('이름을 입력하세요.', 'error'); return; }
+    showLoading(true);
+    try {
+      await updateDoc(doc(db, 'students', id), {
+        name,
+        password: pw || null,
+        registered: !!pw
+      });
+      const s = allStudents.find(x => x.id === id);
+      if (s) { s.name = name; s.password = pw || null; s.registered = !!pw; }
+      closeStudentEdit();
+      toast('저장되었습니다.', 'success');
+      renderStudents();
+    } catch (e) { toast('오류: ' + e.message, 'error'); }
+    showLoading(false);
+  };
 
   window.deleteStudent = (id, name) => {
     confirmDialog('학생 삭제', `"${name}"을(를) 삭제하시겠습니까?`, async () => {
