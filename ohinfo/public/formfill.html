@@ -289,16 +289,19 @@ function fileToBase64(file) {
 }
 async function uploadOneFile(file, folder, filename) {
   const base64 = await fileToBase64(file);
-  // no-cors: 다른 출처(Netlify)→GAS 는 응답을 못 읽지만, 요청은 전달돼 드라이브 저장은 정상 수행됨
+  let res;
   try {
-    await fetch(FILE_UPLOAD_URL, {
-      method: 'POST', mode: 'no-cors',
-      body: JSON.stringify({ secret: FILE_UPLOAD_SECRET, folder, filename, mimeType: file.type || 'application/octet-stream', base64 })
-    });
+    res = await fetch(FILE_UPLOAD_URL, { method: 'POST', body: JSON.stringify({ secret: FILE_UPLOAD_SECRET, folder, filename, mimeType: file.type || 'application/octet-stream', base64 }) });
   } catch (err) {
-    throw new Error('업로드 전송 실패: ' + err.message);
+    throw new Error('CORS/네트워크 오류 → GAS 배포 "액세스: 모든 사용자(익명)"인지 확인하세요. ' + err.message);
   }
-  return { name: filename, folder, url: '' };  // 응답을 못 읽어 url 없음 (드라이브 폴더에서 확인)
+  const txt = await res.text();
+  let data;
+  try { data = JSON.parse(txt); }
+  catch (_) { throw new Error(`응답이 JSON 아님(HTTP ${res.status}) — 배포 권한/승인 문제일 수 있음: ${txt.slice(0,120)}`); }
+  if (!data || data.error) throw new Error('GAS: ' + (data && data.error ? data.error : '알수없음'));
+  if (!data.url) throw new Error('URL 없음: ' + txt.slice(0,120));
+  return { name: file.name, url: data.url };
 }
 const _safe = s => String(s || '').replace(/[\\/:*?"<>|]/g, '_').trim();
 let _activeFileGi = null;   // 붙여넣기 대상 드롭존
