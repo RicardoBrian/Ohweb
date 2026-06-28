@@ -5,55 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Ohweb 관리자</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="theme.css">
   <style>
-    :root {
-      --glass: rgba(255,255,255,0.28);
-      --glass-strong: rgba(255,255,255,0.42);
-      --border: rgba(255,255,255,0.6);
-      --border-card: rgba(255,255,255,0.48);
-      --highlight: inset 0 1px 0 rgba(255,255,255,0.7);
-      --text: #1a1f2e;
-      --sub: #7a849a;
-      --accent: #2a5ce6;
-      --blur: blur(28px);
-      --shadow-md: 0 8px 32px rgba(60,80,160,0.18);
-      --radius: 18px;
-    }
-    body.dark {
-      --glass: rgba(255,255,255,0.07);
-      --glass-strong: rgba(255,255,255,0.11);
-      --border: rgba(255,255,255,0.14);
-      --border-card: rgba(255,255,255,0.1);
-      --highlight: inset 0 1px 0 rgba(255,255,255,0.1);
-      --text: #dde2f0;
-      --sub: #525a70;
-      --accent: #4f8df7;
-      --shadow-md: 0 8px 32px rgba(0,0,0,0.55);
-    }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background:
-        radial-gradient(ellipse at 15% 20%, #b8caff 0%, transparent 50%),
-        radial-gradient(ellipse at 85% 10%, #d4b8ff 0%, transparent 45%),
-        radial-gradient(ellipse at 60% 80%, #b8e0ff 0%, transparent 50%),
-        #cdd8ff;
-      background-attachment: fixed;
-      color: var(--text);
-      font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
-      font-size: 16px;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    body.dark {
-      background:
-        radial-gradient(ellipse at 15% 20%, #1a2050 0%, transparent 50%),
-        radial-gradient(ellipse at 85% 10%, #1e1040 0%, transparent 45%),
-        radial-gradient(ellipse at 60% 80%, #0d1a35 0%, transparent 50%),
-        #080c1a;
-      background-attachment: fixed;
-    }
+    body { background: var(--bg); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
     .login-card {
       width: 100%;
       max-width: 380px;
