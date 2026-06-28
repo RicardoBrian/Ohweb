@@ -11,6 +11,19 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: var(--bg); line-height: 1.6; }
     .hidden { display: none !important; }
+    .dropzone { border: 2px dashed var(--border-card); border-radius: var(--radius-sm); padding: 22px 16px;
+      background: var(--glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      text-align: center; cursor: pointer; outline: none; transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease); }
+    .dropzone.active { border-color: var(--accent); }
+    .dropzone.drag { border-color: var(--accent); background: var(--accent-light); }
+    .dz-hint { font-size: 0.9rem; color: var(--text-2); }
+    .dz-hint b { color: var(--accent); }
+    .dz-files { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px; }
+    .dz-files:empty { display: none; }
+    .dz-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 600;
+      background: var(--surface); border: 1px solid var(--border-card); border-radius: var(--radius-pill); padding: 5px 6px 5px 12px; }
+    .dz-chip button { border: none; background: var(--danger-light); color: var(--danger); width: 20px; height: 20px;
+      border-radius: 50%; cursor: pointer; font-size: 0.7rem; line-height: 1; }
 
     /* NAV */
     .nav { position: sticky; top: 0; z-index: 200; background: var(--glass-nav); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border-bottom: 1px solid var(--border); box-shadow: 0 1px 0 rgba(255,255,255,0.35),var(--shadow); padding: 0 20px; height: var(--nav-h); display: flex; align-items: center; gap: 10px; }
@@ -268,6 +281,50 @@ let FORM = null, SESSION = null;
 let sections = [], curSection = 0, allAnswers = {};
 let isLastSection = false;
 
+// ── 파일 업로드 (GAS 웹앱 → 개인 드라이브) ──
+const FILE_UPLOAD_URL = 'https://script.google.com/macros/s/AKfycbzepbMXVCYAwoBcmFbmWQWRes1bSGfvhVHKGFNX6VHanVy-1mirxLkyHlROp0-agBX2/exec';
+const FILE_UPLOAD_SECRET = 'ohweb-upload-2026';
+function fileToBase64(file) {
+  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(file); });
+}
+async function uploadOneFile(file, folder, filename) {
+  const base64 = await fileToBase64(file);
+  const res = await fetch(FILE_UPLOAD_URL, { method: 'POST', body: JSON.stringify({ secret: FILE_UPLOAD_SECRET, folder, filename, mimeType: file.type || 'application/octet-stream', base64 }) });
+  const data = await res.json();
+  if (!data || data.error) throw new Error(data && data.error ? data.error : '업로드 실패');
+  return { name: file.name, url: data.url };
+}
+const _safe = s => String(s || '').replace(/[\\/:*?"<>|]/g, '_').trim();
+let _activeFileGi = null;   // 붙여넣기 대상 드롭존
+function _ffRenderFiles(gi) {
+  const list = document.getElementById('filelist_' + gi);
+  const files = Array.isArray(allAnswers[gi]) ? allAnswers[gi] : [];
+  if (!list) return;
+  list.innerHTML = files.map((f, k) =>
+    `<span class="dz-chip">📎 ${esc(f.name||'파일')}<button type="button" onclick="window._ffRemoveFile(${gi},${k})">✕</button></span>`
+  ).join('');
+}
+function _ffAddFiles(gi, fileList) {
+  const incoming = Array.from(fileList || []).filter(f => f && f.size >= 0);
+  if (!incoming.length) return;
+  if (!Array.isArray(allAnswers[gi])) allAnswers[gi] = [];
+  allAnswers[gi].push(...incoming);
+  _ffRenderFiles(gi);
+}
+window._ffRemoveFile = function(gi, k) { if (Array.isArray(allAnswers[gi])) { allAnswers[gi].splice(k,1); _ffRenderFiles(gi); } };
+window._ffDragOver = function(e, gi) { e.preventDefault(); document.getElementById('dz_'+gi)?.classList.add('drag'); _activeFileGi = gi; };
+window._ffDragLeave = function(e, gi) { document.getElementById('dz_'+gi)?.classList.remove('drag'); };
+window._ffDrop = function(e, gi) { e.preventDefault(); document.getElementById('dz_'+gi)?.classList.remove('drag'); _ffAddFiles(gi, e.dataTransfer && e.dataTransfer.files); };
+window._ffFocusDz = function(gi) { _activeFileGi = gi; document.querySelectorAll('.dropzone').forEach(d=>d.classList.remove('active')); document.getElementById('dz_'+gi)?.classList.add('active'); };
+// 붙여넣기: 활성 드롭존이 있으면 그쪽으로
+window.addEventListener('paste', e => {
+  if (_activeFileGi == null) return;
+  const items = (e.clipboardData || window.clipboardData)?.items || [];
+  const files = [];
+  for (const it of items) { if (it.kind === 'file') { const f = it.getAsFile(); if (f) files.push(f); } }
+  if (files.length) { e.preventDefault(); _ffAddFiles(_activeFileGi, files); }
+});
+
 // ── dark mode ──
 const savedDark = localStorage.getItem('dark');
 if (savedDark === '1' || (!savedDark && window.matchMedia('(prefers-color-scheme:dark)').matches)) document.body.classList.add('dark');
@@ -517,6 +574,14 @@ function buildQuestionEl(q, gi) {
       html += `<option value="${esc(opt)}" ${ans===opt?'selected':''}>${esc(_qOpt(q,oi,opt))}</option>`;
     });
     html += '</select>';
+  } else if (q.type === 'file') {
+    const cur = Array.isArray(ans) ? ans : [];
+    html += `<div class="dropzone" id="dz_${gi}" tabindex="0"
+        onclick="window._ffFocusDz(${gi})" onfocus="window._ffFocusDz(${gi})"
+        ondragover="window._ffDragOver(event,${gi})" ondragleave="window._ffDragLeave(event,${gi})" ondrop="window._ffDrop(event,${gi})">
+        <div class="dz-hint">📎 파일을 여기로 <b>끌어다 놓거나</b>, 복사 후 <b>붙여넣기(Ctrl+V)</b></div>
+        <div id="filelist_${gi}" class="dz-files">${cur.map((f,k)=>`<span class="dz-chip">📎 ${esc(f.name||'파일')}<button type="button" onclick="window._ffRemoveFile(${gi},${k})">✕</button></span>`).join('')}</div>
+      </div>`;
   } else if (q.type === 'short') {
     html += `<input class="inp" type="text" placeholder="${t.answerPh}" value="${esc(ans||'')}" oninput="window._ffAns(${gi},'short',this)">`;
   } else if (q.type === 'long') {
@@ -578,6 +643,34 @@ async function submitForm() {
   document.getElementById('btnNextTxt').textContent = t.submitting;
 
   const allQ = sections.flatMap(s => s.questions);
+
+  // 파일 첨부 업로드 → 드라이브 (설문이름-학교-학년 폴더 / 제출시간_이름_파일명)
+  const hasFiles = allQ.some((q, i) => q.type === 'file' && Array.isArray(allAnswers[i]) && allAnswers[i].length && allAnswers[i][0] instanceof File);
+  if (hasFiles) {
+    const _nv = v => String(v || '').replace(/학년|년급|학|반|班|кл\./g, '').trim();
+    const school = (SESSION && SESSION.schoolName) ? SESSION.schoolName : '익명';
+    const grade = (SESSION && SESSION.grade) ? _nv(SESSION.grade) + '학년' : '';
+    const who = (SESSION && SESSION.name) ? SESSION.name : '익명';
+    const d = new Date(), p = n => String(n).padStart(2, '0');
+    const stamp = `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
+    const folder = _safe(`${_formTitle() || '설문'}-${school}${grade ? '-' + grade : ''}`);
+    try {
+      for (let i = 0; i < allQ.length; i++) {
+        if (allQ[i].type !== 'file') continue;
+        const files = allAnswers[i];
+        if (Array.isArray(files) && files.length && files[0] instanceof File) {
+          const uploaded = [];
+          for (const f of files) uploaded.push(await uploadOneFile(f, folder, _safe(`${stamp}_${who}_${f.name}`)));
+          allAnswers[i] = uploaded;
+        } else { allAnswers[i] = []; }
+      }
+    } catch (e) {
+      btn.disabled = false;
+      document.getElementById('btnNextTxt').textContent = t.submit;
+      alert('파일 업로드 실패: ' + e.message); return;
+    }
+  }
+
   const answersArr = allQ.map((q, i) => ({
     question: q.text || q.title || '',
     type: q.type,

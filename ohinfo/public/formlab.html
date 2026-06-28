@@ -266,7 +266,7 @@ if (SESSION) {
 }
 
 const COLORS = ['#4f8df7','#7c4dff','#22c55e','#f59e0b','#ef4444','#06b6d4','#ec4899','#84cc16','#a78bfa','#fb923c'];
-const TYPE_LABELS = { mc:'객관식', checkbox:'체크박스', short:'주관식', long:'장문', dropdown:'드롭다운' };
+const TYPE_LABELS = { mc:'객관식', checkbox:'체크박스', short:'주관식', long:'장문', dropdown:'드롭다운', file:'파일 첨부' };
 
 // ── 상태 ──
 let questions = []; // [{id,type,text,options,required,imageUrl}]
@@ -600,6 +600,10 @@ function renderSummary(el) {
         ${entries.map(([l,c],i)=>`<div class="res-bar-row"><div class="res-bar-label">${escHtml(l)}</div><div class="res-bar-track"><div class="res-bar-fill" style="width:${total?Math.round(c/total*100):0}%;background:${COLORS[i%COLORS.length]};"></div></div><div class="res-bar-count">${c}</div></div>`).join('')}
       </div>`;
     }
+    if (q.type === 'file') {
+      return `<div class="card res-q-block">${header}
+        <div class="res-texts">${answers.flatMap(a=>Array.isArray(a)?a:[]).map(f=>`<div class="res-text-item"><a href="${f.url}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;">📎 ${escHtml(f.name||'파일')}</a></div>`).join('')||'<div class="res-text-item">(없음)</div>'}</div></div>`;
+    }
     return `<div class="card res-q-block">
       ${header}
       <div class="res-texts">${answers.map(a=>`<div class="res-text-item">${escHtml(String(a))}</div>`).join('')}</div>
@@ -633,7 +637,8 @@ function renderIndividual(el) {
       ${qs.map((q, qi) => {
         const a = _ansOf(r, q, qi);
         let disp = '';
-        if (['mc','dropdown'].includes(q.type)) disp = a !== undefined ? escHtml(q.options?.[a]||a) : '(미응답)';
+        if (q.type==='file') disp = Array.isArray(a)&&a.length ? a.map(f=>`<a href="${f.url}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;">📎 ${escHtml(f.name||'파일')}</a>`).join(' ') : '(미응답)';
+        else if (['mc','dropdown'].includes(q.type)) disp = a !== undefined ? escHtml(q.options?.[a]||a) : '(미응답)';
         else if (q.type==='checkbox') disp = Array.isArray(a) ? a.map(i=>escHtml(q.options?.[i]||i)).join(', ') : '(미응답)';
         else disp = escHtml(String(a||'(미응답)'));
         return `<div style="margin-bottom:8px;"><div style="font-size:0.75rem;color:var(--sub);font-weight:600;">${escHtml(q.text||'(질문)')}</div><div style="font-size:0.87rem;">${disp}</div></div>`;
@@ -694,6 +699,7 @@ window.exportCsv = () => {
     const time = r.submittedAt ? new Date(r.submittedAt.toDate?r.submittedAt.toDate():r.submittedAt).toLocaleString() : '';
     return [name, time, ...qs.map((q, qi) => {
       const a = _ansOf(r, q, qi);
+      if (q.type==='file') return Array.isArray(a) ? a.map(f=>f.url).join(' ') : '';
       if (['mc','dropdown'].includes(q.type)) return q.options?.[a] || a || '';
       if (q.type==='checkbox') return Array.isArray(a) ? a.map(i=>q.options?.[i]||i).join('/') : '';
       return String(a||'');

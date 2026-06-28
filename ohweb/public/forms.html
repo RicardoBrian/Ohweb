@@ -504,6 +504,12 @@ function renderResponses(id) {
       const counts = {};
       raw.forEach(a => { (Array.isArray(a)?a:[a]).forEach(idx => { const lbl = optLabel(q, idx); counts[lbl] = (counts[lbl]||0)+1; }); });
       html += bars(counts, raw.length);
+    } else if (qType === 'file') {
+      const items = responses.map(r => ({ a: rawAnswer(r, q, qi), name: r.respondentName }))
+        .filter(x => Array.isArray(x.a) && x.a.length);
+      html += `<div class="text-responses">${items.map(x =>
+        `<div class="text-resp-item">${x.name?`<b>${escHtml(x.name)}</b>`:''}${x.a.map(f=>`<a href="${f.url}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;">📎 ${escHtml(f.name||'파일')}</a>`).join(' ')}</div>`
+      ).join('') || '<div class="q-no-data">제출 없음</div>'}</div>`;
     } else {
       // short / long / 기타 텍스트
       const items = responses.map(r => ({ a: rawAnswer(r, q, qi), name: r.respondentName }))
