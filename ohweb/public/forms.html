@@ -167,6 +167,20 @@
     .bar-track { flex: 1; height: 10px; border-radius: 50px; background: var(--glass-strong); border: 1px solid var(--border-card); overflow: hidden; }
     .bar-fill { height: 100%; border-radius: 50px; background: linear-gradient(90deg, var(--accent), #7c4dff); transition: width 0.5s ease; }
     .bar-count { font-size: 0.72rem; color: var(--sub); min-width: 34px; text-align: right; }
+    .file-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+    .file-tile { width: 110px; cursor: pointer; text-decoration: none; color: var(--text);
+      border: 1px solid var(--border-card); border-radius: var(--radius-sm); overflow: hidden;
+      background: var(--surface); display: flex; flex-direction: column; transition: transform 0.1s var(--ease), box-shadow 0.2s var(--ease); }
+    .file-tile:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+    .file-tile img { width: 100%; height: 90px; object-fit: cover; display: block; background: var(--surface-2); }
+    .file-doc-ico { height: 90px; display: flex; align-items: center; justify-content: center; font-size: 2rem; background: var(--surface-2); }
+    .file-tile-cap { font-size: 0.7rem; padding: 6px 8px; line-height: 1.3; word-break: break-all; color: var(--text-2); }
+    .drive-modal { display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(20,22,40,0.55); align-items: center; justify-content: center; padding: 24px; }
+    .drive-modal.open { display: flex; }
+    .drive-modal-box { background: var(--surface); border-radius: var(--radius-lg); width: min(880px, 96vw); height: min(80vh, 760px); display: flex; flex-direction: column; box-shadow: var(--shadow-md); overflow: hidden; }
+    .drive-modal-head { display: flex; justify-content: flex-end; padding: 10px; }
+    .drive-modal-head button { border: none; background: var(--surface-2); width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 1rem; }
+    .drive-modal iframe { flex: 1; width: 100%; border: none; background: var(--surface-2); }
     .text-responses { display: flex; flex-direction: column; gap: 6px; }
     .text-resp-item { font-size: 0.82rem; padding: 7px 11px; border-radius: 8px; background: var(--glass); border: 1px solid var(--border-card); }
     .text-resp-item b { color: var(--accent); font-size: 0.72rem; margin-right: 6px; }
@@ -505,13 +519,11 @@ function renderResponses(id) {
       raw.forEach(a => { (Array.isArray(a)?a:[a]).forEach(idx => { const lbl = optLabel(q, idx); counts[lbl] = (counts[lbl]||0)+1; }); });
       html += bars(counts, raw.length);
     } else if (qType === 'file') {
-      const items = responses.map(r => ({ a: rawAnswer(r, q, qi), name: r.respondentName }))
-        .filter(x => Array.isArray(x.a) && x.a.length);
-      html += `<div class="text-responses">${items.map(x =>
-        `<div class="text-resp-item">${x.name?`<b>${escHtml(x.name)}</b>`:''}${x.a.map(f=>f.url
-          ? `<a href="${f.url}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;">📎 ${escHtml(f.name||'파일')}</a>`
-          : `📎 ${escHtml(f.name||'파일')}${f.folder?` <span style="color:var(--sub);">(드라이브: ${escHtml(f.folder)})</span>`:''}`).join(' ')}</div>`
-      ).join('') || '<div class="q-no-data">제출 없음</div>'}</div>`;
+      const tiles = responses.flatMap(r => {
+        const a = rawAnswer(r, q, qi);
+        return Array.isArray(a) ? a.map(f => fileTile(f, r.respondentName)) : [];
+      });
+      html += `<div class="file-grid">${tiles.join('') || '<div class="q-no-data">제출 없음</div>'}</div>`;
     } else {
       // short / long / 기타 텍스트
       const items = responses.map(r => ({ a: rawAnswer(r, q, qi), name: r.respondentName }))
@@ -595,6 +607,32 @@ window.deleteSurvey = async (id) => {
     renderList();
   } catch (err) { showToast('삭제 실패: ' + err.message); }
 };
+// ── 첨부 파일 타일 / 드라이브 미리보기 ──
+function _driveId(url) { const m = String(url||'').match(/\/d\/([^/]+)|[?&]id=([^&]+)/); return m ? (m[1]||m[2]) : ''; }
+function _isImg(name) { return /\.(jpe?g|png|gif|webp|bmp|heic|heif|svg)$/i.test(String(name||'')); }
+function fileTile(f, who) {
+  const id = _driveId(f.url);
+  const cap = `${who?escHtml(who)+' · ':''}${escHtml(f.name||'파일')}`;
+  if (f.url && id && _isImg(f.name)) {
+    return `<div class="file-tile" onclick="openDrivePreview('${id}')">
+      <img src="https://drive.google.com/thumbnail?id=${id}&sz=w400" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'file-doc-ico',textContent:'🖼️'}))">
+      <div class="file-tile-cap">${cap}</div></div>`;
+  }
+  if (f.url) {
+    return id
+      ? `<div class="file-tile" onclick="openDrivePreview('${id}')"><div class="file-doc-ico">📎</div><div class="file-tile-cap">${cap}</div></div>`
+      : `<a class="file-tile" href="${f.url}" target="_blank" rel="noopener"><div class="file-doc-ico">📎</div><div class="file-tile-cap">${cap}</div></a>`;
+  }
+  return `<div class="file-tile"><div class="file-doc-ico">📎</div><div class="file-tile-cap">${cap}${f.folder?'<br>(드라이브: '+escHtml(f.folder)+')':''}</div></div>`;
+}
+window.openDrivePreview = (id) => {
+  document.getElementById('driveFrame').src = `https://drive.google.com/file/d/${id}/preview`;
+  document.getElementById('driveModal').classList.add('open');
+};
+window.closeDrivePreview = () => {
+  document.getElementById('driveModal').classList.remove('open');
+  document.getElementById('driveFrame').src = '';
+};
 window.reload = () => loadAll();
 window.renderList = renderList;
 
@@ -611,5 +649,13 @@ function openAppModal() { document.getElementById('appModal').classList.add('ope
 function closeAppModal() { document.getElementById('appModal').classList.remove('open'); }
 (function(){ if (localStorage.getItem('dark') === '1') document.body.classList.add('dark'); })();
 </script>
+
+<!-- 드라이브 파일 미리보기 모달 -->
+<div class="drive-modal" id="driveModal" onclick="if(event.target===this)closeDrivePreview()">
+  <div class="drive-modal-box">
+    <div class="drive-modal-head"><button onclick="closeDrivePreview()">✕</button></div>
+    <iframe id="driveFrame" src=""></iframe>
+  </div>
+</div>
 </body>
 </html>
