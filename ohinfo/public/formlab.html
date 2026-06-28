@@ -602,7 +602,7 @@ function renderSummary(el) {
     }
     if (q.type === 'file') {
       return `<div class="card res-q-block">${header}
-        <div class="res-texts">${answers.flatMap(a=>Array.isArray(a)?a:[]).map(f=>`<div class="res-text-item"><a href="${f.url}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;">📎 ${escHtml(f.name||'파일')}</a></div>`).join('')||'<div class="res-text-item">(없음)</div>'}</div></div>`;
+        <div class="res-texts">${answers.flatMap(a=>Array.isArray(a)?a:[]).map(f=>`<div class="res-text-item">${f.url?`<a href="${f.url}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;">📎 ${escHtml(f.name||'파일')}</a>`:`📎 ${escHtml(f.name||'파일')}`}</div>`).join('')||'<div class="res-text-item">(없음)</div>'}</div></div>`;
     }
     return `<div class="card res-q-block">
       ${header}
@@ -637,7 +637,7 @@ function renderIndividual(el) {
       ${qs.map((q, qi) => {
         const a = _ansOf(r, q, qi);
         let disp = '';
-        if (q.type==='file') disp = Array.isArray(a)&&a.length ? a.map(f=>`<a href="${f.url}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;">📎 ${escHtml(f.name||'파일')}</a>`).join(' ') : '(미응답)';
+        if (q.type==='file') disp = Array.isArray(a)&&a.length ? a.map(f=>f.url?`<a href="${f.url}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;">📎 ${escHtml(f.name||'파일')}</a>`:`📎 ${escHtml(f.name||'파일')}`).join(' ') : '(미응답)';
         else if (['mc','dropdown'].includes(q.type)) disp = a !== undefined ? escHtml(q.options?.[a]||a) : '(미응답)';
         else if (q.type==='checkbox') disp = Array.isArray(a) ? a.map(i=>escHtml(q.options?.[i]||i)).join(', ') : '(미응답)';
         else disp = escHtml(String(a||'(미응답)'));
@@ -699,7 +699,7 @@ window.exportCsv = () => {
     const time = r.submittedAt ? new Date(r.submittedAt.toDate?r.submittedAt.toDate():r.submittedAt).toLocaleString() : '';
     return [name, time, ...qs.map((q, qi) => {
       const a = _ansOf(r, q, qi);
-      if (q.type==='file') return Array.isArray(a) ? a.map(f=>f.url).join(' ') : '';
+      if (q.type==='file') return Array.isArray(a) ? a.map(f=>f.url||f.name).join(' ') : '';
       if (['mc','dropdown'].includes(q.type)) return q.options?.[a] || a || '';
       if (q.type==='checkbox') return Array.isArray(a) ? a.map(i=>q.options?.[i]||i).join('/') : '';
       return String(a||'');

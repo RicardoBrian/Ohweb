@@ -508,7 +508,9 @@ function renderResponses(id) {
       const items = responses.map(r => ({ a: rawAnswer(r, q, qi), name: r.respondentName }))
         .filter(x => Array.isArray(x.a) && x.a.length);
       html += `<div class="text-responses">${items.map(x =>
-        `<div class="text-resp-item">${x.name?`<b>${escHtml(x.name)}</b>`:''}${x.a.map(f=>`<a href="${f.url}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;">📎 ${escHtml(f.name||'파일')}</a>`).join(' ')}</div>`
+        `<div class="text-resp-item">${x.name?`<b>${escHtml(x.name)}</b>`:''}${x.a.map(f=>f.url
+          ? `<a href="${f.url}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;">📎 ${escHtml(f.name||'파일')}</a>`
+          : `📎 ${escHtml(f.name||'파일')}${f.folder?` <span style="color:var(--sub);">(드라이브: ${escHtml(f.folder)})</span>`:''}`).join(' ')}</div>`
       ).join('') || '<div class="q-no-data">제출 없음</div>'}</div>`;
     } else {
       // short / long / 기타 텍스트
