@@ -224,9 +224,10 @@
       .board-desc { font-size: 0.88rem; color: var(--sub); margin-top: 4px; line-height: 1.5; }
       .sidebar-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
       .board-header-mobile { display: none; }
-      .grid-board { column-count: 3; column-gap: 16px; }
-      @media (min-width: 1500px) { .grid-board { column-count: 4; } }
     }
+    /* JS 메이슨리: 가장 짧은 열에 카드 배치 → 이빨 빠짐 없이 상단 정렬 */
+    .grid-board { display: flex; gap: 16px; align-items: flex-start; }
+    .m-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
 
     @media (max-width: 1023px) {
       .board-sidebar { padding: 20px 0 0; }
@@ -237,12 +238,10 @@
       .board-header-mobile { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding: 20px 0 14px; flex-wrap: wrap; }
       .board-title { font-size: 1.5rem; font-weight: 800; line-height: 1.2; }
       .board-desc { font-size: 0.88rem; color: var(--sub); margin-top: 4px; }
-      .grid-board { column-count: 2; column-gap: 16px; }
     }
 
     @media (max-width: 600px) {
       .board-layout { padding: 0 16px 80px; }
-      .grid-board { column-count: 1; }
     }
 
     /* ── 폼 카드 ── */
@@ -269,12 +268,11 @@
 
     /* ── 포스트 카드 ── */
     .post-card {
-      break-inside: avoid; page-break-inside: avoid;
-      display: inline-block; width: 100%;
+      display: block; width: 100%;
       background: var(--glass);
       backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
       border: 1px solid var(--border-card); border-radius: var(--radius); padding: 20px;
-      margin-bottom: 16px; box-shadow: var(--highlight), var(--shadow);
+      margin-bottom: 0; box-shadow: var(--highlight), var(--shadow);
       transition: box-shadow 0.25s, transform 0.25s;
       opacity: 0; transform: translateY(14px);
       position: relative;
@@ -287,7 +285,7 @@
 
     .teacher-card {
       border-left: 3px solid var(--accent) !important;
-      margin-bottom: 16px;
+      margin-bottom: 0;
     }
     #teacherNotice:empty { display: none; }
     .teacher-card .post-sub { font-size: 0.82rem; font-weight: 700; color: var(--accent); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6px; }
@@ -511,7 +509,7 @@
         <div class="sidebar-title" id="sidebarTitle"></div>
         <div class="sidebar-desc-wrap" id="sidebarDescWrap" style="display:none">
           <div class="sidebar-desc-toggle" onclick="toggleSidebarDesc()">
-            <span id="ui-teacher-notice-label" style="font-size:0.72rem;font-weight:700;color:var(--sub);letter-spacing:0.04em;text-transform:uppercase;">선생님 안내</span>
+            <span id="ui-teacher-notice-label" style="font-size:0.72rem;font-weight:700;color:var(--sub);letter-spacing:0.04em;text-transform:uppercase;">수업 설명</span>
             <span class="sidebar-desc-arrow open" id="sidebarDescArrow">▼</span>
           </div>
           <div class="sidebar-desc" id="sidebarDesc"></div>
@@ -1090,9 +1088,9 @@
       document.getElementById('boardTitle').innerText = cls.name || classTitle;
       document.getElementById('boardDesc').innerText = desc;
       document.getElementById('sidebarTitle').innerText = cls.name || classTitle;
-      document.getElementById('sidebarDesc').innerText = example;
+      document.getElementById('sidebarDesc').innerText = desc;
       const wrap = document.getElementById('sidebarDescWrap');
-      wrap.style.display = example.trim() ? '' : 'none';
+      wrap.style.display = desc.trim() ? '' : 'none';
       currentPosts = rawPosts.map(p => ({
         ...p,
         subject: p['sub'+sfx] || p.subKo || '',
@@ -1113,18 +1111,43 @@
       const text = (card.dataset.search || '').toLowerCase();
       card.style.display = (!q || text.includes(q)) ? '' : 'none';
     });
+    layoutMasonry();
   }
+
+  // ── 메이슨리: 가장 짧은 열에 카드 배치 (이빨 빠짐 없이 상단 정렬) ──
+  function colCountFor(w) { return w >= 1500 ? 4 : w >= 1024 ? 3 : w >= 600 ? 2 : 1; }
+  function layoutMasonry() {
+    const display = document.getElementById('display');
+    if (!display) return;
+    const cards = [...display.querySelectorAll('.post-card')];
+    if (!cards.length) return;
+    const cols = colCountFor(display.clientWidth || window.innerWidth);
+    display.innerHTML = '';
+    const colEls = [];
+    for (let i = 0; i < cols; i++) { const d = document.createElement('div'); d.className = 'm-col'; display.appendChild(d); colEls.push(d); }
+    cards.forEach(card => {
+      let m = 0;
+      for (let i = 1; i < cols; i++) { if (colEls[i].offsetHeight < colEls[m].offsetHeight) m = i; }
+      colEls[m].appendChild(card);
+    });
+  }
+  let _relayoutT = null;
+  function scheduleRelayout() { clearTimeout(_relayoutT); _relayoutT = setTimeout(layoutMasonry, 120); }
+  window.addEventListener('resize', scheduleRelayout);
 
   function render(ex, posts, isFiltered) {
     const display = document.getElementById('display');
-    const noticeEl = document.getElementById('teacherNotice');
-    // 선생님 안내: 그리드 밖 전체폭 블록으로 분리 (컬럼 겹침 방지)
+    document.getElementById('teacherNotice').innerHTML = '';   // 별도 배너 미사용
     const noticeLabel = uiText[currentLang]?.teacher_notice || '선생님 안내';
-    noticeEl.innerHTML = (ex && !isFiltered)
-      ? `<div class="post-card teacher-card visible"><div class="post-sub">${noticeLabel}</div><div class="post-msg">${fmtMsg(ex)}</div></div>`
-      : '';
     let html = '';
-    if (!posts.length) { display.innerHTML = `<div style="text-align:center;padding:48px 0;color:var(--sub);font-size:0.92rem;">${uiText[currentLang]?.noPost||uiText.ko.noPost}</div>`; return; }
+    // 선생님 안내를 그리드 카드 1개로 편입 (다른 게시물과 동일 취급)
+    if (ex && !isFiltered) {
+      html += `<div class="post-card teacher-card"><div class="post-sub">${noticeLabel}</div><div class="post-msg">${fmtMsg(ex)}</div></div>`;
+    }
+    if (!posts.length && !(ex && !isFiltered)) {
+      display.innerHTML = `<div style="text-align:center;padding:48px 0;color:var(--sub);font-size:0.92rem;">${uiText[currentLang]?.noPost||uiText.ko.noPost}</div>`;
+      return;
+    }
     posts.forEach((p) => {
       const hasLiked = localStorage.getItem('voted_'+p.id);
       const _srch = [p.subject,p.subKo,p.message,p.msgKo,p.name].filter(Boolean).join(' ').replace(/"/g,'&quot;');
@@ -1146,6 +1169,9 @@
       </div>`;
     });
     display.innerHTML = html;
+    layoutMasonry();
+    // 이미지 로드되며 높이가 바뀌면 다시 배치
+    display.querySelectorAll('img').forEach(img => { if (!img.complete) img.addEventListener('load', scheduleRelayout, { once: true }); });
     requestAnimationFrame(() => requestAnimationFrame(() => {
       display.querySelectorAll('.post-card').forEach(c => c.classList.add('visible'));
     }));

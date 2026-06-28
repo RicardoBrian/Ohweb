@@ -485,7 +485,7 @@
     } else {
       grid.innerHTML = enabledApps.map(id => {
         const m = APP_META[id]; const a = t.apps[id] || {name:id,desc:''};
-        return `<a class="app-card" href="${m.href}"><div class="app-icon ${m.cls}">${m.emoji}</div><div class="app-name">${a.name}</div><div class="app-desc">${a.desc}</div></a>`;
+        return `<a class="app-card" href="${m.href}"><div class="app-icon ${m.cls}">${m.emoji}</div><div class="app-name">${a.name}</div></a>`;
       }).join('');
       const obs = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } }), { threshold: 0.05 });
       grid.querySelectorAll('.app-card').forEach(c => obs.observe(c));
@@ -497,7 +497,12 @@
 
   renderAvatar(document.getElementById('navAvatar'), student);
   document.getElementById('navName').innerText = student.name;
-  document.getElementById('greetSub').innerText = `${student.schoolName || ''} · ${student.grade} ${student.class}`;
+  {
+    const _d = v => String(v||'').replace(/[^0-9]/g,'') || String(v||'').trim();
+    const _g = _d(student.grade), _c = _d(student.class), _n = String(student.number||'').trim();
+    document.getElementById('greetSub').innerText =
+      `${student.schoolName || ''}${_g?` ${_g}학년`:''}${_c?` ${_c}반`:''}${_n?` ${_n}번`:''}`;
+  }
   window._renderApps(); // initial greeting render
 
   document.getElementById('loadingOverlay').style.display = 'flex';
