@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>수업 타이머 · Ohweb</title>
+  <link rel="stylesheet" href="theme.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); min-height: 100vh; display: flex; flex-direction: column; font-family: var(--font); color: var(--text); }
+
+    /* ── Nav ── */
+    .nav { display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 56px; background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+    .nav-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .nav-brand img { height: 28px; }
+    .nav-brand span { font-size: 0.88rem; font-weight: 700; color: var(--sub); }
+    .nav-right { display: flex; align-items: center; gap: 10px; }
+    .btn-icon { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border); background: var(--glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; transition: background 0.2s; color: var(--text); }
+    .btn-icon:hover { background: var(--glass-strong); }
+
+    /* ── Main ── */
+    main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 16px; gap: 28px; }
+
+    /* ── Title Card ── */
+    .title-card {
+      width: 100%; max-width: 560px;
+      background: var(--glass-strong);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 24px 28px;
+      box-shadow: var(--highlight), var(--shadow-md);
+    }
+    .title-label { font-size: 0.72rem; font-weight: 700; color: var(--sub); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px; }
+    .title-row { display: flex; gap: 10px; align-items: center; }
+    .title-inp {
+      flex: 1; padding: 11px 16px; border-radius: 12px;
+      border: 1px solid var(--border-card); background: var(--glass);
+      color: var(--text); font-family: var(--font); font-size: 1rem; font-weight: 600;
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .title-inp:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-light); }
+    .title-inp::placeholder { color: var(--text-3); font-weight: 400; }
+    .btn-translate {
+      padding: 11px 18px; border-radius: 12px; border: none;
+      background: var(--accent-grad); color: #fff; font-family: var(--font);
+      font-size: 0.88rem; font-weight: 600; cursor: pointer;
+      box-shadow: var(--highlight); white-space: nowrap;
+      transition: filter 0.2s, transform 0.15s;
+    }
+    .btn-translate:hover { filter: brightness(1.07); }
+    .btn-translate:active { transform: scale(0.97); }
+    .btn-translate:disabled { opacity: 0.5; cursor: not-allowed; }
+    .trans-row { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+    .trans-chip {
+      flex: 1; min-width: 140px;
+      background: var(--glass); border: 1px solid var(--border-card); border-radius: 10px;
+      padding: 8px 12px;
+    }
+    .trans-lang { font-size: 0.65rem; font-weight: 700; color: var(--sub); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 3px; }
+    .trans-text { font-size: 0.9rem; font-weight: 600; color: var(--text); min-height: 20px; }
+    .trans-text.loading { color: var(--text-3); font-style: italic; font-size: 0.82rem; }
+
+    /* ── Timer Card ── */
+    .timer-card {
+      width: 100%; max-width: 560px;
+      background: var(--glass-strong);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      padding: 32px 28px 28px;
+      box-shadow: var(--highlight), var(--shadow-md);
+      text-align: center;
+      transition: border-color 0.4s, box-shadow 0.4s;
+    }
+    .timer-card.warn { border-color: rgba(255,165,0,0.6); box-shadow: var(--highlight), 0 0 40px rgba(255,165,0,0.2), var(--shadow-md); }
+    .timer-card.danger { border-color: rgba(239,68,68,0.7); box-shadow: var(--highlight), 0 0 50px rgba(239,68,68,0.25), var(--shadow-md); }
+    .timer-card.done { border-color: rgba(34,197,94,0.7); box-shadow: var(--highlight), 0 0 50px rgba(34,197,94,0.2), var(--shadow-md); }
+
+    /* Ring */
+    .ring-wrap { position: relative; width: 200px; height: 200px; margin: 0 auto 24px; }
+    .ring-svg { width: 200px; height: 200px; transform: rotate(-90deg); }
+    .ring-bg { fill: none; stroke: var(--border-card); stroke-width: 8; }
+    .ring-fill { fill: none; stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 0.5s linear, stroke 0.4s; }
+    .ring-time {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 2px;
+    }
+    .ring-time-num { font-size: 2.8rem; font-weight: 800; letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+    .ring-time-label { font-size: 0.72rem; font-weight: 600; color: var(--sub); letter-spacing: 0.05em; }
+
+    /* Presets */
+    .presets { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px; }
+    .preset-btn {
+      padding: 7px 16px; border-radius: 20px; border: 1px solid var(--border-card);
+      background: var(--glass); color: var(--text); font-family: var(--font);
+      font-size: 0.85rem; font-weight: 600; cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    }
+    .preset-btn:hover { background: var(--glass-strong); }
+    .preset-btn:active { transform: scale(0.95); }
+    .preset-btn.active { background: var(--accent-grad); color: #fff; border-color: transparent; }
+    .custom-row { display: flex; gap: 8px; justify-content: center; align-items: center; margin-bottom: 20px; }
+    .custom-inp {
+      width: 72px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border-card);
+      background: var(--glass); color: var(--text); font-family: var(--font);
+      font-size: 0.92rem; font-weight: 600; text-align: center; outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .custom-inp:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+    .custom-label { font-size: 0.82rem; color: var(--sub); font-weight: 600; }
+
+    /* Controls */
+    .controls { display: flex; gap: 12px; justify-content: center; }
+    .btn-ctrl {
+      padding: 13px 32px; border-radius: var(--radius-pill); border: none;
+      font-family: var(--font); font-size: 1rem; font-weight: 700; cursor: pointer;
+      transition: filter 0.2s, transform 0.15s;
+    }
+    .btn-ctrl:active { transform: scale(0.96); }
+    .btn-start { background: var(--accent-grad); color: #fff; box-shadow: var(--highlight), 0 6px 18px rgba(0,113,227,0.3); }
+    .btn-start:hover { filter: brightness(1.07); }
+    .btn-reset { background: var(--glass); border: 1px solid var(--border-card); color: var(--text); }
+    .btn-reset:hover { background: var(--glass-strong); }
+    .btn-sound { background: var(--glass); border: 1px solid var(--border-card); color: var(--text); padding: 13px 16px; }
+    .btn-sound:hover { background: var(--glass-strong); }
+
+    /* Done banner */
+    .done-banner { display: none; margin-top: 18px; padding: 12px 20px; border-radius: 14px; background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.4); color: #16a34a; font-weight: 700; font-size: 1rem; }
+    body.dark .done-banner { color: #4ade80; background: rgba(34,197,94,0.1); }
+    .timer-card.done .done-banner { display: block; }
+
+    /* ── Fullscreen overrides ── */
+    :fullscreen .nav, :-webkit-full-screen .nav { display: none; }
+    :fullscreen main, :-webkit-full-screen main { justify-content: center; background: var(--bg); }
+    :fullscreen .title-card, :-webkit-full-screen .title-card { max-width: 700px; }
+    :fullscreen .timer-card, :-webkit-full-screen .timer-card { max-width: 700px; }
+    :fullscreen .ring-wrap, :-webkit-full-screen .ring-wrap { width: 280px; height: 280px; }
+    :fullscreen .ring-svg, :-webkit-full-screen .ring-svg { width: 280px; height: 280px; }
+    :fullscreen .ring-time-num, :-webkit-full-screen .ring-time-num { font-size: 4.2rem; }
+
+    /* Dark toggle */
+    .dark-toggle { width: 38px; height: 22px; border-radius: 50px; background: var(--glass); border: 1px solid var(--border); backdrop-filter: var(--blur); cursor: pointer; position: relative; transition: 0.3s; }
+    body.dark .dark-toggle { background: rgba(42,92,230,0.6); border-color: rgba(100,140,255,0.4); }
+    .dark-toggle::after { content:''; position:absolute; top:3px; left:3px; width:14px; height:14px; border-radius:50%; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.2); transition:transform 0.3s; }
+    body.dark .dark-toggle::after { transform: translateX(16px); }
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <a href="admin.html" class="nav-brand">
+      <img src="logo.png" alt="OHweb">
+      <span>수업 타이머</span>
+    </a>
+    <div class="nav-right">
+      <button class="btn-icon" onclick="toggleFs()" title="전체화면">⛶</button>
+      <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
+    </div>
+  </nav>
+
+  <main id="mainWrap">
+    <!-- 제목 카드 -->
+    <div class="title-card">
+      <div class="title-label">타이머 제목</div>
+      <div class="title-row">
+        <input class="title-inp" id="titleInp" placeholder="예: 1번 문제 풀기" maxlength="40" oninput="onTitleInput()">
+        <button class="btn-translate" id="transBtn" onclick="doTranslate()" disabled>번역</button>
+      </div>
+      <div class="trans-row">
+        <div class="trans-chip">
+          <div class="trans-lang">中文</div>
+          <div class="trans-text" id="transZh">—</div>
+        </div>
+        <div class="trans-chip">
+          <div class="trans-lang">Русский</div>
+          <div class="trans-text" id="transRu">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 타이머 카드 -->
+    <div class="timer-card" id="timerCard">
+      <!-- 원형 링 -->
+      <div class="ring-wrap">
+        <svg class="ring-svg" viewBox="0 0 200 200">
+          <circle class="ring-bg" cx="100" cy="100" r="88"/>
+          <circle class="ring-fill" id="ringFill" cx="100" cy="100" r="88"
+            stroke-dasharray="552.9" stroke-dashoffset="0" stroke="#0071e3"/>
+        </svg>
+        <div class="ring-time">
+          <div class="ring-time-num" id="ringNum">00:00</div>
+          <div class="ring-time-label" id="ringLabel">준비</div>
+        </div>
+      </div>
+
+      <!-- 프리셋 -->
+      <div class="presets" id="presets">
+        <button class="preset-btn" onclick="setPreset(5)">5분</button>
+        <button class="preset-btn" onclick="setPreset(10)">10분</button>
+        <button class="preset-btn" onclick="setPreset(15)">15분</button>
+        <button class="preset-btn" onclick="setPreset(20)">20분</button>
+        <button class="preset-btn" onclick="setPreset(30)">30분</button>
+      </div>
+      <div class="custom-row">
+        <span class="custom-label">직접 입력</span>
+        <input class="custom-inp" id="customMin" type="number" min="1" max="99" placeholder="분">
+        <span class="custom-label">분</span>
+        <input class="custom-inp" id="customSec" type="number" min="0" max="59" placeholder="초">
+        <span class="custom-label">초</span>
+        <button class="preset-btn" onclick="setCustom()">설정</button>
+      </div>
+
+      <!-- 컨트롤 -->
+      <div class="controls">
+        <button class="btn-ctrl btn-sound" id="soundBtn" onclick="toggleSound()" title="알림음">🔔</button>
+        <button class="btn-ctrl btn-reset" onclick="resetTimer()">리셋</button>
+        <button class="btn-ctrl btn-start" id="startBtn" onclick="toggleStart()">시작</button>
+      </div>
+
+      <div class="done-banner" id="doneBanner">⏰ 시간이 종료되었습니다!</div>
+    </div>
+  </main>
+
+  <script>
+    // ── 다크모드 ──
+    function toggleDark() { document.body.classList.toggle('dark'); localStorage.setItem('dark', document.body.classList.contains('dark')?'1':'0'); }
+    if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
+
+    // ── 로그인 체크 ──
+    if (sessionStorage.getItem('ohweb_admin') !== '1') location.href = 'index.html';
+
+    // ── 전체화면 ──
+    function toggleFs() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(()=>{});
+      } else {
+        document.exitFullscreen().catch(()=>{});
+      }
+    }
+
+    // ── 번역 ──
+    let translateTimer = null;
+    function onTitleInput() {
+      const v = document.getElementById('titleInp').value.trim();
+      document.getElementById('transBtn').disabled = !v;
+      clearTimeout(translateTimer);
+      if (!v) { document.getElementById('transZh').textContent = '—'; document.getElementById('transRu').textContent = '—'; return; }
+      translateTimer = setTimeout(doTranslate, 1200);
+    }
+    async function doTranslate() {
+      const title = document.getElementById('titleInp').value.trim();
+      if (!title) return;
+      const btn = document.getElementById('transBtn');
+      btn.disabled = true; btn.textContent = '…';
+      const zh = document.getElementById('transZh');
+      const ru = document.getElementById('transRu');
+      zh.textContent = '번역 중…'; zh.className = 'trans-text loading';
+      ru.textContent = '번역 중…'; ru.className = 'trans-text loading';
+      try {
+        const [zhRes, ruRes] = await Promise.all([
+          translate(title, 'zh-cn'),
+          translate(title, 'ru'),
+        ]);
+        zh.textContent = zhRes || title; zh.className = 'trans-text';
+        ru.textContent = ruRes || title; ru.className = 'trans-text';
+      } catch(e) {
+        zh.textContent = '번역 실패'; zh.className = 'trans-text';
+        ru.textContent = '번역 실패'; ru.className = 'trans-text';
+      }
+      btn.disabled = false; btn.textContent = '번역';
+    }
+    async function translate(text, lang) {
+      const res = await fetch('/.netlify/functions/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ texts: [text], targetLang: lang, sourceLang: 'ko' })
+      });
+      const data = await res.json();
+      if (!res.ok || data.error || !data.translations) throw new Error(data.error || `HTTP ${res.status}`);
+      return data.translations[0]?.text || '';
+    }
+
+    // ── 타이머 ──
+    const CIRCUMFERENCE = 2 * Math.PI * 88; // ≈ 552.9
+    let totalSecs = 0;
+    let remainSecs = 0;
+    let running = false;
+    let interval = null;
+    let soundOn = true;
+
+    const ringFill = document.getElementById('ringFill');
+    const ringNum  = document.getElementById('ringNum');
+    const ringLabel = document.getElementById('ringLabel');
+    const startBtn  = document.getElementById('startBtn');
+    const timerCard = document.getElementById('timerCard');
+    const doneBanner = document.getElementById('doneBanner');
+
+    function fmt(s) {
+      const m = Math.floor(s / 60), sec = s % 60;
+      return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+    }
+
+    function updateRing() {
+      const pct = totalSecs > 0 ? remainSecs / totalSecs : 1;
+      const offset = CIRCUMFERENCE * (1 - pct);
+      ringFill.style.strokeDashoffset = offset;
+
+      // 색상
+      if (pct > 0.5)       ringFill.style.stroke = '#0071e3';
+      else if (pct > 0.2)  ringFill.style.stroke = '#f59e0b';
+      else                  ringFill.style.stroke = '#ef4444';
+
+      // 카드 상태
+      timerCard.classList.remove('warn','danger','done');
+      if (remainSecs === 0 && totalSecs > 0) timerCard.classList.add('done');
+      else if (pct <= 0.2) timerCard.classList.add('danger');
+      else if (pct <= 0.5) timerCard.classList.add('warn');
+
+      ringNum.textContent = fmt(remainSecs);
+      ringLabel.textContent = running ? '진행 중' : remainSecs === 0 && totalSecs > 0 ? '종료' : '대기';
+      doneBanner.style.display = remainSecs === 0 && totalSecs > 0 ? 'block' : 'none';
+    }
+
+    function setPreset(min) {
+      resetTimer(false);
+      totalSecs = remainSecs = min * 60;
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+      updateRing();
+    }
+    function setCustom() {
+      const m = parseInt(document.getElementById('customMin').value) || 0;
+      const s = parseInt(document.getElementById('customSec').value) || 0;
+      const total = m * 60 + s;
+      if (total <= 0) return;
+      resetTimer(false);
+      totalSecs = remainSecs = total;
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+      updateRing();
+    }
+    function toggleStart() {
+      if (totalSecs === 0) return;
+      if (remainSecs === 0) { resetTimer(false); return; }
+      running = !running;
+      startBtn.textContent = running ? '일시정지' : '계속';
+      if (running) {
+        interval = setInterval(() => {
+          if (remainSecs <= 0) { clearInterval(interval); running = false; startBtn.textContent = '시작'; updateRing(); playDone(); return; }
+          remainSecs--;
+          updateRing();
+        }, 1000);
+      } else {
+        clearInterval(interval);
+      }
+    }
+    function resetTimer(keepPreset = true) {
+      clearInterval(interval);
+      running = false;
+      remainSecs = totalSecs;
+      startBtn.textContent = '시작';
+      timerCard.classList.remove('warn','danger','done');
+      updateRing();
+    }
+
+    // ── 알림음 (Web Audio API) ──
+    let audioCtx = null;
+    function playDone() {
+      if (!soundOn) return;
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const freqs = [523, 659, 784, 1047];
+        freqs.forEach((f, i) => {
+          const o = audioCtx.createOscillator();
+          const g = audioCtx.createGain();
+          o.connect(g); g.connect(audioCtx.destination);
+          o.frequency.value = f;
+          o.type = 'sine';
+          const t = audioCtx.currentTime + i * 0.18;
+          g.gain.setValueAtTime(0.35, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+          o.start(t); o.stop(t + 0.5);
+        });
+      } catch(e) {}
+    }
+    function toggleSound() {
+      soundOn = !soundOn;
+      document.getElementById('soundBtn').textContent = soundOn ? '🔔' : '🔕';
+    }
+
+    // 초기 링 상태
+    ringFill.style.strokeDasharray = CIRCUMFERENCE;
+    ringFill.style.strokeDashoffset = 0;
+    ringNum.textContent = '00:00';
+  </script>
+</body>
+</html>
