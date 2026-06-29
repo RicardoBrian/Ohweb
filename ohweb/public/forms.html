@@ -475,6 +475,7 @@ function buildItem(f) {
     <div class="survey-actions">
       <button class="btn sm" onclick="copyLink('${f.id}')">🔗 링크</button>
       <button class="btn sm" onclick="togglePanel('${f.id}')">📊 응답 보기</button>
+      <button class="btn sm" onclick="exportCsv('${f.id}')">⬇️ CSV</button>
       <button class="btn sm" onclick="toggleStatus('${f.id}','${f.status || 'open'}')">${(f.status||'open')==='closed'?'🔓 공개로':'🔒 마감'}</button>
       <button class="btn sm danger" onclick="deleteSurvey('${f.id}')">🗑️ 삭제</button>
     </div>
@@ -632,6 +633,30 @@ window.openDrivePreview = (id) => {
 window.closeDrivePreview = () => {
   document.getElementById('driveModal').classList.remove('open');
   document.getElementById('driveFrame').src = '';
+};
+// ── CSV 다운로드 ──
+window.exportCsv = (id) => {
+  const form = allForms.find(f => f.id === id); if (!form) return;
+  const responses = responsesByForm[id] || [];
+  const qs = form.questions || [];
+  const qLabel = q => typeof q.text === 'string' ? q.text : (q.text?.ko || '질문');
+  const headers = ['제출자', '제출시각', ...qs.map(qLabel)];
+  const rows = responses.map(r => {
+    const when = r.submittedAt ? new Date(r.submittedAt.toMillis ? r.submittedAt.toMillis() : r.submittedAt).toLocaleString('ko-KR') : '';
+    return [r.respondentName || '익명', when, ...qs.map((q, qi) => {
+      const a = rawAnswer(r, q, qi);
+      if (q.type === 'file') return Array.isArray(a) ? a.map(f => f.url || f.name).join(' | ') : '';
+      if (q.type === 'checkbox') return Array.isArray(a) ? a.map(v => optLabel(q, v)).join(' | ') : '';
+      if (q.type === 'mc' || q.type === 'dropdown') return (a !== undefined && a !== null) ? optLabel(q, a) : '';
+      return (a === undefined || a === null) ? '' : String(a);
+    })];
+  });
+  const csv = [headers, ...rows].map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `${safeTitle(form.title)}_응답.csv`; a.click();
+  URL.revokeObjectURL(url);
 };
 window.reload = () => loadAll();
 window.renderList = renderList;

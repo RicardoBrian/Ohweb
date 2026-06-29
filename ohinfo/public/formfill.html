@@ -16,8 +16,9 @@
       text-align: center; cursor: pointer; outline: none; transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease); }
     .dropzone.active { border-color: var(--accent); }
     .dropzone.drag { border-color: var(--accent); background: var(--accent-light); }
-    .dz-hint { font-size: 0.9rem; color: var(--text-2); }
+    .dz-hint { font-size: 0.9rem; color: var(--text-2); line-height: 1.7; }
     .dz-hint b { color: var(--accent); }
+    .dz-cap { font-size: 0.78rem; color: var(--text-3); }
     .dz-files { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px; }
     .dz-files:empty { display: none; }
     .dz-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; font-weight: 600;
@@ -204,6 +205,7 @@ const T = {
     submitErr:'제출 오류: ',
     select:'선택하세요',
     answerPh:'답변을 입력하세요',
+    dropHint:'📎 파일을 <b>끌어다 놓거나</b> 복사 후 <b>붙여넣기(Ctrl+V)</b><br><span class="dz-cap">📸 화면 캡처: <b>Win + Shift + S</b> 로 캡처 → 붙여넣기</span>',
     doneTitle:'제출 완료!', doneMsg:'응답해 주셔서 감사합니다.',
     quizDoneTitle:'퀴즈 완료!', quizDoneMsg:'결과를 확인하세요.',
     scoreOf1:'문제 중 ', scoreOf2:'개 정답 (',
@@ -225,6 +227,7 @@ const T = {
     submitErr:'提交错误: ',
     select:'请选择',
     answerPh:'请输入答案',
+    dropHint:'📎 <b>拖放文件</b> 或复制后 <b>粘贴(Ctrl+V)</b><br><span class="dz-cap">📸 截图: <b>Win + Shift + S</b> 截图 → 粘贴</span>',
     doneTitle:'提交成功!', doneMsg:'感谢您的回答。',
     quizDoneTitle:'测验完成!', quizDoneMsg:'请查看结果。',
     scoreOf1:'题中答对了', scoreOf2:'题 (',
@@ -246,6 +249,7 @@ const T = {
     submitErr:'Ошибка отправки: ',
     select:'Выберите',
     answerPh:'Введите ответ',
+    dropHint:'📎 <b>Перетащите файлы</b> или скопируйте и <b>вставьте (Ctrl+V)</b><br><span class="dz-cap">📸 Снимок экрана: <b>Win + Shift + S</b> → вставить</span>',
     doneTitle:'Отправлено!', doneMsg:'Спасибо за ответы.',
     quizDoneTitle:'Тест завершён!', quizDoneMsg:'Ваш результат:',
     scoreOf1:' из ', scoreOf2:' правильно (',
@@ -267,6 +271,7 @@ const T = {
     submitErr:'Submit error: ',
     select:'Select',
     answerPh:'Enter your answer',
+    dropHint:'📎 <b>Drag &amp; drop</b> files, or copy and <b>paste (Ctrl+V)</b><br><span class="dz-cap">📸 Screenshot: <b>Win + Shift + S</b> → paste</span>',
     doneTitle:'Submitted!', doneMsg:'Thank you for your response.',
     quizDoneTitle:'Quiz done!', quizDoneMsg:'Check your result.',
     scoreOf1:' out of ', scoreOf2:' correct (',
@@ -588,7 +593,7 @@ function buildQuestionEl(q, gi) {
     html += `<div class="dropzone" id="dz_${gi}" tabindex="0"
         onclick="window._ffFocusDz(${gi})" onfocus="window._ffFocusDz(${gi})"
         ondragover="window._ffDragOver(event,${gi})" ondragleave="window._ffDragLeave(event,${gi})" ondrop="window._ffDrop(event,${gi})">
-        <div class="dz-hint">📎 파일을 여기로 <b>끌어다 놓거나</b>, 복사 후 <b>붙여넣기(Ctrl+V)</b></div>
+        <div class="dz-hint">${t.dropHint || '📎 드래그 또는 붙여넣기'}</div>
         <div id="filelist_${gi}" class="dz-files">${cur.map((f,k)=>`<span class="dz-chip">📎 ${esc(f.name||'파일')}<button type="button" onclick="window._ffRemoveFile(${gi},${k})">✕</button></span>`).join('')}</div>
       </div>`;
   } else if (q.type === 'short') {
