@@ -170,7 +170,11 @@
     <!-- 폼 기본 정보 -->
     <div class="card">
       <div class="field"><label>설문 제목 *</label><input class="inp" id="bTitle" placeholder="설문지 제목을 입력하세요"></div>
-      <div class="field"><label>설명 (선택)</label><textarea class="inp" id="bDesc" rows="2" placeholder="설문 목적이나 안내사항"></textarea></div>
+      <div class="field"><label>설명 (선택)</label><textarea class="inp" id="bDesc" rows="2" placeholder="설문 목적이나 안내사항"></textarea>
+        <div id="descImgWrap" style="margin-top:6px;"></div>
+        <input type="file" accept="image/*" id="descImgFile" style="display:none" onchange="onDescImg(this)">
+        <button type="button" class="btn sm ghost" onclick="document.getElementById('descImgFile').click()">🖼 설명 이미지 첨부</button>
+      </div>
       <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:4px;">
         <label style="display:flex;align-items:center;gap:8px;font-size:0.83rem;cursor:pointer;">
           <input type="checkbox" id="bAnon" checked>
@@ -188,6 +192,7 @@
 
     <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
       <button class="btn ghost" onclick="addQuestion()">+ 질문 추가</button>
+      <button class="btn ghost" onclick="addSection()">+ 섹션 추가</button>
     </div>
 
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
@@ -320,11 +325,13 @@ async function loadMyForms() {
 window.initBuilder = (formId) => {
   currentFormId = formId || null;
   questions = [];
+  formDescImage = '';
   document.getElementById('bTitle').value = '';
   document.getElementById('bDesc').value = '';
   document.getElementById('bAnon').checked = true;
   document.getElementById('bShowResult').checked = false;
   document.getElementById('bSaveMsg').innerText = '';
+  renderDescImg();
   if (formId) {
     showLoading(true);
     getDoc(doc(db,'student_forms',formId)).then(snap => {
@@ -335,6 +342,8 @@ window.initBuilder = (formId) => {
       document.getElementById('bDesc').value = d.description || '';
       document.getElementById('bAnon').checked = !!d.allowAnon;
       document.getElementById('bShowResult').checked = !!d.showResultToRespondent;
+      formDescImage = d.descImage || '';
+      renderDescImg();
       questions = d.questions ? JSON.parse(JSON.stringify(d.questions)) : [];
       renderQuestions();
     }).catch(e => { showLoading(false); alert(e.message); });
@@ -352,6 +361,14 @@ function renderQuestions() {
 }
 
 function renderQCard(q, i) {
+  if (q.type === 'section') {
+    return `<div class="q-card" id="qc_${q.id}" style="background:var(--accent-light);border-color:rgba(42,92,230,0.3);">
+      <button class="btn sm ghost danger q-del" onclick="deleteQ('${q.id}')">✕</button>
+      <div style="font-size:0.7rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">— 섹션 구분 (여기부터 새 페이지) —</div>
+      <input class="inp" value="${escHtml(q.text||'')}" placeholder="섹션 제목" oninput="updateQText('${q.id}',this.value)" style="font-weight:700;margin-bottom:8px;">
+      <textarea class="inp" rows="2" placeholder="섹션 설명 (선택)" oninput="updateQField('${q.id}','desc',this.value)">${escHtml(q.desc||'')}</textarea>
+    </div>`;
+  }
   const hasOpts = ['mc','checkbox','dropdown'].includes(q.type);
   const optsHtml = hasOpts ? `
     <div class="q-opts" id="opts_${q.id}">
@@ -392,6 +409,11 @@ window.addQuestion = () => {
   renderQuestions();
   setTimeout(() => document.getElementById('bQuestions').lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
 };
+window.addSection = () => {
+  questions.push({ id: uid(), type: 'section', text: '', desc: '' });
+  renderQuestions();
+  setTimeout(() => document.getElementById('bQuestions').lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+};
 window.deleteQ = (qId) => { questions = questions.filter(q=>q.id!==qId); renderQuestions(); };
 window.updateQText = (qId, val) => { const q = questions.find(q=>q.id===qId); if(q) q.text = val; };
 window.updateQField = (qId, field, val) => { const q = questions.find(q=>q.id===qId); if(q) q[field] = val; };
@@ -423,6 +445,35 @@ window.onQImg = (input, qId) => {
   reader.readAsDataURL(file);
 };
 window.removeQImg = (qId) => { const q = questions.find(q=>q.id===qId); if(q) { q.imageUrl = ''; renderQuestions(); } };
+
+// ── 설명 이미지 ──
+let formDescImage = '';
+function renderDescImg() {
+  const wrap = document.getElementById('descImgWrap'); if (!wrap) return;
+  wrap.innerHTML = formDescImage
+    ? `<img class="q-img-preview" src="${formDescImage}"><button class="btn sm danger" onclick="removeDescImg()" style="display:block;margin-top:4px;">이미지 삭제</button>`
+    : '';
+}
+window.onDescImg = (input) => {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX = 800; let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) { if (w > h) { h *= MAX/w; w = MAX; } else { w *= MAX/h; h = MAX; } }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      formDescImage = canvas.toDataURL('image/jpeg', 0.78);
+      renderDescImg();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+};
+window.removeDescImg = () => { formDescImage = ''; renderDescImg(); };
 
 // 저장 전 현재 input 값 동기화
 function syncInputs() {
@@ -477,6 +528,7 @@ window.saveForm = async () => {
   const data = {
     title,
     description: document.getElementById('bDesc').value.trim(),
+    descImage: formDescImage || '',
     allowAnon: document.getElementById('bAnon').checked,
     showResultToRespondent: document.getElementById('bShowResult').checked,
     questions,
@@ -575,6 +627,7 @@ function renderSummary(el) {
   if (!responses.length) { el.innerHTML = '<div class="empty-msg">아직 응답이 없습니다.</div>'; return; }
   const qs = currentFormData.questions || [];
   el.innerHTML = qs.map((q, qi) => {
+    if (q.type === 'section') return q.text ? `<div style="font-weight:800;color:var(--accent);margin:18px 0 6px;">${escHtml(q.text)}</div>` : '';
     const answers = responses.map(r => _ansOf(r, q, qi)).filter(a => a !== undefined && a !== null && a !== '');
     const header = `<div class="res-q-title">Q${qi+1}. ${escHtml(q.text||'(질문)')} <span style="font-size:0.72rem;color:var(--sub);">(${answers.length}/${responses.length})</span></div>`;
     if (!answers.length) return `<div class="card res-q-block">${header}<div style="color:var(--sub);font-size:0.82rem;">응답 없음</div></div>`;
@@ -635,6 +688,7 @@ function renderIndividual(el) {
     </div>
     <div class="resp-detail hidden" id="rd_${i}">
       ${qs.map((q, qi) => {
+        if (q.type === 'section') return '';
         const a = _ansOf(r, q, qi);
         let disp = '';
         if (q.type==='file') disp = Array.isArray(a)&&a.length ? a.map(f=>f.url?`<a href="${f.url}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;">📎 ${escHtml(f.name||'파일')}</a>`:`📎 ${escHtml(f.name||'파일')}`).join(' ') : '(미응답)';
@@ -692,7 +746,7 @@ window.copyLink = () => {
 // ── CSV ──
 window.exportCsv = () => {
   if (!responses.length) { alert('응답이 없습니다.'); return; }
-  const qs = currentFormData.questions || [];
+  const qs = (currentFormData.questions || []).filter(q => q.type !== 'section');
   const headers = ['응답자', '제출시각', ...qs.map(q => q.text||'(질문)')];
   const rows = responses.map(r => {
     const name = r.respondentName || (r.respondentId ? `#${r.respondentId.slice(-4)}` : '익명');

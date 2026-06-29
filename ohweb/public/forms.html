@@ -503,6 +503,7 @@ function renderResponses(id) {
   let html = `<h4>응답 결과 · ${responses.length}건</h4>`;
   questions.forEach((q, qi) => {
     const qType = q.type || 'short';
+    if (qType === 'section') { html += `<h4 style="margin-top:18px;color:var(--accent);">${escHtml(typeof q.text==='string'?q.text:(q.text?.ko||'섹션'))}</h4>`; return; }
     const qText = typeof q.text === 'string' ? q.text : (q.text?.ko || '(질문)');
     const raw = responses.map(r => rawAnswer(r, q, qi))
       .filter(a => a !== undefined && a !== null && a !== '');
@@ -638,7 +639,7 @@ window.closeDrivePreview = () => {
 window.exportCsv = (id) => {
   const form = allForms.find(f => f.id === id); if (!form) return;
   const responses = responsesByForm[id] || [];
-  const qs = form.questions || [];
+  const qs = (form.questions || []).filter(q => q.type !== 'section');
   const qLabel = q => typeof q.text === 'string' ? q.text : (q.text?.ko || '질문');
   const headers = ['제출자', '제출시각', ...qs.map(qLabel)];
   const rows = responses.map(r => {

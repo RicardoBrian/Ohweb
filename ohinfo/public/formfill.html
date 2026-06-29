@@ -155,6 +155,7 @@
     <div class="card form-header">
       <h1 id="fillTitle"></h1>
       <p id="fillDesc"></p>
+      <img id="fillDescImg" style="display:none;max-width:100%;border-radius:12px;margin-top:12px;">
       <div class="form-meta-row" id="fillMeta"></div>
     </div>
     <div class="progress-bar-wrap" id="progressWrap" style="display:none">
@@ -496,6 +497,8 @@ function renderFormHeader() {
   const t = T[currentLang];
   document.getElementById('fillTitle').textContent = _formTitle();
   document.getElementById('fillDesc').textContent  = _formDesc();
+  const di = document.getElementById('fillDescImg');
+  if (FORM.descImage) { di.src = FORM.descImage; di.style.display = 'block'; } else { di.style.display = 'none'; }
   const tags = [];
   if (FORM.isQuiz)    tags.push(t.quiz);
   if (FORM.deadline)  { const dl = new Date(FORM.deadline); if (!isNaN(dl)) tags.push('⏰ ' + dl.toLocaleDateString() + ' ' + t.deadline); }
