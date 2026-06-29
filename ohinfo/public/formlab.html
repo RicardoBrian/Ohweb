@@ -316,8 +316,13 @@ async function loadMyForms() {
       .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
     const el = document.getElementById('myFormList');
     if (!forms.length) { el.innerHTML = '<div class="empty-msg">아직 만든 설문이 없습니다.<br>새 설문을 만들어보세요!</div>'; showLoading(false); return; }
-    el.innerHTML = forms.map(f => {
-      const resCount = f.responseCount || 0;
+    // 응답 수 실시간 조회
+    const respCounts = await Promise.all(forms.map(f =>
+      getDocs(query(collection(db,'student_form_responses'), where('formId','==',f.id)))
+        .then(s => s.size).catch(() => f.responseCount || 0)
+    ));
+    el.innerHTML = forms.map((f, i) => {
+      const resCount = respCounts[i];
       const status = f.status === 'open' ? '<span class="tag open">응답 중</span>' : '<span class="tag closed">마감</span>';
       const date = f.createdAt ? new Date(f.createdAt.toDate ? f.createdAt.toDate() : f.createdAt).toLocaleDateString() : '';
       return `<div class="form-item" onclick="openResults('${f.id}')">

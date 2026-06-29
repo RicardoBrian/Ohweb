@@ -187,7 +187,7 @@
 
 <script type="module">
 import { db } from './firebase-config.js';
-import { doc, getDoc, addDoc, collection, query, where, getDocs, serverTimestamp }
+import { doc, getDoc, addDoc, updateDoc, collection, query, where, getDocs, serverTimestamp, increment }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 // ── i18n ──
@@ -722,7 +722,10 @@ async function submitForm() {
   };
   if (FORM.isQuiz) { payload.score = score; payload.total = total; }
 
-  try { await addDoc(collection(db,'student_form_responses'), payload); }
+  try {
+    await addDoc(collection(db,'student_form_responses'), payload);
+    updateDoc(doc(db,'student_forms',formId), { responseCount: increment(1) }).catch(()=>{});
+  }
   catch(e) {
     btn.disabled = false;
     document.getElementById('btnNextTxt').textContent = t.submit;
