@@ -112,6 +112,22 @@
     .resp-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 9px 14px; background: var(--glass); border: 1px solid var(--border-card); border-radius: 8px; margin-bottom: 6px; font-size: 0.82rem; cursor: pointer; }
     .resp-row:hover { background: var(--glass-strong); }
     .resp-detail { background: var(--glass); border: 1px solid var(--border-card); border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; margin-top: -4px; }
+    .file-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; background: var(--glass); border: 1px solid var(--border-card); cursor: pointer; font-size: 0.8rem; color: var(--accent); font-weight: 600; transition: background 0.15s; margin: 2px; }
+    .file-chip:hover { background: var(--glass-strong); }
+    .file-chip img { width: 48px; height: 36px; object-fit: cover; border-radius: 5px; display: block; margin-bottom: 3px; }
+    .file-tiles { display: flex; flex-wrap: wrap; gap: 8px; }
+    .file-tile-sm { width: 90px; cursor: pointer; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-card); background: var(--glass); text-align: center; transition: transform 0.15s; }
+    .file-tile-sm:hover { transform: translateY(-2px); }
+    .file-tile-sm img { width: 100%; height: 70px; object-fit: cover; display: block; }
+    .file-tile-sm-cap { font-size: 0.65rem; padding: 4px 5px; word-break: break-all; color: var(--text-2); line-height: 1.2; }
+    .file-tile-sm-ico { font-size: 1.4rem; padding: 12px 0 4px; }
+    .lab-drive-modal { display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(20,22,40,0.6); align-items: center; justify-content: center; padding: 20px; }
+    .lab-drive-modal.open { display: flex; }
+    .lab-drive-box { background: var(--surface); border-radius: 18px; width: min(860px, 96vw); height: min(78vh, 740px); display: flex; flex-direction: column; box-shadow: var(--shadow-md); overflow: hidden; }
+    .lab-drive-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--border-card); }
+    .lab-drive-head span { font-size: 0.82rem; color: var(--sub); font-weight: 600; }
+    .lab-drive-head button { border: none; background: var(--surface-2); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 0.95rem; }
+    .lab-drive-modal iframe, .lab-drive-modal img.preview-img { flex: 1; width: 100%; border: none; background: var(--surface-2); object-fit: contain; max-height: calc(78vh - 54px); }
     /* STATUS TOGGLE */
     .status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 50px; font-size: 0.75rem; font-weight: 700; cursor: pointer; border: none; font-family: inherit; }
     .status-pill.open { background: rgba(34,197,94,0.15); color: #15803d; border: 1px solid rgba(34,197,94,0.3); }
@@ -655,7 +671,7 @@ function renderSummary(el) {
     }
     if (q.type === 'file') {
       return `<div class="card res-q-block">${header}
-        <div class="res-texts">${answers.flatMap(a=>Array.isArray(a)?a:[]).map(f=>`<div class="res-text-item">${f.url?`<a href="${f.url}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;">📎 ${escHtml(f.name||'파일')}</a>`:`📎 ${escHtml(f.name||'파일')}`}</div>`).join('')||'<div class="res-text-item">(없음)</div>'}</div></div>`;
+        <div class="file-tiles">${answers.flatMap(a=>Array.isArray(a)?a:[]).map(f=>fileTileSmall(f)).join('')||'<div class="res-text-item">(없음)</div>'}</div></div>`;
     }
     return `<div class="card res-q-block">
       ${header}
@@ -691,7 +707,7 @@ function renderIndividual(el) {
         if (q.type === 'section') return '';
         const a = _ansOf(r, q, qi);
         let disp = '';
-        if (q.type==='file') disp = Array.isArray(a)&&a.length ? a.map(f=>f.url?`<a href="${f.url}" target="_blank" rel="noopener" style="color:var(--accent);font-weight:600;">📎 ${escHtml(f.name||'파일')}</a>`:`📎 ${escHtml(f.name||'파일')}`).join(' ') : '(미응답)';
+        if (q.type==='file') disp = Array.isArray(a)&&a.length ? `<div class="file-tiles">${a.map(f=>fileTileSmall(f)).join('')}</div>` : '(미응답)';
         else if (['mc','dropdown'].includes(q.type)) disp = a !== undefined ? escHtml(q.options?.[a]||a) : '(미응답)';
         else if (q.type==='checkbox') disp = Array.isArray(a) ? a.map(i=>escHtml(q.options?.[i]||i)).join(', ') : '(미응답)';
         else disp = escHtml(String(a||'(미응답)'));
@@ -767,6 +783,55 @@ window.exportCsv = () => {
 
 // ── 초기 로드 ──
 loadMyForms();
+
+// ── 파일 미리보기 모달 ──
+function _labDriveId(url) { const m = String(url||'').match(/\/d\/([^/]+)|[?&]id=([^&]+)/); return m?(m[1]||m[2]):''; }
+function _labIsImg(name) { return /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(String(name||'')); }
+window.openFilePreview = (url, name) => {
+  const modal = document.getElementById('labDriveModal');
+  const head = document.getElementById('labDriveHead');
+  const body = document.getElementById('labDriveBody');
+  head.textContent = name || '파일 미리보기';
+  body.innerHTML = '';
+  if (_labIsImg(name)) {
+    const img = document.createElement('img');
+    img.className = 'preview-img';
+    img.src = _labDriveId(url) ? `https://drive.google.com/thumbnail?id=${_labDriveId(url)}&sz=w800` : url;
+    img.style.cssText = 'flex:1;width:100%;object-fit:contain;max-height:calc(78vh - 54px);';
+    body.appendChild(img);
+  } else {
+    const id = _labDriveId(url);
+    const ifr = document.createElement('iframe');
+    ifr.style.cssText = 'flex:1;width:100%;height:100%;border:none;';
+    ifr.src = id ? `https://drive.google.com/file/d/${id}/preview` : url;
+    body.appendChild(ifr);
+  }
+  modal.classList.add('open');
+};
+window.closeFilePreview = () => document.getElementById('labDriveModal').classList.remove('open');
+
+function fileTileSmall(f) {
+  const url = f.url || '';
+  const name = f.name || '파일';
+  const isImg = _labIsImg(name);
+  const id = _labDriveId(url);
+  const thumb = isImg && id ? `https://drive.google.com/thumbnail?id=${id}&sz=w200` : '';
+  const inner = thumb
+    ? `<img src="${thumb}" onerror="this.style.display='none'"><div class="file-tile-sm-cap">${escHtml(name)}</div>`
+    : `<div class="file-tile-sm-ico">${isImg ? '🖼' : '📎'}</div><div class="file-tile-sm-cap">${escHtml(name)}</div>`;
+  return url
+    ? `<div class="file-tile-sm" onclick="openFilePreview('${url.replace(/'/g,"\\'")}','${name.replace(/'/g,"\\'")}')"><${thumb?'div':'div'}>${inner}</${'div'}></div>`
+    : `<div class="file-tile-sm"><div class="file-tile-sm-ico">📎</div><div class="file-tile-sm-cap">${escHtml(name)}</div></div>`;
+}
 </script>
+<div class="lab-drive-modal" id="labDriveModal" onclick="if(event.target===this)closeFilePreview()">
+  <div class="lab-drive-box">
+    <div class="lab-drive-head">
+      <span id="labDriveHead"></span>
+      <button onclick="closeFilePreview()">✕</button>
+    </div>
+    <div id="labDriveBody" style="flex:1;display:flex;"></div>
+  </div>
+</div>
 </body>
 </html>
