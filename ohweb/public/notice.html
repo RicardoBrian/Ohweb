@@ -12,95 +12,111 @@
     /* ── 툴바 ── */
     .toolbar {
       position: fixed; top: 0; left: 0; right: 0; z-index: 200;
-      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-      padding: 10px 20px;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      padding: 8px 18px;
       background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
       border-bottom: 1px solid var(--border);
       transition: opacity 0.35s, transform 0.35s;
+      min-height: 50px;
     }
-    .toolbar.hidden { opacity: 0; pointer-events: none; transform: translateY(-8px); }
-    .toolbar-brand { display: flex; align-items: center; gap: 8px; text-decoration: none; margin-right: 6px; }
-    .toolbar-brand img { height: 24px; }
-    .toolbar-brand span { font-size: 0.82rem; font-weight: 700; color: var(--sub); }
-    .tb-sep { width: 1px; height: 22px; background: var(--border-card); flex-shrink: 0; }
-    .tb-label { font-size: 0.72rem; font-weight: 700; color: var(--sub); white-space: nowrap; }
+    .toolbar.hidden { opacity: 0; pointer-events: none; transform: translateY(-10px); }
+    .toolbar-brand { display: flex; align-items: center; gap: 8px; text-decoration: none; margin-right: 4px; flex-shrink: 0; }
+    .toolbar-brand img { height: 22px; }
+    .toolbar-brand span { font-size: 0.8rem; font-weight: 700; color: var(--sub); }
+    .tb-sep { width: 1px; height: 20px; background: var(--border-card); flex-shrink: 0; }
+    .tb-group { display: flex; align-items: center; gap: 6px; }
+    .tb-label { font-size: 0.68rem; font-weight: 700; color: var(--sub); white-space: nowrap; }
     .tb-btn {
-      padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border-card);
+      padding: 5px 13px; border-radius: 20px; border: 1px solid var(--border-card);
       background: var(--glass); color: var(--text); font-family: var(--font);
-      font-size: 0.82rem; font-weight: 600; cursor: pointer;
-      transition: background 0.15s, transform 0.1s;
-      white-space: nowrap;
+      font-size: 0.8rem; font-weight: 600; cursor: pointer;
+      transition: background 0.15s, transform 0.1s; white-space: nowrap;
     }
     .tb-btn:hover { background: var(--glass-strong); }
     .tb-btn:active { transform: scale(0.95); }
     .tb-btn.accent { background: var(--accent-grad); color: #fff; border-color: transparent; }
     .tb-btn.accent:hover { filter: brightness(1.07); }
-    .size-slider { width: 100px; accent-color: var(--accent); cursor: pointer; }
-    .size-val { font-size: 0.78rem; font-weight: 700; color: var(--sub); min-width: 30px; }
-    .dark-toggle { width: 38px; height: 22px; border-radius: 50px; background: var(--glass); border: 1px solid var(--border); cursor: pointer; position: relative; transition: 0.3s; margin-left: auto; flex-shrink: 0; }
+    .size-slider { width: 80px; accent-color: var(--accent); cursor: pointer; }
+    .size-val { font-size: 0.75rem; font-weight: 700; color: var(--sub); min-width: 26px; text-align: right; }
+    .trans-status { font-size: 0.7rem; color: var(--sub); white-space: nowrap; }
+    .dark-toggle { width: 36px; height: 20px; border-radius: 50px; background: var(--glass); border: 1px solid var(--border); cursor: pointer; position: relative; transition: 0.3s; margin-left: auto; flex-shrink: 0; }
     body.dark .dark-toggle { background: rgba(42,92,230,0.6); border-color: rgba(100,140,255,0.4); }
-    .dark-toggle::after { content:''; position:absolute; top:3px; left:3px; width:14px; height:14px; border-radius:50%; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.2); transition:transform 0.3s; }
+    .dark-toggle::after { content:''; position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.2); transition:transform 0.3s; }
     body.dark .dark-toggle::after { transform: translateX(16px); }
 
-    /* ── 편집 모드 / 공지 모드 ── */
-    #editMode, #viewMode { position: fixed; inset: 0; display: flex; flex-direction: column; padding-top: 56px; transition: opacity 0.3s; }
-    #viewMode { display: none; }
+    /* ── 편집 / 공지 컨테이너 ── */
+    #editMode { position: fixed; inset: 0; padding-top: 50px; display: flex; flex-direction: column; }
+    #viewMode { position: fixed; inset: 0; padding-top: 0; display: none; background: var(--bg); overflow-y: auto; }
+    #viewMode.active { display: block; }
 
-    /* 편집 패널 */
-    .edit-pane {
-      flex: 1; display: flex; flex-direction: column; gap: 0;
-      padding: 16px; overflow: hidden;
-    }
-    .edit-pane-inner { display: flex; gap: 12px; flex: 1; overflow: hidden; }
-    .edit-col { display: flex; flex-direction: column; flex: 1; gap: 8px; min-width: 0; }
-    .edit-col-label { font-size: 0.68rem; font-weight: 700; color: var(--sub); letter-spacing: 0.07em; text-transform: uppercase; padding-left: 4px; }
+    /* ── 편집 패널 ── */
+    .edit-pane { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 12px; gap: 10px; }
+    .edit-cols { display: flex; gap: 10px; flex: 1; overflow: hidden; }
+    .edit-col { display: flex; flex-direction: column; flex: 1; gap: 6px; min-width: 0; }
+    .edit-col-label { font-size: 0.66rem; font-weight: 700; color: var(--sub); letter-spacing: 0.07em; text-transform: uppercase; padding-left: 2px; }
     .edit-textarea {
-      flex: 1; resize: none; border-radius: 14px; border: 1px solid var(--border-card);
+      flex: 1; resize: none; border-radius: 12px; border: 1px solid var(--border-card);
       background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
-      color: var(--text); font-family: var(--font); font-size: 1rem; font-weight: 500;
-      padding: 16px; line-height: 1.65; outline: none;
+      color: var(--text); font-family: var(--font); font-size: 0.95rem; font-weight: 500;
+      padding: 14px; line-height: 1.65; outline: none;
       transition: border-color 0.2s, box-shadow 0.2s;
     }
     .edit-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
     .edit-textarea[readonly] { cursor: default; color: var(--text-2); background: var(--glass); }
-    .trans-status { font-size: 0.72rem; color: var(--sub); padding: 2px 4px; min-height: 18px; }
-
-    /* 이미지 미리보기 (편집) */
-    .img-preview-wrap { display: flex; align-items: flex-start; gap: 10px; padding: 10px 16px; flex-wrap: wrap; }
-    .img-thumb { position: relative; width: 80px; height: 64px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border-card); flex-shrink: 0; }
+    .img-strip { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 2px; }
+    .img-thumb { position: relative; width: 72px; height: 56px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-card); flex-shrink: 0; }
     .img-thumb img { width: 100%; height: 100%; object-fit: cover; }
-    .img-thumb-del { position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; border-radius: 50%; background: rgba(0,0,0,0.55); color: #fff; border: none; font-size: 0.65rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .img-thumb-del { position: absolute; top: 2px; right: 2px; width: 16px; height: 16px; border-radius: 50%; background: rgba(0,0,0,0.6); color: #fff; border: none; font-size: 0.6rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
-    /* ── 공지 뷰 (전체화면용) ── */
-    #viewMode {
-      background: var(--bg);
-      align-items: center; justify-content: center;
-      padding-top: 0;
-      overflow-y: auto;
+    /* ── 공지 뷰 ── */
+    .notice-page {
+      min-height: 100%;
+      display: grid;
+      /* 이미지가 있으면 왼쪽 칸에, 텍스트 3컬럼 오른쪽에 */
+      grid-template-rows: auto 1fr;
+      padding: 0;
     }
-    #viewMode.active { display: flex; }
-    .notice-wrap {
-      width: 100%; max-width: 1100px; padding: 60px 48px;
-      display: flex; flex-direction: column; gap: 36px; align-items: center;
+    /* 이미지 행 */
+    .notice-img-row {
+      display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+      padding: 28px 28px 0;
     }
-    .notice-img-row { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
-    .notice-img { max-width: min(500px, 90vw); max-height: 380px; border-radius: 18px; object-fit: contain; box-shadow: var(--shadow-md); }
-    .notice-texts { width: 100%; display: flex; flex-direction: column; gap: 24px; }
-    .notice-lang-block { width: 100%; }
-    .notice-lang-tag { font-size: 0.65rem; font-weight: 800; color: var(--sub); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 6px; }
+    .notice-img { max-height: 38vh; max-width: 45vw; border-radius: 16px; object-fit: contain; box-shadow: var(--shadow-md); }
+
+    /* 3컬럼 텍스트 */
+    .notice-cols {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 0;
+      flex: 1;
+      min-height: 0;
+    }
+    .notice-col {
+      padding: 32px 36px;
+      display: flex; flex-direction: column; gap: 0;
+      border-right: 1px solid var(--border-card);
+      min-height: calc(100vh - 28px);
+    }
+    .notice-col:last-child { border-right: none; }
+    .notice-col-tag {
+      font-size: 0.62rem; font-weight: 800; color: var(--sub);
+      letter-spacing: 0.1em; text-transform: uppercase;
+      margin-bottom: 14px; opacity: 0.7;
+    }
     .notice-text {
-      line-height: 1.7; font-weight: 600; white-space: pre-wrap;
-      word-break: break-word;
+      line-height: 1.75; font-weight: 600; white-space: pre-wrap;
+      word-break: break-word; flex: 1;
     }
     .notice-text.ko { color: var(--text); }
     .notice-text.zh { color: var(--text-2); }
     .notice-text.ru { color: var(--text-2); }
-    .notice-divider { width: 100%; height: 1px; background: var(--border-card); }
 
-    /* 전체화면 툴바 오버레이 */
+    /* 이미지 있을 때 텍스트 구역 높이 조정 */
+    .has-img .notice-col { min-height: auto; }
+
+    /* 전체화면 */
     :fullscreen .toolbar, :-webkit-full-screen .toolbar { position: fixed; }
-    :fullscreen #editMode, :-webkit-full-screen #editMode { padding-top: 56px; }
-    :fullscreen #viewMode, :-webkit-full-screen #viewMode { padding-top: 0; }
+    :fullscreen #editMode, :-webkit-full-screen #editMode { padding-top: 50px; }
   </style>
 </head>
 <body>
@@ -113,36 +129,43 @@
     </a>
     <div class="tb-sep"></div>
 
-    <!-- 글자 크기 -->
-    <span class="tb-label">크기</span>
-    <input class="size-slider" id="sizeSlider" type="range" min="14" max="60" value="26" oninput="applySize()">
-    <span class="size-val" id="sizeVal">26</span>
-
+    <!-- 한국어 크기 -->
+    <div class="tb-group">
+      <span class="tb-label">한</span>
+      <input class="size-slider" id="szKo" type="range" min="14" max="72" value="32" oninput="applySize()">
+      <span class="size-val" id="szKoVal">32</span>
+    </div>
+    <div class="tb-sep"></div>
+    <!-- 중문 크기 -->
+    <div class="tb-group">
+      <span class="tb-label">中</span>
+      <input class="size-slider" id="szZh" type="range" min="14" max="72" value="28" oninput="applySize()">
+      <span class="size-val" id="szZhVal">28</span>
+    </div>
+    <div class="tb-sep"></div>
+    <!-- 러시아어 크기 -->
+    <div class="tb-group">
+      <span class="tb-label">Ру</span>
+      <input class="size-slider" id="szRu" type="range" min="14" max="72" value="28" oninput="applySize()">
+      <span class="size-val" id="szRuVal">28</span>
+    </div>
     <div class="tb-sep"></div>
 
-    <!-- 이미지 -->
-    <button class="tb-btn" onclick="document.getElementById('imgFile').click()">🖼 이미지 추가</button>
+    <button class="tb-btn" onclick="document.getElementById('imgFile').click()">🖼 이미지</button>
     <input type="file" id="imgFile" accept="image/*" multiple style="display:none" onchange="addImages(this)">
-
     <div class="tb-sep"></div>
 
-    <!-- 모드 전환 -->
+    <span class="trans-status" id="tbTransStatus"></span>
     <button class="tb-btn accent" id="previewBtn" onclick="showView()">▶ 공지 보기</button>
     <button class="tb-btn" id="editBtn" onclick="showEdit()" style="display:none">✏ 편집</button>
-
-    <!-- 전체화면 -->
-    <button class="tb-btn" onclick="toggleFs()">⛶ 전체화면</button>
-
-    <!-- 번역 상태 -->
-    <span class="trans-status" id="tbTransStatus"></span>
-
+    <button class="tb-btn" onclick="toggleFs()">⛶</button>
     <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
   </div>
 
   <!-- ── 편집 모드 ── -->
   <div id="editMode">
     <div class="edit-pane">
-      <div class="edit-pane-inner">
+      <div class="edit-cols">
         <div class="edit-col">
           <div class="edit-col-label">한국어 (직접 입력)</div>
           <textarea class="edit-textarea" id="koText" placeholder="학생들에게 전달할 내용을 입력하세요…" oninput="onKoInput()"></textarea>
@@ -156,28 +179,25 @@
           <textarea class="edit-textarea" id="ruText" readonly placeholder="번역 대기 중…"></textarea>
         </div>
       </div>
-      <div class="img-preview-wrap" id="imgPreviewWrap"></div>
+      <div class="img-strip" id="imgStrip"></div>
     </div>
   </div>
 
   <!-- ── 공지 뷰 ── -->
   <div id="viewMode">
-    <div class="notice-wrap" id="noticeWrap"></div>
+    <div class="notice-page" id="noticePage"></div>
   </div>
 
   <script>
     if (sessionStorage.getItem('ohweb_admin') !== '1') location.href = 'index.html';
 
-    // ── 다크모드 ──
     function toggleDark() { document.body.classList.toggle('dark'); localStorage.setItem('dark', document.body.classList.contains('dark')?'1':'0'); }
     if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
 
-    // ── 전체화면 ──
     function toggleFs() { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(()=>{}); }
 
     // ── 툴바 자동 숨김 ──
-    let hideTimer = null;
-    let isViewMode = false;
+    let hideTimer = null, isViewMode = false;
     function showToolbar() {
       document.getElementById('toolbar').classList.remove('hidden');
       clearTimeout(hideTimer);
@@ -187,43 +207,42 @@
     document.addEventListener('touchstart', showToolbar);
     document.addEventListener('keydown', showToolbar);
 
-    // ── 글자 크기 ──
+    // ── 언어별 크기 ──
     function applySize() {
-      const v = document.getElementById('sizeSlider').value;
-      document.getElementById('sizeVal').textContent = v;
-      document.querySelectorAll('.notice-text').forEach(el => el.style.fontSize = v + 'px');
+      const ko = document.getElementById('szKo').value;
+      const zh = document.getElementById('szZh').value;
+      const ru = document.getElementById('szRu').value;
+      document.getElementById('szKoVal').textContent = ko;
+      document.getElementById('szZhVal').textContent = zh;
+      document.getElementById('szRuVal').textContent = ru;
+      document.querySelectorAll('.notice-text.ko').forEach(el => el.style.fontSize = ko + 'px');
+      document.querySelectorAll('.notice-text.zh').forEach(el => el.style.fontSize = zh + 'px');
+      document.querySelectorAll('.notice-text.ru').forEach(el => el.style.fontSize = ru + 'px');
     }
 
     // ── 이미지 ──
-    let images = []; // [{dataUrl, name}]
+    let images = [];
     function addImages(input) {
       Array.from(input.files).forEach(file => {
         const reader = new FileReader();
-        reader.onload = e => {
-          images.push({ dataUrl: e.target.result, name: file.name });
-          renderImgPreviews();
-        };
+        reader.onload = e => { images.push({ dataUrl: e.target.result }); renderImgStrip(); };
         reader.readAsDataURL(file);
       });
       input.value = '';
     }
-    function renderImgPreviews() {
-      const wrap = document.getElementById('imgPreviewWrap');
-      wrap.innerHTML = images.map((img, i) => `
-        <div class="img-thumb">
-          <img src="${img.dataUrl}" alt="${escHtml(img.name)}">
-          <button class="img-thumb-del" onclick="removeImg(${i})">✕</button>
-        </div>`).join('');
+    function renderImgStrip() {
+      document.getElementById('imgStrip').innerHTML = images.map((img, i) =>
+        `<div class="img-thumb"><img src="${img.dataUrl}"><button class="img-thumb-del" onclick="removeImg(${i})">✕</button></div>`
+      ).join('');
     }
-    function removeImg(i) { images.splice(i, 1); renderImgPreviews(); }
+    function removeImg(i) { images.splice(i, 1); renderImgStrip(); }
 
     // ── 번역 ──
-    let transTimer = null;
-    let zhVal = '', ruVal = '';
+    let transTimer = null, zhVal = '', ruVal = '';
     function onKoInput() {
       clearTimeout(transTimer);
       const txt = document.getElementById('koText').value.trim();
-      if (!txt) { zhVal = ''; ruVal = ''; document.getElementById('zhText').value = ''; document.getElementById('ruText').value = ''; setStatus(''); return; }
+      if (!txt) { zhVal=''; ruVal=''; document.getElementById('zhText').value=''; document.getElementById('ruText').value=''; setStatus(''); return; }
       setStatus('입력 중…');
       transTimer = setTimeout(doTranslate, 1200);
     }
@@ -233,39 +252,41 @@
       setStatus('번역 중…');
       try {
         const [zh, ru] = await Promise.all([translate(txt,'zh-cn'), translate(txt,'ru')]);
-        zhVal = zh || ''; ruVal = ru || '';
+        zhVal = zh||''; ruVal = ru||'';
         document.getElementById('zhText').value = zhVal;
         document.getElementById('ruText').value = ruVal;
-        setStatus('✓ 번역 완료');
-        setTimeout(() => setStatus(''), 2000);
+        setStatus('✓ 완료'); setTimeout(()=>setStatus(''), 2000);
       } catch(e) { setStatus('번역 실패'); }
     }
     function setStatus(s) { document.getElementById('tbTransStatus').textContent = s; }
     async function translate(text, lang) {
       const res = await fetch('/.netlify/functions/translate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({texts:[text], targetLang:lang, sourceLang:'ko'}) });
       const data = await res.json();
-      if (!res.ok || data.error || !data.translations) throw new Error(data.error||`HTTP ${res.status}`);
-      return data.translations[0]?.text || '';
+      if (!res.ok||data.error||!data.translations) throw new Error(data.error||`HTTP ${res.status}`);
+      return data.translations[0]?.text||'';
     }
 
-    // ── 뷰 전환 ──
+    // ── 공지 뷰 렌더 ──
     function showView() {
       const ko = document.getElementById('koText').value.trim();
       const zh = document.getElementById('zhText').value.trim();
       const ru = document.getElementById('ruText').value.trim();
-      const sz = document.getElementById('sizeSlider').value + 'px';
+      const szKo = document.getElementById('szKo').value + 'px';
+      const szZh = document.getElementById('szZh').value + 'px';
+      const szRu = document.getElementById('szRu').value + 'px';
 
       let html = '';
-      if (images.length) {
-        html += `<div class="notice-img-row">${images.map(img => `<img class="notice-img" src="${img.dataUrl}" alt="">`).join('')}</div>`;
+      const hasImg = images.length > 0;
+      if (hasImg) {
+        html += `<div class="notice-img-row">${images.map(img=>`<img class="notice-img" src="${img.dataUrl}">`).join('')}</div>`;
       }
-      html += `<div class="notice-texts">`;
-      if (ko) html += `<div class="notice-lang-block"><div class="notice-text ko" style="font-size:${sz}">${escHtmlNl(ko)}</div></div>`;
-      if (zh) { if (ko) html += `<div class="notice-divider"></div>`; html += `<div class="notice-lang-block"><div class="notice-text zh" style="font-size:${sz}">${escHtmlNl(zh)}</div></div>`; }
-      if (ru) { if (ko||zh) html += `<div class="notice-divider"></div>`; html += `<div class="notice-lang-block"><div class="notice-text ru" style="font-size:${sz}">${escHtmlNl(ru)}</div></div>`; }
+      html += `<div class="notice-cols${hasImg?' has-img':''}">`;
+      html += `<div class="notice-col"><div class="notice-col-tag">한국어</div><div class="notice-text ko" style="font-size:${szKo}">${escHtmlNl(ko)}</div></div>`;
+      html += `<div class="notice-col"><div class="notice-col-tag">中文</div><div class="notice-text zh" style="font-size:${szZh}">${escHtmlNl(zh)}</div></div>`;
+      html += `<div class="notice-col"><div class="notice-col-tag">Русский</div><div class="notice-text ru" style="font-size:${szRu}">${escHtmlNl(ru)}</div></div>`;
       html += `</div>`;
 
-      document.getElementById('noticeWrap').innerHTML = html;
+      document.getElementById('noticePage').innerHTML = html;
       document.getElementById('editMode').style.display = 'none';
       document.getElementById('viewMode').classList.add('active');
       document.getElementById('previewBtn').style.display = 'none';
@@ -273,6 +294,7 @@
       isViewMode = true;
       showToolbar();
     }
+
     function showEdit() {
       document.getElementById('viewMode').classList.remove('active');
       document.getElementById('editMode').style.display = '';
