@@ -717,7 +717,7 @@ async function submitForm() {
   const payload = {
     formId, ownerId: FORM.ownerId || '',
     respondentId: SESSION ? SESSION.id : 'anonymous',
-    respondentName: SESSION ? (SESSION.name || '') : '익명',
+    respondentName: SESSION ? [SESSION.number, SESSION.name].filter(Boolean).join(' ') || '' : '익명',
     answers: answersArr, submittedAt: serverTimestamp()
   };
   if (FORM.isQuiz) { payload.score = score; payload.total = total; }
