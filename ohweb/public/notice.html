@@ -155,6 +155,7 @@
     <input type="file" id="imgFile" accept="image/*" multiple style="display:none" onchange="addImages(this)">
     <div class="tb-sep"></div>
 
+    <button class="tb-btn" id="transBtn" onclick="doTranslate()">🌐 번역</button>
     <span class="trans-status" id="tbTransStatus"></span>
     <button class="tb-btn accent" id="previewBtn" onclick="showView()">▶ 공지 보기</button>
     <button class="tb-btn" id="editBtn" onclick="showEdit()" style="display:none">✏ 편집</button>
@@ -238,18 +239,16 @@
     function removeImg(i) { images.splice(i, 1); renderImgStrip(); }
 
     // ── 번역 ──
-    let transTimer = null, zhVal = '', ruVal = '';
+    let zhVal = '', ruVal = '';
     function onKoInput() {
-      clearTimeout(transTimer);
       const txt = document.getElementById('koText').value.trim();
-      if (!txt) { zhVal=''; ruVal=''; document.getElementById('zhText').value=''; document.getElementById('ruText').value=''; setStatus(''); return; }
-      setStatus('입력 중…');
-      transTimer = setTimeout(doTranslate, 1200);
+      if (!txt) { zhVal=''; ruVal=''; document.getElementById('zhText').value=''; document.getElementById('ruText').value=''; setStatus(''); }
     }
     async function doTranslate() {
       const txt = document.getElementById('koText').value.trim();
       if (!txt) return;
-      setStatus('번역 중…');
+      const btn = document.getElementById('transBtn');
+      btn.disabled = true; setStatus('번역 중…');
       try {
         const [zh, ru] = await Promise.all([translate(txt,'zh-cn'), translate(txt,'ru')]);
         zhVal = zh||''; ruVal = ru||'';
@@ -257,6 +256,7 @@
         document.getElementById('ruText').value = ruVal;
         setStatus('✓ 완료'); setTimeout(()=>setStatus(''), 2000);
       } catch(e) { setStatus('번역 실패'); }
+      btn.disabled = false;
     }
     function setStatus(s) { document.getElementById('tbTransStatus').textContent = s; }
     async function translate(text, lang) {

@@ -301,7 +301,6 @@
 
     // ── 번역 ──
     let zhText = '', ruText = '';
-    let transTimer = null;
     function onTitleInput() {
       const v = document.getElementById('titleInp').value.trim();
       document.getElementById('transBtn').disabled = !v;
@@ -309,8 +308,6 @@
       zhText = ''; ruText = '';
       document.getElementById('transZh').textContent = '—';
       document.getElementById('transRu').textContent = '—';
-      clearTimeout(transTimer);
-      if (v) transTimer = setTimeout(doTranslate, 1400);
     }
     async function doTranslate() {
       const title = document.getElementById('titleInp').value.trim();
