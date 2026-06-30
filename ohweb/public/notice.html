@@ -36,17 +36,17 @@
     .tb-btn:active { transform: scale(0.95); }
     .tb-btn.accent { background: var(--accent-grad); color: #fff; border-color: transparent; }
     .tb-btn.accent:hover { filter: brightness(1.07); }
-    .size-slider { width: 80px; accent-color: var(--accent); cursor: pointer; }
-    .size-val { font-size: 0.75rem; font-weight: 700; color: var(--sub); min-width: 26px; text-align: right; }
+    .size-slider { width: 76px; accent-color: var(--accent); cursor: pointer; }
+    .size-val { font-size: 0.72rem; font-weight: 700; color: var(--sub); min-width: 24px; text-align: right; }
     .trans-status { font-size: 0.7rem; color: var(--sub); white-space: nowrap; }
     .dark-toggle { width: 36px; height: 20px; border-radius: 50px; background: var(--glass); border: 1px solid var(--border); cursor: pointer; position: relative; transition: 0.3s; margin-left: auto; flex-shrink: 0; }
     body.dark .dark-toggle { background: rgba(42,92,230,0.6); border-color: rgba(100,140,255,0.4); }
     .dark-toggle::after { content:''; position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.2); transition:transform 0.3s; }
     body.dark .dark-toggle::after { transform: translateX(16px); }
 
-    /* ── 편집 / 공지 컨테이너 ── */
+    /* ── 편집 모드 ── */
     #editMode { position: fixed; inset: 0; padding-top: 50px; display: flex; flex-direction: column; }
-    #viewMode { position: fixed; inset: 0; padding-top: 0; display: none; background: var(--bg); overflow-y: auto; }
+    #viewMode { position: fixed; inset: 0; display: none; background: var(--bg); }
     #viewMode.active { display: block; }
 
     /* ── 편집 패널 ── */
@@ -63,56 +63,82 @@
     }
     .edit-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
     .edit-textarea[readonly] { cursor: default; color: var(--text-2); background: var(--glass); }
-    .img-strip { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 2px; }
+    .img-strip { display: flex; gap: 8px; flex-wrap: wrap; }
     .img-thumb { position: relative; width: 72px; height: 56px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-card); flex-shrink: 0; }
     .img-thumb img { width: 100%; height: 100%; object-fit: cover; }
     .img-thumb-del { position: absolute; top: 2px; right: 2px; width: 16px; height: 16px; border-radius: 50%; background: rgba(0,0,0,0.6); color: #fff; border: none; font-size: 0.6rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
-    /* ── 공지 뷰 ── */
-    .notice-page {
-      min-height: 100%;
-      display: grid;
-      /* 이미지가 있으면 왼쪽 칸에, 텍스트 3컬럼 오른쪽에 */
-      grid-template-rows: auto 1fr;
-      padding: 0;
-    }
-    /* 이미지 행 */
-    .notice-img-row {
-      display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
-      padding: 28px 28px 0;
-    }
-    .notice-img { max-height: 38vh; max-width: 45vw; border-radius: 16px; object-fit: contain; box-shadow: var(--shadow-md); }
+    /* ══════════════════════════════════
+       공지 뷰 — 자유 레이아웃
+    ══════════════════════════════════ */
+    #viewMode { overflow: hidden; }
 
-    /* 3컬럼 텍스트 */
-    .notice-cols {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 0;
+    /* 패널 컨테이너: 상단(한국어) + 하단(중·러) */
+    .notice-layout {
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column;
+    }
+
+    /* 상단 패널 */
+    .panel-top {
+      width: 100%;
+      overflow: hidden;
+      position: relative;
+    }
+    /* 하단 행 */
+    .panel-bottom-row {
       flex: 1;
-      min-height: 0;
+      display: flex;
+      overflow: hidden;
+      position: relative;
     }
-    .notice-col {
-      padding: 32px 36px;
-      display: flex; flex-direction: column; gap: 0;
-      border-right: 1px solid var(--border-card);
-      min-height: calc(100vh - 28px);
+    /* 하단 패널 (중·러) */
+    .panel-bottom {
+      overflow: hidden;
+      position: relative;
     }
-    .notice-col:last-child { border-right: none; }
-    .notice-col-tag {
-      font-size: 0.62rem; font-weight: 800; color: var(--sub);
-      letter-spacing: 0.1em; text-transform: uppercase;
-      margin-bottom: 14px; opacity: 0.7;
+
+    /* 드래그 핸들 — 가로 (상/하 분리) */
+    .h-handle {
+      width: 100%; height: 6px; cursor: row-resize; flex-shrink: 0;
+      background: var(--border-card);
+      position: relative; z-index: 10;
+      transition: background 0.15s;
+    }
+    .h-handle:hover, .h-handle.dragging { background: var(--accent); }
+    .h-handle::after { content:''; position:absolute; inset:-6px 0; }
+
+    /* 드래그 핸들 — 세로 (좌/우 분리) */
+    .v-handle {
+      width: 6px; height: 100%; cursor: col-resize; flex-shrink: 0;
+      background: var(--border-card);
+      position: relative; z-index: 10;
+      transition: background 0.15s;
+    }
+    .v-handle:hover, .v-handle.dragging { background: var(--accent); }
+    .v-handle::after { content:''; position:absolute; 0 -6px; inset:-6px; }
+
+    /* 패널 내부 텍스트 */
+    .panel-inner {
+      width: 100%; height: 100%;
+      padding: 28px 36px;
+      overflow-y: auto;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .panel-tag {
+      font-size: 0.6rem; font-weight: 800; color: var(--sub);
+      letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.6; flex-shrink: 0;
     }
     .notice-text {
-      line-height: 1.75; font-weight: 600; white-space: pre-wrap;
-      word-break: break-word; flex: 1;
+      line-height: 1.75; font-weight: 600; white-space: pre-wrap; word-break: break-word; flex: 1;
     }
     .notice-text.ko { color: var(--text); }
     .notice-text.zh { color: var(--text-2); }
     .notice-text.ru { color: var(--text-2); }
 
-    /* 이미지 있을 때 텍스트 구역 높이 조정 */
-    .has-img .notice-col { min-height: auto; }
+    /* 이미지 행 */
+    .notice-img-row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .notice-img { max-height: 200px; border-radius: 12px; object-fit: contain; box-shadow: var(--shadow-md); }
 
     /* 전체화면 */
     :fullscreen .toolbar, :-webkit-full-screen .toolbar { position: fixed; }
@@ -129,25 +155,22 @@
     </a>
     <div class="tb-sep"></div>
 
-    <!-- 한국어 크기 -->
     <div class="tb-group">
       <span class="tb-label">한</span>
-      <input class="size-slider" id="szKo" type="range" min="14" max="72" value="32" oninput="applySize()">
+      <input class="size-slider" id="szKo" type="range" min="14" max="72" value="32" oninput="applySize('ko',this.value)">
       <span class="size-val" id="szKoVal">32</span>
     </div>
     <div class="tb-sep"></div>
-    <!-- 중문 크기 -->
     <div class="tb-group">
       <span class="tb-label">中</span>
-      <input class="size-slider" id="szZh" type="range" min="14" max="72" value="28" oninput="applySize()">
-      <span class="size-val" id="szZhVal">28</span>
+      <input class="size-slider" id="szZh" type="range" min="14" max="72" value="26" oninput="applySize('zh',this.value)">
+      <span class="size-val" id="szZhVal">26</span>
     </div>
     <div class="tb-sep"></div>
-    <!-- 러시아어 크기 -->
     <div class="tb-group">
       <span class="tb-label">Ру</span>
-      <input class="size-slider" id="szRu" type="range" min="14" max="72" value="28" oninput="applySize()">
-      <span class="size-val" id="szRuVal">28</span>
+      <input class="size-slider" id="szRu" type="range" min="14" max="72" value="26" oninput="applySize('ru',this.value)">
+      <span class="size-val" id="szRuVal">26</span>
     </div>
     <div class="tb-sep"></div>
 
@@ -157,8 +180,11 @@
 
     <button class="tb-btn" id="transBtn" onclick="doTranslate()">🌐 번역</button>
     <span class="trans-status" id="tbTransStatus"></span>
+    <div class="tb-sep"></div>
+
     <button class="tb-btn accent" id="previewBtn" onclick="showView()">▶ 공지 보기</button>
     <button class="tb-btn" id="editBtn" onclick="showEdit()" style="display:none">✏ 편집</button>
+    <button class="tb-btn" onclick="resetLayout()" id="resetBtn" style="display:none">↺ 레이아웃 초기화</button>
     <button class="tb-btn" onclick="toggleFs()">⛶</button>
     <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
   </div>
@@ -168,16 +194,16 @@
     <div class="edit-pane">
       <div class="edit-cols">
         <div class="edit-col">
-          <div class="edit-col-label">한국어 (직접 입력)</div>
+          <div class="edit-col-label">한국어</div>
           <textarea class="edit-textarea" id="koText" placeholder="학생들에게 전달할 내용을 입력하세요…" oninput="onKoInput()"></textarea>
         </div>
         <div class="edit-col">
           <div class="edit-col-label">中文 (자동 번역)</div>
-          <textarea class="edit-textarea" id="zhText" readonly placeholder="번역 대기 중…"></textarea>
+          <textarea class="edit-textarea" id="zhText" readonly placeholder="번역 버튼을 누르세요"></textarea>
         </div>
         <div class="edit-col">
           <div class="edit-col-label">Русский (자동 번역)</div>
-          <textarea class="edit-textarea" id="ruText" readonly placeholder="번역 대기 중…"></textarea>
+          <textarea class="edit-textarea" id="ruText" readonly placeholder="번역 버튼을 누르세요"></textarea>
         </div>
       </div>
       <div class="img-strip" id="imgStrip"></div>
@@ -186,7 +212,7 @@
 
   <!-- ── 공지 뷰 ── -->
   <div id="viewMode">
-    <div class="notice-page" id="noticePage"></div>
+    <!-- JS로 렌더링 -->
   </div>
 
   <script>
@@ -194,7 +220,6 @@
 
     function toggleDark() { document.body.classList.toggle('dark'); localStorage.setItem('dark', document.body.classList.contains('dark')?'1':'0'); }
     if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
-
     function toggleFs() { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(()=>{}); }
 
     // ── 툴바 자동 숨김 ──
@@ -202,32 +227,25 @@
     function showToolbar() {
       document.getElementById('toolbar').classList.remove('hidden');
       clearTimeout(hideTimer);
-      if (isViewMode) hideTimer = setTimeout(() => document.getElementById('toolbar').classList.add('hidden'), 2800);
+      if (isViewMode) hideTimer = setTimeout(() => document.getElementById('toolbar').classList.add('hidden'), 3000);
     }
     document.addEventListener('mousemove', showToolbar);
     document.addEventListener('touchstart', showToolbar);
     document.addEventListener('keydown', showToolbar);
 
-    // ── 언어별 크기 ──
-    function applySize() {
-      const ko = document.getElementById('szKo').value;
-      const zh = document.getElementById('szZh').value;
-      const ru = document.getElementById('szRu').value;
-      document.getElementById('szKoVal').textContent = ko;
-      document.getElementById('szZhVal').textContent = zh;
-      document.getElementById('szRuVal').textContent = ru;
-      document.querySelectorAll('.notice-text.ko').forEach(el => el.style.fontSize = ko + 'px');
-      document.querySelectorAll('.notice-text.zh').forEach(el => el.style.fontSize = zh + 'px');
-      document.querySelectorAll('.notice-text.ru').forEach(el => el.style.fontSize = ru + 'px');
+    // ── 글자 크기 ──
+    function applySize(lang, v) {
+      document.getElementById('sz' + lang.charAt(0).toUpperCase() + lang.slice(1) + 'Val').textContent = v;
+      document.querySelectorAll('.notice-text.' + lang).forEach(el => el.style.fontSize = v + 'px');
     }
 
     // ── 이미지 ──
     let images = [];
     function addImages(input) {
       Array.from(input.files).forEach(file => {
-        const reader = new FileReader();
-        reader.onload = e => { images.push({ dataUrl: e.target.result }); renderImgStrip(); };
-        reader.readAsDataURL(file);
+        const r = new FileReader();
+        r.onload = e => { images.push({ dataUrl: e.target.result }); renderImgStrip(); };
+        r.readAsDataURL(file);
       });
       input.value = '';
     }
@@ -241,8 +259,8 @@
     // ── 번역 ──
     let zhVal = '', ruVal = '';
     function onKoInput() {
-      const txt = document.getElementById('koText').value.trim();
-      if (!txt) { zhVal=''; ruVal=''; document.getElementById('zhText').value=''; document.getElementById('ruText').value=''; setStatus(''); }
+      const v = document.getElementById('koText').value.trim();
+      if (!v) { zhVal=''; ruVal=''; document.getElementById('zhText').value=''; document.getElementById('ruText').value=''; }
     }
     async function doTranslate() {
       const txt = document.getElementById('koText').value.trim();
@@ -266,43 +284,148 @@
       return data.translations[0]?.text||'';
     }
 
-    // ── 공지 뷰 렌더 ──
+    // ══════════════════════════════════════
+    // 공지 뷰 & 레이아웃
+    // ══════════════════════════════════════
+    // topH: 상단(한국어) 높이 px, botSplit: 하단 좌측(중문) 너비 %
+    let topH = null, botSplit = 50; // null = 기본(40vh)
+
+    function getTopH() { return topH !== null ? topH : Math.round(window.innerHeight * 0.42); }
+
     function showView() {
-      const ko = document.getElementById('koText').value.trim();
-      const zh = document.getElementById('zhText').value.trim();
-      const ru = document.getElementById('ruText').value.trim();
-      const szKo = document.getElementById('szKo').value + 'px';
-      const szZh = document.getElementById('szZh').value + 'px';
-      const szRu = document.getElementById('szRu').value + 'px';
-
-      let html = '';
-      const hasImg = images.length > 0;
-      if (hasImg) {
-        html += `<div class="notice-img-row">${images.map(img=>`<img class="notice-img" src="${img.dataUrl}">`).join('')}</div>`;
-      }
-      html += `<div class="notice-cols${hasImg?' has-img':''}">`;
-      html += `<div class="notice-col"><div class="notice-col-tag">한국어</div><div class="notice-text ko" style="font-size:${szKo}">${escHtmlNl(ko)}</div></div>`;
-      html += `<div class="notice-col"><div class="notice-col-tag">中文</div><div class="notice-text zh" style="font-size:${szZh}">${escHtmlNl(zh)}</div></div>`;
-      html += `<div class="notice-col"><div class="notice-col-tag">Русский</div><div class="notice-text ru" style="font-size:${szRu}">${escHtmlNl(ru)}</div></div>`;
-      html += `</div>`;
-
-      document.getElementById('noticePage').innerHTML = html;
+      renderView();
       document.getElementById('editMode').style.display = 'none';
       document.getElementById('viewMode').classList.add('active');
       document.getElementById('previewBtn').style.display = 'none';
       document.getElementById('editBtn').style.display = '';
+      document.getElementById('resetBtn').style.display = '';
       isViewMode = true;
       showToolbar();
     }
-
     function showEdit() {
       document.getElementById('viewMode').classList.remove('active');
       document.getElementById('editMode').style.display = '';
       document.getElementById('previewBtn').style.display = '';
       document.getElementById('editBtn').style.display = 'none';
+      document.getElementById('resetBtn').style.display = 'none';
       isViewMode = false;
       clearTimeout(hideTimer);
       document.getElementById('toolbar').classList.remove('hidden');
+    }
+    function resetLayout() { topH = null; botSplit = 50; renderView(); }
+
+    function renderView() {
+      const ko  = document.getElementById('koText').value.trim();
+      const zh  = document.getElementById('zhText').value.trim();
+      const ru  = document.getElementById('ruText').value.trim();
+      const szKo = document.getElementById('szKo').value + 'px';
+      const szZh = document.getElementById('szZh').value + 'px';
+      const szRu = document.getElementById('szRu').value + 'px';
+      const h = getTopH();
+
+      let imgHtml = images.length
+        ? `<div class="notice-img-row">${images.map(img=>`<img class="notice-img" src="${img.dataUrl}">`).join('')}</div>`
+        : '';
+
+      const vm = document.getElementById('viewMode');
+      vm.innerHTML = `
+        <div class="notice-layout" id="noticeLayout">
+          <!-- 상단: 한국어 -->
+          <div class="panel-top" id="panelTop" style="height:${h}px">
+            <div class="panel-inner">
+              ${imgHtml ? imgHtml + '<div style="height:8px"></div>' : ''}
+              <div class="panel-tag">한국어</div>
+              <div class="notice-text ko" style="font-size:${szKo}">${escHtmlNl(ko)}</div>
+            </div>
+          </div>
+          <!-- 가로 핸들 -->
+          <div class="h-handle" id="hHandle"></div>
+          <!-- 하단 행: 중문 + 러시아어 -->
+          <div class="panel-bottom-row" id="panelBottomRow">
+            <div class="panel-bottom" id="panelZh" style="width:${botSplit}%">
+              <div class="panel-inner">
+                <div class="panel-tag">中文</div>
+                <div class="notice-text zh" style="font-size:${szZh}">${escHtmlNl(zh)}</div>
+              </div>
+            </div>
+            <div class="v-handle" id="vHandle"></div>
+            <div class="panel-bottom" id="panelRu" style="flex:1">
+              <div class="panel-inner">
+                <div class="panel-tag">Русский</div>
+                <div class="notice-text ru" style="font-size:${szRu}">${escHtmlNl(ru)}</div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+
+      attachHandles();
+    }
+
+    // ── 드래그 핸들 연결 ──
+    function attachHandles() {
+      // 가로 핸들 (상단 높이 조정)
+      const hH = document.getElementById('hHandle');
+      const pTop = document.getElementById('panelTop');
+      const layout = document.getElementById('noticeLayout');
+
+      hH.addEventListener('mousedown', e => {
+        e.preventDefault();
+        hH.classList.add('dragging');
+        const startY = e.clientY, startH = pTop.offsetHeight;
+        function onMove(e) {
+          const newH = Math.max(80, Math.min(window.innerHeight - 120, startH + e.clientY - startY));
+          pTop.style.height = newH + 'px';
+          topH = newH;
+        }
+        function onUp() { hH.classList.remove('dragging'); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); }
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+      });
+
+      // 터치
+      hH.addEventListener('touchstart', e => {
+        const t0 = e.touches[0];
+        const startY = t0.clientY, startH = pTop.offsetHeight;
+        function onMove(e) {
+          const newH = Math.max(80, Math.min(window.innerHeight - 120, startH + e.touches[0].clientY - startY));
+          pTop.style.height = newH + 'px'; topH = newH;
+        }
+        function onEnd() { hH.classList.remove('dragging'); window.removeEventListener('touchmove', onMove); window.removeEventListener('touchend', onEnd); }
+        hH.classList.add('dragging');
+        window.addEventListener('touchmove', onMove, {passive:true});
+        window.addEventListener('touchend', onEnd);
+      });
+
+      // 세로 핸들 (좌/우 너비 조정)
+      const vH = document.getElementById('vHandle');
+      const pZh = document.getElementById('panelZh');
+      const row = document.getElementById('panelBottomRow');
+
+      vH.addEventListener('mousedown', e => {
+        e.preventDefault();
+        vH.classList.add('dragging');
+        const startX = e.clientX, startW = pZh.offsetWidth, rowW = row.offsetWidth;
+        function onMove(e) {
+          const newW = Math.max(80, Math.min(rowW - 80, startW + e.clientX - startX));
+          const pct = Math.round(newW / rowW * 1000) / 10;
+          pZh.style.width = pct + '%'; botSplit = pct;
+        }
+        function onUp() { vH.classList.remove('dragging'); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); }
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+      });
+
+      vH.addEventListener('touchstart', e => {
+        const startX = e.touches[0].clientX, startW = pZh.offsetWidth, rowW = row.offsetWidth;
+        function onMove(e) {
+          const newW = Math.max(80, Math.min(rowW - 80, startW + e.touches[0].clientX - startX));
+          pZh.style.width = Math.round(newW/rowW*1000)/10 + '%'; botSplit = Math.round(newW/rowW*1000)/10;
+        }
+        function onEnd() { vH.classList.remove('dragging'); window.removeEventListener('touchmove', onMove); window.removeEventListener('touchend', onEnd); }
+        vH.classList.add('dragging');
+        window.addEventListener('touchmove', onMove, {passive:true});
+        window.addEventListener('touchend', onEnd);
+      });
     }
 
     function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
