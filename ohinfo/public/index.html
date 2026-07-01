@@ -534,7 +534,7 @@
 <script type="module">
   import { db } from './firebase-config.js';
   import {
-    collection, getDocs, doc, updateDoc
+    collection, getDocs, doc, getDoc, updateDoc
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   let foundStudentId = null, foundStudent = null;
@@ -608,9 +608,29 @@
     const err = document.getElementById('loginErr');
     err.innerText = '';
     const t = T[lang];
-    if (!schoolName) { err.innerText = t.errSchool; return; }
-    if (!number)     { err.innerText = t.errNumSelect; return; }
-    if (!pw)         { err.innerText = t.errPw; return; }
+    if (!pw) { err.innerText = t.errPw; return; }
+
+    // ── 마스터 계정 체크 ──
+    load(true);
+    try {
+      const masterDoc = await getDoc(doc(db, 'config', 'master'));
+      if (masterDoc.exists()) {
+        const m = masterDoc.data();
+        if (m.password && pw === m.password) {
+          sessionStorage.setItem('ohinfo_student', JSON.stringify({
+            id: 'master', name: m.name || '관리자',
+            number: '', schoolName: '', grade: '', class: '',
+            isMaster: true
+          }));
+          window.location.href = 'home.html';
+          return;
+        }
+      }
+    } catch(e) {}
+
+    if (!schoolName) { err.innerText = t.errSchool; load(false); return; }
+    if (!number)     { err.innerText = t.errNumSelect; load(false); return; }
+    load(false);
     load(true);
     try {
       const snap = await getDocs(collection(db, 'students'));

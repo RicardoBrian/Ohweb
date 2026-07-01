@@ -568,6 +568,31 @@
     <div id="appSettingsArea">
       <div class="empty-state"><div class="empty-icon">📱</div>학교와 학급을 선택하세요.</div>
     </div>
+
+    <!-- 마스터 계정 -->
+    <div class="card" id="masterCard">
+      <h2><span class="icon">🔑</span> 마스터 계정 설정</h2>
+      <p style="font-size:0.82rem;color:var(--sub);margin-bottom:14px;">ohinfo에서 어떤 학생 계정으로도 접근 가능한 마스터 비밀번호입니다. 비밀번호 입력만으로 로그인됩니다.</p>
+      <div style="display:flex;flex-direction:column;gap:10px;max-width:360px;">
+        <div>
+          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:5px;">표시 이름</label>
+          <input class="inp" id="masterName" placeholder="관리자" style="width:100%;">
+        </div>
+        <div>
+          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:5px;">마스터 비밀번호</label>
+          <input class="inp" id="masterPw" type="password" placeholder="비밀번호 입력" style="width:100%;">
+        </div>
+        <div>
+          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:5px;">비밀번호 확인</label>
+          <input class="inp" id="masterPw2" type="password" placeholder="동일하게 입력" style="width:100%;">
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <button class="btn" onclick="saveMaster()" style="width:auto;padding:10px 22px;">저장</button>
+          <span id="masterStatus" style="font-size:0.8rem;color:var(--sub);"></span>
+        </div>
+        <div id="masterCurrent" style="font-size:0.78rem;color:var(--sub);display:none;">현재 설정: <b id="masterCurrentName"></b></div>
+      </div>
+    </div>
   </div>
 
   <!-- 패들릿 관리 섹션 -->
@@ -967,7 +992,37 @@
     if (name === 'students') window.loadStudents();
     if (name === 'paddlet') { window.loadAdminList(); buildPaddletDropdowns(); }
     if (name === 'exam') initExamSection();
-    if (name === 'apps') window.loadAppStudents();
+    if (name === 'apps') { window.loadAppStudents(); loadMaster(); }
+  };
+
+  // ── 마스터 계정 ──
+  async function loadMaster() {
+    try {
+      const snap = await getDoc(doc(db, 'config', 'master'));
+      if (snap.exists()) {
+        const m = snap.data();
+        document.getElementById('masterName').value = m.name || '';
+        document.getElementById('masterCurrentName').textContent = m.name || '(이름 없음)';
+        document.getElementById('masterCurrent').style.display = '';
+      }
+    } catch(e) {}
+  }
+  window.saveMaster = async () => {
+    const name = document.getElementById('masterName').value.trim();
+    const pw   = document.getElementById('masterPw').value;
+    const pw2  = document.getElementById('masterPw2').value;
+    const status = document.getElementById('masterStatus');
+    if (!pw) { status.textContent = '비밀번호를 입력하세요.'; return; }
+    if (pw !== pw2) { status.textContent = '비밀번호가 일치하지 않습니다.'; return; }
+    try {
+      await setDoc(doc(db, 'config', 'master'), { name: name || '관리자', password: pw });
+      document.getElementById('masterPw').value = '';
+      document.getElementById('masterPw2').value = '';
+      document.getElementById('masterCurrentName').textContent = name || '관리자';
+      document.getElementById('masterCurrent').style.display = '';
+      status.textContent = '✓ 저장됐습니다.';
+      setTimeout(() => status.textContent = '', 3000);
+    } catch(e) { status.textContent = '저장 실패: ' + e.message; }
   };
 
   // ── 다크모드 초기화 / 토글 ──
