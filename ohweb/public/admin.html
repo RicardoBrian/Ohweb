@@ -572,19 +572,29 @@
     <!-- 마스터 계정 -->
     <div class="card" id="masterCard">
       <h2><span class="icon">🔑</span> 마스터 계정 설정</h2>
-      <p style="font-size:0.82rem;color:var(--sub);margin-bottom:14px;">ohinfo에서 어떤 학생 계정으로도 접근 가능한 마스터 비밀번호입니다. 비밀번호 입력만으로 로그인됩니다.</p>
+      <p style="font-size:0.82rem;color:var(--sub);margin-bottom:14px;">이 학생 계정으로 로그인하면 모든 시험지·패들릿에 접근할 수 있습니다. 실제 등록된 학생 정보와 비밀번호를 입력하세요.</p>
       <div style="display:flex;flex-direction:column;gap:10px;max-width:360px;">
         <div>
-          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:5px;">표시 이름</label>
-          <input class="inp" id="masterName" placeholder="관리자" style="width:100%;">
+          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:5px;">학교명</label>
+          <input class="inp" id="masterSchool" placeholder="학교 이름" style="width:100%;">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <div style="flex:1;">
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:5px;">학년</label>
+            <input class="inp" id="masterGrade" placeholder="예: 3" style="width:100%;">
+          </div>
+          <div style="flex:1;">
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:5px;">반</label>
+            <input class="inp" id="masterClass" placeholder="예: 2" style="width:100%;">
+          </div>
+          <div style="flex:1;">
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:5px;">번호</label>
+            <input class="inp" id="masterNumber" placeholder="예: 15" style="width:100%;">
+          </div>
         </div>
         <div>
-          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:5px;">마스터 비밀번호</label>
-          <input class="inp" id="masterPw" type="password" placeholder="비밀번호 입력" style="width:100%;">
-        </div>
-        <div>
-          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:5px;">비밀번호 확인</label>
-          <input class="inp" id="masterPw2" type="password" placeholder="동일하게 입력" style="width:100%;">
+          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:5px;">비밀번호</label>
+          <input class="inp" id="masterPw" type="password" placeholder="해당 학생의 비밀번호" style="width:100%;">
         </div>
         <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
           <button class="btn" onclick="saveMaster()" style="width:auto;padding:10px 22px;">저장</button>
@@ -1001,24 +1011,30 @@
       const snap = await getDoc(doc(db, 'config', 'master'));
       if (snap.exists()) {
         const m = snap.data();
-        document.getElementById('masterName').value = m.name || '';
-        document.getElementById('masterCurrentName').textContent = m.name || '(이름 없음)';
+        document.getElementById('masterSchool').value = m.schoolName || '';
+        document.getElementById('masterGrade').value = m.grade || '';
+        document.getElementById('masterClass').value = m.class || '';
+        document.getElementById('masterNumber').value = m.number || '';
+        const label = `${m.schoolName||''} ${m.grade||''}학년 ${m.class||''}반 ${m.number||''}번`;
+        document.getElementById('masterCurrentName').textContent = label;
         document.getElementById('masterCurrent').style.display = '';
       }
     } catch(e) {}
   }
   window.saveMaster = async () => {
-    const name = document.getElementById('masterName').value.trim();
-    const pw   = document.getElementById('masterPw').value;
-    const pw2  = document.getElementById('masterPw2').value;
+    const schoolName = document.getElementById('masterSchool').value.trim();
+    const grade      = document.getElementById('masterGrade').value.trim();
+    const cls        = document.getElementById('masterClass').value.trim();
+    const number     = document.getElementById('masterNumber').value.trim();
+    const pw         = document.getElementById('masterPw').value;
     const status = document.getElementById('masterStatus');
+    if (!schoolName || !grade || !cls || !number) { status.textContent = '학교·학년·반·번호를 모두 입력하세요.'; return; }
     if (!pw) { status.textContent = '비밀번호를 입력하세요.'; return; }
-    if (pw !== pw2) { status.textContent = '비밀번호가 일치하지 않습니다.'; return; }
     try {
-      await setDoc(doc(db, 'config', 'master'), { name: name || '관리자', password: pw });
+      await setDoc(doc(db, 'config', 'master'), { schoolName, grade, class: cls, number, password: pw });
       document.getElementById('masterPw').value = '';
-      document.getElementById('masterPw2').value = '';
-      document.getElementById('masterCurrentName').textContent = name || '관리자';
+      const label = `${schoolName} ${grade}학년 ${cls}반 ${number}번`;
+      document.getElementById('masterCurrentName').textContent = label;
       document.getElementById('masterCurrent').style.display = '';
       status.textContent = '✓ 저장됐습니다.';
       setTimeout(() => status.textContent = '', 3000);

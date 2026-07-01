@@ -610,27 +610,8 @@
     const t = T[lang];
     if (!pw) { err.innerText = t.errPw; return; }
 
-    // ── 마스터 계정 체크 ──
-    load(true);
-    try {
-      const masterDoc = await getDoc(doc(db, 'config', 'master'));
-      if (masterDoc.exists()) {
-        const m = masterDoc.data();
-        if (m.password && pw === m.password) {
-          sessionStorage.setItem('ohinfo_student', JSON.stringify({
-            id: 'master', name: m.name || '관리자',
-            number: '', schoolName: '', grade: '', class: '',
-            isMaster: true
-          }));
-          window.location.href = 'home.html';
-          return;
-        }
-      }
-    } catch(e) {}
-
-    if (!schoolName) { err.innerText = t.errSchool; load(false); return; }
-    if (!number)     { err.innerText = t.errNumSelect; load(false); return; }
-    load(false);
+    if (!schoolName) { err.innerText = t.errSchool; return; }
+    if (!number)     { err.innerText = t.errNumSelect; return; }
     load(true);
     try {
       const snap = await getDocs(collection(db, 'students'));
@@ -642,7 +623,18 @@
       const data = match.data();
       if (!data.registered) { err.innerText = t.errNotReg; load(false); return; }
       if (data.password !== pw) { err.innerText = t.errWrongPw; document.getElementById('loginPw').value = ''; load(false); return; }
-      sessionStorage.setItem('ohinfo_student', JSON.stringify({ id: match.id, ...data }));
+      // ── 마스터 계정 체크 (로그인 성공 후) ──
+      let isMaster = false;
+      try {
+        const masterDoc = await getDoc(doc(db, 'config', 'master'));
+        if (masterDoc.exists()) {
+          const m = masterDoc.data();
+          isMaster = m.schoolName === schoolName && String(m.grade) === String(grade) &&
+                     String(m.class) === String(cls) && String(m.number) === String(number) &&
+                     m.password === pw;
+        }
+      } catch(e) {}
+      sessionStorage.setItem('ohinfo_student', JSON.stringify({ id: match.id, ...data, isMaster }));
       window.location.href = 'home.html';
     } catch(e) { err.innerText = '오류: ' + e.message; }
     load(false);

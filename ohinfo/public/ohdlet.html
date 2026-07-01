@@ -1069,14 +1069,19 @@
 
       // 수업 정보 조회 (grade+group 조건 우선, 없으면 이름만으로 검색)
       let cls = {};
-      const clsSnap = await getDocs(query(collection(db, 'classes'), where('name', '==', classTitle)));
-      if (!clsSnap.empty) {
-        cls = clsSnap.docs.find(d => { const x = d.data(); return _classSchoolOk(x) && x.grade === SESSION.grade && x.group === SESSION.group; })?.data()
-              || clsSnap.docs[0].data();
+      if (!IS_MASTER) {
+        const clsSnap = await getDocs(query(collection(db, 'classes'), where('name', '==', classTitle)));
+        if (!clsSnap.empty) {
+          cls = clsSnap.docs.find(d => { const x = d.data(); return _classSchoolOk(x) && x.grade === SESSION.grade && x.group === SESSION.group; })?.data()
+                || clsSnap.docs[0].data();
+        }
       }
 
-      // 게시물 조회 (인덱스 불필요: classTitle만 필터, deleted는 클라이언트)
-      const postsSnap = await getDocs(query(collection(db, 'posts'), where('classTitle', '==', classTitle)));
+      // 게시물 조회: 마스터는 전체, 일반은 해당 수업만
+      const postsQuery = IS_MASTER
+        ? getDocs(collection(db, 'posts'))
+        : getDocs(query(collection(db, 'posts'), where('classTitle', '==', classTitle)));
+      const postsSnap = await postsQuery;
       const rawPosts = postsSnap.docs
         .map(d => ({ ...d.data(), id: d.id, imgs: Array.isArray(d.data().imgs) ? d.data().imgs : [], createdAt: d.data().createdAt?.toDate?.()?.toISOString() || '' }))
         .filter(p => !p.deleted);
@@ -1086,10 +1091,10 @@
       const sfx = langSfx(currentLang);
       const example = cls['ex'+sfx] || cls.ex || '';
       const desc = cls['desc'+sfx] || cls.desc || '';
-      document.getElementById('boardTitle').innerText = cls.name || classTitle;
-      document.getElementById('boardDesc').innerText = desc;
-      document.getElementById('sidebarTitle').innerText = cls.name || classTitle;
-      document.getElementById('sidebarDesc').innerText = desc;
+      document.getElementById('boardTitle').innerText = IS_MASTER ? '전체 수업' : (cls.name || classTitle);
+      document.getElementById('boardDesc').innerText = IS_MASTER ? '' : desc;
+      document.getElementById('sidebarTitle').innerText = IS_MASTER ? '전체 수업' : (cls.name || classTitle);
+      document.getElementById('sidebarDesc').innerText = IS_MASTER ? '' : desc;
       const wrap = document.getElementById('sidebarDescWrap');
       wrap.style.display = desc.trim() ? '' : 'none';
       currentPosts = rawPosts.map(p => ({
@@ -1426,6 +1431,16 @@
     const s1Meta = document.getElementById('s1Meta'); if (s1Meta) s1Meta.innerText = `${_mpStudent.schoolName||''}\n${SESSION.grade}학년 ${SESSION.group}반 · ${SESSION.num}번`;
     buildKeyboard(); bindKeyboardTargets(); updateClassList(); setLanguage(currentLang);
     fillSession();
+    // 마스터 계정: step1 건너뛰고 전체 게시물 바로 표시
+    if (IS_MASTER) {
+      const redirect = sessionStorage.getItem('ohinfo_redirect');
+      if (redirect) { sessionStorage.removeItem('ohinfo_redirect'); location.href = redirect; return; }
+      setHidden('f_mode','add'); setHidden('f_postId','');
+      setHidden('f_grade', ''); setHidden('f_group', ''); setHidden('f_class', '__master__');
+      document.getElementById('step1').classList.add('hidden');
+      document.getElementById('step2').classList.remove('hidden');
+      manualRefresh();
+    }
   };
 
   // ── window 노출 (onclick 속성 호환) ──
