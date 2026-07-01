@@ -614,6 +614,33 @@
     if (!number)     { err.innerText = t.errNumSelect; return; }
     load(true);
     try {
+      // ── 마스터 계정 체크 (먼저) ──
+      try {
+        const masterDoc = await getDoc(doc(db, 'config', 'master'));
+        if (masterDoc.exists()) {
+          const m = masterDoc.data();
+          const nv2 = v => String(v||'').replace(/[^0-9]/g,'') || String(v||'').trim();
+          if (m.schoolName === schoolName && nv2(m.grade) === nv2(grade) &&
+              nv2(m.class) === nv2(cls) && String(m.number) === String(number) &&
+              m.password === pw) {
+            // 학생 정보 가져오기 (이름용, 없어도 ok)
+            const snap2 = await getDocs(collection(db, 'students'));
+            const st = snap2.docs.find(d => {
+              const s = d.data();
+              return s.schoolName === schoolName && nv(s.grade) === nv(grade) && nv(s.class) === nv(cls) && String(s.number) === String(number);
+            });
+            const stData = st ? st.data() : {};
+            sessionStorage.setItem('ohinfo_student', JSON.stringify({
+              id: st?.id || 'master', ...stData,
+              schoolName, grade, class: cls, number, isMaster: true
+            }));
+            window.location.href = 'home.html';
+            return;
+          }
+        }
+      } catch(e) {}
+
+      // ── 일반 로그인 ──
       const snap = await getDocs(collection(db, 'students'));
       const match = snap.docs.find(d => {
         const s = d.data();
@@ -623,18 +650,7 @@
       const data = match.data();
       if (!data.registered) { err.innerText = t.errNotReg; load(false); return; }
       if (data.password !== pw) { err.innerText = t.errWrongPw; document.getElementById('loginPw').value = ''; load(false); return; }
-      // ── 마스터 계정 체크 (로그인 성공 후) ──
-      let isMaster = false;
-      try {
-        const masterDoc = await getDoc(doc(db, 'config', 'master'));
-        if (masterDoc.exists()) {
-          const m = masterDoc.data();
-          isMaster = m.schoolName === schoolName && String(m.grade) === String(grade) &&
-                     String(m.class) === String(cls) && String(m.number) === String(number) &&
-                     m.password === pw;
-        }
-      } catch(e) {}
-      sessionStorage.setItem('ohinfo_student', JSON.stringify({ id: match.id, ...data, isMaster }));
+      sessionStorage.setItem('ohinfo_student', JSON.stringify({ id: match.id, ...data }));
       window.location.href = 'home.html';
     } catch(e) { err.innerText = '오류: ' + e.message; }
     load(false);

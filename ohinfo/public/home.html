@@ -505,6 +505,12 @@
   window._renderApps(); // initial greeting render
 
   document.getElementById('loadingOverlay').style.display = 'flex';
+  // 마스터 계정: 전체 앱 공개
+  if (student.isMaster) {
+    enabledApps = Object.keys(APP_META);
+    window._renderApps();
+    document.getElementById('loadingOverlay').style.display = 'none';
+  } else {
   // appSettings 키: 학교명(자유텍스트)+정규화된 학년/반. admin과 동일 규칙 유지.
   const nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
   const appKey = (school, grade, cls) => `${String(school||'').replace(/\//g,'_')}__g${nv(grade)}__c${nv(cls)}`;
@@ -519,6 +525,7 @@
   }).finally(() => {
     document.getElementById('loadingOverlay').style.display = 'none';
   });
+  } // end else (non-master)
 
   // 설문은 대시보드에 공개하지 않음 — 링크(formfill.html?id=)로만 접근
 </script>
