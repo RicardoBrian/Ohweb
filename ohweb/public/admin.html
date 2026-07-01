@@ -749,17 +749,17 @@
           <div style="margin-bottom:12px;">
             <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:8px;">테스트케이스</label>
             <div id="q_tcList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;"></div>
-            <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:6px;align-items:end;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
               <div>
                 <label style="font-size:0.75rem;color:var(--sub);display:block;margin-bottom:2px;">입력</label>
-                <input class="inp" id="q_tcInput" placeholder="입력값 (없으면 빈칸)" style="font-family:monospace;font-size:0.85rem;">
+                <textarea class="inp" id="q_tcInput" placeholder="입력값 (없으면 빈칸)&#10;줄바꿈 그대로 입력" rows="3" style="font-family:monospace;font-size:0.85rem;resize:vertical;"></textarea>
               </div>
               <div>
                 <label style="font-size:0.75rem;color:var(--sub);display:block;margin-bottom:2px;">예상 출력</label>
-                <input class="inp" id="q_tcExpected" placeholder="예상 출력" style="font-family:monospace;font-size:0.85rem;">
+                <textarea class="inp" id="q_tcExpected" placeholder="예상 출력&#10;줄바꿈 그대로 입력" rows="3" style="font-family:monospace;font-size:0.85rem;resize:vertical;"></textarea>
               </div>
-              <button class="btn accent sm" type="button" onclick="addTestCase()">+ 추가</button>
             </div>
+            <button class="btn accent sm" type="button" onclick="addTestCase()">+ 추가</button>
           </div>
         </div>
 

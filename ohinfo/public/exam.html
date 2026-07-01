@@ -1129,7 +1129,8 @@ _result = _buf.getvalue().strip()
 `;
               pyodide.runPython(testCode);
               const result = String(pyodide.runPython('_result'));
-              if (result === String(tc.expected || '').trim()) passCount++;
+              const normalize = s => String(s||'').replace(/\r\n/g,'\n').trimEnd();
+              if (normalize(result) === normalize(tc.expected)) passCount++;
             } catch(e) {}
           }
           const ratio = passCount / q.testCases.length;
