@@ -388,6 +388,10 @@
     <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">비밀번호</label>
     <input class="inp" id="sePw" type="text" placeholder="비밀번호 (비우면 미설정 = 로그인 불가)" style="width:100%;margin-bottom:6px;">
     <div style="font-size:0.76rem;color:var(--sub);margin-bottom:14px;">비밀번호를 설정하면 학생이 로그인할 수 있어요. 비우면 로그인 불가(미등록) 상태가 됩니다.</div>
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:18px;">
+      <input type="checkbox" id="seMaster" style="width:16px;height:16px;accent-color:var(--accent);">
+      <span style="font-size:0.85rem;font-weight:700;">마스터 계정 <span style="font-weight:400;color:var(--sub);">— 로그인 시 모든 시험지·패들릿 접근 가능</span></span>
+    </label>
     <div class="modal-actions">
       <button class="btn ghost" onclick="closeStudentEdit()">취소</button>
       <button class="btn accent" onclick="saveStudentEdit()">저장</button>
@@ -569,40 +573,6 @@
       <div class="empty-state"><div class="empty-icon">📱</div>학교와 학급을 선택하세요.</div>
     </div>
 
-    <!-- 마스터 계정 -->
-    <div class="card" id="masterCard">
-      <h2><span class="icon">🔑</span> 마스터 계정 설정</h2>
-      <p style="font-size:0.82rem;color:var(--sub);margin-bottom:14px;">이 학생 계정으로 로그인하면 모든 시험지·패들릿에 접근할 수 있습니다. 실제 등록된 학생 정보와 비밀번호를 입력하세요.</p>
-      <div style="display:flex;flex-direction:column;gap:10px;max-width:360px;">
-        <div>
-          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:5px;">학교명</label>
-          <input class="inp" id="masterSchool" placeholder="학교 이름" style="width:100%;">
-        </div>
-        <div style="display:flex;gap:8px;">
-          <div style="flex:1;">
-            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:5px;">학년</label>
-            <input class="inp" id="masterGrade" placeholder="예: 3" style="width:100%;">
-          </div>
-          <div style="flex:1;">
-            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:5px;">반</label>
-            <input class="inp" id="masterClass" placeholder="예: 2" style="width:100%;">
-          </div>
-          <div style="flex:1;">
-            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:5px;">번호</label>
-            <input class="inp" id="masterNumber" placeholder="예: 15" style="width:100%;">
-          </div>
-        </div>
-        <div>
-          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:5px;">비밀번호</label>
-          <input class="inp" id="masterPw" type="password" placeholder="해당 학생의 비밀번호" style="width:100%;">
-        </div>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <button class="btn" onclick="saveMaster()" style="width:auto;padding:10px 22px;">저장</button>
-          <span id="masterStatus" style="font-size:0.8rem;color:var(--sub);"></span>
-        </div>
-        <div id="masterCurrent" style="font-size:0.78rem;color:var(--sub);display:none;">현재 설정: <b id="masterCurrentName"></b></div>
-      </div>
-    </div>
   </div>
 
   <!-- 패들릿 관리 섹션 -->
@@ -1002,44 +972,9 @@
     if (name === 'students') window.loadStudents();
     if (name === 'paddlet') { window.loadAdminList(); buildPaddletDropdowns(); }
     if (name === 'exam') initExamSection();
-    if (name === 'apps') { window.loadAppStudents(); loadMaster(); }
+    if (name === 'apps') { window.loadAppStudents(); }
   };
 
-  // ── 마스터 계정 ──
-  async function loadMaster() {
-    try {
-      const snap = await getDoc(doc(db, 'config', 'master'));
-      if (snap.exists()) {
-        const m = snap.data();
-        document.getElementById('masterSchool').value = m.schoolName || '';
-        document.getElementById('masterGrade').value = m.grade || '';
-        document.getElementById('masterClass').value = m.class || '';
-        document.getElementById('masterNumber').value = m.number || '';
-        const label = `${m.schoolName||''} ${m.grade||''}학년 ${m.class||''}반 ${m.number||''}번`;
-        document.getElementById('masterCurrentName').textContent = label;
-        document.getElementById('masterCurrent').style.display = '';
-      }
-    } catch(e) {}
-  }
-  window.saveMaster = async () => {
-    const schoolName = document.getElementById('masterSchool').value.trim();
-    const grade      = document.getElementById('masterGrade').value.trim();
-    const cls        = document.getElementById('masterClass').value.trim();
-    const number     = document.getElementById('masterNumber').value.trim();
-    const pw         = document.getElementById('masterPw').value;
-    const status = document.getElementById('masterStatus');
-    if (!schoolName || !grade || !cls || !number) { status.textContent = '학교·학년·반·번호를 모두 입력하세요.'; return; }
-    if (!pw) { status.textContent = '비밀번호를 입력하세요.'; return; }
-    try {
-      await setDoc(doc(db, 'config', 'master'), { schoolName, grade, class: cls, number, password: pw });
-      document.getElementById('masterPw').value = '';
-      const label = `${schoolName} ${grade}학년 ${cls}반 ${number}번`;
-      document.getElementById('masterCurrentName').textContent = label;
-      document.getElementById('masterCurrent').style.display = '';
-      status.textContent = '✓ 저장됐습니다.';
-      setTimeout(() => status.textContent = '', 3000);
-    } catch(e) { status.textContent = '저장 실패: ' + e.message; }
-  };
 
   // ── 다크모드 초기화 / 토글 ──
   if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
@@ -1319,6 +1254,7 @@
     document.getElementById('seInfo').innerText = `${s.schoolName||''} ${nv(s.grade)}학년 ${nv(s.class)}반 ${s.number||''}번`;
     document.getElementById('seName').value = s.name || '';
     document.getElementById('sePw').value = s.password || '';
+    document.getElementById('seMaster').checked = !!s.isMaster;
     document.getElementById('studentEditModal').classList.add('show');
   };
   window.closeStudentEdit = () => document.getElementById('studentEditModal').classList.remove('show');
@@ -1326,16 +1262,18 @@
     const id = document.getElementById('seId').value;
     const name = document.getElementById('seName').value.trim();
     const pw = document.getElementById('sePw').value.trim();
+    const isMaster = document.getElementById('seMaster').checked;
     if (!name) { toast('이름을 입력하세요.', 'error'); return; }
     showLoading(true);
     try {
       await updateDoc(doc(db, 'students', id), {
         name,
         password: pw || null,
-        registered: !!pw
+        registered: !!pw,
+        isMaster: isMaster || false
       });
       const s = allStudents.find(x => x.id === id);
-      if (s) { s.name = name; s.password = pw || null; s.registered = !!pw; }
+      if (s) { s.name = name; s.password = pw || null; s.registered = !!pw; s.isMaster = isMaster || false; }
       closeStudentEdit();
       toast('저장되었습니다.', 'success');
       renderStudents();
