@@ -647,8 +647,9 @@
     name: _st?.name || '',
     num: String(_st?.number || '')
   };
+  const IS_MASTER = !!_st?.isMaster;
   // 수업의 학교 매칭: 학교 정보 없는 기존 수업은 '관산중학교' 소속으로 간주
-  const _classSchoolOk = c => (c.schoolName || '관산중학교') === SESSION.schoolName;
+  const _classSchoolOk = c => IS_MASTER || (c.schoolName || '관산중학교') === SESSION.schoolName;
   let _mpStudent = { ..._st };
 
   // ── 네비 아바타 ──
@@ -1025,7 +1026,7 @@
     try {
       const snap = await getDocs(collection(db, 'classes'));
       const classes = snap.docs.map(d => d.data())
-        .filter(c => c.status === 'ON' && _classSchoolOk(c) && c.grade === SESSION.grade && c.group === SESSION.group)
+        .filter(c => c.status === 'ON' && _classSchoolOk(c) && (IS_MASTER || (c.grade === SESSION.grade && c.group === SESSION.group)))
         .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'));
       const sel = document.getElementById('classList');
       sel.innerHTML = `<option>${uiText[currentLang]?.opt||uiText.ko.opt}</option>`;

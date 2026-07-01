@@ -286,7 +286,7 @@
       mpErrShort:'새 비밀번호는 4자 이상이어야 합니다.', mpErrMismatch:'새 비밀번호가 일치하지 않습니다.',
       mpErrNone:'변경할 내용이 없습니다.', mpOk:'저장되었습니다.',
       greeting: n => `안녕하세요, ${n}님 👋`,
-      apps: { ohdlet:{name:'정보 게시판',desc:'정보 공유 게시판'}, submit:{name:'과제제출',desc:'과제를 제출하세요'}, exam:{name:'시험',desc:'온라인 시험'}, form:{name:'설문지 만들기',desc:'설문지를 만들어요'} },
+      apps: { ohdlet:{name:'정보 게시판',desc:'정보 공유 게시판'}, exam:{name:'시험',desc:'온라인 시험'}, form:{name:'설문지 만들기',desc:'설문지를 만들어요'} },
       empty:'현재 공개된 앱이 없습니다.', emptySub:'선생님이 앱을 공개하면 여기에 표시됩니다.' },
     zh: { appsLabel:'已开放的应用', logout:'退出', mypage:'我的页面',
       mpTitle:'我的页面', mpPhotoBtn:'更换头像', mpPwLabel:'修改密码',
@@ -295,7 +295,7 @@
       mpErrShort:'新密码至少需要4位。', mpErrMismatch:'两次输入的密码不一致。',
       mpErrNone:'没有可更改的内容。', mpOk:'保存成功。',
       greeting: n => `你好，${n} 👋`,
-      apps: { ohdlet:{name:'共享白板',desc:'共享黑板空间'}, submit:{name:'作业提交',desc:'提交作业'}, exam:{name:'考试',desc:'在线考试'}, form:{name:'问卷练习',desc:'问卷和练习'} },
+      apps: { ohdlet:{name:'共享白板',desc:'共享黑板空间'}, exam:{name:'考试',desc:'在线考试'}, form:{name:'问卷练习',desc:'问卷和练习'} },
       empty:'目前没有开放的应用。', emptySub:'老师开放应用后将显示在这里。' },
     ru: { appsLabel:'Доступные приложения', logout:'Выйти', mypage:'Мой профиль',
       mpTitle:'Мой профиль', mpPhotoBtn:'Сменить фото', mpPwLabel:'Изменить пароль',
@@ -304,7 +304,7 @@
       mpErrShort:'Новый пароль должен содержать не менее 4 символов.', mpErrMismatch:'Пароли не совпадают.',
       mpErrNone:'Нет изменений для сохранения.', mpOk:'Сохранено.',
       greeting: n => `Привет, ${n} 👋`,
-      apps: { ohdlet:{name:'Паддлет',desc:'Общая доска'}, submit:{name:'Задания',desc:'Сдать задание'}, exam:{name:'Тест',desc:'Онлайн тест'}, form:{name:'Опрос',desc:'Опросы и практика'} },
+      apps: { ohdlet:{name:'Паддлет',desc:'Общая доска'}, exam:{name:'Тест',desc:'Онлайн тест'}, form:{name:'Опрос',desc:'Опросы и практика'} },
       empty:'Приложений пока нет.', emptySub:'Когда учитель откроет приложения, они появятся здесь.' },
     en: { appsLabel:'Available Apps', logout:'Logout', mypage:'My Page',
       mpTitle:'My Page', mpPhotoBtn:'Change Photo', mpPwLabel:'Change Password',
@@ -313,7 +313,7 @@
       mpErrShort:'New password must be at least 4 characters.', mpErrMismatch:'Passwords do not match.',
       mpErrNone:'Nothing to change.', mpOk:'Saved successfully.',
       greeting: n => `Hello, ${n} 👋`,
-      apps: { ohdlet:{name:'Paddlet',desc:'Shared board space'}, submit:{name:'Assignments',desc:'Submit your work'}, exam:{name:'Exam',desc:'Online exam'}, form:{name:'Survey',desc:'Surveys and practice'} },
+      apps: { ohdlet:{name:'Paddlet',desc:'Shared board space'}, exam:{name:'Exam',desc:'Online exam'}, form:{name:'Survey',desc:'Surveys and practice'} },
       empty:'No apps available.', emptySub:'Apps shared by your teacher will appear here.' },
   };
   let homeLang = localStorage.getItem('ohinfo_lang') || 'ko';
@@ -469,7 +469,6 @@
 
   const APP_META = {
     ohdlet: { emoji: '📌', cls: 'icon-ohdlet', href: 'ohdlet.html' },
-    submit: { emoji: '📝', cls: 'icon-submit', href: 'submit.html' },
     exam:   { emoji: '📋', cls: 'icon-exam',   href: 'exam.html'   },
     form:   { emoji: '📊', cls: 'icon-form',   href: 'formlab.html' },
   };
