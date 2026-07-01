@@ -278,7 +278,7 @@
     }
     function setStatus(s) { document.getElementById('tbTransStatus').textContent = s; }
     async function translate(text, lang) {
-      const res = await fetch('/.netlify/functions/translate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({texts:[text], targetLang:lang, sourceLang:'ko'}) });
+      const res = await fetch('/api/translate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({texts:[text], targetLang:lang, sourceLang:'ko'}) });
       const data = await res.json();
       if (!res.ok||data.error||!data.translations) throw new Error(data.error||`HTTP ${res.status}`);
       return data.translations[0]?.text||'';

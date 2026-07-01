@@ -803,7 +803,7 @@
 
   // ── 번역 ──
   async function deepl(texts, targetLang, sourceLang = 'ko') {
-    const res = await fetch('/.netlify/functions/translate', {
+    const res = await fetch('/api/translate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ texts, targetLang, sourceLang })

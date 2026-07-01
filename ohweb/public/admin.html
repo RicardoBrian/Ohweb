@@ -925,7 +925,7 @@
 
   // ── 번역 (Netlify Function 경유) ──
   async function translateTexts(texts, targetLang) {
-    const res = await fetch('/.netlify/functions/translate', {
+    const res = await fetch('/api/translate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ texts, targetLang, sourceLang: 'ko' })
@@ -2346,7 +2346,7 @@
 
   // ── 패들릿 일괄 번역 ──
   async function gtranslate(texts, targetLang, sourceLang) {
-    const res = await fetch('/.netlify/functions/translate', {
+    const res = await fetch('/api/translate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ texts, targetLang, sourceLang })

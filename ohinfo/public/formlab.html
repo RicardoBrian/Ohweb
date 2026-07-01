@@ -512,7 +512,7 @@ function syncInputs() {
 // ── 저장 ──
 // ── 설문 자동 번역 (ko → zh/ru/en) ──
 async function _deepl(texts, targetLang, sourceLang='ko') {
-  const res = await fetch('/.netlify/functions/translate', {
+  const res = await fetch('/api/translate', {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ texts, targetLang, sourceLang })
   });
