@@ -638,7 +638,9 @@ async function loadMyExams() {
                <span style="color:var(--sub);font-size:0.85rem;">${prog.totalScore??'?'} / ${prog.totalPoints??'?'}${t.pts}</span>
                <button class="btn ghost sm" onclick="showMyResult('${escapedId}')" style="margin-left:auto;">${t.viewResult}</button>
              </div>`
-          : `<div style="display:flex;gap:8px;align-items:center;">
+          : IS_MASTER
+            ? `<button class="btn accent sm" onclick="enterExamDirect('${escapedId}')" style="white-space:nowrap;">${t.enterBtn}</button>`
+            : `<div style="display:flex;gap:8px;align-items:center;">
                <input class="inp" id="code_${escapedId}" placeholder="${t.codeLabel}"
                  style="flex:1;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;font-size:0.9rem;"
                  oninput="this.value=this.value.toUpperCase()"
@@ -783,8 +785,15 @@ window.enterExamWithCode = async (asId, code) => {
   }
 };
 
-// ── 목록에서 직접 입장 (unused) ──
-window.enterExamDirect = (asId) => {};
+// ── 목록에서 직접 입장 (마스터용) ──
+window.enterExamDirect = async (asId) => {
+  showLoading(true);
+  try {
+    const asDoc = await getDoc(doc(db, 'exam_assignments', asId));
+    if (!asDoc.exists()) { alert('배정 정보를 찾을 수 없습니다.'); showLoading(false); return; }
+    await startExamFromAs(asDoc, null);
+  } catch(e) { alert('오류: ' + e.message); showLoading(false); }
+};
 
 // ── 코드 직접 입장 ──
 window.enterExam = async () => {
