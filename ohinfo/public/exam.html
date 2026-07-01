@@ -977,11 +977,11 @@ function renderQuestion(q, i) {
       </div>
       <textarea class="code-editor" id="code_${i}" spellcheck="false">${escHtml(getDefaultCode(q, currentLang))}</textarea>
       <div class="stdin-box">
-        <label>표준 입력 (stdin) — 테스트 입력값</label>
-        <textarea class="stdin-input" id="stdin_${i}" placeholder="입력이 필요한 경우 여기에 입력값을 적으세요&#10;예: 3 5" rows="2"></textarea>
+        <label>${UI[currentLang].stdin}</label>
+        <textarea class="stdin-input" id="stdin_${i}" placeholder="${UI[currentLang].stdinPlaceholder}" rows="2"></textarea>
       </div>
       <button class="btn run-btn" id="runBtn_${i}" style="margin-top:8px;" onclick="runCode(${i})" ${pyodide?'':'disabled'}>
-        ${UI[currentLang].run} ▶
+        ${pyodide ? UI[currentLang].run + ' ▶' : UI[currentLang].pyodideLoading}
       </button>
       <div id="runResult_${i}" class="run-result" style="display:none;"></div>
     `;
@@ -1031,14 +1031,14 @@ window.runCode = async (idx) => {
   const cm = cmInstances[idx];
   const resultEl = document.getElementById(`runResult_${idx}`);
   const btn = document.getElementById(`runBtn_${idx}`);
-  if (!pyodide) { resultEl.style.display='block'; resultEl.className='run-result error'; resultEl.innerText='Pyodide 로딩 중...'; return; }
+  if (!pyodide) { resultEl.style.display='block'; resultEl.className='run-result error'; resultEl.innerText=UI[currentLang].pyodideLoading; return; }
   const code = cm ? cm.getValue() : (document.getElementById(`code_${idx}`)?.value || '');
   const stdinVal = document.getElementById(`stdin_${idx}`)?.value || '';
   btn.innerText = UI[currentLang].running;
   btn.disabled = true;
   resultEl.style.display = 'block';
   resultEl.className = 'run-result';
-  resultEl.innerText = '실행 중...';
+  resultEl.innerText = UI[currentLang].running;
   try {
     pyodide.runPython(`
 import sys, io as _io
@@ -1050,7 +1050,7 @@ sys.stdin = _io.StringIO(${JSON.stringify(stdinVal)})
     pyodide.runPython(`sys.stdout = sys.__stdout__\nsys.stdin = sys.__stdin__`);
     const output = pyodide.runPython(`_buf.getvalue()`);
     resultEl.className = 'run-result ok';
-    resultEl.innerText = output || '(출력 없음)';
+    resultEl.innerText = output || UI[currentLang].noOutput;
     saveCode(idx, code);
   } catch(e) {
     try { pyodide.runPython(`import sys; sys.stdout = sys.__stdout__; sys.stdin = sys.__stdin__`); } catch(e2) {}
@@ -1125,7 +1125,7 @@ sys.stdin = _in
 ${code}
 sys.stdout = sys.__stdout__
 sys.stdin = sys.__stdin__
-_result = _buf.getvalue().strip()
+_result = _buf.getvalue()
 `;
               pyodide.runPython(testCode);
               const result = String(pyodide.runPython('_result'));

@@ -704,19 +704,19 @@
         <div id="qf_mc">
           <div style="margin-bottom:12px;">
             <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">선택지 (한 줄에 하나씩)</label>
-            <textarea class="inp" id="q_options" rows="5" placeholder="1번 선택지&#10;2번 선택지&#10;3번 선택지&#10;4번 선택지" style="resize:vertical;"></textarea>
+            <textarea class="inp" id="q_options" rows="5" placeholder="1번 선택지&#10;2번 선택지&#10;3번 선택지&#10;4번 선택지" style="resize:vertical;" oninput="updateMcAnswerSelect()"></textarea>
           </div>
           <div style="margin-bottom:12px;">
-            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">정답 번호 (0부터, 예: 0=1번)</label>
-            <input class="inp" id="q_answer_mc" type="number" min="0" value="0" style="width:120px;">
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">정답</label>
+            <select class="inp" id="q_answer_mc" style="width:100%;"><option value="0">선택지를 먼저 입력하세요</option></select>
           </div>
         </div>
 
         <!-- 단답형 필드 -->
         <div id="qf_sa" class="hidden">
           <div style="margin-bottom:12px;">
-            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">정답</label>
-            <input class="inp" id="q_answer_sa" placeholder="정답 텍스트">
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">정답 <span style="font-weight:400;color:var(--sub);font-size:0.75rem;">(대소문자 구분 없이 비교)</span></label>
+            <textarea class="inp" id="q_answer_sa" rows="2" placeholder="정답 텍스트" style="resize:vertical;"></textarea>
           </div>
         </div>
 
@@ -2014,6 +2014,7 @@
     document.getElementById('q_order').value = q.order||1;
     if (q.type === 'mc') {
       document.getElementById('q_options').value = (q.options||[]).join('\n');
+      updateMcAnswerSelect();
       document.getElementById('q_answer_mc').value = q.answer||'0';
     } else if (q.type === 'sa') {
       document.getElementById('q_answer_sa').value = q.answer||'';
@@ -2040,8 +2041,19 @@
     });
   };
 
+  window.updateMcAnswerSelect = () => {
+    const opts = document.getElementById('q_options').value.split('\n').map(s=>s.trim()).filter(Boolean);
+    const sel = document.getElementById('q_answer_mc');
+    const prev = sel.value;
+    sel.innerHTML = opts.length
+      ? opts.map((o,i) => `<option value="${i}">${i+1}번. ${o}</option>`).join('')
+      : '<option value="0">선택지를 먼저 입력하세요</option>';
+    if (prev && parseInt(prev) < opts.length) sel.value = prev;
+  };
+
   window.resetQForm = () => {
-    ['q_docId','q_title','q_content','q_imageUrl','q_options','q_answer_mc','q_answer_sa','q_inDesc','q_outDesc','q_inEx','q_outEx','q_boilerplate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['q_docId','q_title','q_content','q_imageUrl','q_options','q_answer_sa','q_inDesc','q_outDesc','q_inEx','q_outEx','q_boilerplate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    document.getElementById('q_answer_mc').innerHTML = '<option value="0">선택지를 먼저 입력하세요</option>';
     renderTestCases([]);
     document.getElementById('q_points').value='10';
     document.getElementById('q_order').value='1';
