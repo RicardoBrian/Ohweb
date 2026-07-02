@@ -2486,8 +2486,13 @@
     return { grade: lgNv(parts[0]||''), class: lgNv(parts[1]||''), num: lgNv(parts[2]||'') };
   }
   function lgParseTestCases(raw) {
-    // TODO: 실제 "테스트케이스" 컬럼 형식 확인 후 파싱 로직 확정
-    return [];
+    // 형식: "입력1:출력1|입력2:출력2|..." (예: "4 3:7|100 121:221")
+    if (!raw || !raw.trim()) return [];
+    return raw.split('|').map(pair => {
+      const idx = pair.indexOf(':');
+      if (idx === -1) return null;
+      return { input: pair.slice(0, idx).trim(), expected: pair.slice(idx+1).trim() };
+    }).filter(Boolean);
   }
   function lgMapType(t) {
     if (t === '객관식') return 'mc';
