@@ -155,7 +155,7 @@
   <div class="stats-row">
     <div class="stat-card"><div class="stat-label">전체 대화</div><div class="stat-value" id="statThreads">—<span>개</span></div></div>
     <div class="stat-card"><div class="stat-label">안읽음</div><div class="stat-value" id="statUnread">—<span>개</span></div></div>
-    <div class="stat-card"><div class="stat-label">메일 알림 켜짐</div><div class="stat-value" id="statNotify">—<span>명</span></div></div>
+    <div class="stat-card"><div class="stat-label">알림 켜짐</div><div class="stat-value" id="statNotify">—<span>명</span></div></div>
   </div>
 
   <div class="toolbar">
@@ -194,6 +194,11 @@ function studentLabel(t) {
   if (n) parts.push(`${n}번`);
   return parts.join(' ');
 }
+function recalcStats() {
+  document.getElementById('statThreads').innerHTML = `${threads.length}<span>개</span>`;
+  document.getElementById('statUnread').innerHTML = `${threads.filter(t=>t.unreadByAdmin).length}<span>개</span>`;
+  document.getElementById('statNotify').innerHTML = `${threads.filter(t=>t.emailNotify!==false).length}<span>명</span>`;
+}
 function showToast(msg, dur = 2200) {
   const el = document.getElementById('toast');
   el.textContent = msg; el.classList.add('show');
@@ -208,9 +213,7 @@ async function loadAll() {
     threads = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(t => t.studentName);
     threads.sort((a, b) => millis(b.lastMessageAt) - millis(a.lastMessageAt));
 
-    document.getElementById('statThreads').innerHTML = `${threads.length}<span>개</span>`;
-    document.getElementById('statUnread').innerHTML = `${threads.filter(t=>t.unreadByAdmin).length}<span>개</span>`;
-    document.getElementById('statNotify').innerHTML = `${threads.filter(t=>t.emailNotify!==false).length}<span>명</span>`;
+    recalcStats();
 
     // URL 딥링크로 특정 학생 스레드 자동 오픈
     const params = new URLSearchParams(location.search);
@@ -255,7 +258,7 @@ function buildItem(t) {
         <div class="thread-meta">${escHtml(studentLabel(t))}</div>
       </div>
       <div class="thread-time">${fmtTime(t.lastMessageAt)}</div>
-      <div class="mail-toggle ${t.emailNotify!==false?'on':''}" title="메일 알림" onclick="event.stopPropagation();toggleNotify('${t.id}', ${t.emailNotify!==false})"></div>
+      <div class="mail-toggle ${t.emailNotify!==false?'on':''}" title="알림" onclick="event.stopPropagation();toggleNotify('${t.id}', ${t.emailNotify!==false})"></div>
     </div>
     <div class="thread-panel hidden" id="panel-${t.id}">
       <div class="chat-log" id="chatlog-${t.id}"></div>
@@ -294,6 +297,7 @@ function openChat(id) {
   updateDoc(doc(db, 'qna_threads', id), { unreadByAdmin: false }).catch(()=>{});
   const t = threads.find(x => x.id === id); if (t) t.unreadByAdmin = false;
   const item = document.getElementById(`item-${id}`); if (item) item.classList.remove('unread');
+  recalcStats();
 }
 
 window.togglePanel = (id) => {
@@ -315,7 +319,8 @@ window.toggleNotify = async (id, current) => {
     await updateDoc(doc(db, 'qna_threads', id), { emailNotify: !current });
     const t = threads.find(x => x.id === id); if (t) t.emailNotify = !current;
     renderList();
-    showToast(!current ? '메일 알림을 켰습니다.' : '메일 알림을 끌었습니다.');
+    recalcStats();
+    showToast(!current ? '알림을 켰습니다.' : '알림을 끌었습니다.');
   } catch (err) { showToast('변경 실패: ' + err.message); }
 };
 
