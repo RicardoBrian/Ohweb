@@ -638,6 +638,7 @@
       <button class="btn ghost sm" id="examSubTab-questions" onclick="showExamTab('questions')" style="white-space:nowrap;flex-shrink:0;">❓ 문제 관리</button>
       <button class="btn ghost sm" id="examSubTab-assign" onclick="showExamTab('assign')" style="white-space:nowrap;flex-shrink:0;">🎯 배정 관리</button>
       <button class="btn ghost sm" id="examSubTab-results" onclick="showExamTab('results')" style="white-space:nowrap;flex-shrink:0;">📊 결과 조회</button>
+      <button class="btn ghost sm" id="examSubTab-legacy" onclick="showExamTab('legacy')" style="white-space:nowrap;flex-shrink:0;">🗄 레거시 가져오기</button>
     </div>
 
     <!-- 시험 목록 탭 -->
@@ -857,11 +858,48 @@
               <option value="">배정을 선택하세요</option>
             </select>
           </div>
-          <div style="display:flex;align-items:flex-end;">
+          <div style="display:flex;align-items:flex-end;gap:8px;">
             <button class="btn ghost sm" onclick="exportResults()">📥 CSV 내보내기</button>
+            <button class="btn accent sm" onclick="exportResultsPDF()">📄 PDF 내보내기</button>
           </div>
         </div>
         <div id="resultTable"><div class="empty-state"><div class="empty-icon">📊</div>배정을 선택하세요.</div></div>
+      </div>
+    </div>
+
+    <!-- 레거시 가져오기 탭 -->
+    <div id="examTab-legacy" class="hidden">
+      <div class="card">
+        <h2><span class="icon">🗄</span> 레거시 시스템 데이터 가져오기</h2>
+        <p style="font-size:0.82rem;color:var(--sub);margin-bottom:14px;">이전 구글시트 시스템의 Exams·Questions·Results 탭 내용을 각각 복사해서 붙여넣으세요 (헤더 행 포함해도 됩니다). 탭 또는 콤마 구분 모두 인식합니다.</p>
+        <div style="display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:12px;">
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">Exams 탭 (시험ID, 시험제목, 생성일)</label>
+            <textarea class="inp" id="lg_exams" rows="4" style="font-family:monospace;font-size:0.8rem;resize:vertical;" placeholder="시험ID	시험제목	생성일"></textarea>
+          </div>
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">Questions 탭 (시험ID, 유형, 배점, 문항제목, 문항_KR/EN/CH/RU, 보기_KR/EN/CH/RU, 정답, 이미지URL, 번역여부, 테스트케이스)</label>
+            <textarea class="inp" id="lg_questions" rows="4" style="font-family:monospace;font-size:0.8rem;resize:vertical;" placeholder="시험ID	유형	배점	문항제목	..."></textarea>
+          </div>
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">Results 탭 (타임스탬프, 시험ID, 학번, 이름, 선택언어, 문항ID, 학생답안_원본, 학생답안_KR, 점수, 피드백)</label>
+            <textarea class="inp" id="lg_results" rows="4" style="font-family:monospace;font-size:0.8rem;resize:vertical;" placeholder="타임스탬프	시험ID	학번	이름	..."></textarea>
+          </div>
+        </div>
+        <button class="btn ghost sm" onclick="previewLegacy()">🔍 미리보기</button>
+        <div id="lg_preview" class="hidden" style="margin-top:16px;">
+          <div id="lg_summary" style="font-size:0.85rem;margin-bottom:12px;"></div>
+          <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:14px;flex-wrap:wrap;">
+            <div>
+              <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">가져올 시험</label>
+              <select class="inp" id="lg_examSelect" style="min-width:280px;"></select>
+            </div>
+            <button class="btn accent sm" onclick="runLegacyImport(false)">✅ 선택한 시험만 가져오기 (테스트)</button>
+            <button class="btn danger sm" onclick="runLegacyImport(true)">⚠️ 전체 시험 한번에 가져오기</button>
+          </div>
+          <div style="font-size:0.76rem;color:var(--sub);">같은 시험을 다시 가져오면 이전에 가져온 내용은 지우고 새로 씁니다 (재실행 안전).</div>
+        </div>
+        <div id="lg_log" style="margin-top:14px;font-size:0.82rem;white-space:pre-wrap;"></div>
       </div>
     </div>
 
@@ -1756,7 +1794,7 @@
 
   window.showExamTab = (tab) => {
     activeExamSubTab = tab;
-    ['list','questions','assign','results'].forEach(t => {
+    ['list','questions','assign','results','legacy'].forEach(t => {
       document.getElementById('examTab-'+t).classList.toggle('hidden', t !== tab);
       const btn = document.getElementById('examSubTab-'+t);
       if (btn) { btn.classList.toggle('accent', t === tab); btn.classList.toggle('ghost', t !== tab); }
@@ -2173,8 +2211,12 @@
         if (a.class!==b.class) return String(a.class).localeCompare(String(b.class));
         return parseInt(a.num||0) - parseInt(b.num||0);
       });
+      progs.forEach(p => { p._studentId = p.studentId||p.id.split('_').slice(1).join('_')||''; });
+      window._resultsAsId = asId;
+      window._resultsProgs = progs;
       const html = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
         <thead><tr style="border-bottom:2px solid var(--border-card);">
+          <th style="padding:8px 12px;"><input type="checkbox" onchange="document.querySelectorAll('.res-chk').forEach(c=>c.checked=this.checked)"></th>
           <th style="text-align:left;padding:8px 12px;color:var(--sub);">학년/반/번호</th>
           <th style="text-align:left;padding:8px 12px;color:var(--sub);">이름</th>
           <th style="text-align:right;padding:8px 12px;color:var(--sub);">점수</th>
@@ -2183,12 +2225,13 @@
           <th style="text-align:center;padding:8px 12px;color:var(--sub);">채점</th>
         </tr></thead>
         <tbody>${progs.map(p=>`<tr style="border-bottom:1px solid var(--border-card);">
+          <td style="padding:8px 12px;"><input type="checkbox" class="res-chk" value="${p.id}"></td>
           <td style="padding:8px 12px;">${p.grade||'-'}학년 ${p.class||'-'}반 ${p.num||'-'}번</td>
           <td style="padding:8px 12px;font-weight:700;">${p.name||'-'}</td>
           <td style="padding:8px 12px;text-align:right;font-weight:800;color:var(--accent);">${p.totalScore!==undefined?p.totalScore:'-'}${p.totalPoints?'/'+p.totalPoints:''}</td>
           <td style="padding:8px 12px;text-align:right;color:${(p.alertCount||0)>3?'#ef4444':'var(--sub)'};">${p.alertCount||0}</td>
           <td style="padding:8px 12px;"><span style="padding:3px 10px;border-radius:50px;font-size:0.75rem;font-weight:700;background:${p.status==='submitted'?'rgba(34,197,94,0.15)':'rgba(245,158,11,0.15)'};color:${p.status==='submitted'?'#22c55e':'#f59e0b'}">${p.status==='submitted'?'제출':'진행중'}</span></td>
-          <td style="padding:8px 12px;text-align:center;"><button class="btn ghost sm" onclick="gradeStudent('${asId}','${p.studentId||p.id.split('_').slice(1).join('_')||''}','${p.id}')">채점</button></td>
+          <td style="padding:8px 12px;text-align:center;"><button class="btn ghost sm" onclick="gradeStudent('${asId}','${p._studentId}','${p.id}')">채점</button></td>
         </tr>`).join('')}</tbody>
       </table></div>`;
       el.innerHTML = html;
@@ -2211,6 +2254,62 @@
     a.href = URL.createObjectURL(blob);
     a.download = `exam_results_${asId}.csv`;
     a.click();
+    showLoading(false);
+  };
+
+  // ── 결과 PDF 내보내기 (선택 학생 일괄, 브라우저 인쇄로 PDF 저장) ──
+  window.exportResultsPDF = async () => {
+    const progs = window._resultsProgs || [];
+    if (!progs.length) { toast('먼저 배정을 선택해 결과를 불러오세요.', 'error'); return; }
+    const checked = [...document.querySelectorAll('.res-chk:checked')].map(c => c.value);
+    if (!checked.length) { toast('내보낼 학생을 선택하세요.', 'error'); return; }
+    const selected = progs.filter(p => checked.includes(p.id));
+    const asId = window._resultsAsId;
+    showLoading(true);
+    try {
+      const examId = selected[0].examId;
+      const examSnap = await getDoc(doc(db,'exams', examId));
+      const examTitle = examSnap.exists() ? (examSnap.data().title||'') : '';
+      let qSnap;
+      try { qSnap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId), orderBy('order','asc'))); }
+      catch(e) { qSnap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId))); }
+      const questions = qSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.order||0)-(b.order||0));
+      const typeLabel = { mc:'객관식', sa:'주관식', code:'코딩' };
+
+      const pages = [];
+      for (const p of selected) {
+        const resSnap = await getDocs(query(collection(db,'exam_results'), where('asId','==',asId), where('studentId','==',p._studentId)));
+        const items = resSnap.docs.map(d=>d.data()).sort((a,b)=>(a.qIdx||0)-(b.qIdx||0));
+        const rows = items.map((r,ri) => {
+          const q = questions[r.qIdx] || questions.find(qq=>qq.id===r.questionId) || {};
+          const correctAnswer = q.type === 'mc'
+            ? (q.options && q.options[parseInt(q.answer)] !== undefined ? `${parseInt(q.answer)+1}번. ${q.options[parseInt(q.answer)]}` : (q.answer??''))
+            : (q.answer || (q.type==='code' ? '(코드 문제 — 테스트케이스로 채점)' : ''));
+          return `
+            <div style="border:1px solid #ddd;border-radius:10px;padding:12px 14px;margin-bottom:10px;break-inside:avoid;">
+              <div style="font-size:0.78rem;font-weight:700;color:#666;margin-bottom:4px;">Q${(r.qIdx??ri)+1}. ${escHtml(typeLabel[r.type||q.type]||'')} · 배점 ${r.maxScore??q.points??0}점</div>
+              <div style="font-weight:700;margin-bottom:2px;">${escHtml(r.title||q.title||'')}</div>
+              ${(r.content||q.content) ? `<div style="font-size:0.85rem;color:#333;margin-bottom:6px;white-space:pre-wrap;">${escHtml(r.content||q.content)}</div>` : ''}
+              <div style="font-size:0.85rem;background:#f7f8fb;border-radius:8px;padding:8px 10px;margin-bottom:6px;white-space:pre-wrap;word-break:break-word;"><b>학생 답:</b> ${escHtml(r.value||'(미답)')}</div>
+              <div style="font-size:0.85rem;color:#444;margin-bottom:6px;"><b>정답:</b> ${escHtml(String(correctAnswer))}</div>
+              <div style="font-size:0.85rem;font-weight:700;color:${(r.score||0)>=(r.maxScore||0)&&(r.maxScore||0)>0?'#1a8a3f':'#c0392b'};">획득 점수: ${r.score??0} / ${r.maxScore??0}</div>
+              ${r.feedback ? `<div style="font-size:0.78rem;color:#888;margin-top:4px;">피드백: ${escHtml(r.feedback)}</div>` : ''}
+            </div>`;
+        }).join('');
+        pages.push(`
+          <div style="page-break-after:always;padding:24px;font-family:'Pretendard','Malgun Gothic',sans-serif;color:#1a1a1a;">
+            <h1 style="font-size:1.3rem;margin-bottom:4px;">${escHtml(examTitle)}</h1>
+            <div style="font-size:0.9rem;color:#555;margin-bottom:18px;">${escHtml(p.grade||'-')}학년 ${escHtml(p.class||'-')}반 ${escHtml(p.num||'-')}번 ${escHtml(p.name||'')} · 총점 ${p.totalScore??'-'} / ${p.totalPoints??'-'}</div>
+            ${rows || '<div style="color:#999;">채점 결과가 없습니다.</div>'}
+          </div>`);
+      }
+      const win = window.open('', '_blank');
+      win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escHtml(examTitle)} 결과</title>
+        <style>@media print { body { margin:0; } } body{margin:0;}</style>
+        </head><body>${pages.join('')}</body></html>`);
+      win.document.close();
+      win.onload = () => win.print();
+    } catch(e) { toast('PDF 생성 오류: '+e.message, 'error'); }
     showLoading(false);
   };
 
@@ -2345,6 +2444,224 @@
       await loadQList(examId);
     } catch(e) { toast('번역 오류: '+e.message, 'error'); }
     showLoading(false);
+  };
+
+  // ── 레거시 시스템 데이터 가져오기 ──
+  function lgParseRows(text) {
+    const lines = text.replace(/\r\n/g,'\n').split('\n').filter(l => l.trim() !== '');
+    if (!lines.length) return [];
+    const delim = lines[0].includes('\t') ? '\t' : ',';
+    function parseLine(line) {
+      const out = []; let cur = ''; let inQ = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (inQ) {
+          if (ch === '"') { if (line[i+1] === '"') { cur += '"'; i++; } else inQ = false; }
+          else cur += ch;
+        } else {
+          if (ch === '"') inQ = true;
+          else if (ch === delim) { out.push(cur); cur = ''; }
+          else cur += ch;
+        }
+      }
+      out.push(cur);
+      return out;
+    }
+    return lines.map(parseLine);
+  }
+  function lgIsHeader(row) { return /시험ID|타임스탬프|학번|이름|유형/.test(row.join(',')); }
+
+  function lgNv(v) { return String(v||'').replace(/학년|학|반|번/g,'').trim(); }
+  function lgParseStudentCode(code) {
+    // "2학년-1반-6번" 또는 "공동교육과정-1반-20316번" 형태
+    const parts = String(code||'').split('-').map(s=>s.trim());
+    return { grade: lgNv(parts[0]||''), class: lgNv(parts[1]||''), num: lgNv(parts[2]||'') };
+  }
+  function lgMapType(t) {
+    if (t === '객관식') return 'mc';
+    if (t === '코딩') return 'code';
+    return 'sa'; // 단답형, 서술형
+  }
+
+  let lgData = null; // { exams:[{id,title}], questionsByExam: Map, resultsByExam: Map }
+
+  window.previewLegacy = () => {
+    try {
+      const examRows = lgParseRows(document.getElementById('lg_exams').value);
+      const qRows = lgParseRows(document.getElementById('lg_questions').value);
+      const rRows = lgParseRows(document.getElementById('lg_results').value);
+      if (examRows.length && lgIsHeader(examRows[0])) examRows.shift();
+      if (qRows.length && lgIsHeader(qRows[0])) qRows.shift();
+      if (rRows.length && lgIsHeader(rRows[0])) rRows.shift();
+
+      const examsList = examRows.filter(r=>r[0]).map(r => ({ id: r[0].trim(), title: (r[1]||'').trim(), createdAt: (r[2]||'').trim() }));
+
+      const questionsByExam = new Map();
+      qRows.forEach(r => {
+        const examIdOld = (r[0]||'').trim();
+        if (!examIdOld) return;
+        const row = {
+          type: lgMapType((r[1]||'').trim()), points: parseInt(r[2])||0, title: (r[3]||'').trim(),
+          contentKr: r[4]||'', contentEn: r[5]||'', contentCh: r[6]||'', contentRu: r[7]||'',
+          optsKr: r[8]||'', optsEn: r[9]||'', optsCh: r[10]||'', optsRu: r[11]||'',
+          answer: (r[12]||'').trim(), imageUrl: (r[13]||'').trim(),
+        };
+        if (!questionsByExam.has(examIdOld)) questionsByExam.set(examIdOld, []);
+        questionsByExam.get(examIdOld).push(row);
+      });
+
+      const resultsByExam = new Map();
+      rRows.forEach(r => {
+        const examIdOld = (r[1]||'').trim();
+        if (!examIdOld) return;
+        const row = {
+          timestamp: r[0]||'', studentCode: (r[2]||'').trim(), name: (r[3]||'').trim(),
+          lang: (r[4]||'ko').trim(), qIdOld: r[5]||'', rawAnswer: r[6]||'', krAnswer: r[7]||'',
+          score: parseFloat(r[8])||0, feedback: r[9]||'',
+        };
+        if (!row.studentCode || !row.name) return;
+        if (!resultsByExam.has(examIdOld)) resultsByExam.set(examIdOld, []);
+        resultsByExam.get(examIdOld).push(row);
+      });
+
+      lgData = { examsList, questionsByExam, resultsByExam };
+
+      const sel = document.getElementById('lg_examSelect');
+      sel.innerHTML = examsList.map(e => {
+        const qCount = (questionsByExam.get(e.id)||[]).length;
+        const studentSet = new Set((resultsByExam.get(e.id)||[]).map(r=>r.studentCode+'|'+r.name));
+        return `<option value="${e.id}">${escHtml(e.title)} (문항 ${qCount}개, 학생 ${studentSet.size}명)</option>`;
+      }).join('');
+
+      document.getElementById('lg_summary').innerHTML =
+        `시험 ${examsList.length}개 · 문항 ${qRows.length}행 · 결과 ${rRows.length}행 인식됨`;
+      document.getElementById('lg_preview').classList.remove('hidden');
+      document.getElementById('lg_log').innerText = '';
+    } catch(e) { toast('파싱 오류: '+e.message, 'error'); }
+  };
+
+  async function lgWipeExisting(legacyExamId) {
+    const exSnap = await getDocs(query(collection(db,'exams'), where('legacyExamId','==',legacyExamId)));
+    for (const exDoc of exSnap.docs) {
+      const examId = exDoc.id;
+      const qSnap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId)));
+      for (const qd of qSnap.docs) await deleteDoc(qd.ref);
+      const asSnap = await getDocs(query(collection(db,'exam_assignments'), where('examId','==',examId)));
+      for (const asDoc of asSnap.docs) {
+        const asId = asDoc.id;
+        const progSnap = await getDocs(query(collection(db,'exam_progress'), where('asId','==',asId)));
+        for (const pd of progSnap.docs) await deleteDoc(pd.ref);
+        const resSnap = await getDocs(query(collection(db,'exam_results'), where('asId','==',asId)));
+        for (const rd of resSnap.docs) await deleteDoc(rd.ref);
+        await deleteDoc(asDoc.ref);
+      }
+      await deleteDoc(exDoc.ref);
+    }
+  }
+
+  async function lgImportOneExam(examIdOld, log) {
+    if (!lgData) return;
+    const examMeta = lgData.examsList.find(e => e.id === examIdOld);
+    if (!examMeta) { log.push(`⚠️ ${examIdOld}: Exams 목록에 없음, 건너뜀`); return; }
+    const qRows = lgData.questionsByExam.get(examIdOld) || [];
+    if (!qRows.length) { log.push(`⚠️ ${examMeta.title}: 문항이 없어 건너뜀`); return; }
+
+    await lgWipeExisting(examIdOld); // 재실행 안전 (기존 것 삭제 후 재생성)
+
+    const examRef = await addDoc(collection(db,'exams'), {
+      title: examMeta.title, desc: '', legacyExamId: examIdOld, createdAt: serverTimestamp(),
+    });
+    const examId = examRef.id;
+
+    const newQuestions = [];
+    for (let i = 0; i < qRows.length; i++) {
+      const q = qRows[i];
+      const data = {
+        examId, type: q.type, title: q.title, content: q.contentKr,
+        contentEn: q.contentEn, contentZh: q.contentCh, contentRu: q.contentRu,
+        imageUrl: q.imageUrl, points: q.points, order: i+1,
+        legacy: true, legacyExamId: examIdOld, createdAt: serverTimestamp(),
+      };
+      if (q.type === 'mc') {
+        data.options = q.optsKr.split('|').map(s=>s.trim()).filter(Boolean);
+        data.optionsEn = q.optsEn.split('|').map(s=>s.trim()).filter(Boolean);
+        data.optionsZh = q.optsCh.split('|').map(s=>s.trim()).filter(Boolean);
+        data.optionsRu = q.optsRu.split('|').map(s=>s.trim()).filter(Boolean);
+        data.answer = String((parseInt(q.answer,10)||1) - 1);
+      } else {
+        data.answer = q.answer;
+      }
+      const qRef = await addDoc(collection(db,'exam_questions'), data);
+      newQuestions.push({ id: qRef.id, ...data });
+    }
+
+    // 결과를 담을 레거시 전용 배정(assignment) 하나 생성
+    const asRef = await addDoc(collection(db,'exam_assignments'), {
+      examId, code: 'LEGACY', schoolName: '', grade: '', class: '', duration: 0,
+      status: 'CLOSED', legacy: true, legacyExamId: examIdOld, createdAt: serverTimestamp(),
+    });
+    const asId = asRef.id;
+
+    // 학생별로 결과 행 묶기
+    const rRows = lgData.resultsByExam.get(examIdOld) || [];
+    const byStudent = new Map();
+    rRows.forEach(r => {
+      const key = r.studentCode + '|' + r.name;
+      if (!byStudent.has(key)) byStudent.set(key, []);
+      byStudent.get(key).push(r);
+    });
+
+    let studentCount = 0;
+    for (const [key, rows] of byStudent) {
+      const first = rows[0];
+      const { grade, class: cls, num } = lgParseStudentCode(first.studentCode);
+      const studentId = 'legacy_' + key.replace(/[^\w가-힣]/g,'_');
+      let totalScore = 0, totalPoints = 0;
+      for (let i = 0; i < rows.length && i < newQuestions.length; i++) {
+        const r = rows[i]; const q = newQuestions[i];
+        totalScore += r.score; totalPoints += q.points;
+        await addDoc(collection(db,'exam_results'), {
+          asId, examId, studentId, name: first.name, grade, class: cls, num,
+          lang: r.lang || 'ko', qIdx: i, type: q.type, title: q.title, content: q.content,
+          value: r.krAnswer || r.rawAnswer || '', score: r.score, maxScore: q.points,
+          feedback: r.feedback || '', legacy: true, createdAt: serverTimestamp(),
+        });
+      }
+      await setDoc(doc(db,'exam_progress', `${asId}_${studentId}`), {
+        examId, asId, studentId, name: first.name, grade, class: cls, num,
+        status: 'submitted', alertCount: 0, totalScore, totalPoints, legacy: true,
+      });
+      studentCount++;
+    }
+    log.push(`✅ ${examMeta.title}: 문항 ${newQuestions.length}개, 학생 ${studentCount}명 가져옴`);
+  }
+
+  async function lgDoImport(targets) {
+    showLoading(true);
+    const log = [];
+    try {
+      for (const examIdOld of targets) await lgImportOneExam(examIdOld, log);
+      document.getElementById('lg_log').innerText = log.join('\n');
+      toast('가져오기 완료', 'success');
+      await loadExamList();
+    } catch(e) {
+      log.push('❌ 오류: ' + e.message);
+      document.getElementById('lg_log').innerText = log.join('\n');
+      toast('가져오기 중 오류 발생', 'error');
+    }
+    showLoading(false);
+  }
+
+  window.runLegacyImport = (all) => {
+    if (!lgData) { toast('먼저 미리보기를 실행하세요.', 'error'); return; }
+    const targets = all ? lgData.examsList.map(e=>e.id) : [document.getElementById('lg_examSelect').value];
+    if (!targets.length || !targets[0]) { toast('가져올 시험을 선택하세요.', 'error'); return; }
+    confirmDialog(
+      '레거시 데이터 가져오기',
+      all ? `시험 ${targets.length}개를 전부 가져옵니다. 같은 시험이 이미 있으면 덮어씁니다. 계속할까요?`
+          : `선택한 시험 1개를 가져옵니다. 계속할까요?`,
+      () => lgDoImport(targets)
+    );
   };
 
   // ── 패들릿 일괄 번역 ──
