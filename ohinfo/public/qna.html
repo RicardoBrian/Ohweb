@@ -137,13 +137,13 @@ if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
 
 const LANGS = {
   ko: { title:'선생님께 질문하기', placeholder:'메시지를 입력하세요…', empty:'아직 대화가 없어요.\n궁금한 걸 편하게 물어보세요!',
-        locked:'🌙 오후 10시~오전 8시에는 메시지를 보낼 수 없어요.', you:'나', teacher:'선생님' },
+        locked:'🌙 오후 10시~오전 7시에는 메시지를 보낼 수 없어요.', you:'나', teacher:'선생님' },
   zh: { title:'向老师提问', placeholder:'请输入消息…', empty:'还没有对话。\n有什么问题尽管问吧！',
-        locked:'🌙 晚上10点至早上8点无法发送消息。', you:'我', teacher:'老师' },
+        locked:'🌙 晚上10点至早上7点无法发送消息。', you:'我', teacher:'老师' },
   ru: { title:'Вопрос учителю', placeholder:'Введите сообщение…', empty:'Пока нет сообщений.\nЗадайте свой вопрос!',
-        locked:'🌙 С 22:00 до 08:00 отправка сообщений недоступна.', you:'Я', teacher:'Учитель' },
+        locked:'🌙 С 22:00 до 07:00 отправка сообщений недоступна.', you:'Я', teacher:'Учитель' },
   en: { title:'Ask your teacher', placeholder:'Type a message…', empty:'No messages yet.\nFeel free to ask anything!',
-        locked:'🌙 Messages are unavailable from 10 PM to 8 AM.', you:'Me', teacher:'Teacher' },
+        locked:'🌙 Messages are unavailable from 10 PM to 7 AM.', you:'Me', teacher:'Teacher' },
 };
 const L = LANGS[lang] || LANGS.ko;
 document.getElementById('navTitle').innerText = L.title;
@@ -179,14 +179,14 @@ async function notifyTeacher(preview) {
   } catch (e) { /* 알림 실패는 조용히 무시 (메시지 전송 자체는 성공) */ }
 }
 
-// ── 시간 잠금 (22:00~08:00, KST) ──
+// ── 시간 잠금 (22:00~07:00, KST) ──
 function kstHour() {
   const utcMs = Date.now() + new Date().getTimezoneOffset() * 60000;
   return new Date(utcMs + 9 * 3600000).getHours();
 }
 function applyLock() {
   const h = kstHour();
-  const locked = (h >= 22 || h < 8);
+  const locked = (h >= 22 || h < 7);
   document.getElementById('composer').classList.toggle('locked', locked);
   const banner = document.getElementById('lockBanner');
   banner.classList.toggle('hidden', !locked);
@@ -263,7 +263,7 @@ document.getElementById('sendBtn').onclick = send;
 
 async function send() {
   const h = kstHour();
-  if (h >= 22 || h < 8) return;
+  if (h >= 22 || h < 7) return;
   const text = msgInput.value.trim();
   const files = pendingFiles.slice();
   if (!text && !files.length) return;
