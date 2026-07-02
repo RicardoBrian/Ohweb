@@ -2292,12 +2292,17 @@
           } else {
             correctAnswerHtml = escHtml(q.answer||'');
           }
+          const isCode = (r.type||q.type) === 'code';
+          const typeColor = isCode ? '#7c4dff' : ((r.type||q.type)==='sa' ? '#22c55e' : '#2a5ce6');
+          const answerBlock = isCode
+            ? `<div style="background:#1a1f2e;color:#dde2f0;border-radius:8px;padding:10px 12px;margin-bottom:6px;overflow-x:auto;"><b style="color:#9aa4c0;">학생 답:</b><pre style="margin:6px 0 0;white-space:pre;font-family:monospace;font-size:0.82rem;line-height:1.5;">${escHtml(r.value||'(미답)')}</pre></div>`
+            : `<div style="font-size:0.85rem;background:#f7f8fb;border-radius:8px;padding:8px 10px;margin-bottom:6px;white-space:pre-wrap;word-break:break-word;"><b>학생 답:</b> ${escHtml(r.value||'(미답)')}</div>`;
           return `
             <div style="border:1px solid #ddd;border-radius:10px;padding:12px 14px;margin-bottom:10px;break-inside:avoid;">
-              <div style="font-size:0.78rem;font-weight:700;color:#666;margin-bottom:4px;">Q${(r.qIdx??ri)+1}. ${escHtml(typeLabel[r.type||q.type]||'')} · 배점 ${r.maxScore??q.points??0}점</div>
+              <div style="font-size:0.78rem;font-weight:700;color:${typeColor};margin-bottom:4px;">Q${(r.qIdx??ri)+1}. ${escHtml(typeLabel[r.type||q.type]||'')} · 배점 ${r.maxScore??q.points??0}점</div>
               <div style="font-weight:700;margin-bottom:2px;">${escHtml(r.title||q.title||'')}</div>
               ${(r.content||q.content) ? `<div style="font-size:0.85rem;color:#333;margin-bottom:6px;white-space:pre-wrap;">${escHtml(r.content||q.content)}</div>` : ''}
-              <div style="font-size:0.85rem;background:#f7f8fb;border-radius:8px;padding:8px 10px;margin-bottom:6px;white-space:pre-wrap;word-break:break-word;font-family:${q.type==='code'?'monospace':'inherit'};"><b>학생 답:</b> ${escHtml(r.value||'(미답)')}</div>
+              ${answerBlock}
               <div style="font-size:0.85rem;color:#444;margin-bottom:6px;"><b>정답:</b> ${correctAnswerHtml}</div>
               <div style="font-size:0.85rem;font-weight:700;color:${(r.score||0)>=(r.maxScore||0)&&(r.maxScore||0)>0?'#1a8a3f':'#c0392b'};">획득 점수: ${r.score??0} / ${r.maxScore??0}</div>
               ${r.feedback ? `<div style="font-size:0.78rem;color:#888;margin-top:4px;">피드백: ${escHtml(r.feedback)}</div>` : ''}
@@ -2495,8 +2500,9 @@
     }).filter(Boolean);
   }
   function lgMapType(t) {
-    if (t === '객관식') return 'mc';
-    if (t === '코딩') return 'code';
+    const s = String(t||'').trim();
+    if (s.includes('객관')) return 'mc';
+    if (s.includes('코딩') || s.includes('코드') || s.includes('프로그래밍') || s.includes('프로그램')) return 'code';
     return 'sa'; // 단답형, 서술형
   }
 
