@@ -168,7 +168,7 @@ async function uploadOneFile(file, folder, filename) {
   if (!data || data.error || !data.url) throw new Error('업로드 실패: ' + (data && data.error || '알수없음'));
   return { name: file.name, url: data.url };
 }
-const OHWEB_ORIGIN = ''; // TODO: OHweb Vercel 도메인 확정되면 채우기 (예: 'https://ohweb.vercel.app')
+const OHWEB_ORIGIN = 'https://ohwww.vercel.app';
 async function notifyTeacher(preview) {
   try {
     await fetch(FILE_UPLOAD_URL, { method: 'POST', body: JSON.stringify({
