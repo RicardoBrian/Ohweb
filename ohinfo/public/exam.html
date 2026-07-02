@@ -185,6 +185,16 @@
     /* 로딩 */
     #loadingOverlay { position: fixed; inset: 0; z-index: 9000; display: none; justify-content: center; align-items: center; background: rgba(190,205,255,0.3); backdrop-filter: blur(12px); }
     body.dark #loadingOverlay { background: rgba(0,0,0,0.5); }
+    .qna-fab {
+      position: fixed; bottom: 22px; right: 22px; z-index: 400;
+      width: 54px; height: 54px; border-radius: 50%; border: 1px solid var(--border-card);
+      background: var(--accent-grad); color: #fff; cursor: pointer; font-size: 1.4rem;
+      display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-md);
+      text-decoration: none; transition: transform 0.15s;
+    }
+    .qna-fab:hover { transform: translateY(-2px); }
+    .qna-fab .badge { position: absolute; top: -3px; right: -3px; width: 14px; height: 14px; border-radius: 50%; background: #ff3b30; border: 2px solid var(--bg-elevated); display: none; }
+    .qna-fab .badge.on { display: block; }
     .spinner { width: 36px; height: 36px; border-radius: 50%; border: 3px solid var(--border); border-top-color: var(--accent); animation: spin 0.75s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -351,11 +361,13 @@
   </div>
 </div>
 
+<a class="qna-fab" href="qna.html" title="선생님께 질문하기">💬<span class="badge" id="qnaBadge"></span></a>
+
 <script type="module">
 import { db } from './firebase-config.js';
 import {
   collection, addDoc, getDocs, getDoc, doc,
-  query, where, orderBy, setDoc, updateDoc, serverTimestamp, Timestamp
+  query, where, orderBy, setDoc, updateDoc, serverTimestamp, Timestamp, onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // ── 세션 ──
@@ -1204,6 +1216,13 @@ window.enterExam = window.enterExam;
 window.setLang = setLang;
 window.toggleDark = toggleDark;
 window.goHome = goHome;
+
+if (_st.id) {
+  onSnapshot(doc(db, 'qna_threads', _st.id), snap => {
+    const badge = document.getElementById('qnaBadge');
+    if (badge) badge.classList.toggle('on', !!(snap.exists() && snap.data().unreadByStudent));
+  });
+}
 </script>
 </body>
 </html>

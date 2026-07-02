@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>학생 질문 — OHweb</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="theme.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); line-height: 1.6; }
+    .hidden { display: none !important; }
+
+    .nav {
+      position: sticky; top: 0; z-index: 200;
+      background: var(--glass-nav); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 1px 0 rgba(255,255,255,0.35), var(--shadow);
+      padding: 0 20px; height: var(--nav-h);
+      display: flex; align-items: center; gap: 12px;
+    }
+    .nav-brand { display: flex; align-items: center; gap: 8px; flex-shrink: 0; text-decoration: none; }
+    .nav-brand img { height: 30px; width: auto; display: block; }
+    .waffle-btn {
+      width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border-card);
+      background: var(--glass); color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center;
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight); transition: background 0.2s; flex-shrink: 0; margin-left: auto;
+    }
+    .waffle-btn:hover { background: var(--glass-strong); }
+    .app-modal { display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(20,22,40,0.45); align-items: center; justify-content: center; }
+    .app-modal.open { display: flex; }
+    .app-modal-card { background: #ffffff; border-radius: 22px; padding: 24px; width: min(460px, 92vw); box-shadow: 0 24px 70px rgba(0,0,0,0.3); }
+    body.dark .app-modal-card { background: #1a1d2e; }
+    .app-modal-head { display: flex; align-items: center; justify-content: space-between; font-size: 1.05rem; font-weight: 900; color: var(--text); margin-bottom: 18px; }
+    .app-modal-x { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--sub); line-height: 1; }
+    .app-modal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .app-modal-item { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 20px 8px; border-radius: 16px; cursor: pointer; background: #f4f5fa; border: 1px solid var(--border-card); font-family: inherit; font-size: 0.85rem; font-weight: 700; color: var(--text); transition: background 0.15s, transform 0.1s; }
+    body.dark .app-modal-item { background: rgba(255,255,255,0.06); }
+    .app-modal-item:hover { background: #e8eaf3; transform: translateY(-2px); }
+    body.dark .app-modal-item:hover { background: rgba(255,255,255,0.12); }
+    .app-modal-icon { font-size: 2rem; line-height: 1; }
+    .dark-toggle {
+      width: 42px; height: 24px; border-radius: 50px;
+      background: var(--glass); border: 1px solid var(--border);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight); cursor: pointer; position: relative; transition: 0.3s; flex-shrink: 0;
+    }
+    body.dark .dark-toggle { background: rgba(42,92,230,0.6); border-color: rgba(100,140,255,0.4); }
+    .dark-toggle::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.2); transition: transform 0.3s;
+    }
+    body.dark .dark-toggle::after { transform: translateX(18px); }
+
+    .wrap { max-width: 880px; margin: 0 auto; padding: 32px 20px 80px; }
+    @media (max-width: 600px) { .wrap { padding: 18px 14px 80px; } }
+    .page-head { margin-bottom: 20px; }
+    .page-head h1 { font-size: 1.5rem; font-weight: 900; letter-spacing: -0.03em; }
+    .page-head p { font-size: 0.85rem; color: var(--sub); margin-top: 2px; }
+
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
+    @media (max-width: 560px) { .stats-row { grid-template-columns: 1fr 1fr; } }
+    .stat-card { background: var(--glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border-card); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--highlight), var(--shadow); }
+    .stat-label { font-size: 0.68rem; font-weight: 700; color: var(--sub); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 4px; }
+    .stat-value { font-size: 1.7rem; font-weight: 900; line-height: 1; letter-spacing: -0.03em; }
+    .stat-value span { font-size: 0.9rem; font-weight: 600; color: var(--sub); margin-left: 3px; }
+
+    .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+    .inp { padding: 9px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-card); background: var(--glass); color: var(--text); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--highlight); font-family: inherit; font-size: 0.9rem; outline: none; transition: border-color 0.2s; }
+    .inp::placeholder { color: var(--sub); }
+    .inp:focus { border-color: rgba(42,92,230,0.5); box-shadow: var(--highlight), 0 0 0 3px rgba(42,92,230,0.13); }
+    .toolbar .search { flex: 1; min-width: 150px; }
+    .btn { font-family: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; border-radius: 50px; padding: 7px 16px; border: 1px solid var(--border); background: var(--glass); color: var(--text); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--highlight), var(--shadow); transition: background 0.2s, transform 0.15s; white-space: nowrap; }
+    .btn:hover { background: var(--glass-strong); }
+    .btn:active { transform: scale(0.96); }
+    .btn.sm { padding: 5px 12px; font-size: 0.76rem; }
+
+    .thread-item { background: var(--glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border-card); border-radius: var(--radius-sm); margin-bottom: 9px; overflow: hidden; transition: box-shadow 0.2s; }
+    .thread-item:hover { box-shadow: var(--shadow-md); }
+    .thread-item.unread { border-color: rgba(42,92,230,0.4); }
+    .thread-head { display: flex; align-items: center; gap: 12px; padding: 13px 15px; cursor: pointer; }
+    .thread-avatar { width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem; color: #fff; background: linear-gradient(135deg, var(--accent), #7c4dff); position: relative; }
+    .thread-avatar .dot { position: absolute; top: -2px; right: -2px; width: 11px; height: 11px; border-radius: 50%; background: #ff3b30; border: 2px solid var(--surface); display: none; }
+    .thread-item.unread .thread-avatar .dot { display: block; }
+    .thread-info { flex: 1; min-width: 0; }
+    .thread-name { font-weight: 800; font-size: 0.92rem; }
+    .thread-meta { font-size: 0.73rem; color: var(--sub); margin-top: 1px; }
+    .thread-preview { font-size: 0.8rem; color: var(--sub); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+    .thread-time { font-size: 0.72rem; color: var(--sub); white-space: nowrap; flex-shrink: 0; }
+    .mail-toggle { width: 34px; height: 20px; border-radius: 50px; background: var(--glass-strong); border: 1px solid var(--border-card); position: relative; cursor: pointer; flex-shrink: 0; transition: 0.2s; }
+    .mail-toggle.on { background: rgba(52,199,89,0.8); border-color: rgba(52,199,89,0.5); }
+    .mail-toggle::after { content:''; position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.25); transition:0.2s; }
+    .mail-toggle.on::after { transform: translateX(14px); }
+
+    .thread-panel { border-top: 1px solid var(--border-card); padding: 14px 15px; background: rgba(0,0,0,0.02); }
+    body.dark .thread-panel { background: rgba(255,255,255,0.02); }
+    .chat-log { max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding: 4px 2px 10px; }
+    .msg-row { display: flex; flex-direction: column; max-width: 78%; gap: 3px; }
+    .msg-row.admin { align-self: flex-end; align-items: flex-end; }
+    .msg-row.student { align-self: flex-start; align-items: flex-start; }
+    .msg-bubble { padding: 9px 13px; border-radius: 16px; font-size: 0.86rem; white-space: pre-wrap; word-break: break-word; }
+    .msg-row.admin .msg-bubble { background: var(--accent-grad); color: #fff; border-bottom-right-radius: 4px; }
+    .msg-row.student .msg-bubble { background: var(--surface); border: 1px solid var(--border-card); border-bottom-left-radius: 4px; }
+    .msg-time { font-size: 0.64rem; color: var(--sub); padding: 0 3px; }
+    .msg-atts { display: flex; flex-wrap: wrap; gap: 6px; }
+    .msg-att { display: flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: 10px; font-size: 0.74rem; text-decoration: none; background: var(--glass); border: 1px solid var(--border-card); color: var(--text); max-width: 200px; overflow: hidden; }
+    .msg-att img { width: 110px; max-height: 130px; border-radius: 10px; object-fit: cover; display: block; }
+    .reply-row { display: flex; gap: 8px; margin-top: 8px; }
+    .reply-input { flex: 1; resize: none; max-height: 90px; padding: 9px 13px; border-radius: 16px; border: 1px solid var(--border-card); background: var(--glass); color: var(--text); font-family: inherit; font-size: 0.86rem; outline: none; }
+    .reply-send { border: none; background: var(--accent-grad); color: #fff; border-radius: 50px; padding: 0 18px; font-family: inherit; font-weight: 700; font-size: 0.82rem; cursor: pointer; }
+    .reply-send:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .empty-state { text-align: center; padding: 48px 20px; color: var(--sub); font-size: 0.9rem; }
+    .empty-state .empty-icon { font-size: 3rem; margin-bottom: 12px; }
+
+    .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px); background: rgba(20,24,40,0.9); color: #fff; font-size: 0.85rem; font-weight: 600; padding: 10px 22px; border-radius: 50px; z-index: 9999; box-shadow: 0 4px 20px rgba(0,0,0,0.35); backdrop-filter: blur(12px); transition: transform 0.3s ease, opacity 0.3s ease; opacity: 0; pointer-events: none; white-space: nowrap; }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <a href="admin.html" class="nav-brand"><img src="logo.png" alt="OHweb"></a>
+  <button class="waffle-btn" id="waffleBtn" title="메뉴" onclick="openAppModal()">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="0" y="0" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="6.5" y="0" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="13" y="0" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="0" y="6.5" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="6.5" y="6.5" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="13" y="6.5" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="0" y="13" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="6.5" y="13" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="13" y="13" width="5" height="5" rx="1.2" fill="currentColor"/></svg>
+  </button>
+  <div class="dark-toggle" onclick="toggleDark()" title="다크모드 전환"></div>
+</nav>
+
+<div class="app-modal" id="appModal" onclick="if(event.target===this)closeAppModal()">
+  <div class="app-modal-card">
+    <div class="app-modal-head">
+      <span>메뉴</span>
+      <button class="app-modal-x" onclick="closeAppModal()">✕</button>
+    </div>
+    <div class="app-modal-grid">
+      <button class="app-modal-item" onclick="location.href='admin.html#schools'"><span class="app-modal-icon">🏫</span><span>학교</span></button>
+      <button class="app-modal-item" onclick="location.href='admin.html#students'"><span class="app-modal-icon">👥</span><span>학생</span></button>
+      <button class="app-modal-item" onclick="location.href='admin.html#paddlet'"><span class="app-modal-icon">📌</span><span>정보 게시판</span></button>
+      <button class="app-modal-item" onclick="location.href='admin.html#exam'"><span class="app-modal-icon">📋</span><span>시험</span></button>
+      <button class="app-modal-item" onclick="location.href='forms.html'"><span class="app-modal-icon">📝</span><span>설문지</span></button>
+      <button class="app-modal-item" onclick="closeAppModal()"><span class="app-modal-icon">💬</span><span>학생 질문</span></button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="page-head">
+    <h1>학생 질문</h1>
+    <p>로그인한 학생이 언제든 보낸 질문에 답해주세요.</p>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-label">전체 대화</div><div class="stat-value" id="statThreads">—<span>개</span></div></div>
+    <div class="stat-card"><div class="stat-label">안읽음</div><div class="stat-value" id="statUnread">—<span>개</span></div></div>
+    <div class="stat-card"><div class="stat-label">메일 알림 켜짐</div><div class="stat-value" id="statNotify">—<span>명</span></div></div>
+  </div>
+
+  <div class="toolbar">
+    <input class="inp search" type="search" id="searchInput" placeholder="학생 이름·학교 검색…" oninput="renderList()">
+    <button class="btn sm" onclick="reload()">↻ 새로고침</button>
+  </div>
+
+  <div id="threadList"><div class="empty-state">불러오는 중…</div></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { db } from './firebase-config.js';
+import {
+  collection, doc, getDocs, updateDoc, addDoc, query, orderBy, onSnapshot, serverTimestamp
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+let threads = [];
+let expandedId = null;
+let msgUnsub = null;
+
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function millis(ts) { return ts?.toMillis ? ts.toMillis() : (ts?.seconds ? ts.seconds*1000 : 0); }
+function fmtTime(ts) {
+  const ms = millis(ts); if (!ms) return '';
+  return new Date(ms).toLocaleString('ko-KR', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+function studentLabel(t) {
+  const nv = v => String(v||'').replace(/[^0-9]/g,'') || String(v||'').trim();
+  const parts = [];
+  if (t.schoolName) parts.push(t.schoolName);
+  const g = nv(t.grade), c = nv(t.class), n = String(t.number||'').trim();
+  if (g) parts.push(`${g}학년`);
+  if (c) parts.push(`${c}반`);
+  if (n) parts.push(`${n}번`);
+  return parts.join(' ');
+}
+function showToast(msg, dur = 2200) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), dur);
+}
+
+async function loadAll() {
+  const list = document.getElementById('threadList');
+  list.innerHTML = `<div class="empty-state">불러오는 중…</div>`;
+  try {
+    const snap = await getDocs(collection(db, 'qna_threads'));
+    threads = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(t => t.studentName);
+    threads.sort((a, b) => millis(b.lastMessageAt) - millis(a.lastMessageAt));
+
+    document.getElementById('statThreads').innerHTML = `${threads.length}<span>개</span>`;
+    document.getElementById('statUnread').innerHTML = `${threads.filter(t=>t.unreadByAdmin).length}<span>개</span>`;
+    document.getElementById('statNotify').innerHTML = `${threads.filter(t=>t.emailNotify!==false).length}<span>명</span>`;
+
+    // URL 딥링크로 특정 학생 스레드 자동 오픈
+    const params = new URLSearchParams(location.search);
+    const target = params.get('student');
+    renderList();
+    if (target && threads.some(t => t.id === target)) window.togglePanel(target);
+  } catch (err) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p>불러오기 실패: ${escHtml(err.message)}</p></div>`;
+  }
+}
+
+function getFiltered() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  return threads.filter(t => {
+    if (!q) return true;
+    return (t.studentName||'').toLowerCase().includes(q) || (t.schoolName||'').toLowerCase().includes(q);
+  });
+}
+
+function renderList() {
+  const container = document.getElementById('threadList');
+  const filtered = getFiltered();
+  if (!filtered.length) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">💬</div><p>아직 학생 질문이 없습니다.</p></div>`;
+    return;
+  }
+  container.innerHTML = filtered.map(buildItem).join('');
+  if (expandedId && filtered.some(t => t.id === expandedId)) {
+    const panel = document.getElementById(`panel-${expandedId}`);
+    if (panel) { panel.classList.remove('hidden'); openChat(expandedId); }
+  }
+}
+
+function buildItem(t) {
+  const unread = t.unreadByAdmin ? ' unread' : '';
+  return `
+  <div class="thread-item${unread}" id="item-${t.id}">
+    <div class="thread-head" onclick="togglePanel('${t.id}')">
+      <div class="thread-avatar">${escHtml((t.studentName||'?').slice(0,1))}<span class="dot"></span></div>
+      <div class="thread-info">
+        <div class="thread-name">${escHtml(t.studentName||'')}</div>
+        <div class="thread-meta">${escHtml(studentLabel(t))}</div>
+      </div>
+      <div class="thread-time">${fmtTime(t.lastMessageAt)}</div>
+      <div class="mail-toggle ${t.emailNotify!==false?'on':''}" title="메일 알림" onclick="event.stopPropagation();toggleNotify('${t.id}', ${t.emailNotify!==false})"></div>
+    </div>
+    <div class="thread-panel hidden" id="panel-${t.id}">
+      <div class="chat-log" id="chatlog-${t.id}"></div>
+      <div class="reply-row">
+        <textarea class="reply-input" id="reply-${t.id}" rows="1" placeholder="답장을 입력하세요…" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendReply('${t.id}')}"></textarea>
+        <button class="reply-send" onclick="sendReply('${t.id}')">전송</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function driveId(url) { const m = String(url||'').match(/\/d\/([^/]+)|[?&]id=([^&]+)/); return m ? (m[1]||m[2]) : ''; }
+function isImg(name) { return /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(String(name||'')); }
+function renderAtt(f) {
+  const id = driveId(f.url);
+  if (isImg(f.name) && id) return `<a class="msg-att" href="${f.url}" target="_blank" rel="noopener"><img src="https://drive.google.com/thumbnail?id=${id}&sz=w400" referrerpolicy="no-referrer"></a>`;
+  return `<a class="msg-att" href="${f.url}" target="_blank" rel="noopener">📎 ${escHtml(f.name||'파일')}</a>`;
+}
+
+function openChat(id) {
+  if (msgUnsub) { msgUnsub(); msgUnsub = null; }
+  const msgsRef = collection(db, 'qna_threads', id, 'messages');
+  msgUnsub = onSnapshot(query(msgsRef, orderBy('createdAt', 'asc')), snap => {
+    const log = document.getElementById(`chatlog-${id}`);
+    if (!log) return;
+    if (snap.empty) { log.innerHTML = `<div class="empty-state" style="padding:20px;">아직 대화가 없습니다.</div>`; return; }
+    log.innerHTML = snap.docs.map(d => {
+      const m = d.data();
+      const mine = m.sender === 'admin';
+      const atts = Array.isArray(m.attachments) && m.attachments.length ? `<div class="msg-atts">${m.attachments.map(renderAtt).join('')}</div>` : '';
+      const text = m.text ? `<div class="msg-bubble">${escHtml(m.text)}</div>` : '';
+      return `<div class="msg-row ${mine?'admin':'student'}">${text}${atts}<div class="msg-time">${fmtTime(m.createdAt)}</div></div>`;
+    }).join('');
+    log.scrollTop = log.scrollHeight;
+  });
+  updateDoc(doc(db, 'qna_threads', id), { unreadByAdmin: false }).catch(()=>{});
+  const t = threads.find(x => x.id === id); if (t) t.unreadByAdmin = false;
+  const item = document.getElementById(`item-${id}`); if (item) item.classList.remove('unread');
+}
+
+window.togglePanel = (id) => {
+  const panel = document.getElementById(`panel-${id}`);
+  if (!panel) return;
+  if (expandedId === id) {
+    panel.classList.add('hidden'); expandedId = null;
+    if (msgUnsub) { msgUnsub(); msgUnsub = null; }
+    return;
+  }
+  if (expandedId) { const prev = document.getElementById(`panel-${expandedId}`); if (prev) prev.classList.add('hidden'); }
+  expandedId = id;
+  panel.classList.remove('hidden');
+  openChat(id);
+};
+
+window.toggleNotify = async (id, current) => {
+  try {
+    await updateDoc(doc(db, 'qna_threads', id), { emailNotify: !current });
+    const t = threads.find(x => x.id === id); if (t) t.emailNotify = !current;
+    renderList();
+    showToast(!current ? '메일 알림을 켰습니다.' : '메일 알림을 끌었습니다.');
+  } catch (err) { showToast('변경 실패: ' + err.message); }
+};
+
+window.sendReply = async (id) => {
+  const input = document.getElementById(`reply-${id}`);
+  const text = input.value.trim();
+  if (!text) return;
+  try {
+    await addDoc(collection(db, 'qna_threads', id, 'messages'), { sender: 'admin', text, attachments: [], createdAt: serverTimestamp() });
+    await updateDoc(doc(db, 'qna_threads', id), { unreadByStudent: true, lastMessageAt: serverTimestamp() });
+    input.value = '';
+  } catch (err) { showToast('전송 실패: ' + err.message); }
+};
+
+window.reload = () => loadAll();
+window.renderList = renderList;
+loadAll();
+</script>
+
+<script>
+function toggleDark() {
+  const isDark = document.body.classList.toggle('dark');
+  localStorage.setItem('dark', isDark ? '1' : '0');
+}
+function openAppModal() { document.getElementById('appModal').classList.add('open'); }
+function closeAppModal() { document.getElementById('appModal').classList.remove('open'); }
+(function(){ if (localStorage.getItem('dark') === '1') document.body.classList.add('dark'); })();
+</script>
+</body>
+</html>
