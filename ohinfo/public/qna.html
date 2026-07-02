@@ -280,11 +280,10 @@ async function send() {
     }
     await addDoc(msgsRef, { sender: 'student', text, attachments, createdAt: serverTimestamp() });
 
-    // 5분 디바운스 알림
+    // 알림 on/off만 확인 (텔레그램은 무료·즉시라 5분 제한 없이 매번 발송)
     const threadSnap = await getDoc(threadRef);
     const t = threadSnap.exists() ? threadSnap.data() : {};
-    const lastMs = t.lastNotifiedAt?.toMillis ? t.lastNotifiedAt.toMillis() : 0;
-    const shouldNotify = t.emailNotify !== false && (Date.now() - lastMs > 5 * 60 * 1000);
+    const shouldNotify = t.emailNotify !== false;
 
     await updateDoc(threadRef, {
       lastMessageAt: serverTimestamp(), unreadByAdmin: true,
