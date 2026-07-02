@@ -51,7 +51,8 @@
     background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
     border: 1px solid var(--border-card); color: var(--text); border-bottom-left-radius: 5px;
   }
-  .msg-time { font-size: 0.66rem; color: var(--sub); padding: 0 4px; }
+  .msg-time { font-size: 0.66rem; color: var(--sub); padding: 0 4px; display: none; }
+  .msg-row.show-time .msg-time { display: block; }
   .msg-atts { display: flex; flex-wrap: wrap; gap: 6px; }
   .msg-att {
     display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 12px;
@@ -240,7 +241,7 @@ onSnapshot(query(msgsRef, orderBy('createdAt', 'asc')), snap => {
     const mine = m.sender === 'student';
     const atts = Array.isArray(m.attachments) && m.attachments.length ? `<div class="msg-atts">${m.attachments.map(renderAtt).join('')}</div>` : '';
     const text = m.text ? `<div class="msg-bubble">${esc(m.text)}</div>` : '';
-    return `<div class="msg-row ${mine?'mine':'theirs'}">${text}${atts}<div class="msg-time">${fmtTime(m.createdAt)}</div></div>`;
+    return `<div class="msg-row ${mine?'mine':'theirs'}" onclick="this.classList.toggle('show-time')">${text}${atts}<div class="msg-time">${fmtTime(m.createdAt)}</div></div>`;
   }).join('');
   chatBody.scrollTop = chatBody.scrollHeight;
   // 선생님 답장 확인 처리 + 읽음 표시

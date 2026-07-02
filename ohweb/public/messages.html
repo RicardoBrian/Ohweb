@@ -104,7 +104,8 @@
     .msg-bubble { padding: 9px 13px; border-radius: 16px; font-size: 0.86rem; white-space: pre-wrap; word-break: break-word; }
     .msg-row.admin .msg-bubble { background: var(--accent-grad); color: #fff; border-bottom-right-radius: 4px; }
     .msg-row.student .msg-bubble { background: var(--surface); border: 1px solid var(--border-card); border-bottom-left-radius: 4px; }
-    .msg-time { font-size: 0.64rem; color: var(--sub); padding: 0 3px; }
+    .msg-time { font-size: 0.64rem; color: var(--sub); padding: 0 3px; display: none; }
+    .msg-row.show-time .msg-time { display: block; }
     .msg-atts { display: flex; flex-wrap: wrap; gap: 6px; }
     .msg-att { display: flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: 10px; font-size: 0.74rem; text-decoration: none; background: var(--glass); border: 1px solid var(--border-card); color: var(--text); max-width: 200px; overflow: hidden; cursor: pointer; }
     .lightbox { display: none; position: fixed; inset: 0; z-index: 5000; background: rgba(10,10,16,0.9); align-items: center; justify-content: center; padding: 24px; }
@@ -309,7 +310,7 @@ function openChat(id) {
       const atts = Array.isArray(m.attachments) && m.attachments.length ? `<div class="msg-atts">${m.attachments.map(renderAtt).join('')}</div>` : '';
       const text = m.text ? `<div class="msg-bubble">${escHtml(m.text)}</div>` : '';
       const readMark = mine ? (m.readAt ? `<div class="msg-time">읽음 · ${fmtTime(m.readAt)}</div>` : `<div class="msg-time">전송함</div>`) : '';
-      return `<div class="msg-row ${mine?'admin':'student'}">${text}${atts}<div class="msg-time">${fmtTime(m.createdAt)}</div>${readMark}</div>`;
+      return `<div class="msg-row ${mine?'admin':'student'}" onclick="this.classList.toggle('show-time')">${text}${atts}<div class="msg-time">${fmtTime(m.createdAt)}</div>${readMark}</div>`;
     }).join('');
     log.scrollTop = log.scrollHeight;
   });
