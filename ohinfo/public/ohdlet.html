@@ -652,9 +652,10 @@
     collection, query, where, orderBy, getDocs,
     addDoc, updateDoc, deleteDoc, doc, serverTimestamp, increment, onSnapshot
   } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+  import { saveSession, loadSession, clearSession } from './session.js';
 
   // ── 세션 체크 ──
-  const _st = JSON.parse(sessionStorage.getItem('ohinfo_student') || 'null');
+  const _st = loadSession();
   if (!_st) { window.location.href = 'index.html'; }
   const _nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
   const SESSION = {
@@ -684,7 +685,7 @@
     const nu = document.getElementById('navUser');
     if (nu && !nu.contains(e.target)) document.getElementById('userDropdown').classList.add('hidden');
   });
-  window.logout = () => { sessionStorage.removeItem('ohinfo_student'); window.location.href = 'index.html'; };
+  window.logout = () => { clearSession(); window.location.href = 'index.html'; };
 
   // ── 마이페이지 ──
   let _mpPhotoB64 = null;
@@ -739,7 +740,7 @@
     try {
       await updateDoc(doc(db, 'students', _mpStudent.id), updates);
       Object.assign(_mpStudent, updates);
-      sessionStorage.setItem('ohinfo_student', JSON.stringify(_mpStudent));
+      saveSession(_mpStudent);
       renderAvatar(document.getElementById('navAvatar'), _mpStudent);
       msgEl.className='modal-msg ok'; msgEl.innerText=_t.mpOk;
       setTimeout(() => closeMyPage(), 1300);

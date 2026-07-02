@@ -269,9 +269,10 @@ import { db } from './firebase-config.js';
 import {
   collection, query, where, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, doc, serverTimestamp, onSnapshot
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { loadSession, clearSession } from './session.js';
 
 // ── 유틸 ──
-const SESSION = JSON.parse(sessionStorage.getItem('ohinfo_student') || 'null');
+const SESSION = loadSession();
 if (!SESSION) { window.location.href = 'index.html'; }
 function toggleDark() { document.body.classList.toggle('dark'); localStorage.setItem('dark', document.body.classList.contains('dark')?'1':'0'); }
 if (localStorage.getItem('dark')==='1') document.body.classList.add('dark');
@@ -289,7 +290,7 @@ window.toggleLangDD = () => document.getElementById('langGlobeDD').classList.tog
 window.closeLangDD  = () => document.getElementById('langGlobeDD').classList.add('hidden');
 window.toggleUserMenu = () => document.getElementById('userDropdown').classList.toggle('hidden');
 window.closeAllDD = (e) => { document.getElementById('langGlobeDD')?.classList.add('hidden'); document.getElementById('userDropdown')?.classList.add('hidden'); };
-window.doLogout = () => { sessionStorage.removeItem('ohinfo_student'); location.href = 'ohdlet.html'; };
+window.doLogout = () => { clearSession(); location.href = 'ohdlet.html'; };
 
 if (SESSION) {
   document.getElementById('navUserName').textContent = SESSION.name || '';

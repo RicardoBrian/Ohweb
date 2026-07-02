@@ -6,6 +6,7 @@
   <title>OHweb 관리자</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
   <link rel="stylesheet" href="theme.css">
+  <script src="admin-auth.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: var(--bg); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
@@ -149,7 +150,7 @@
     function login() {
       const pw = document.getElementById('pwInput').value;
       if (pw === ADMIN_PW) {
-        sessionStorage.setItem('ohweb_admin', '1');
+        AdminAuth.login();
         window.location.href = 'admin.html';
       } else {
         const err = document.getElementById('errMsg');
@@ -167,7 +168,7 @@
     if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
 
     // 이미 로그인 상태면 바로 이동
-    if (sessionStorage.getItem('ohweb_admin') === '1') window.location.href = 'admin.html';
+    if (AdminAuth.isValid()) window.location.href = 'admin.html';
   </script>
 </body>
 </html>

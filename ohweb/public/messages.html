@@ -6,6 +6,7 @@
   <title>학생 질문 — OHweb</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
   <link rel="stylesheet" href="theme.css">
+  <script src="admin-auth.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: var(--bg); line-height: 1.6; }
@@ -105,7 +106,10 @@
     .msg-row.student .msg-bubble { background: var(--surface); border: 1px solid var(--border-card); border-bottom-left-radius: 4px; }
     .msg-time { font-size: 0.64rem; color: var(--sub); padding: 0 3px; }
     .msg-atts { display: flex; flex-wrap: wrap; gap: 6px; }
-    .msg-att { display: flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: 10px; font-size: 0.74rem; text-decoration: none; background: var(--glass); border: 1px solid var(--border-card); color: var(--text); max-width: 200px; overflow: hidden; }
+    .msg-att { display: flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: 10px; font-size: 0.74rem; text-decoration: none; background: var(--glass); border: 1px solid var(--border-card); color: var(--text); max-width: 200px; overflow: hidden; cursor: pointer; }
+    .lightbox { display: none; position: fixed; inset: 0; z-index: 5000; background: rgba(10,10,16,0.9); align-items: center; justify-content: center; padding: 24px; }
+    .lightbox.open { display: flex; }
+    .lightbox img { max-width: 100%; max-height: 100%; border-radius: 8px; object-fit: contain; }
     .msg-att img { width: 110px; max-height: 130px; border-radius: 10px; object-fit: cover; display: block; }
     .reply-row { display: flex; gap: 8px; margin-top: 8px; }
     .reply-input { flex: 1; resize: none; max-height: 90px; padding: 9px 13px; border-radius: 16px; border: 1px solid var(--border-card); background: var(--glass); color: var(--text); font-family: inherit; font-size: 0.86rem; outline: none; }
@@ -168,7 +172,12 @@
 
 <div class="toast" id="toast"></div>
 
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <img id="lightboxImg" src="" onclick="event.stopPropagation()">
+</div>
+
 <script type="module">
+if (!window.AdminAuth.isValid()) { window.location.href = 'index.html'; }
 import { db } from './firebase-config.js';
 import {
   collection, doc, getDocs, updateDoc, addDoc, query, orderBy, onSnapshot, serverTimestamp
@@ -272,9 +281,18 @@ function buildItem(t) {
 
 function driveId(url) { const m = String(url||'').match(/\/d\/([^/]+)|[?&]id=([^&]+)/); return m ? (m[1]||m[2]) : ''; }
 function isImg(name) { return /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(String(name||'')); }
+window.openLightbox = (url) => {
+  const id = driveId(url);
+  document.getElementById('lightboxImg').src = id ? `https://drive.google.com/thumbnail?id=${id}&sz=w1600` : url;
+  document.getElementById('lightbox').classList.add('open');
+};
+window.closeLightbox = () => {
+  document.getElementById('lightbox').classList.remove('open');
+  document.getElementById('lightboxImg').src = '';
+};
 function renderAtt(f) {
   const id = driveId(f.url);
-  if (isImg(f.name) && id) return `<a class="msg-att" href="${f.url}" target="_blank" rel="noopener"><img src="https://drive.google.com/thumbnail?id=${id}&sz=w400" referrerpolicy="no-referrer"></a>`;
+  if (isImg(f.name) && id) return `<div class="msg-att" onclick="openLightbox('${(f.url||'').replace(/'/g,"\\'")}')"><img src="https://drive.google.com/thumbnail?id=${id}&sz=w400" referrerpolicy="no-referrer"></div>`;
   return `<a class="msg-att" href="${f.url}" target="_blank" rel="noopener">📎 ${escHtml(f.name||'파일')}</a>`;
 }
 
@@ -290,7 +308,8 @@ function openChat(id) {
       const mine = m.sender === 'admin';
       const atts = Array.isArray(m.attachments) && m.attachments.length ? `<div class="msg-atts">${m.attachments.map(renderAtt).join('')}</div>` : '';
       const text = m.text ? `<div class="msg-bubble">${escHtml(m.text)}</div>` : '';
-      return `<div class="msg-row ${mine?'admin':'student'}">${text}${atts}<div class="msg-time">${fmtTime(m.createdAt)}</div></div>`;
+      const readMark = mine ? (m.readAt ? `<div class="msg-time">읽음 · ${fmtTime(m.readAt)}</div>` : `<div class="msg-time">전송함</div>`) : '';
+      return `<div class="msg-row ${mine?'admin':'student'}">${text}${atts}<div class="msg-time">${fmtTime(m.createdAt)}</div>${readMark}</div>`;
     }).join('');
     log.scrollTop = log.scrollHeight;
   });

@@ -369,9 +369,10 @@ import {
   collection, addDoc, getDocs, getDoc, doc,
   query, where, orderBy, setDoc, updateDoc, serverTimestamp, Timestamp, onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { saveSession, loadSession } from './session.js';
 
 // ── 세션 ──
-const _st = JSON.parse(sessionStorage.getItem('ohinfo_student') || '{}');
+const _st = loadSession() || {};
 if (!_st.id) { window.location.href = 'index.html'; }
 const _nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
 const SESSION = { id: _st.id||'', name: _st.name||'', grade: _nv(_st.grade||''), cls: _nv(_st.class||''), num: String(_st.number||''), schoolName: _st.schoolName||'' };
@@ -449,7 +450,7 @@ window.saveMyPage = async () => {
   try {
     await updateDoc(doc(db, 'students', _mpStudent.id), updates);
     Object.assign(_mpStudent, updates);
-    sessionStorage.setItem('ohinfo_student', JSON.stringify(_mpStudent));
+    saveSession(_mpStudent);
     renderAvatar(document.getElementById('navAvatar'), _mpStudent);
     msgEl.className='modal-msg ok'; msgEl.innerText=_t.mpOk;
     setTimeout(() => closeMyPage(), 1300);

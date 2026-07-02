@@ -55,13 +55,16 @@
   .msg-atts { display: flex; flex-wrap: wrap; gap: 6px; }
   .msg-att {
     display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 12px;
-    font-size: 0.78rem; text-decoration: none; max-width: 220px; overflow: hidden;
+    font-size: 0.78rem; text-decoration: none; max-width: 220px; overflow: hidden; cursor: pointer;
     background: rgba(255,255,255,0.35); border: 1px solid var(--border-card);
   }
   .msg-row.mine .msg-att { color: #fff; background: rgba(255,255,255,0.22); }
   .msg-row.theirs .msg-att { color: var(--text); }
   .msg-att span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .msg-att img { width: 130px; max-height: 160px; border-radius: 12px; object-fit: cover; display: block; }
+  .lightbox { display: none; position: fixed; inset: 0; z-index: 5000; background: rgba(10,10,16,0.9); align-items: center; justify-content: center; padding: 24px; }
+  .lightbox.open { display: flex; }
+  .lightbox img { max-width: 100%; max-height: 100%; border-radius: 8px; object-fit: contain; }
 
   .lock-banner {
     margin: 0 14px 8px; padding: 10px 14px; border-radius: var(--radius-sm);
@@ -123,15 +126,19 @@
   </div>
 </div>
 
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <img id="lightboxImg" src="" onclick="event.stopPropagation()">
+</div>
+
 <script type="module">
 import { db } from './firebase-config.js';
 import {
   doc, getDoc, setDoc, updateDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { loadSession } from './session.js';
 
-const raw = sessionStorage.getItem('ohinfo_student');
-if (!raw) { window.location.href = 'index.html'; throw new Error('no session'); }
-const student = JSON.parse(raw);
+const student = loadSession();
+if (!student) { window.location.href = 'index.html'; throw new Error('no session'); }
 const lang = localStorage.getItem('ohinfo_lang') || 'ko';
 if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
 
@@ -207,9 +214,18 @@ function fmtTime(ts) {
   return new Date(ms).toLocaleString('ko-KR', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' });
 }
 function driveId(url) { const m = String(url||'').match(/\/d\/([^/]+)|[?&]id=([^&]+)/); return m ? (m[1]||m[2]) : ''; }
+window.openLightbox = (url) => {
+  const id = driveId(url);
+  document.getElementById('lightboxImg').src = id ? `https://drive.google.com/thumbnail?id=${id}&sz=w1600` : url;
+  document.getElementById('lightbox').classList.add('open');
+};
+window.closeLightbox = () => {
+  document.getElementById('lightbox').classList.remove('open');
+  document.getElementById('lightboxImg').src = '';
+};
 function renderAtt(f) {
   const id = driveId(f.url);
-  if (isImg(f.name) && id) return `<a class="msg-att" href="${f.url}" target="_blank" rel="noopener"><img src="https://drive.google.com/thumbnail?id=${id}&sz=w400" referrerpolicy="no-referrer"></a>`;
+  if (isImg(f.name) && id) return `<div class="msg-att" onclick="openLightbox('${f.url.replace(/'/g,"\\'")}')"><img src="https://drive.google.com/thumbnail?id=${id}&sz=w400" referrerpolicy="no-referrer"></div>`;
   return `<a class="msg-att" href="${f.url}" target="_blank" rel="noopener">📎 <span>${esc(f.name)}</span></a>`;
 }
 
@@ -227,8 +243,12 @@ onSnapshot(query(msgsRef, orderBy('createdAt', 'asc')), snap => {
     return `<div class="msg-row ${mine?'mine':'theirs'}">${text}${atts}<div class="msg-time">${fmtTime(m.createdAt)}</div></div>`;
   }).join('');
   chatBody.scrollTop = chatBody.scrollHeight;
-  // 선생님 답장 확인 처리
+  // 선생님 답장 확인 처리 + 읽음 표시
   updateDoc(threadRef, { unreadByStudent: false }).catch(()=>{});
+  snap.docs.forEach(d => {
+    const m = d.data();
+    if (m.sender === 'admin' && !m.readAt) updateDoc(d.ref, { readAt: serverTimestamp() }).catch(()=>{});
+  });
 });
 
 // 최초 진입 시 스레드 문서 없으면 생성

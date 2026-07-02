@@ -92,6 +92,7 @@
 <script type="module">
 import { db } from './firebase-config.js';
 import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { saveSession, loadSession } from './session.js';
 
 // ── dark ──
 const savedDark = localStorage.getItem('dark');
@@ -210,7 +211,7 @@ const redirectUrl = sessionStorage.getItem('ohinfo_redirect');
 if (redirectUrl) document.getElementById('redirectNotice').classList.remove('hidden');
 
 // ── already logged in → redirect ──
-if (sessionStorage.getItem('ohinfo_student')) {
+if (loadSession()) {
   const dest = sessionStorage.getItem('ohinfo_redirect');
   if (dest) { sessionStorage.removeItem('ohinfo_redirect'); location.href = dest; }
   else { location.href = 'home.html'; }
@@ -249,7 +250,7 @@ window.doLogin = async () => {
     if (!data.registered) { errEl.textContent = t.errNotReg; btn.disabled = false; btn.textContent = t.ok; return; }
     if (data.password !== pw) { errEl.textContent = t.errWrongPw; document.getElementById('loginPw').value = ''; btn.disabled = false; btn.textContent = t.ok; return; }
 
-    sessionStorage.setItem('ohinfo_student', JSON.stringify({ id: match.id, ...data }));
+    saveSession({ id: match.id, ...data });
     const dest = sessionStorage.getItem('ohinfo_redirect');
     if (dest) { sessionStorage.removeItem('ohinfo_redirect'); location.href = dest; }
     else { location.href = 'home.html'; }

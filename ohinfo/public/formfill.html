@@ -189,6 +189,7 @@
 import { db } from './firebase-config.js';
 import { doc, getDoc, addDoc, updateDoc, collection, query, where, getDocs, serverTimestamp, increment }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { loadSession, clearSession } from './session.js';
 
 // ── i18n ──
 const T = {
@@ -383,9 +384,7 @@ window.closeAllDD = function(e) {
 window.toggleUserMenu = () => { document.getElementById('userDropdown').classList.toggle('hidden'); };
 
 // ── session ──
-function getSession() {
-  try { return JSON.parse(sessionStorage.getItem('ohinfo_student') || 'null'); } catch { return null; }
-}
+function getSession() { return loadSession(); }
 
 function renderNavUser(s) {
   if (!s) return;
@@ -400,7 +399,7 @@ function renderNavUser(s) {
 }
 
 window.doLogout = function() {
-  sessionStorage.removeItem('ohinfo_student');
+  clearSession();
   location.href = 'ohdlet.html';
 };
 

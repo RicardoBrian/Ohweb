@@ -372,17 +372,17 @@
 <script type="module">
   import { db } from './firebase-config.js';
   import { doc, getDoc, updateDoc, collection, query, where, orderBy, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { saveSession, loadSession, clearSession } from './session.js';
 
-  const raw = sessionStorage.getItem('ohinfo_student');
-  if (!raw) { window.location.href = 'index.html'; }
-  const student = JSON.parse(raw);
+  const student = loadSession();
+  if (!student) { window.location.href = 'index.html'; }
 
   window.toggleDark = () => {
     document.body.classList.toggle('dark');
     localStorage.setItem('dark', document.body.classList.contains('dark') ? '1' : '0');
   };
   if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
-  window.logout = () => { sessionStorage.removeItem('ohinfo_student'); window.location.href = 'index.html'; };
+  window.logout = () => { clearSession(); window.location.href = 'index.html'; };
 
   // ── 유저 드롭다운 ──
   window.toggleUserMenu = () => {
@@ -473,7 +473,7 @@
     try {
       await updateDoc(doc(db, 'students', student.id), updates);
       Object.assign(student, updates);
-      sessionStorage.setItem('ohinfo_student', JSON.stringify(student));
+      saveSession(student);
       renderAvatar(document.getElementById('navAvatar'), student);
       msgEl.className = 'modal-msg ok'; msgEl.innerText = t.mpOk;
       setTimeout(() => closeMyPage(), 1300);

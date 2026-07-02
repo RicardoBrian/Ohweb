@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>공지 메모 · OHweb</title>
   <link rel="stylesheet" href="theme.css">
+  <script src="admin-auth.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: var(--bg); min-height: 100vh; display: flex; flex-direction: column; font-family: var(--font); color: var(--text); overflow: hidden; }
@@ -216,7 +217,7 @@
   </div>
 
   <script>
-    if (sessionStorage.getItem('ohweb_admin') !== '1') location.href = 'index.html';
+    if (!window.AdminAuth.isValid()) location.href = 'index.html';
 
     function toggleDark() { document.body.classList.toggle('dark'); localStorage.setItem('dark', document.body.classList.contains('dark')?'1':'0'); }
     if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
