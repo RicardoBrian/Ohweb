@@ -669,6 +669,20 @@
   const IS_MASTER = !!_st?.isMaster;
   // 수업의 학교 매칭: 학교 정보 없는 기존 수업은 '관산중학교' 소속으로 간주
   const _classSchoolOk = c => IS_MASTER || (c.schoolName || '관산중학교') === SESSION.schoolName;
+  // 배정 범위: group까지 지정하면 그 반만, grade만 지정하면 그 학년 전체, 둘 다 없으면 학교 전체
+  function _classAudienceOk(c) {
+    if (IS_MASTER) return true;
+    if (!_classSchoolOk(c)) return false;
+    if (!c.grade) return true;
+    if (c.grade !== SESSION.grade) return false;
+    if (!c.group) return true;
+    return c.group === SESSION.group;
+  }
+  function classBoardKey(c) {
+    const g = c.grade || '', grp = c.group || '';
+    return `${c.name||''}__${c.schoolName||''}${g?('__g'+g):''}${grp?('__c'+grp):''}`;
+  }
+  let currentBoardKey = '';
   let _mpStudent = { ..._st };
 
   // ── 네비 아바타 ──
@@ -1045,7 +1059,7 @@
     try {
       const snap = await getDocs(collection(db, 'classes'));
       const classes = snap.docs.map(d => d.data())
-        .filter(c => c.status === 'ON' && _classSchoolOk(c) && (IS_MASTER || (c.grade === SESSION.grade && c.group === SESSION.group)))
+        .filter(c => c.status === 'ON' && _classAudienceOk(c))
         .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'));
       const sel = document.getElementById('classList');
       sel.innerHTML = `<option>${uiText[currentLang]?.opt||uiText.ko.opt}</option>`;
@@ -1115,15 +1129,18 @@
       let cls = {};
       const clsSnap = await getDocs(query(collection(db, 'classes'), where('name', '==', classTitle)));
       if (!clsSnap.empty) {
-        cls = clsSnap.docs.find(d => { const x = d.data(); return _classSchoolOk(x) && (IS_MASTER || (x.grade === SESSION.grade && x.group === SESSION.group)); })?.data()
-              || clsSnap.docs[0].data();
+        // 매칭 범위 우선순위: 반 지정 > 학년 지정 > 학교 전체
+        const candidates = clsSnap.docs.map(d => d.data()).filter(_classAudienceOk);
+        candidates.sort((a, b) => (b.group ? 2 : b.grade ? 1 : 0) - (a.group ? 2 : a.grade ? 1 : 0));
+        cls = candidates[0] || clsSnap.docs[0].data();
       }
+      currentBoardKey = cls.name ? classBoardKey(cls) : '';
 
-      // 게시물 조회
+      // 게시물 조회 (boardKey 없는 옛 게시글은 이름만으로 계속 노출 — 하위호환)
       const postsSnap = await getDocs(query(collection(db, 'posts'), where('classTitle', '==', classTitle)));
       const rawPosts = postsSnap.docs
         .map(d => ({ ...d.data(), id: d.id, imgs: Array.isArray(d.data().imgs) ? d.data().imgs : [], createdAt: d.data().createdAt?.toDate?.()?.toISOString() || '' }))
-        .filter(p => !p.deleted);
+        .filter(p => !p.deleted && (!p.boardKey || p.boardKey === currentBoardKey));
       // 클라이언트 정렬: pinned desc, createdAt desc
       rawPosts.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (b.createdAt > a.createdAt ? 1 : -1));
 
@@ -1316,6 +1333,7 @@
       } else {
         await addDoc(collection(db, 'posts'), {
           classTitle: getHidden('f_class'),
+          boardKey: currentBoardKey,
           grade: getHidden('f_grade'),
           group: getHidden('f_group'),
           num: document.getElementById('p_num').value,

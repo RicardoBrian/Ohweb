@@ -1598,7 +1598,7 @@
       <div class="list-item">
         <div>
           <div class="list-item-name">📌 ${c.name}</div>
-          <div class="list-item-sub">${c.schoolName||'관산중학교'} · ${c.grade}학년 ${c.group}반 <span style="font-size:0.75rem;padding:2px 7px;border-radius:6px;font-weight:700;background:${c.status==='ON'?'rgba(34,197,94,0.15)':'rgba(239,68,68,0.12)'};color:${c.status==='ON'?'#16a34a':'#ef4444'}">${c.status}</span></div>
+          <div class="list-item-sub">${c.schoolName||'관산중학교'} · ${!c.grade ? '학교 전체' : !c.group ? c.grade+'학년 전체' : c.grade+'학년 '+c.group+'반'} <span style="font-size:0.75rem;padding:2px 7px;border-radius:6px;font-weight:700;background:${c.status==='ON'?'rgba(34,197,94,0.15)':'rgba(239,68,68,0.12)'};color:${c.status==='ON'?'#16a34a':'#ef4444'}">${c.status}</span></div>
         </div>
         <div class="list-item-actions" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <select onchange="toggleClassStatus('${c.id}',this.value)" style="font-size:0.78rem;padding:4px 8px;border-radius:8px;border:1.5px solid var(--border-card);background:var(--glass);cursor:pointer;font-weight:700;color:${c.status==='ON'?'#22c55e':'#ef4444'}">
@@ -1665,16 +1665,20 @@
       el.innerHTML = '<span style="font-size:0.8rem;color:var(--sub);">담은 학급이 없습니다. 학교·학년·반 선택 후 [＋ 담기]</span>';
       return;
     }
-    el.innerHTML = _pending.map((p,i) =>
-      `<span style="display:inline-flex;align-items:center;gap:7px;background:var(--accent-light);color:var(--accent);border:1px solid rgba(42,92,230,0.25);border-radius:50px;padding:5px 12px;font-size:0.82rem;font-weight:700;">${p.school} ${p.grade}-${p.group}<span onclick="removePending(${i})" style="cursor:pointer;opacity:0.7;">✕</span></span>`
-    ).join('');
+    el.innerHTML = _pending.map((p,i) => {
+      const label = !p.grade ? `${p.school} 전체` : !p.group ? `${p.school} ${p.grade}학년 전체` : `${p.school} ${p.grade}-${p.group}`;
+      return `<span style="display:inline-flex;align-items:center;gap:7px;background:var(--accent-light);color:var(--accent);border:1px solid rgba(42,92,230,0.25);border-radius:50px;padding:5px 12px;font-size:0.82rem;font-weight:700;">${label}<span onclick="removePending(${i})" style="cursor:pointer;opacity:0.7;">✕</span></span>`;
+    }).join('');
   }
   window.addPendingClass = () => {
     const school = document.getElementById('adm_school').value.trim();
-    const grade = nv(document.getElementById('adm_grade').value);
-    const group = nv(document.getElementById('adm_class').value);
-    if (!school || !grade || !group) { toast('학교·학년·반을 선택하세요.', 'error'); return; }
-    if (_pending.some(p => p.school===school && p.grade===grade && p.group===group)) { toast('이미 담은 학급입니다.', 'error'); return; }
+    const gradeRaw = document.getElementById('adm_grade').value;
+    const groupRaw = document.getElementById('adm_class').value;
+    if (!school || !gradeRaw) { toast('학교·학년을 선택하세요 (학년은 "전체" 가능).', 'error'); return; }
+    if (gradeRaw !== '전체' && !groupRaw) { toast('반을 선택하세요 (반은 "전체" 가능).', 'error'); return; }
+    const grade = gradeRaw === '전체' ? '' : nv(gradeRaw);
+    const group = (gradeRaw === '전체' || groupRaw === '전체') ? '' : nv(groupRaw);
+    if (_pending.some(p => p.school===school && p.grade===grade && p.group===group)) { toast('이미 담은 범위입니다.', 'error'); return; }
     _pending.push({ school, grade, group });
     renderPending();
     const c = document.getElementById('adm_class'); c.value = ''; c.focus();
@@ -1682,12 +1686,21 @@
   window.removePending = (i) => { _pending.splice(i,1); renderPending(); };
   window.onAdmSchoolChange = () => {
     const school = document.getElementById('adm_school').value;
-    fillSelect('adm_grade', padGradeOptions(school), '학년', true);
-    fillSelect('adm_class', padClassOptions(school, document.getElementById('adm_grade').value), '반', true);
+    fillSelect('adm_grade', ['전체', ...padGradeOptions(school)], '학년', true);
+    onAdmGradeChange();
   };
   window.onAdmGradeChange = () => {
     const school = document.getElementById('adm_school').value;
-    fillSelect('adm_class', padClassOptions(school, document.getElementById('adm_grade').value), '반', true);
+    const grade = document.getElementById('adm_grade').value;
+    const classSel = document.getElementById('adm_class');
+    if (grade === '전체') {
+      classSel.innerHTML = '<option value="전체">전체</option>';
+      classSel.value = '전체';
+      classSel.disabled = true;
+    } else {
+      classSel.disabled = false;
+      fillSelect('adm_class', ['전체', ...padClassOptions(school, grade)], '반', true);
+    }
   };
 
   window.saveAdminClass = async () => {
@@ -1706,9 +1719,12 @@
       if (id) {
         // 수정 — 단일 문서 (현재 드롭다운 값 사용)
         const school = document.getElementById('adm_school').value.trim();
-        const grade = nv(document.getElementById('adm_grade').value);
-        const group = nv(document.getElementById('adm_class').value);
-        if (!school || !grade || !group) { toast('학교·학년·반을 선택하세요.', 'error'); showLoading(false); return; }
+        const gradeRaw = document.getElementById('adm_grade').value;
+        const groupRaw = document.getElementById('adm_class').value;
+        if (!school || !gradeRaw) { toast('학교·학년을 선택하세요 (학년은 "전체" 가능).', 'error'); showLoading(false); return; }
+        if (gradeRaw !== '전체' && !groupRaw) { toast('반을 선택하세요 (반은 "전체" 가능).', 'error'); showLoading(false); return; }
+        const grade = gradeRaw === '전체' ? '' : nv(gradeRaw);
+        const group = (gradeRaw === '전체' || groupRaw === '전체') ? '' : nv(groupRaw);
         await updateDoc(doc(db, 'classes', id), { name, schoolName: school, grade, group, desc, ex, popup, ...tr });
         toast('수정되었습니다.', 'success');
       } else {
@@ -1754,12 +1770,12 @@
     }
     schoolSel.value = school;
     onAdmSchoolChange();
-    const gradeSel = document.getElementById('adm_grade'); const g = nv(c.grade||'');
-    if (g && ![...gradeSel.options].some(o => o.value === g)) gradeSel.insertAdjacentHTML('beforeend', `<option value="${g}">${g}</option>`);
+    const gradeSel = document.getElementById('adm_grade'); const g = nv(c.grade||'') || '전체';
+    if (g !== '전체' && ![...gradeSel.options].some(o => o.value === g)) gradeSel.insertAdjacentHTML('beforeend', `<option value="${g}">${g}</option>`);
     gradeSel.value = g; onAdmGradeChange();
-    const classSel = document.getElementById('adm_class'); const cl = nv(c.group||'');
-    if (cl && ![...classSel.options].some(o => o.value === cl)) classSel.insertAdjacentHTML('beforeend', `<option value="${cl}">${cl}</option>`);
-    classSel.value = cl;
+    const classSel = document.getElementById('adm_class'); const cl = nv(c.group||'') || '전체';
+    if (cl !== '전체' && ![...classSel.options].some(o => o.value === cl)) classSel.insertAdjacentHTML('beforeend', `<option value="${cl}">${cl}</option>`);
+    if (!classSel.disabled) classSel.value = cl;
     const info = document.getElementById('adm_edit_info');
     info.style.display='block'; info.innerText=`수정 중: ${c.name}`;
     document.getElementById('adm_cancel_btn').classList.remove('hidden');
