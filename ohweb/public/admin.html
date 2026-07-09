@@ -815,7 +815,8 @@
           </div>
           <div>
             <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">학년</label>
-            <select class="inp" id="as_grade">
+            <select class="inp" id="as_grade" onchange="onAsGradeChange()">
+              <option value="">전체 학년</option>
               <option value="1">1학년</option>
               <option value="2">2학년</option>
               <option value="3">3학년</option>
@@ -824,6 +825,7 @@
           <div>
             <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">반</label>
             <select class="inp" id="as_class">
+              <option value="">전체 반</option>
               <option value="1">1반</option>
               <option value="2">2반</option>
               <option value="3">3반</option>
@@ -834,6 +836,12 @@
           <div>
             <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">제한시간 (분, 0=무제한)</label>
             <input class="inp" id="as_duration" type="number" min="0" value="45" placeholder="45">
+          </div>
+        </div>
+        <div style="margin-bottom:12px;">
+          <button class="btn ghost sm" onclick="addPendingAssign()">＋ 담기</button>
+          <div id="as_pending" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;">
+            <span style="font-size:0.8rem;color:var(--sub);">담은 배정이 없습니다. 학교·학년·반 선택 후 [＋ 담기] (학년·반은 "전체" 가능)</span>
           </div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
@@ -1816,7 +1824,7 @@
       if (btn) { btn.classList.toggle('accent', t === tab); btn.classList.toggle('ghost', t !== tab); }
     });
     if (tab === 'questions') populateExamSelects();
-    if (tab === 'assign') { populateExamSelects(); loadAssignList(); }
+    if (tab === 'assign') { populateExamSelects(); loadAssignList(); onAsGradeChange(); }
     if (tab === 'results') { loadAssignSelect(); }
   };
 
@@ -2120,21 +2128,65 @@
   };
 
   // ── 배정 관리 ──
+  window.onAsGradeChange = () => {
+    const grade = document.getElementById('as_grade').value;
+    const classSel = document.getElementById('as_class');
+    if (!grade) { classSel.value = ''; classSel.disabled = true; }
+    else classSel.disabled = false;
+  };
+
+  let _pendingAs = [];
+  function renderAsPending() {
+    const el = document.getElementById('as_pending');
+    if (!_pendingAs.length) {
+      el.innerHTML = '<span style="font-size:0.8rem;color:var(--sub);">담은 배정이 없습니다. 학교·학년·반 선택 후 [＋ 담기] (학년·반은 "전체" 가능)</span>';
+      return;
+    }
+    el.innerHTML = _pendingAs.map((p,i) => {
+      const label = `${p.schoolName||'전체 학교'} ${!p.grade ? '전체 학년' : (!p.class ? p.grade+'학년 전체' : p.grade+'학년 '+p.class+'반')}`;
+      return `<span style="display:inline-flex;align-items:center;gap:7px;background:var(--accent-light);color:var(--accent);border:1px solid rgba(42,92,230,0.25);border-radius:50px;padding:5px 12px;font-size:0.82rem;font-weight:700;">${label}<span onclick="removePendingAs(${i})" style="cursor:pointer;opacity:0.7;">✕</span></span>`;
+    }).join('');
+  }
+  window.removePendingAs = (i) => { _pendingAs.splice(i,1); renderAsPending(); };
+  window.addPendingAssign = () => {
+    const schoolName = document.getElementById('as_schoolName')?.value || '';
+    const grade = document.getElementById('as_grade').value;
+    const cls = document.getElementById('as_class').value;
+    if (_pendingAs.some(p => p.schoolName===schoolName && p.grade===grade && p.class===cls)) { toast('이미 담은 범위입니다.', 'error'); return; }
+    _pendingAs.push({ schoolName, grade, class: cls });
+    renderAsPending();
+  };
+
   window.saveAssignment = async () => {
     const docId = document.getElementById('as_docId').value;
     const examId = document.getElementById('as_examId').value;
     const code = document.getElementById('as_code').value.trim().toUpperCase();
-    const grade = document.getElementById('as_grade').value;
-    const cls = document.getElementById('as_class').value;
-    const schoolName = document.getElementById('as_schoolName')?.value || '';
     const duration = parseInt(document.getElementById('as_duration').value) || 0;
     if (!examId) { toast('시험을 선택하세요.', 'error'); return; }
     if (!code) { toast('시험 코드를 입력하세요.', 'error'); return; }
-    const data = { examId, code, grade, class: cls, schoolName, duration, status: 'ON' };
     showLoading(true);
     try {
-      if (docId) await updateDoc(doc(db,'exam_assignments',docId), data);
-      else await addDoc(collection(db,'exam_assignments'), { ...data, createdAt: serverTimestamp() });
+      if (docId) {
+        // 수정 — 단일 문서 (현재 드롭다운 값 사용)
+        const grade = document.getElementById('as_grade').value;
+        const cls = document.getElementById('as_class').value;
+        const schoolName = document.getElementById('as_schoolName')?.value || '';
+        const data = { examId, code, grade, class: cls, schoolName, duration, status: 'ON' };
+        await updateDoc(doc(db,'exam_assignments',docId), data);
+      } else {
+        // 저장 — 담아둔 모든 범위에 동일한 코드로 일괄 배정
+        if (!_pendingAs.length) { toast('배정 범위를 담은 뒤 저장하세요.', 'error'); showLoading(false); return; }
+        const batch = writeBatch(db);
+        _pendingAs.forEach(p => {
+          const ref = doc(collection(db,'exam_assignments'));
+          batch.set(ref, {
+            examId, code, grade: p.grade, class: p.class, schoolName: p.schoolName, duration, status: 'ON',
+            createdAt: serverTimestamp(),
+          });
+        });
+        await batch.commit();
+        _pendingAs = []; renderAsPending();
+      }
       toast('저장되었습니다.', 'success');
       resetAsForm();
       await loadAssignList();
@@ -2152,7 +2204,7 @@
       return `<div class="list-item">
         <div class="list-item-info">
           <div class="list-item-name">🎯 <b style="letter-spacing:0.1em;">${a.code}</b> — ${exam?.title||a.examId}</div>
-          <div class="list-item-sub">${a.schoolName?a.schoolName+' · ':''}${a.grade}학년 ${a.class}반 · ${a.duration>0?a.duration+'분':'무제한'}</div>
+          <div class="list-item-sub">${a.schoolName?a.schoolName+' · ':'전체 학교 · '}${!a.grade ? '전체 학년' : (!a.class ? a.grade+'학년 전체' : a.grade+'학년 '+a.class+'반')} · ${a.duration>0?a.duration+'분':'무제한'}</div>
         </div>
         <div class="list-item-actions" style="display:flex;gap:8px;align-items:center;">
           <select onchange="toggleAsStatus('${a.id}',this.value)" style="font-size:0.78rem;padding:4px 8px;border-radius:8px;border:1.5px solid var(--border-card);background:var(--glass);cursor:pointer;font-weight:700;color:${a.status==='ON'?'#22c55e':'#ef4444'}">
@@ -2187,7 +2239,10 @@
     document.getElementById('as_code').value='';
     document.getElementById('as_duration').value='45';
     const asSchEl = document.getElementById('as_schoolName'); if(asSchEl) asSchEl.value='';
+    document.getElementById('as_grade').value='';
+    onAsGradeChange();
     document.getElementById('as_cancel_btn').classList.add('hidden');
+    _pendingAs = []; renderAsPending();
   };
 
   // ── 결과 조회 ──
@@ -2203,7 +2258,8 @@
     const cur = sel.value;
     sel.innerHTML = '<option value="">배정을 선택하세요</option>' + list.map(a => {
       const exam = exams.find(e=>e.id===a.examId);
-      return `<option value="${a.id}" ${a.id===cur?'selected':''}>${a.code} — ${exam?.title||''} (${a.grade}학년${a.class}반)</option>`;
+      const scopeLabel = !a.grade ? '전체 학년' : (!a.class ? a.grade+'학년 전체' : a.grade+'학년'+a.class+'반');
+      return `<option value="${a.id}" ${a.id===cur?'selected':''}>${a.code} — ${exam?.title||''} (${scopeLabel})</option>`;
     }).join('');
   }
 

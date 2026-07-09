@@ -615,13 +615,11 @@ async function loadMyExams() {
   const area = document.getElementById('examListArea');
   area.innerHTML = `<div style="color:var(--sub);font-size:0.85rem;">${UI[currentLang].loading}</div>`;
   try {
-    const snap = IS_MASTER
-      ? await getDocs(collection(db, 'exam_assignments'))
-      : await getDocs(query(collection(db, 'exam_assignments'), where('grade', '==', SESSION.grade)));
+    const snap = await getDocs(collection(db, 'exam_assignments'));
     const assignments = snap.docs.map(d=>({id:d.id,...d.data()})).filter(a => {
       if (IS_MASTER) return true;
-      const gradeOk = _nv(String(a.grade||'')) === SESSION.grade;
-      const clsOk   = _nv(String(a.class||'')) === SESSION.cls;
+      const gradeOk = !a.grade || _nv(String(a.grade)) === SESSION.grade;
+      const clsOk   = !a.class || _nv(String(a.class)) === SESSION.cls;
       const schoolOk = !a.schoolName || a.schoolName === SESSION.schoolName;
       return gradeOk && clsOk && schoolOk;
     });
