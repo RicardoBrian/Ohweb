@@ -219,6 +219,17 @@
       background: #ff3b30; border: 2px solid var(--bg-elevated); display: none;
     }
     .qna-fab .badge.on { display: block; }
+    .qna-tip {
+      position: absolute; right: calc(100% + 12px); top: 50%; transform: translateY(-50%) translateX(8px);
+      background: #1a1d2e; color: #fff; font-size: 0.78rem; font-weight: 600; line-height: 1.4;
+      padding: 10px 14px; border-radius: 12px; width: 200px; white-space: normal; text-align: left;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.25); opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s;
+    }
+    .qna-tip::after {
+      content: ''; position: absolute; right: -5px; top: 50%; transform: translateY(-50%);
+      width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 5px solid #1a1d2e;
+    }
+    .qna-fab:hover .qna-tip { opacity: 1; transform: translateY(-50%) translateX(0); }
 
     #loadingOverlay {
       position: fixed; inset: 0; z-index: 9000;
@@ -267,7 +278,7 @@
   <div class="app-grid" id="appGrid"></div>
 </div>
 
-<a class="qna-fab" href="qna.html" title="선생님께 질문하기">💬<span class="badge" id="qnaBadge"></span></a>
+<a class="qna-fab" href="qna.html">💬<span class="badge" id="qnaBadge"></span><span class="qna-tip">정보 관련 질문이나 웹사이트 버그가 있으면 알려주세요.</span></a>
 
 <!-- 마이페이지 모달 -->
 <div class="modal-overlay hidden" id="myPageOverlay" onclick="closeMyPage()">
