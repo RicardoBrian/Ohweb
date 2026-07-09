@@ -506,9 +506,8 @@
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
         <div style="grid-column:1/-1;">
           <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">학교</label>
-          <select class="inp" id="addSchoolName" style="width:100%;" onchange="populateAddDatalists()">
-            <option value="">학교 선택</option>
-          </select>
+          <input class="inp" id="addSchoolName" type="text" list="addSchoolOptions" placeholder="학교 이름 입력" style="width:100%;" autocomplete="off" oninput="populateAddDatalists()">
+          <datalist id="addSchoolOptions"></datalist>
         </div>
         <div>
           <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">이름</label>
@@ -1071,8 +1070,8 @@
     const opts = schools.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
     const addSchoolEl = document.getElementById('addSchool');
     if (addSchoolEl) addSchoolEl.innerHTML = '<option value="">학교 선택</option>' + opts;
-    const addSchoolNameEl = document.getElementById('addSchoolName');
-    if (addSchoolNameEl) addSchoolNameEl.innerHTML = '<option value="">학교 선택</option>' + opts;
+    const addSchoolOptionsEl = document.getElementById('addSchoolOptions');
+    if (addSchoolOptionsEl) addSchoolOptionsEl.innerHTML = schools.map(s => `<option value="${s.name}">`).join('');
   }
 
   window.addSchool = async () => {
