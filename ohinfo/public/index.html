@@ -550,10 +550,35 @@
   if (loadSession()) window.location.href = 'home.html';
 
   // 학교 드롭다운 로드
+  let _students = [];
+  function distinctSortedNv(vals) {
+    return [...new Set(vals.map(v => nv(v)).filter(Boolean))].sort((a,b) => {
+      const na = parseInt(a,10), nb = parseInt(b,10);
+      if (!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
+      return a.localeCompare(b, 'ko');
+    });
+  }
+  // 학교(+학년)에 실제 등록된 학년/반만 옵션으로 채움 (하드코딩 범위 없음)
+  function populateGradeClass(prefix) {
+    const schoolName = document.getElementById(prefix+'School').value.trim();
+    const gradeSel = document.getElementById(prefix+'Grade');
+    const classSel = document.getElementById(prefix+'Class');
+    if (!gradeSel || !classSel) return;
+    const prevGrade = gradeSel.value, prevClass = classSel.value;
+    const inSchool = _students.filter(s => !schoolName || (s.schoolName||'').trim() === schoolName);
+    const grades = distinctSortedNv(inSchool.map(s => s.grade));
+    gradeSel.innerHTML = grades.length ? grades.map(g => `<option value="${g}">${g}학년</option>`).join('') : '<option value="">학년 없음</option>';
+    if (grades.includes(prevGrade)) gradeSel.value = prevGrade;
+    const grade = gradeSel.value;
+    const classes = distinctSortedNv(inSchool.filter(s => !grade || nv(s.grade) === grade).map(s => s.class));
+    classSel.innerHTML = classes.length ? classes.map(c => `<option value="${c}">${c}반</option>`).join('') : '<option value="">반 없음</option>';
+    if (classes.includes(prevClass)) classSel.value = prevClass;
+  }
   async function loadSchools() {
     try {
       const snap = await getDocs(collection(db, 'students'));
-      const schools = [...new Set(snap.docs.map(d => d.data().schoolName).filter(Boolean))].sort();
+      _students = snap.docs.map(d => d.data());
+      const schools = [...new Set(_students.map(s => s.schoolName).filter(Boolean))].sort();
       ['loginSchool','joinSchool'].forEach(id => {
         const sel = document.getElementById(id);
         if (!sel) return;
@@ -562,9 +587,15 @@
         schools.forEach(s => { const o = document.createElement('option'); o.value = s; o.textContent = s; sel.appendChild(o); });
         if (prev) sel.value = prev;
       });
+      populateGradeClass('login');
+      populateGradeClass('join');
     } catch(e) { /* 그대로 */ }
   }
   loadSchools();
+  document.getElementById('loginSchool').addEventListener('change', () => populateGradeClass('login'));
+  document.getElementById('loginGrade').addEventListener('change', () => populateGradeClass('login'));
+  document.getElementById('joinSchool').addEventListener('change', () => populateGradeClass('join'));
+  document.getElementById('joinGrade').addEventListener('change', () => populateGradeClass('join'));
 
   // 로그인 번호 목록 동적 로드
   async function loadLoginNumbers() {
