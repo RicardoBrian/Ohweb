@@ -35,8 +35,7 @@
     }
     .tb-btn:hover { background: var(--glass-strong); }
     .tb-btn:active { transform: scale(0.95); }
-    .tb-btn.accent { background: var(--accent-grad); color: #fff; border-color: transparent; }
-    .tb-btn.accent:hover { filter: brightness(1.07); }
+    .tb-btn.icon-only { padding: 5px 9px; display: inline-flex; align-items: center; }
     .size-slider { width: 76px; accent-color: var(--accent); cursor: pointer; }
     .size-val { font-size: 0.72rem; font-weight: 700; color: var(--sub); min-width: 24px; text-align: right; }
     .trans-status { font-size: 0.7rem; color: var(--sub); white-space: nowrap; }
@@ -148,6 +147,18 @@
 </head>
 <body>
 
+<svg width="0" height="0" style="position:absolute;">
+  <defs>
+    <symbol id="ic-image" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="10" r="1.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 16.5 9.5 12l3 3 3.5-4 3.5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7"/><ellipse cx="12" cy="12" rx="3.6" ry="8.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="3.5" y1="12" x2="20.5" y2="12" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="ic-play" viewBox="0 0 24 24"><path d="M7 5.5 19 12 7 18.5Z" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-edit" viewBox="0 0 24 24"><path d="M15.5 5.5 18.5 8.5 8 19 4.5 19.5 5 16Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><line x1="13.7" y1="7.3" x2="16.7" y2="10.3" stroke="currentColor" stroke-width="1.7"/></symbol>
+    <symbol id="ic-refresh" viewBox="0 0 24 24"><path d="M5 12a7 7 0 0 1 12-4.9M19 12a7 7 0 0 1-12 4.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="17,3 17,7.5 12.5,7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><polyline points="7,21 7,16.5 11.5,16.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-expand" viewBox="0 0 24 24"><path d="M8 4H4v4M16 4h4v4M8 20H4v-4M16 20h4v-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-close" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  </defs>
+</svg>
+
   <!-- ── 툴바 ── -->
   <div class="toolbar" id="toolbar">
     <a href="admin.html" class="toolbar-brand">
@@ -175,18 +186,18 @@
     </div>
     <div class="tb-sep"></div>
 
-    <button class="tb-btn" onclick="document.getElementById('imgFile').click()">🖼 이미지</button>
+    <button class="tb-btn" onclick="document.getElementById('imgFile').click()"><svg width="14" height="14" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-image"/></svg>이미지</button>
     <input type="file" id="imgFile" accept="image/*" multiple style="display:none" onchange="addImages(this)">
     <div class="tb-sep"></div>
 
-    <button class="tb-btn" id="transBtn" onclick="doTranslate()">🌐 번역</button>
+    <button class="tb-btn" id="transBtn" onclick="doTranslate()"><svg width="14" height="14" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-globe"/></svg>번역</button>
     <span class="trans-status" id="tbTransStatus"></span>
     <div class="tb-sep"></div>
 
-    <button class="tb-btn accent" id="previewBtn" onclick="showView()">▶ 공지 보기</button>
-    <button class="tb-btn" id="editBtn" onclick="showEdit()" style="display:none">✏ 편집</button>
-    <button class="tb-btn" onclick="resetLayout()" id="resetBtn" style="display:none">↺ 레이아웃 초기화</button>
-    <button class="tb-btn" onclick="toggleFs()">⛶</button>
+    <button class="tb-btn" id="previewBtn" onclick="showView()"><svg width="13" height="13" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-play"/></svg>공지 보기</button>
+    <button class="tb-btn" id="editBtn" onclick="showEdit()" style="display:none"><svg width="13" height="13" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-edit"/></svg>편집</button>
+    <button class="tb-btn" onclick="resetLayout()" id="resetBtn" style="display:none"><svg width="13" height="13" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-refresh"/></svg>레이아웃 초기화</button>
+    <button class="tb-btn icon-only" title="전체화면" onclick="toggleFs()"><svg width="15" height="15"><use href="#ic-expand"/></svg></button>
     <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
   </div>
 
@@ -252,7 +263,7 @@
     }
     function renderImgStrip() {
       document.getElementById('imgStrip').innerHTML = images.map((img, i) =>
-        `<div class="img-thumb"><img src="${img.dataUrl}"><button class="img-thumb-del" onclick="removeImg(${i})">✕</button></div>`
+        `<div class="img-thumb"><img src="${img.dataUrl}"><button class="img-thumb-del" onclick="removeImg(${i})"><svg width="9" height="9"><use href="#ic-close"/></svg></button></div>`
       ).join('');
     }
     function removeImg(i) { images.splice(i, 1); renderImgStrip(); }
@@ -273,7 +284,7 @@
         zhVal = zh||''; ruVal = ru||'';
         document.getElementById('zhText').value = zhVal;
         document.getElementById('ruText').value = ruVal;
-        setStatus('✓ 완료'); setTimeout(()=>setStatus(''), 2000);
+        setStatus('완료'); setTimeout(()=>setStatus(''), 2000);
       } catch(e) { setStatus('번역 실패'); }
       btn.disabled = false;
     }
