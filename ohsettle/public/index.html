@@ -53,19 +53,19 @@
   .flex-row select.inp { flex: 1; }
 
   .list-item { background: var(--glass); border: 1px solid var(--border-card); border-radius: var(--radius-sm); padding: 14px 16px; margin-bottom: 8px; position: relative; }
-  .list-item.expense { border-left: 3px solid var(--accent); }
-  .list-item.transfer { border-left: 3px solid var(--success); }
-  .list-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; }
-  .list-name { font-weight: 700; font-size: 0.92rem; }
+  .list-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; gap: 8px; }
+  .list-name { font-weight: 700; font-size: 0.92rem; display: flex; align-items: center; gap: 6px; color: var(--text); }
+  .list-name .list-type-icon { color: var(--sub); flex-shrink: 0; }
   .list-amount { font-variant-numeric: tabular-nums; font-size: 0.92rem; font-weight: 700; }
   .list-meta { font-size: 0.76rem; color: var(--sub); line-height: 1.6; padding-right: 30px; }
   .list-del { position: absolute; right: 10px; bottom: 10px; }
 
-  .badge { font-size: 0.68rem; font-weight: 700; padding: 3px 10px; border-radius: 50px; }
-  .badge.pending { background: var(--danger-light); color: var(--danger); }
+  .badge { font-size: 0.68rem; font-weight: 700; padding: 3px 10px; border-radius: 50px; background: var(--glass); color: var(--sub); }
 
-  .summary-bar { background: var(--text); color: rgba(255,255,255,0.85); border-radius: var(--radius); padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; font-size: 0.85rem; }
-  .summary-bar strong { color: #fff; font-variant-numeric: tabular-nums; font-size: 1.05rem; }
+  .stats-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 18px; }
+  .stat-card { background: var(--glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border-card); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--highlight), var(--shadow); }
+  .stat-label { font-size: 0.68rem; font-weight: 700; color: var(--sub); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 4px; }
+  .stat-value { font-size: 1.3rem; font-weight: 900; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
 
   .balance-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--hairline); font-size: 0.88rem; }
   .balance-row:last-child { border-bottom: none; }
@@ -102,6 +102,7 @@
     <symbol id="ic-refresh" viewBox="0 0 24 24"><path d="M5 12a7 7 0 0 1 12-4.9M19 12a7 7 0 0 1-12 4.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="17,3 17,7.5 12.5,7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><polyline points="7,21 7,16.5 11.5,16.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="ic-close" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
     <symbol id="ic-exit" viewBox="0 0 24 24"><path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 8l4 4-4 4M19 12H9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-doc" viewBox="0 0 24 24"><path d="M7 3.5h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><line x1="8.5" y1="13" x2="15.5" y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="8.5" y1="16.5" x2="13" y2="16.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
   </defs>
 </svg>
 
@@ -149,9 +150,9 @@
   </nav>
 
   <div class="wrap">
-    <div class="summary-bar">
-      <span>총 지출</span>
-      <strong id="summaryTotal">₩0</strong>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-label">총 지출</div><div class="stat-value" id="summaryTotal">₩0</div></div>
+      <div class="stat-card"><div class="stat-label">참여자</div><div class="stat-value" id="summaryMembers">0<span style="font-size:0.75rem;font-weight:600;color:var(--sub);margin-left:2px;">명</span></div></div>
     </div>
 
     <div class="tabs">
@@ -259,12 +260,15 @@ document.getElementById('date_t').value = today();
 loadTrips();
 
 async function loadTrips() {
-  const snap = await getDocs(query(collection(db, 'settle_trips'), where('status', '==', 'approved')));
+  const snap = await getDocs(collection(db, 'settle_trips'));
   const sel = document.getElementById('tripSelect');
   sel.innerHTML = '<option value="">프로젝트를 선택하세요</option>';
   snap.docs.forEach(d => {
+    const data = d.data();
+    if (data.status === 'done') return;
     const o = document.createElement('option');
-    o.value = d.id; o.textContent = d.data().name;
+    o.value = d.id;
+    o.textContent = data.status === 'pending' ? `${data.name} (승인 대기)` : data.name;
     sel.appendChild(o);
   });
 }
@@ -416,6 +420,7 @@ window.refreshData = async () => {
 function updateSummaryBar() {
   const total = allDataCache.expenses.reduce((s, e) => s + Number(e.amount), 0);
   document.getElementById('summaryTotal').textContent = fmt(total);
+  document.getElementById('summaryMembers').innerHTML = `${tripMembers.length}<span style="font-size:0.75rem;font-weight:600;color:var(--sub);margin-left:2px;">명</span>`;
 }
 
 function renderList() {
@@ -431,13 +436,13 @@ function renderList() {
     if (item.type === 'expense') {
       const mem = item.memberData.includes(':') ? '(개별) ' + escHtml(item.memberData) : escHtml(item.memberData);
       return `<div class="list-item expense">
-        <div class="list-top"><span class="list-name">${escHtml(item.desc)}</span><span class="list-amount">${fmt(item.amount)}</span></div>
+        <div class="list-top"><span class="list-name"><svg width="14" height="14" class="list-type-icon"><use href="#ic-wallet"/></svg>${escHtml(item.desc)}</span><span class="list-amount">${fmt(item.amount)}</span></div>
         <div class="list-meta">${item.date} · ${escHtml(item.payer)} 결제<br>참여: ${mem}</div>
         <button class="icon-action danger list-del" title="삭제" data-type="expense" data-id="${item.id}"><svg width="15" height="15"><use href="#ic-trash"/></svg></button>
       </div>`;
     }
     return `<div class="list-item transfer">
-      <div class="list-top"><span class="list-name">송금</span><span class="list-amount">${fmt(item.amount)}</span></div>
+      <div class="list-top"><span class="list-name"><svg width="14" height="14" class="list-type-icon"><use href="#ic-swap"/></svg>송금</span><span class="list-amount">${fmt(item.amount)}</span></div>
       <div class="list-meta">${item.date}<br>${escHtml(item.sender)} → ${escHtml(item.receiver)}${item.memo ? ' · ' + escHtml(item.memo) : ''}</div>
       <button class="icon-action danger list-del" title="삭제" data-type="transfer" data-id="${item.id}"><svg width="15" height="15"><use href="#ic-trash"/></svg></button>
     </div>`;
@@ -545,9 +550,19 @@ window.showSettlement = () => {
   if (!hasAny) report += '정산할 내용이 없습니다.';
 
   const box = document.getElementById('resultArea');
-  box.innerHTML = `<div class="result-box">${escHtml(report)}</div>`;
+  box.innerHTML = `<div class="result-box">${escHtml(report)}</div>
+    <button class="btn mt8" style="width:100%;" onclick="copySettlement()"><svg width="15" height="15" style="vertical-align:-2px;margin-right:4px;"><use href="#ic-doc"/></svg>결과 복사하기</button>`;
+  box.dataset.report = report;
   box.classList.remove('hidden');
   box.scrollIntoView({ behavior: 'smooth' });
+};
+
+window.copySettlement = async () => {
+  const box = document.getElementById('resultArea');
+  try {
+    await navigator.clipboard.writeText(box.dataset.report || '');
+    toast('복사되었습니다.');
+  } catch (e) { toast('복사 실패: ' + e.message); }
 };
 
 // ── CSV 내보내기 ──
