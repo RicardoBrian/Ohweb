@@ -79,10 +79,11 @@
     .btn:hover { background: var(--glass-strong); box-shadow: var(--highlight), var(--shadow-md); }
     .btn:active { transform: scale(0.96); }
     .btn.accent {
-      background: rgba(42,92,230,0.82); border-color: rgba(100,140,255,0.5); color: #fff;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 20px rgba(42,92,230,0.35);
+      background: #1d1d1f; border-color: transparent; color: #fff;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), var(--shadow-md);
     }
-    .btn.accent:hover { background: rgba(42,92,230,0.95); box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 6px 24px rgba(42,92,230,0.45); }
+    body.dark .btn.accent { background: #f5f5f7; color: #1d1d1f; }
+    .btn.accent:hover { opacity: 0.88; }
     .btn.ghost { border-color: transparent; background: transparent; box-shadow: none; }
     .btn.ghost:hover { background: var(--glass); box-shadow: var(--highlight); }
     .btn.full { width: 100%; padding: 14px; font-size: 1rem; border-radius: var(--radius); }
@@ -123,8 +124,9 @@
     .modal-inp:last-of-type { margin-bottom:0; }
     .modal-inp:focus { border-color:rgba(42,92,230,0.55); }
     .modal-inp::placeholder { color:var(--sub); }
-    .btn-modal-save { width:100%; padding:12px; border-radius:var(--radius); border:1px solid rgba(100,140,255,0.5); background:rgba(42,92,230,0.82); color:#fff; font-family:inherit; font-size:0.95rem; font-weight:700; cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,0.3),0 4px 16px rgba(42,92,230,0.3); transition:background 0.2s; margin-top:14px; }
-    .btn-modal-save:hover { background:rgba(42,92,230,0.95); }
+    .btn-modal-save { width:100%; padding:12px; border-radius:var(--radius); border:none; background:#1d1d1f; color:#fff; font-family:inherit; font-size:0.95rem; font-weight:700; cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,0.08),var(--shadow-md); transition:opacity 0.2s; margin-top:14px; }
+    body.dark .btn-modal-save { background:#f5f5f7; color:#1d1d1f; }
+    .btn-modal-save:hover { opacity:0.88; }
     .btn-modal-save:disabled { opacity:0.6; cursor:not-allowed; }
     .modal-msg { font-size:0.82rem; font-weight:600; margin-top:10px; text-align:center; min-height:18px; }
     .modal-msg.ok { color:#22c55e; }
@@ -281,7 +283,7 @@
     .post-card:hover { box-shadow: var(--highlight), var(--shadow-md); transform: translateY(-3px); }
     .post-card.pinned-card { border-color: rgba(42,92,230,0.45); }
 
-    .pin-badge { font-size: 0.68rem; font-weight: 700; color: var(--accent); margin-bottom: 6px; display: inline-block; letter-spacing: 0.03em; }
+    .pin-badge { font-size: 0.68rem; font-weight: 700; color: var(--accent); margin-bottom: 6px; display: inline-flex; align-items: center; gap: 3px; letter-spacing: 0.03em; }
 
     .teacher-card {
       border-left: 3px solid var(--accent) !important;
@@ -336,11 +338,12 @@
     body.dark #loadingOverlay { background: rgba(0,0,0,0.5); }
     .qna-fab {
       position: fixed; bottom: 22px; right: 22px; z-index: 400;
-      width: 54px; height: 54px; border-radius: 50%; border: 1px solid var(--border-card);
-      background: var(--accent-grad); color: #fff; cursor: pointer; font-size: 1.4rem;
+      width: 54px; height: 54px; border-radius: 50%; border: none;
+      background: #1d1d1f; color: #fff; cursor: pointer;
       display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-md);
       text-decoration: none; transition: transform 0.15s;
     }
+    body.dark .qna-fab { background: #f5f5f7; color: #1d1d1f; }
     .qna-fab:hover { transform: translateY(-2px); }
     .qna-fab .badge { position: absolute; top: -3px; right: -3px; width: 14px; height: 14px; border-radius: 50%; background: #ff3b30; border: 2px solid var(--bg-elevated); display: none; }
     .qna-fab .badge.on { display: block; }
@@ -425,6 +428,21 @@
 </head>
 <body>
 
+<svg width="0" height="0" style="position:absolute;">
+  <defs>
+    <symbol id="ic-close" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7"/><ellipse cx="12" cy="12" rx="3.6" ry="8.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="3.5" y1="12" x2="20.5" y2="12" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="ic-user" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.6" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M4.5 20c0-3.6 3.4-6 7.5-6s7.5 2.4 7.5 6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="ic-exit" viewBox="0 0 24 24"><path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 8l4 4-4 4M19 12H9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-board" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><line x1="7" y1="12.5" x2="12" y2="12.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="9" y1="16" x2="6" y2="20.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="15" y1="16" x2="18" y2="20.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="ic-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><line x1="15.2" y1="15.2" x2="20.5" y2="20.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-chat" viewBox="0 0 24 24"><path d="M4 5.5h16a1 1 0 0 1 1 1V16a1 1 0 0 1-1 1H9l-4.5 4V17H4a1 1 0 0 1-1-1V6.5a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-check" viewBox="0 0 24 24"><polyline points="5,13 9.5,17.5 19,6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-heart" viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-9.6-9.3C.9 7.4 3 4 6.6 4c2 0 3.6 1.1 4.4 2.7C11.8 5.1 13.4 4 15.4 4 19 4 21.1 7.4 19.6 11.2 17.5 15.9 12 20.5 12 20.5Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-pin" viewBox="0 0 24 24"><path d="M12 2.5a5.5 5.5 0 0 1 5.5 5.5c0 3.8-5.5 13.5-5.5 13.5S6.5 11.8 6.5 8A5.5 5.5 0 0 1 12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="8" r="2" fill="currentColor"/></symbol>
+  </defs>
+</svg>
+
 <div id="loadingOverlay"><div class="spinner"></div></div>
 
 <div id="imageModal" class="img-modal" onclick="handleModalClick(event)">
@@ -456,7 +474,7 @@
 
 <!-- 러시아어 가상키보드 -->
 <div id="ruKeyboard">
-  <button class="kb-close" onmousedown="event.preventDefault()" onclick="closeKeyboard()">✕</button>
+  <button class="kb-close" onmousedown="event.preventDefault()" onclick="closeKeyboard()"><svg width="12" height="12"><use href="#ic-close"/></svg></button>
   <div id="kbRows"></div>
 </div>
 
@@ -464,7 +482,7 @@
   <div class="nav-logo" onclick="navLogoClick()"><img src="logo.png" alt="OHinfo"></div>
   <div class="nav-end">
     <div class="lang-globe" id="langGlobe">
-      <button class="lang-globe-btn" onclick="toggleLangDD()" title="언어">🌐</button>
+      <button class="lang-globe-btn" onclick="toggleLangDD()" title="언어"><svg width="16" height="16"><use href="#ic-globe"/></svg></button>
       <div class="lang-globe-dd hidden" id="langGlobeDD" onclick="event.stopPropagation()">
         <div class="lang-globe-item" onclick="setLanguage('ko');closeLangDD()"><span>한국어</span><span class="check" id="lck-ko"></span></div>
         <div class="lang-globe-item" onclick="setLanguage('zh');closeLangDD()"><span>中文</span><span class="check" id="lck-zh"></span></div>
@@ -476,9 +494,9 @@
       <div class="nav-avatar" id="navAvatar"></div>
       <div class="nav-user-name" id="navUserName"></div>
       <div class="user-dropdown hidden" id="userDropdown" onclick="event.stopPropagation()">
-        <div class="user-dropdown-item" onclick="openMyPage()">👤 마이페이지</div>
+        <div class="user-dropdown-item" onclick="openMyPage()"><svg width="15" height="15"><use href="#ic-user"/></svg> 마이페이지</div>
         <div class="user-dropdown-sep"></div>
-        <div class="user-dropdown-item danger" onclick="logout()">🚪 로그아웃</div>
+        <div class="user-dropdown-item danger" onclick="logout()"><svg width="15" height="15"><use href="#ic-exit"/></svg> 로그아웃</div>
       </div>
     </div>
     <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
@@ -521,7 +539,7 @@
     </div>
     <!-- 마스터용 수업 카드 그리드 -->
     <div id="step1Master" class="hidden" style="padding:24px 20px;max-width:960px;margin:0 auto;">
-      <div style="font-size:1.1rem;font-weight:800;margin-bottom:16px;">📌 전체 수업 목록</div>
+      <div style="font-size:1.1rem;font-weight:800;margin-bottom:16px;display:flex;align-items:center;gap:6px;"><svg width="17" height="17" style="color:var(--sub);"><use href="#ic-board"/></svg>전체 수업 목록</div>
       <div id="masterClassGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;"></div>
     </div>
   </div>
@@ -584,7 +602,7 @@
       <main class="board-main">
         <div class="toolbar">
           <div class="search-wrap">
-            <span class="search-icon">🔍</span>
+            <span class="search-icon"><svg width="15" height="15"><use href="#ic-search"/></svg></span>
             <input class="inp" id="searchInput" type="text" placeholder="검색..." oninput="filterPosts()">
           </div>
           <div class="sort-group">
@@ -637,7 +655,7 @@
 <!-- 마이페이지 모달 -->
 <div class="modal-overlay hidden" id="myPageOverlay" onclick="closeMyPage()">
   <div class="modal-card" onclick="event.stopPropagation()">
-    <button class="modal-close" onclick="closeMyPage()">✕</button>
+    <button class="modal-close" onclick="closeMyPage()"><svg width="13" height="13"><use href="#ic-close"/></svg></button>
     <div class="modal-title">마이페이지</div>
     <div class="photo-section">
       <div class="photo-preview" id="mpPhotoPreview"></div>
@@ -655,7 +673,7 @@
   </div>
 </div>
 
-<a class="qna-fab" href="qna.html">💬<span class="badge" id="qnaBadge"></span><span class="qna-tip">정보 관련 질문이나 웹사이트 버그가 있으면 알려주세요.</span></a>
+<a class="qna-fab" href="qna.html"><svg width="24" height="24"><use href="#ic-chat"/></svg><span class="badge" id="qnaBadge"></span><span class="qna-tip">정보 관련 질문이나 웹사이트 버그가 있으면 알려주세요.</span></a>
 
 <script type="module">
   import { db } from './firebase-config.js';
@@ -1000,7 +1018,7 @@
   function updateLangCheck(lang) {
     ['ko','zh','ru','en'].forEach(l => {
       const el = document.getElementById('lck-'+l);
-      if (el) el.innerText = l === lang ? '✓' : '';
+      if (el) el.innerHTML = l === lang ? '<svg width="13" height="13"><use href="#ic-check"/></svg>' : '';
       document.getElementById('m-btn-'+l)?.classList.toggle('active', l===lang);
     });
   }
@@ -1039,8 +1057,8 @@
       else if (inp.id === 'adm_popup') { lbl.innerText = t.admPopup; inp.placeholder = t.admPopupPh; }
     });
     // nav user dropdown
-    const ddMy = document.querySelector('#userDropdown .user-dropdown-item:first-child'); if (ddMy) ddMy.innerHTML = `👤 ${t.mypage}`;
-    const ddOut = document.querySelector('#userDropdown .user-dropdown-item.danger'); if (ddOut) ddOut.innerHTML = `🚪 ${t.logout}`;
+    const ddMy = document.querySelector('#userDropdown .user-dropdown-item:first-child'); if (ddMy) ddMy.innerHTML = `<svg width="15" height="15"><use href="#ic-user"/></svg> ${t.mypage}`;
+    const ddOut = document.querySelector('#userDropdown .user-dropdown-item.danger'); if (ddOut) ddOut.innerHTML = `<svg width="15" height="15"><use href="#ic-exit"/></svg> ${t.logout}`;
     // notice popup
     const popTitle = document.querySelector('#popupOverlay h2'); if (popTitle) popTitle.innerText = t.noticeTitle;
     const popOk = document.querySelector('#popupOverlay .btn.accent[onclick="closePopup()"]'); if (popOk) popOk.innerText = t.noticeOk;
@@ -1098,7 +1116,7 @@
         <button onclick="enterMasterClass('${(c.name||'').replace(/'/g,"\\'")}','${(c.grade||'').replace(/'/g,"\\'")}','${(c.group||'').replace(/'/g,"\\'")}')"
           style="background:var(--glass-strong);border:1px solid var(--border-card);border-radius:16px;padding:18px 16px;text-align:left;cursor:pointer;transition:all 0.2s;font-family:inherit;"
           onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border-card)'">
-          <div style="font-weight:800;font-size:0.97rem;margin-bottom:4px;">📌 ${c.name||'(이름없음)'}</div>
+          <div style="font-weight:800;font-size:0.97rem;margin-bottom:4px;display:flex;align-items:center;gap:5px;"><svg width="14" height="14" style="color:var(--sub);flex-shrink:0;"><use href="#ic-board"/></svg>${c.name||'(이름없음)'}</div>
           <div style="font-size:0.78rem;color:var(--sub);">${c.schoolName||''} ${c.grade||''}학년 ${c.group||''}반</div>
         </button>`).join('');
     } catch(e) { grid.innerHTML = `<div style="color:#ef4444;font-size:0.82rem;">오류: ${e.message}</div>`; }
@@ -1225,13 +1243,13 @@
       const hasLiked = localStorage.getItem('voted_'+p.id);
       const _srch = [p.subject,p.subKo,p.message,p.msgKo,p.name].filter(Boolean).join(' ').replace(/"/g,'&quot;');
       html += `<div class="post-card ${p.pinned?'pinned-card':''}" data-id="${p.id}" data-search="${_srch}">
-        ${p.pinned ? '<div class="pin-badge">📌 고정</div>' : ''}
+        ${p.pinned ? '<div class="pin-badge"><svg width="11" height="11"><use href="#ic-pin"/></svg> 고정</div>' : ''}
         ${p.subject ? `<div class="post-sub">${p.subject}</div>` : ''}
         ${p.message ? `<div class="post-msg">${fmtMsg(p.message)}</div>` : (!p.subject ? `<div class="post-msg" style="color:var(--sub);font-style:italic;">(내용 없음)</div>` : '')}
         ${buildSlider(p.imgs, p.id)}
         <div class="post-meta">
           <div class="like-area ${hasLiked?'voted':''}" onclick="toggleLikeUI('${p.id}',this)">
-            <span>❤</span><span class="like-count" style="font-weight:700;">${p.likes}</span>
+            <span><svg width="14" height="14"><use href="#ic-heart"/></svg></span><span class="like-count" style="font-weight:700;">${p.likes}</span>
           </div>
           <div class="action-links">
             <a class="pin-link ${p.pinned?'is-pinned':''}" onclick="handlePinClick('${p.id}')">${uiText[currentLang]?.pin||uiText.ko.pin}</a>
