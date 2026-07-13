@@ -56,6 +56,12 @@
   .cta:disabled { opacity: 0.4; cursor: default; }
   .link-btn { display: block; margin: 18px auto 0; background: none; border: none; font-family: inherit; font-size: 0.88rem; font-weight: 600; color: var(--sub); cursor: pointer; }
   .link-btn:hover { color: var(--text); }
+  .home-foot {
+    position: fixed; right: 18px; bottom: 16px; z-index: 100;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 1px;
+    font-size: 0.68rem; color: var(--text-3, #a0a4b0); text-align: right; line-height: 1.5;
+    pointer-events: none;
+  }
 
   /* ── 메인: 히어로 숫자 ── */
   .total-hero { text-align: center; padding: 26px 0 24px; }
@@ -176,8 +182,8 @@
   </nav>
   <div class="wrap">
     <div class="hero">
-      <div class="hero-logo">정산 매니저</div>
-      <p class="hero-desc">모임 지출을 함께 기록하고<br>깔끔하게 정산하세요</p>
+      <div class="hero-logo">OHsettle</div>
+      <p class="hero-desc">지출을 함께 기록하고 정산하세요.</p>
     </div>
 
     <div id="loginSection">
@@ -217,6 +223,10 @@
       <button class="link-btn" onclick="toggleRegister(false)">돌아가기</button>
     </div>
   </div>
+  <footer class="home-foot">
+    <span>오범석과 친구들을 위한 공간입니다.</span>
+    <span>공용 프로젝트이니 개인정보 입력에 유의하세요.</span>
+  </footer>
 </div>
 
 <!-- 메인 -->
