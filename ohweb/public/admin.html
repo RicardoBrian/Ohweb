@@ -2796,7 +2796,7 @@
       toast('가져오기 완료', 'success');
       await loadExamList();
     } catch(e) {
-      log.push('❌ 오류: ' + e.message);
+      log.push('[오류] ' + e.message);
       document.getElementById('lg_log').innerText = log.join('\n');
       toast('가져오기 중 오류 발생', 'error');
     }
@@ -2941,7 +2941,7 @@
   <div style="background:var(--card-bg, #fff);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--border);border-radius:22px;box-shadow:var(--shadow-md);width:min(600px,94vw);max-height:80vh;display:flex;flex-direction:column;overflow:hidden;">
     <div style="padding:20px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
       <div>
-        <div style="font-size:1.05rem;font-weight:900;">🌐 일괄 번역</div>
+        <div style="font-size:1.05rem;font-weight:900;display:flex;align-items:center;gap:6px;"><svg width="16" height="16" style="color:var(--sub);"><use href="#ic-globe"/></svg>일괄 번역</div>
         <div style="font-size:0.8rem;color:var(--sub);margin-top:2px;" id="txClassName"></div>
       </div>
       <button onclick="closeTranslateModal()" style="background:none;border:none;cursor:pointer;color:var(--sub);line-height:1;display:flex;"><svg width="16" height="16"><use href="#ic-close"/></svg></button>
