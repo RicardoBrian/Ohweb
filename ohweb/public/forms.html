@@ -114,6 +114,17 @@
     .btn.danger { color: #ef4444; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.08); box-shadow: none; }
     .btn.sm { padding: 5px 12px; font-size: 0.76rem; }
 
+    /* ICON ACTION — 텍스트 없이 아이콘만, 색은 상태(위험)에만 예외 */
+    .icon-action {
+      width: 32px; height: 32px; border-radius: 50%; border: none; background: none; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; color: var(--sub); flex-shrink: 0;
+      transition: background 0.15s, color 0.15s;
+    }
+    .icon-action:hover { background: var(--glass); color: var(--text); }
+    .icon-action.danger { color: #ef4444; }
+    .icon-action.danger:hover { background: rgba(239,68,68,0.1); color: #ef4444; }
+    .icon-action svg { width: 17px; height: 17px; }
+
     /* GROUP (학생별) */
     .group { margin-bottom: 14px; }
     .group-head {
@@ -204,6 +215,25 @@
 </head>
 <body>
 
+<svg width="0" height="0" style="position:absolute;">
+  <defs>
+    <symbol id="ic-school" viewBox="0 0 24 24"><path d="M12 4 3 8.5 12 13l9-4.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 10.8V16c0 1.2 2.2 3 5 3s5-1.8 5-3v-5.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><line x1="20" y1="8.5" x2="20" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-people" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="17" cy="9" r="2.4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M14.8 19c.2-2.3 1.9-4 3.9-4.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="ic-board" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><line x1="7" y1="12.5" x2="12" y2="12.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="9" y1="16" x2="6" y2="20.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="15" y1="16" x2="18" y2="20.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="ic-clipboard" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="9" y="3.3" width="6" height="3.2" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"/><line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="8" y1="16" x2="14" y2="16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="ic-doc" viewBox="0 0 24 24"><path d="M7 3.5h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><line x1="8.5" y1="13" x2="15.5" y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="8.5" y1="16.5" x2="13" y2="16.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="ic-chat" viewBox="0 0 24 24"><path d="M4 5.5h16a1 1 0 0 1 1 1V16a1 1 0 0 1-1 1H9l-4.5 4V17H4a1 1 0 0 1-1-1V6.5a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="4" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="4" y="13" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="13" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+    <symbol id="ic-link" viewBox="0 0 24 24"><circle cx="7" cy="12" r="3.4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="17" cy="12" r="3.4" fill="none" stroke="currentColor" stroke-width="1.8"/><line x1="10" y1="12" x2="14" y2="12" stroke="currentColor" stroke-width="1.8"/></symbol>
+    <symbol id="ic-download" viewBox="0 0 24 24"><line x1="12" y1="4" x2="12" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="7,10 12,15 17,10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><line x1="5" y1="19" x2="19" y2="19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-chart" viewBox="0 0 24 24"><line x1="6" y1="19" x2="6" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="19" x2="12" y2="7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="18" y1="19" x2="18" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="ic-lock" viewBox="0 0 24 24"><rect x="5.5" y="11" width="13" height="9.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="15.3" r="1.3" fill="currentColor"/></symbol>
+    <symbol id="ic-unlock" viewBox="0 0 24 24"><rect x="5.5" y="11" width="13" height="9.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8.5 11V8a3.5 3.5 0 0 1 6.7-2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="15.3" r="1.3" fill="currentColor"/></symbol>
+    <symbol id="ic-trash" viewBox="0 0 24 24"><line x1="5" y1="7" x2="19" y2="7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8 7V5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M7 7l1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><line x1="10" y1="11" x2="10" y2="17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="14" y1="11" x2="14" y2="17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="ic-refresh" viewBox="0 0 24 24"><path d="M5 12a7 7 0 0 1 12-4.9M19 12a7 7 0 0 1-12 4.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="17,3 17,7.5 12.5,7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><polyline points="7,21 7,16.5 11.5,16.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
 <nav class="nav">
   <a href="admin.html" class="nav-brand"><img src="logo.png" alt="OHweb"></a>
   <div style="flex:1"></div>
@@ -221,13 +251,13 @@
       <button class="app-modal-x" onclick="closeAppModal()">✕</button>
     </div>
     <div class="app-modal-grid">
-      <button class="app-modal-item" onclick="location.href='admin.html#schools'"><span class="app-modal-icon">🏫</span><span>학교</span></button>
-      <button class="app-modal-item" onclick="location.href='admin.html#students'"><span class="app-modal-icon">👥</span><span>학생</span></button>
-      <button class="app-modal-item" onclick="location.href='admin.html#paddlet'"><span class="app-modal-icon">📌</span><span>정보 게시판</span></button>
-      <button class="app-modal-item" onclick="location.href='admin.html#exam'"><span class="app-modal-icon">📋</span><span>시험</span></button>
-      <button class="app-modal-item" onclick="closeAppModal()"><span class="app-modal-icon">📝</span><span>설문지</span></button>
-      <button class="app-modal-item" onclick="location.href='messages.html'"><span class="app-modal-icon">💬</span><span>학생 질문</span></button>
-      <button class="app-modal-item" onclick="location.href='admin.html#apps'"><span class="app-modal-icon">📱</span><span>앱 설정</span></button>
+      <button class="app-modal-item" onclick="location.href='admin.html#schools'"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-school"/></svg></span><span>학교</span></button>
+      <button class="app-modal-item" onclick="location.href='admin.html#students'"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-people"/></svg></span><span>학생</span></button>
+      <button class="app-modal-item" onclick="location.href='admin.html#paddlet'"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-board"/></svg></span><span>정보 게시판</span></button>
+      <button class="app-modal-item" onclick="location.href='admin.html#exam'"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-clipboard"/></svg></span><span>시험</span></button>
+      <button class="app-modal-item" onclick="closeAppModal()"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-doc"/></svg></span><span>설문지</span></button>
+      <button class="app-modal-item" onclick="location.href='messages.html'"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-chat"/></svg></span><span>학생 질문</span></button>
+      <button class="app-modal-item" onclick="location.href='admin.html#apps'"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-grid"/></svg></span><span>앱 설정</span></button>
     </div>
   </div>
 </div>
@@ -256,10 +286,10 @@
 
   <div class="toolbar" style="justify-content:space-between;">
     <div class="seg" id="viewSeg">
-      <button class="on" data-view="group" onclick="setView('group')">👥 학생별</button>
-      <button data-view="recent" onclick="setView('recent')">🕒 최신순</button>
+      <button class="on" data-view="group" onclick="setView('group')">학생별</button>
+      <button data-view="recent" onclick="setView('recent')">최신순</button>
     </div>
-    <button class="btn sm" onclick="reload()">↻ 새로고침</button>
+    <button class="icon-action" title="새로고침" onclick="reload()"><svg><use href="#ic-refresh"/></svg></button>
   </div>
 
   <div id="surveyList"><div class="loading-state">설문 목록 불러오는 중…</div></div>
@@ -473,14 +503,14 @@ function buildItem(f) {
       <span class="survey-title">${escHtml(safeTitle(f.title))}</span>
       <span class="badge ${st.cls}">${st.text}</span>
       <span class="badge responses">응답 ${f._respCount}</span>
-      <span class="survey-meta">🧑 ${escHtml(ownerLabel(f))} · ${date}</span>
+      <span class="survey-meta">${escHtml(ownerLabel(f))} · ${date}</span>
     </div>
     <div class="survey-actions">
-      <button class="btn sm" onclick="copyLink('${f.id}')">🔗 링크</button>
-      <button class="btn sm" onclick="togglePanel('${f.id}')">📊 응답 보기</button>
-      <button class="btn sm" onclick="exportCsv('${f.id}')">⬇️ CSV</button>
-      <button class="btn sm" onclick="toggleStatus('${f.id}','${f.status || 'open'}')">${(f.status||'open')==='closed'?'🔓 공개로':'🔒 마감'}</button>
-      <button class="btn sm danger" onclick="deleteSurvey('${f.id}')">🗑️ 삭제</button>
+      <button class="icon-action" title="링크 복사" onclick="copyLink('${f.id}')"><svg><use href="#ic-link"/></svg></button>
+      <button class="icon-action" title="응답 보기" onclick="togglePanel('${f.id}')"><svg><use href="#ic-chart"/></svg></button>
+      <button class="icon-action" title="CSV 내보내기" onclick="exportCsv('${f.id}')"><svg><use href="#ic-download"/></svg></button>
+      <button class="icon-action" title="${(f.status||'open')==='closed'?'공개로 전환':'마감하기'}" onclick="toggleStatus('${f.id}','${f.status || 'open'}')"><svg><use href="#${(f.status||'open')==='closed'?'ic-unlock':'ic-lock'}"/></svg></button>
+      <button class="icon-action danger" title="삭제" onclick="deleteSurvey('${f.id}')"><svg><use href="#ic-trash"/></svg></button>
     </div>
     <div class="response-panel hidden" id="panel-${f.id}"></div>
   </div>`;
