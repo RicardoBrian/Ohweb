@@ -49,8 +49,9 @@
     }
     .btn:hover { background: var(--glass-strong); box-shadow: var(--highlight), var(--shadow-md); }
     .btn:active { transform: scale(0.96); }
-    .btn.accent { background: rgba(42,92,230,0.82); border-color: rgba(100,140,255,0.5); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 20px rgba(42,92,230,0.35); }
-    .btn.accent:hover { background: rgba(42,92,230,0.95); }
+    .btn.accent { background: #1d1d1f; border-color: transparent; color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), var(--shadow-md); }
+    body.dark .btn.accent { background: #f5f5f7; color: #1d1d1f; }
+    .btn.accent:hover { opacity: 0.88; }
     .btn.ghost { border-color: transparent; background: transparent; box-shadow: none; }
     .btn.full { width: 100%; padding: 14px; font-size: 1rem; border-radius: var(--radius); }
     .btn.lg { padding: 13px 32px; font-size: 1rem; }
@@ -187,11 +188,12 @@
     body.dark #loadingOverlay { background: rgba(0,0,0,0.5); }
     .qna-fab {
       position: fixed; bottom: 22px; right: 22px; z-index: 400;
-      width: 54px; height: 54px; border-radius: 50%; border: 1px solid var(--border-card);
-      background: var(--accent-grad); color: #fff; cursor: pointer; font-size: 1.4rem;
+      width: 54px; height: 54px; border-radius: 50%; border: none;
+      background: #1d1d1f; color: #fff; cursor: pointer;
       display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-md);
       text-decoration: none; transition: transform 0.15s;
     }
+    body.dark .qna-fab { background: #f5f5f7; color: #1d1d1f; }
     .qna-fab:hover { transform: translateY(-2px); }
     .qna-fab .badge { position: absolute; top: -3px; right: -3px; width: 14px; height: 14px; border-radius: 50%; background: #ff3b30; border: 2px solid var(--bg-elevated); display: none; }
     .qna-fab .badge.on { display: block; }
@@ -244,8 +246,9 @@
     .modal-inp:last-of-type { margin-bottom:0; }
     .modal-inp:focus { border-color:rgba(42,92,230,0.55); }
     .modal-inp::placeholder { color:var(--sub); }
-    .btn-modal-save { width:100%; padding:12px; border-radius:var(--radius); border:1px solid rgba(100,140,255,0.5); background:rgba(42,92,230,0.82); color:#fff; font-family:inherit; font-size:0.95rem; font-weight:700; cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,0.3),0 4px 16px rgba(42,92,230,0.3); transition:background 0.2s; margin-top:14px; }
-    .btn-modal-save:hover { background:rgba(42,92,230,0.95); }
+    .btn-modal-save { width:100%; padding:12px; border-radius:var(--radius); border:none; background:#1d1d1f; color:#fff; font-family:inherit; font-size:0.95rem; font-weight:700; cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,0.08),var(--shadow-md); transition:opacity 0.2s; margin-top:14px; }
+    body.dark .btn-modal-save { background:#f5f5f7; color:#1d1d1f; }
+    .btn-modal-save:hover { opacity:0.88; }
     .btn-modal-save:disabled { opacity:0.6; cursor:not-allowed; }
     .modal-msg { font-size:0.82rem; font-weight:600; margin-top:10px; text-align:center; min-height:18px; }
     .modal-msg.ok { color:#22c55e; }
@@ -274,6 +277,23 @@
 </head>
 <body>
 
+<svg width="0" height="0" style="position:absolute;">
+  <defs>
+    <symbol id="ic-close" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7"/><ellipse cx="12" cy="12" rx="3.6" ry="8.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="3.5" y1="12" x2="20.5" y2="12" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="ic-user" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.6" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M4.5 20c0-3.6 3.4-6 7.5-6s7.5 2.4 7.5 6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="ic-home" viewBox="0 0 24 24"><path d="M4 11.5 12 4l8 7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-clipboard" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="9" y="3.3" width="6" height="3.2" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"/><line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="8" y1="16" x2="14" y2="16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="ic-chat" viewBox="0 0 24 24"><path d="M4 5.5h16a1 1 0 0 1 1 1V16a1 1 0 0 1-1 1H9l-4.5 4V17H4a1 1 0 0 1-1-1V6.5a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-check" viewBox="0 0 24 24"><polyline points="5,13 9.5,17.5 19,6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-alert" viewBox="0 0 24 24"><path d="M12 3.5 21 19.5H3Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><line x1="12" y1="9.5" x2="12" y2="14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></symbol>
+    <symbol id="ic-trophy" viewBox="0 0 24 24"><path d="M7 4h10v5a5 5 0 0 1-10 0Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M7 5H4v2a3 3 0 0 0 3 3M17 5h3v2a3 3 0 0 1-3 3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="12" y1="14" x2="12" y2="18" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="8" y1="20.5" x2="16" y2="20.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="12" y1="18" x2="12" y2="20.5" stroke="currentColor" stroke-width="1.7"/></symbol>
+    <symbol id="ic-star" viewBox="0 0 24 24"><path d="M12 3.5 14.6 9 20.5 9.8 16.2 13.8 17.3 19.7 12 16.8 6.7 19.7 7.8 13.8 3.5 9.8 9.4 9Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-book" viewBox="0 0 24 24"><path d="M4 5.5a2 2 0 0 1 2-2h6v17H6a2 2 0 0 1-2-2Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M20 5.5a2 2 0 0 0-2-2h-6v17h6a2 2 0 0 0 2-2Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-flag" viewBox="0 0 24 24"><path d="M6 3v18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M6 4.5h11.5L14.5 9l3 4.5H6Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
 <div id="loadingOverlay"><div class="spinner"></div></div>
 <div id="alertBanner" class="alert-banner"></div>
 
@@ -283,7 +303,7 @@
   </div>
   <div class="nav-right" id="navRight">
     <div class="lang-globe" id="langGlobe">
-      <button class="lang-globe-btn" onclick="toggleLangDD()" title="언어">🌐</button>
+      <button class="lang-globe-btn" onclick="toggleLangDD()" title="언어"><svg width="16" height="16"><use href="#ic-globe"/></svg></button>
       <div class="lang-globe-dd hidden" id="langGlobeDD" onclick="event.stopPropagation()">
         <div class="lang-globe-item" onclick="setLang('ko');closeLangDD()"><span>한국어</span><span class="check" id="lck-ko"></span></div>
         <div class="lang-globe-item" onclick="setLang('zh');closeLangDD()"><span>中文</span><span class="check" id="lck-zh"></span></div>
@@ -296,9 +316,9 @@
       <div class="nav-avatar" id="navAvatar"></div>
       <div class="nav-user-name" id="navUserName"></div>
       <div class="user-dropdown hidden" id="userDropdown" onclick="event.stopPropagation()">
-        <div class="user-dropdown-item" onclick="openMyPage()">👤 마이페이지</div>
+        <div class="user-dropdown-item" onclick="openMyPage()"><svg width="15" height="15"><use href="#ic-user"/></svg> 마이페이지</div>
         <div class="user-dropdown-sep"></div>
-        <div class="user-dropdown-item danger" onclick="goHome()">🏠 홈으로</div>
+        <div class="user-dropdown-item danger" onclick="goHome()"><svg width="15" height="15"><use href="#ic-home"/></svg> 홈으로</div>
       </div>
     </div>
     <button class="dark-toggle" onclick="toggleDark()"></button>
@@ -309,7 +329,7 @@
 <div id="step0">
   <div class="center-wrap">
     <div class="login-card">
-      <h1 id="ui-title0">📋 시험 목록</h1>
+      <h1 style="display:flex;align-items:center;gap:7px;justify-content:center;"><svg width="19" height="19" style="color:var(--sub);"><use href="#ic-clipboard"/></svg><span id="ui-title0">시험 목록</span></h1>
       <div class="info-box" id="sessionInfo"></div>
       <div id="examListArea" style="margin:14px 0;"></div>
       <div style="margin-top:16px;text-align:center;">
@@ -342,7 +362,7 @@
 <div id="step3" class="hidden">
   <div class="exam-wrap">
     <div class="card result-card">
-      <div id="resultEmoji" style="font-size:3rem;margin-bottom:8px;">🎉</div>
+      <div id="resultEmoji" style="margin-bottom:8px;"><svg width="46" height="46"><use href="#ic-star"/></svg></div>
       <div class="result-score" id="resultScore">0</div>
       <div class="result-total" id="resultTotal"></div>
       <div id="resultDetails" class="result-items"></div>
@@ -354,7 +374,7 @@
 <!-- 마이페이지 모달 -->
 <div class="modal-overlay hidden" id="myPageOverlay" onclick="closeMyPage()">
   <div class="modal-card" onclick="event.stopPropagation()">
-    <button class="modal-close" onclick="closeMyPage()">✕</button>
+    <button class="modal-close" onclick="closeMyPage()"><svg width="13" height="13"><use href="#ic-close"/></svg></button>
     <div class="modal-title">마이페이지</div>
     <div class="photo-section">
       <div class="photo-preview" id="mpPhotoPreview"></div>
@@ -372,7 +392,7 @@
   </div>
 </div>
 
-<a class="qna-fab" href="qna.html">💬<span class="badge" id="qnaBadge"></span><span class="qna-tip">정보 관련 질문이나 웹사이트 버그가 있으면 알려주세요.</span></a>
+<a class="qna-fab" href="qna.html"><svg width="24" height="24"><use href="#ic-chat"/></svg><span class="badge" id="qnaBadge"></span><span class="qna-tip">정보 관련 질문이나 웹사이트 버그가 있으면 알려주세요.</span></a>
 
 <script type="module">
 import { db } from './firebase-config.js';
@@ -486,8 +506,8 @@ let pyodideLoading = false;
 
 const UI = {
   ko: {
-    title:'📋 시험', sub:'선생님이 알려주신 시험 코드를 입력하세요.', codeLabel:'시험 코드', enter:'입장', back:'← 홈으로', submit:'제출하기', alertInfo:'이탈 감지', run:'실행', running:'실행 중...', noSession:'세션이 없습니다. 먼저 로그인하세요.',
-    examList:'📋 시험 목록', loading:'불러오는 중...', noExams:'배정된 시험이 없습니다.', target:'대상', submitted:'✓ 제출완료', pts:'점', viewResult:'결과 보기', enterBtn:'입장 →',
+    title:'시험', sub:'선생님이 알려주신 시험 코드를 입력하세요.', codeLabel:'시험 코드', enter:'입장', back:'← 홈으로', submit:'제출하기', alertInfo:'이탈 감지', run:'실행', running:'실행 중...', noSession:'세션이 없습니다. 먼저 로그인하세요.',
+    examList:'시험 목록', loading:'불러오는 중...', noExams:'배정된 시험이 없습니다.', target:'대상', submitted:'제출완료', pts:'점', viewResult:'결과 보기', enterBtn:'입장 →',
     resultNotFound:'결과를 찾을 수 없습니다.', errPrefix:'오류: ', submitErr:'제출 오류: ',
     resultHome:'홈으로', pts2:'점', pct:'%',
     mypage:'마이페이지', home:'홈으로',
@@ -500,8 +520,8 @@ const UI = {
     sortNew:'최신순', sortLike:'인기순',
   },
   zh: {
-    title:'📋 考试', sub:'请输入老师告知的考试代码。', codeLabel:'考试代码', enter:'进入', back:'← 返回主页', submit:'提交', alertInfo:'切换检测', run:'运行', running:'运行中...', noSession:'未登录。请先登录。',
-    examList:'📋 考试列表', loading:'加载中...', noExams:'没有分配的考试。', target:'对象', submitted:'✓ 已提交', pts:'分', viewResult:'查看结果', enterBtn:'进入 →',
+    title:'考试', sub:'请输入老师告知的考试代码。', codeLabel:'考试代码', enter:'进入', back:'← 返回主页', submit:'提交', alertInfo:'切换检测', run:'运行', running:'运行中...', noSession:'未登录。请先登录。',
+    examList:'考试列表', loading:'加载中...', noExams:'没有分配的考试。', target:'对象', submitted:'已提交', pts:'分', viewResult:'查看结果', enterBtn:'进入 →',
     resultNotFound:'找不到结果。', errPrefix:'错误: ', submitErr:'提交错误: ',
     resultHome:'返回主页', pts2:'分', pct:'%',
     mypage:'我的页面', home:'返回主页',
@@ -514,8 +534,8 @@ const UI = {
     sortNew:'最新', sortLike:'热门',
   },
   ru: {
-    title:'📋 Тест', sub:'Введите код теста, который сообщил учитель.', codeLabel:'Код теста', enter:'Войти', back:'← На главную', submit:'Отправить', alertInfo:'Обнаружений', run:'Запуск', running:'Запуск...', noSession:'Сессия не найдена. Пожалуйста, войдите.',
-    examList:'📋 Список тестов', loading:'Загрузка...', noExams:'Нет назначенных тестов.', target:'для', submitted:'✓ Сдано', pts:'б.', viewResult:'Результат', enterBtn:'Войти →',
+    title:'Тест', sub:'Введите код теста, который сообщил учитель.', codeLabel:'Код теста', enter:'Войти', back:'← На главную', submit:'Отправить', alertInfo:'Обнаружений', run:'Запуск', running:'Запуск...', noSession:'Сессия не найдена. Пожалуйста, войдите.',
+    examList:'Список тестов', loading:'Загрузка...', noExams:'Нет назначенных тестов.', target:'для', submitted:'Сдано', pts:'б.', viewResult:'Результат', enterBtn:'Войти →',
     resultNotFound:'Результат не найден.', errPrefix:'Ошибка: ', submitErr:'Ошибка отправки: ',
     resultHome:'На главную', pts2:'б.', pct:'%',
     mypage:'Мой профиль', home:'На главную',
@@ -528,8 +548,8 @@ const UI = {
     sortNew:'Новые', sortLike:'Популярные',
   },
   en: {
-    title:'📋 Exam', sub:'Enter the exam code provided by your teacher.', codeLabel:'Exam Code', enter:'Enter', back:'← Home', submit:'Submit', alertInfo:'Tab switches', run:'Run', running:'Running...', noSession:'No session found. Please log in first.',
-    examList:'📋 Exam List', loading:'Loading...', noExams:'No exams assigned.', target:'for', submitted:'✓ Submitted', pts:'pts', viewResult:'View Result', enterBtn:'Enter →',
+    title:'Exam', sub:'Enter the exam code provided by your teacher.', codeLabel:'Exam Code', enter:'Enter', back:'← Home', submit:'Submit', alertInfo:'Tab switches', run:'Run', running:'Running...', noSession:'No session found. Please log in first.',
+    examList:'Exam List', loading:'Loading...', noExams:'No exams assigned.', target:'for', submitted:'Submitted', pts:'pts', viewResult:'View Result', enterBtn:'Enter →',
     resultNotFound:'Result not found.', errPrefix:'Error: ', submitErr:'Submit error: ',
     resultHome:'Home', pts2:'pts', pct:'%',
     mypage:'My Page', home:'Home',
@@ -558,7 +578,7 @@ document.addEventListener('click', e => {
 function updateLangCheck(lang) {
   ['ko','zh','ru','en'].forEach(l => {
     const el = document.getElementById('lck-'+l);
-    if (el) el.innerText = l === lang ? '✓' : '';
+    if (el) el.innerHTML = l === lang ? '<svg width="13" height="13"><use href="#ic-check"/></svg>' : '';
   });
 }
 updateLangCheck(currentLang);
@@ -584,8 +604,8 @@ function applyLangUI() {
   // step3 result button
   const rb = document.querySelector('#step3 .btn.accent'); if (rb) rb.innerText = t.resultHome;
   // nav user dropdown
-  const ddMy = document.querySelector('#userDropdown .user-dropdown-item:first-child'); if (ddMy) ddMy.innerHTML = `👤 ${t.mypage}`;
-  const ddHome = document.querySelector('#userDropdown .user-dropdown-item.danger'); if (ddHome) ddHome.innerHTML = `🏠 ${t.home}`;
+  const ddMy = document.querySelector('#userDropdown .user-dropdown-item:first-child'); if (ddMy) ddMy.innerHTML = `<svg width="15" height="15"><use href="#ic-user"/></svg> ${t.mypage}`;
+  const ddHome = document.querySelector('#userDropdown .user-dropdown-item.danger'); if (ddHome) ddHome.innerHTML = `<svg width="15" height="15"><use href="#ic-home"/></svg> ${t.home}`;
   // mypage modal
   const mpT = document.querySelector('#myPageOverlay .modal-title'); if (mpT) mpT.innerText = t.mpTitle;
   const mpPb = document.querySelector('.btn-photo-change'); if (mpPb) mpPb.innerText = t.mpPhotoBtn;
@@ -656,7 +676,7 @@ async function loadMyExams() {
         <div style="font-size:0.78rem;color:var(--sub);margin-bottom:10px;">${gradeStr}</div>
         ${isDone
           ? `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-               <span style="color:#22c55e;font-weight:800;font-size:0.9rem;">${t.submitted}</span>
+               <span style="color:#22c55e;font-weight:800;font-size:0.9rem;display:inline-flex;align-items:center;gap:4px;"><svg width="13" height="13"><use href="#ic-check"/></svg>${t.submitted}</span>
                <span style="color:var(--sub);font-size:0.85rem;">${prog.totalScore??'?'} / ${prog.totalPoints??'?'}${t.pts}</span>
                <button class="btn ghost sm" onclick="showMyResult('${escapedId}')" style="margin-left:auto;">${t.viewResult}</button>
              </div>`
@@ -711,8 +731,8 @@ document.addEventListener('visibilitychange', () => {
 
 function showAlertBanner() {
   const b = document.getElementById('alertBanner');
-  const msgs = { ko: `⚠️ 화면 이탈 감지! (${alertCount}회)`, zh: `⚠️ 检测到切换屏幕！(${alertCount}次)`, ru: `⚠️ Обнаружен выход! (${alertCount} раз)`, en: `⚠️ Tab switch detected! (${alertCount}×)` };
-  b.innerText = msgs[currentLang] || msgs.ko;
+  const msgs = { ko: `화면 이탈 감지! (${alertCount}회)`, zh: `检测到切换屏幕！(${alertCount}次)`, ru: `Обнаружен выход! (${alertCount} раз)`, en: `Tab switch detected! (${alertCount}×)` };
+  b.innerHTML = '<svg width="14" height="14" style="vertical-align:-2px;margin-right:4px;"><use href="#ic-alert"/></svg>' + (msgs[currentLang] || msgs.ko);
   b.classList.add('show');
   setTimeout(() => b.classList.remove('show'), 3000);
 }
@@ -1204,7 +1224,7 @@ function showResult(score, total, items) {
   const rtEl = document.getElementById('resultTotal');
   rtEl.innerText = `/ ${total}${t.pts2} (${pct}${t.pct})`;
   rtEl.dataset.score = score; rtEl.dataset.total = total;
-  document.getElementById('resultEmoji').innerText = pct >= 90 ? '🏆' : pct >= 70 ? '🎉' : pct >= 50 ? '📚' : '💪';
+  document.getElementById('resultEmoji').innerHTML = pct >= 90 ? '<svg width="46" height="46"><use href="#ic-trophy"/></svg>' : pct >= 70 ? '<svg width="46" height="46"><use href="#ic-star"/></svg>' : pct >= 50 ? '<svg width="46" height="46"><use href="#ic-book"/></svg>' : '<svg width="46" height="46"><use href="#ic-flag"/></svg>';
   document.getElementById('resultDetails').innerHTML = items.map(r => {
     const cls = r.score === r.maxScore ? 'ok' : r.score > 0 ? 'partial' : 'fail';
     return `<div class="r-item">
