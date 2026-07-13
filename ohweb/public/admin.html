@@ -170,10 +170,11 @@
     .btn:hover { background: var(--glass-strong); }
     .btn:active { transform: scale(0.96); }
     .btn.accent {
-      background: rgba(42,92,230,0.82); border-color: rgba(100,140,255,0.5); color: #fff;
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 20px rgba(42,92,230,0.35);
+      background: #1d1d1f; border-color: transparent; color: #fff;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), var(--shadow-md);
     }
-    .btn.accent:hover { background: rgba(42,92,230,0.95); }
+    body.dark .btn.accent { background: #f5f5f7; color: #1d1d1f; }
+    .btn.accent:hover { opacity: 0.88; }
     .btn.danger { color: #ef4444; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.08); box-shadow: none; }
     .btn.ghost { border-color: transparent; background: transparent; box-shadow: none; }
     .btn.ghost:hover { background: var(--glass); }
@@ -436,6 +437,10 @@
     <symbol id="ic-close" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
     <symbol id="ic-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7"/><ellipse cx="12" cy="12" rx="3.6" ry="8.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="3.5" y1="12" x2="20.5" y2="12" stroke="currentColor" stroke-width="1.5"/></symbol>
     <symbol id="ic-download" viewBox="0 0 24 24"><line x1="12" y1="4" x2="12" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="7,10 12,15 17,10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><line x1="5" y1="19" x2="19" y2="19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.4 2.3c-.8.3-.9 1-.9 1.7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="16.6" r="1" fill="currentColor"/></symbol>
+    <symbol id="ic-device" viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.7"/><line x1="10.5" y1="18" x2="13.5" y2="18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="ic-alert" viewBox="0 0 24 24"><path d="M12 3.5 21 19.5H3Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><line x1="12" y1="9.5" x2="12" y2="14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></symbol>
+    <symbol id="ic-check" viewBox="0 0 24 24"><polyline points="5,13 9.5,17.5 19,6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="ic-wallet" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 9h14a3 3 0 0 1 3 3v0" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="16.5" cy="13" r="1.3" fill="currentColor"/></symbol>
   </defs>
 </svg>
@@ -505,7 +510,7 @@
 
     <div class="card">
       <h2><span class="icon"><svg width="18" height="18"><use href="#ic-school"/></svg></span> 학교 목록</h2>
-      <div id="schoolList"><div class="empty-state"><div class="empty-icon">🏫</div>등록된 학교가 없습니다.</div></div>
+      <div id="schoolList"><div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-school"/></svg></div>등록된 학교가 없습니다.</div></div>
     </div>
   </div>
 
@@ -519,7 +524,7 @@
       <h2><span class="icon"><svg width="18" height="18"><use href="#ic-folder"/></svg></span> CSV 업로드</h2>
 
       <div class="upload-zone" id="uploadZone" onclick="document.getElementById('csvFile').click()">
-        <div class="upload-icon">📄</div>
+        <div class="upload-icon"><svg width="34" height="34"><use href="#ic-doc"/></svg></div>
         <p>CSV 파일을 클릭하여 업로드</p>
         <small>열 순서: 학교, 학년, 반, 번호, 이름 (첫 행은 헤더로 자동 처리)</small>
       </div>
@@ -583,7 +588,7 @@
         <label>반</label>
         <select class="inp" id="filterClass" onchange="loadStudents()" style="width:90px;"><option value="">전체</option></select>
       </div>
-      <div id="studentList"><div class="empty-state"><div class="empty-icon">👥</div>학생이 없습니다.</div></div>
+      <div id="studentList"><div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-people"/></svg></div>학생이 없습니다.</div></div>
     </div>
   </div>
 
@@ -612,7 +617,7 @@
     </div>
 
     <div id="appSettingsArea">
-      <div class="empty-state"><div class="empty-icon">📱</div>학교와 학급을 선택하세요.</div>
+      <div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-device"/></svg></div>학교와 학급을 선택하세요.</div>
     </div>
 
   </div>
@@ -661,7 +666,7 @@
 
     <div class="card">
       <h2><span class="icon"><svg width="18" height="18"><use href="#ic-clipboard"/></svg></span> 수업 목록</h2>
-      <div id="adminList"><div class="empty-state"><div class="empty-icon">📌</div>등록된 수업이 없습니다.</div></div>
+      <div id="adminList"><div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-board"/></svg></div>등록된 수업이 없습니다.</div></div>
     </div>
 
   </div>
@@ -701,7 +706,7 @@
       </div>
       <div class="card">
         <h2><span class="icon"><svg width="18" height="18"><use href="#ic-clipboard"/></svg></span> 시험 목록</h2>
-        <div id="examList"><div class="empty-state"><div class="empty-icon">📋</div>등록된 시험이 없습니다.</div></div>
+        <div id="examList"><div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-clipboard"/></svg></div>등록된 시험이 없습니다.</div></div>
       </div>
     </div>
 
@@ -825,7 +830,7 @@
             <option value="">시험을 선택하세요</option>
           </select>
         </div>
-        <div id="qList"><div class="empty-state"><div class="empty-icon">❓</div>문제를 선택하세요.</div></div>
+        <div id="qList"><div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-help"/></svg></div>문제를 선택하세요.</div></div>
       </div>
     </div>
 
@@ -891,7 +896,7 @@
       </div>
       <div class="card">
         <h2><span class="icon"><svg width="18" height="18"><use href="#ic-clipboard"/></svg></span> 배정 목록</h2>
-        <div id="assignList"><div class="empty-state"><div class="empty-icon">🎯</div>등록된 배정이 없습니다.</div></div>
+        <div id="assignList"><div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-target"/></svg></div>등록된 배정이 없습니다.</div></div>
       </div>
     </div>
 
@@ -908,10 +913,10 @@
           </div>
           <div style="display:flex;align-items:flex-end;gap:8px;">
             <button class="icon-action" title="CSV 내보내기" onclick="exportResults()"><svg width="17" height="17"><use href="#ic-download"/></svg></button>
-            <button class="btn accent sm" onclick="exportResultsPDF()">📄 PDF 내보내기</button>
+            <button class="btn accent sm" onclick="exportResultsPDF()"><svg width="13" height="13" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-doc"/></svg>PDF 내보내기</button>
           </div>
         </div>
-        <div id="resultTable"><div class="empty-state"><div class="empty-icon">📊</div>배정을 선택하세요.</div></div>
+        <div id="resultTable"><div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-chart"/></svg></div>배정을 선택하세요.</div></div>
       </div>
     </div>
 
@@ -942,8 +947,8 @@
               <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">가져올 시험</label>
               <select class="inp" id="lg_examSelect" style="min-width:280px;"></select>
             </div>
-            <button class="btn accent sm" onclick="runLegacyImport(false)">✅ 선택한 시험만 가져오기 (테스트)</button>
-            <button class="btn danger sm" onclick="runLegacyImport(true)">⚠️ 전체 시험 한번에 가져오기</button>
+            <button class="btn accent sm" onclick="runLegacyImport(false)">선택한 시험만 가져오기 (테스트)</button>
+            <button class="btn danger sm" onclick="runLegacyImport(true)">전체 시험 한번에 가져오기</button>
           </div>
           <div style="font-size:0.76rem;color:var(--sub);">같은 시험을 다시 가져오면 이전에 가져온 내용은 지우고 새로 씁니다 (재실행 안전).</div>
         </div>
@@ -994,10 +999,10 @@
 
   // 앱 목록 정의
   const APPS = [
-    { id: 'ohdlet', name: '정보 게시판', emoji: '📌' },
-    { id: 'submit', name: '과제제출', emoji: '📝' },
-    { id: 'exam',   name: '시험',    emoji: '📋' },
-    { id: 'form',   name: '설문지 만들기', emoji: '📊' },
+    { id: 'ohdlet', name: '정보 게시판', icon: 'ic-board' },
+    { id: 'submit', name: '과제제출', icon: 'ic-doc' },
+    { id: 'exam',   name: '시험',    icon: 'ic-clipboard' },
+    { id: 'form',   name: '설문지 만들기', icon: 'ic-chart' },
   ];
 
   let schools = [];
@@ -1091,7 +1096,7 @@
   function renderSchoolList() {
     const el = document.getElementById('schoolList');
     if (!schools.length) {
-      el.innerHTML = '<div class="empty-state"><div class="empty-icon">🏫</div>등록된 학교가 없습니다.</div>';
+      el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-school"/></svg></div>등록된 학교가 없습니다.</div>';
       return;
     }
     el.innerHTML = schools.map(s => `
@@ -1101,7 +1106,7 @@
           <div class="list-item-sub">ID: ${s.id}${s.code ? ' · 코드: ' + s.code : ''}</div>
         </div>
         <div class="list-item-actions">
-          <button class="btn danger sm" onclick="deleteSchool('${s.id}', '${s.name}')">삭제</button>
+          <button class="icon-action danger" title="삭제" onclick="deleteSchool('${s.id}', '${s.name}')"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
         </div>
       </div>
     `).join('');
@@ -1304,7 +1309,7 @@
 
     const el = document.getElementById('studentList');
     if (!students.length) {
-      el.innerHTML = '<div class="empty-state"><div class="empty-icon">👥</div>해당 조건의 학생이 없습니다.</div>';
+      el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-people"/></svg></div>해당 조건의 학생이 없습니다.</div>';
       return;
     }
     el.innerHTML = `
@@ -1324,8 +1329,8 @@
                   ? '<span style="font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(34,197,94,0.15);color:#16a34a;">등록</span>'
                   : '<span style="font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(120,120,120,0.12);color:var(--sub);">미등록</span>'}</td>
                 <td style="white-space:nowrap;">
-                  <button class="btn ghost sm" onclick="editStudent('${s.id}')">수정</button>
-                  <button class="btn danger sm" onclick="deleteStudent('${s.id}','${(s.name||'').replace(/'/g,"\\'")}')">삭제</button>
+                  <button class="icon-action" title="수정" onclick="editStudent('${s.id}')"><svg width="16" height="16"><use href="#ic-edit"/></svg></button>
+                  <button class="icon-action danger" title="삭제" onclick="deleteStudent('${s.id}','${(s.name||'').replace(/'/g,"\\'")}')"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
                 </td>
               </tr>
             `).join('')}
@@ -1433,7 +1438,7 @@
     const area = document.getElementById('appSettingsArea');
 
     if (!schoolName) {
-      area.innerHTML = '<div class="empty-state"><div class="empty-icon">📱</div>학교를 선택하세요.</div>';
+      area.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-device"/></svg></div>학교를 선택하세요.</div>';
       return;
     }
 
@@ -1455,7 +1460,7 @@
       combos.sort((a,b) => (parseInt(a.grade)||0)-(parseInt(b.grade)||0) || (parseInt(a.class)||0)-(parseInt(b.class)||0));
 
       if (!combos.length) {
-        area.innerHTML = '<div class="empty-state"><div class="empty-icon">👥</div>이 학교에 등록된 학급(학생)이 없습니다.</div>';
+        area.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-people"/></svg></div>이 학교에 등록된 학급(학생)이 없습니다.</div>';
         showLoading(false);
         return;
       }
@@ -1475,7 +1480,7 @@
           <div class="app-grid">
             ${APPS.map(app => `
               <div class="app-card">
-                <div class="app-card-name">${app.emoji} ${app.name}</div>
+                <div class="app-card-name" style="display:flex;align-items:center;gap:6px;"><svg width="15" height="15" style="color:var(--sub);flex-shrink:0;"><use href="#${app.icon}"/></svg>${app.name}</div>
                 <div class="app-card-id">${app.id}</div>
                 <label class="toggle" title="${app.name} 공개">
                   <input type="checkbox" ${s.apps[app.id] ? 'checked' : ''}
@@ -1614,7 +1619,7 @@
         classDone++;
       }
       prog.style.color='#22c55e';
-      prog.innerText = `✅ 게시글 ${done}건 + 수업안내 ${classDone}건 번역 완료`;
+      prog.innerText = `게시글 ${done}건 + 수업안내 ${classDone}건 번역 완료`;
       toast('번역 마이그레이션 완료', 'success');
     } catch(e) { prog.innerText='오류: '+e.message; toast('오류: '+e.message,'error'); }
     btn.disabled = false;
@@ -1634,7 +1639,7 @@
     const data = await getDocs(query(collection(db, 'classes'), orderBy('createdAt', 'asc')));
     const list = data.docs.map(d => ({ id: d.id, ...d.data() }));
     const el = document.getElementById('adminList');
-    if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📌</div>등록된 수업이 없습니다.</div>'; return; }
+    if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-board"/></svg></div>등록된 수업이 없습니다.</div>'; return; }
     const gradeOrder = ['1','2','3'];
     const groups = {};
     list.forEach(c => {
@@ -1653,9 +1658,9 @@
             <option value="ON" ${c.status==='ON'?'selected':''}>ON</option>
             <option value="OFF" ${c.status!=='ON'?'selected':''}>OFF</option>
           </select>
-          <button class="btn ghost sm" onclick='editAdminUI(${JSON.stringify(c).replace(/'/g,"&#39;")})'>수정</button>
+          <button class="icon-action" title="수정" onclick='editAdminUI(${JSON.stringify(c).replace(/'/g,"&#39;")})'><svg width="16" height="16"><use href="#ic-edit"/></svg></button>
           <button class="btn ghost sm" style="color:var(--accent)" onclick="openTranslateModal('${c.id}','${c.name.replace(/'/g,"\\'")}')">번역</button>
-          <button class="btn danger sm" onclick="delAdminClass('${c.id}')">삭제</button>
+          <button class="icon-action danger" title="삭제" onclick="delAdminClass('${c.id}')"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
         </div>
       </div>`;
     const orderedKeys = [...gradeOrder.filter(g => groups[g]), ...(groups['기타'] ? ['기타'] : [])];
@@ -1715,7 +1720,7 @@
     }
     el.innerHTML = _pending.map((p,i) => {
       const label = !p.grade ? `${p.school} 전체` : !p.group ? `${p.school} ${p.grade}학년 전체` : `${p.school} ${p.grade}-${p.group}`;
-      return `<span style="display:inline-flex;align-items:center;gap:7px;background:var(--accent-light);color:var(--accent);border:1px solid rgba(42,92,230,0.25);border-radius:50px;padding:5px 12px;font-size:0.82rem;font-weight:700;">${label}<span onclick="removePending(${i})" style="cursor:pointer;opacity:0.7;">✕</span></span>`;
+      return `<span style="display:inline-flex;align-items:center;gap:7px;background:var(--accent-light);color:var(--accent);border:1px solid rgba(42,92,230,0.25);border-radius:50px;padding:5px 12px;font-size:0.82rem;font-weight:700;">${label}<span onclick="removePending(${i})" style="cursor:pointer;opacity:0.7;display:inline-flex;"><svg width="11" height="11"><use href="#ic-close"/></svg></span></span>`;
     }).join('');
   }
   window.addPendingClass = () => {
@@ -1881,7 +1886,7 @@
 
   function renderExamList() {
     const el = document.getElementById('examList');
-    if (!exams.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div>등록된 시험이 없습니다.</div>'; return; }
+    if (!exams.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-clipboard"/></svg></div>등록된 시험이 없습니다.</div>'; return; }
     el.innerHTML = exams.map(e => `
       <div class="list-item">
         <div class="list-item-info">
@@ -1889,8 +1894,8 @@
           ${e.desc ? `<div class="list-item-sub">${e.desc}</div>` : ''}
         </div>
         <div class="list-item-actions">
-          <button class="btn ghost sm" onclick='editExam(${JSON.stringify({id:e.id,title:e.title,desc:e.desc||""})})'>수정</button>
-          <button class="btn danger sm" onclick="deleteExam('${e.id}','${e.title.replace(/'/g,"\\'")}')">삭제</button>
+          <button class="icon-action" title="수정" onclick='editExam(${JSON.stringify({id:e.id,title:e.title,desc:e.desc||""})})'><svg width="16" height="16"><use href="#ic-edit"/></svg></button>
+          <button class="icon-action danger" title="삭제" onclick="deleteExam('${e.id}','${e.title.replace(/'/g,"\\'")}')"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
         </div>
       </div>`).join('');
   }
@@ -2020,7 +2025,7 @@
     const qs = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.order||0)-(b.order||0));
     _qCache = {};
     qs.forEach(q => { _qCache[q.id] = q; });
-    if (!qs.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">❓</div>문제가 없습니다.</div>'; return; }
+    if (!qs.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-help"/></svg></div>문제가 없습니다.</div>'; return; }
     const typeLabels = { mc:'객관식', sa:'단답형', code:'코딩' };
     el.innerHTML = qs.map((q,i) => `
       <div class="list-item">
@@ -2029,11 +2034,11 @@
           <div class="list-item-sub">${q.points||0}점 · 순서:${q.order}</div>
         </div>
         <div class="list-item-actions">
-          <button class="btn ghost sm" onclick="editQuestionById('${q.id}')">수정</button>
-          <button class="btn danger sm" onclick="deleteQuestion('${q.id}')">삭제</button>
+          <button class="icon-action" title="수정" onclick="editQuestionById('${q.id}')"><svg width="16" height="16"><use href="#ic-edit"/></svg></button>
+          <button class="icon-action danger" title="삭제" onclick="deleteQuestion('${q.id}')"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
         </div>
       </div>`).join('');
-    } catch(e) { el.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div>${e.message}</div>`; }
+    } catch(e) { el.innerHTML = `<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-alert"/></svg></div>${e.message}</div>`; }
   };
 
   window.saveQuestion = async () => {
@@ -2184,7 +2189,7 @@
     }
     el.innerHTML = _pendingAs.map((p,i) => {
       const label = `${p.schoolName||'전체 학교'} ${!p.grade ? '전체 학년' : (!p.class ? p.grade+'학년 전체' : p.grade+'학년 '+p.class+'반')}`;
-      return `<span style="display:inline-flex;align-items:center;gap:7px;background:var(--accent-light);color:var(--accent);border:1px solid rgba(42,92,230,0.25);border-radius:50px;padding:5px 12px;font-size:0.82rem;font-weight:700;">${label}<span onclick="removePendingAs(${i})" style="cursor:pointer;opacity:0.7;">✕</span></span>`;
+      return `<span style="display:inline-flex;align-items:center;gap:7px;background:var(--accent-light);color:var(--accent);border:1px solid rgba(42,92,230,0.25);border-radius:50px;padding:5px 12px;font-size:0.82rem;font-weight:700;">${label}<span onclick="removePendingAs(${i})" style="cursor:pointer;opacity:0.7;display:inline-flex;"><svg width="11" height="11"><use href="#ic-close"/></svg></span></span>`;
     }).join('');
   }
   window.removePendingAs = (i) => { _pendingAs.splice(i,1); renderAsPending(); };
@@ -2238,7 +2243,7 @@
     const snap = await getDocs(query(collection(db,'exam_assignments'), orderBy('createdAt','desc')));
     const list = snap.docs.map(d=>({id:d.id,...d.data()}));
     const el = document.getElementById('assignList');
-    if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">🎯</div>등록된 배정이 없습니다.</div>'; return; }
+    if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-target"/></svg></div>등록된 배정이 없습니다.</div>'; return; }
     el.innerHTML = list.map(a => {
       const exam = exams.find(e=>e.id===a.examId);
       return `<div class="list-item">
@@ -2251,7 +2256,7 @@
             <option value="ON" ${a.status==='ON'?'selected':''}>ON</option>
             <option value="OFF" ${a.status==='OFF'?'selected':''}>OFF</option>
           </select>
-          <button class="btn danger sm" onclick="deleteAssign('${a.id}')">삭제</button>
+          <button class="icon-action danger" title="삭제" onclick="deleteAssign('${a.id}')"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
         </div>
       </div>`;
     }).join('');
@@ -2306,7 +2311,7 @@
   window.loadResults = async () => {
     const asId = document.getElementById('res_asId').value;
     const el = document.getElementById('resultTable');
-    if (!asId) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div>배정을 선택하세요.</div>'; return; }
+    if (!asId) { el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-chart"/></svg></div>배정을 선택하세요.</div>'; return; }
     showLoading(true);
     try {
       let progSnap = await getDocs(query(collection(db,'exam_progress'), where('asId','==',asId)));
@@ -2316,7 +2321,7 @@
         const allSnap = await getDocs(collection(db,'exam_progress'));
         progs = allSnap.docs.filter(d=>d.id.startsWith(asId+'_')).map(d=>({id:d.id,...d.data()}));
       }
-      if (!progs.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div>결과가 없습니다.</div>'; showLoading(false); return; }
+      if (!progs.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-chart"/></svg></div>결과가 없습니다.</div>'; showLoading(false); return; }
       // 정렬: 학년→반→번호
       progs.sort((a,b) => {
         if (a.grade!==b.grade) return String(a.grade).localeCompare(String(b.grade));
@@ -2705,9 +2710,9 @@
   async function lgImportOneExam(examIdOld, log) {
     if (!lgData) return;
     const examMeta = lgData.examsList.find(e => e.id === examIdOld);
-    if (!examMeta) { log.push(`⚠️ ${examIdOld}: Exams 목록에 없음, 건너뜀`); return; }
+    if (!examMeta) { log.push(`[건너뜀] ${examIdOld}: Exams 목록에 없음`); return; }
     const qRows = lgData.questionsByExam.get(examIdOld) || [];
-    if (!qRows.length) { log.push(`⚠️ ${examMeta.title}: 문항이 없어 건너뜀`); return; }
+    if (!qRows.length) { log.push(`[건너뜀] ${examMeta.title}: 문항 없음`); return; }
 
     await lgWipeExisting(examIdOld); // 재실행 안전 (기존 것 삭제 후 재생성)
 
@@ -2779,7 +2784,7 @@
       });
       studentCount++;
     }
-    log.push(`✅ ${examMeta.title}: 문항 ${newQuestions.length}개, 학생 ${studentCount}명 가져옴`);
+    log.push(`[완료] ${examMeta.title}: 문항 ${newQuestions.length}개, 학생 ${studentCount}명 가져옴`);
   }
 
   async function lgDoImport(targets) {
@@ -2923,7 +2928,7 @@
       }
       await new Promise(r => setTimeout(r, 120));
     }
-    prog.textContent = `✅ ${done}건 번역 완료!`;
+    prog.textContent = `${done}건 번역 완료`;
     document.getElementById('txRunBtn').disabled = false;
     toast(`${done}건 번역 완료!`, 'success');
     // 목록 갱신
