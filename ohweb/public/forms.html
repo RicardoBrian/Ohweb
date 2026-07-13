@@ -231,6 +231,10 @@
     <symbol id="ic-unlock" viewBox="0 0 24 24"><rect x="5.5" y="11" width="13" height="9.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8.5 11V8a3.5 3.5 0 0 1 6.7-2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="15.3" r="1.3" fill="currentColor"/></symbol>
     <symbol id="ic-trash" viewBox="0 0 24 24"><line x1="5" y1="7" x2="19" y2="7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8 7V5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M7 7l1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><line x1="10" y1="11" x2="10" y2="17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="14" y1="11" x2="14" y2="17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
     <symbol id="ic-refresh" viewBox="0 0 24 24"><path d="M5 12a7 7 0 0 1 12-4.9M19 12a7 7 0 0 1-12 4.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="17,3 17,7.5 12.5,7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><polyline points="7,21 7,16.5 11.5,16.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-close" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-alert" viewBox="0 0 24 24"><path d="M12 3.5 21 19.5H3Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><line x1="12" y1="9.5" x2="12" y2="14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></symbol>
+    <symbol id="ic-paperclip" viewBox="0 0 24 24"><path d="M8 12.5 15 5.5a3.2 3.2 0 0 1 4.5 4.5l-8.3 8.3a2.1 2.1 0 0 1-3-3l7.3-7.3a1 1 0 0 1 1.4 1.4L10 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-image" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="10" r="1.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 16.5 9.5 12l3 3 3.5-4 3.5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="ic-wallet" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 9h14a3 3 0 0 1 3 3v0" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="16.5" cy="13" r="1.3" fill="currentColor"/></symbol>
   </defs>
 </svg>
@@ -249,7 +253,7 @@
   <div class="app-modal-card">
     <div class="app-modal-head">
       <span>메뉴</span>
-      <button class="app-modal-x" onclick="closeAppModal()">✕</button>
+      <button class="app-modal-x" onclick="closeAppModal()"><svg width="16" height="16"><use href="#ic-close"/></svg></button>
     </div>
     <div class="app-modal-grid">
       <button class="app-modal-item" onclick="location.href='admin.html#schools'"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-school"/></svg></span><span>학교</span></button>
@@ -431,7 +435,7 @@ async function loadAll() {
 
     renderList();
   } catch (err) {
-    list.innerHTML = `<div class="empty-state"><div class="empty-icon">⚠️</div><p>불러오기 실패: ${escHtml(err.message)}</p></div>`;
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon"><svg width="40" height="40"><use href="#ic-alert"/></svg></div><p>불러오기 실패: ${escHtml(err.message)}</p></div>`;
   }
 }
 
@@ -455,7 +459,7 @@ function renderList() {
   const container = document.getElementById('surveyList');
   const filtered = getFiltered();
   if (filtered.length === 0) {
-    container.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><p>해당하는 설문이 없습니다.</p></div>`;
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon"><svg width="40" height="40"><use href="#ic-clipboard"/></svg></div><p>해당하는 설문이 없습니다.</p></div>`;
     return;
   }
   container.innerHTML = viewMode === 'group' ? renderGrouped(filtered) : renderFlat(filtered);
@@ -645,6 +649,12 @@ window.deleteSurvey = async (id) => {
   } catch (err) { showToast('삭제 실패: ' + err.message); }
 };
 // ── 첨부 파일 타일 / 드라이브 미리보기 ──
+window._imgFallback = function(img) {
+  const d = document.createElement('div');
+  d.className = 'file-doc-ico';
+  d.innerHTML = '<svg width="16" height="16"><use href="#ic-image"/></svg>';
+  img.replaceWith(d);
+};
 function _driveId(url) { const m = String(url||'').match(/\/d\/([^/]+)|[?&]id=([^&]+)/); return m ? (m[1]||m[2]) : ''; }
 function _isImg(name) { return /\.(jpe?g|png|gif|webp|bmp|heic|heif|svg)$/i.test(String(name||'')); }
 function fileTile(f, who) {
@@ -652,15 +662,15 @@ function fileTile(f, who) {
   const cap = `${who?escHtml(who)+' · ':''}${escHtml(f.name||'파일')}`;
   if (f.url && id && _isImg(f.name)) {
     return `<div class="file-tile" onclick="openDrivePreview('${id}')">
-      <img src="https://drive.google.com/thumbnail?id=${id}&sz=w400" loading="lazy" referrerpolicy="no-referrer" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'file-doc-ico',textContent:'🖼️'}))">
+      <img src="https://drive.google.com/thumbnail?id=${id}&sz=w400" loading="lazy" referrerpolicy="no-referrer" onerror="window._imgFallback(this)">
       <div class="file-tile-cap">${cap}</div></div>`;
   }
   if (f.url) {
     return id
-      ? `<div class="file-tile" onclick="openDrivePreview('${id}')"><div class="file-doc-ico">📎</div><div class="file-tile-cap">${cap}</div></div>`
-      : `<a class="file-tile" href="${f.url}" target="_blank" rel="noopener"><div class="file-doc-ico">📎</div><div class="file-tile-cap">${cap}</div></a>`;
+      ? `<div class="file-tile" onclick="openDrivePreview('${id}')"><div class="file-doc-ico"><svg width="16" height="16"><use href="#ic-paperclip"/></svg></div><div class="file-tile-cap">${cap}</div></div>`
+      : `<a class="file-tile" href="${f.url}" target="_blank" rel="noopener"><div class="file-doc-ico"><svg width="16" height="16"><use href="#ic-paperclip"/></svg></div><div class="file-tile-cap">${cap}</div></a>`;
   }
-  return `<div class="file-tile"><div class="file-doc-ico">📎</div><div class="file-tile-cap">${cap}${f.folder?'<br>(드라이브: '+escHtml(f.folder)+')':''}</div></div>`;
+  return `<div class="file-tile"><div class="file-doc-ico"><svg width="16" height="16"><use href="#ic-paperclip"/></svg></div><div class="file-tile-cap">${cap}${f.folder?'<br>(드라이브: '+escHtml(f.folder)+')':''}</div></div>`;
 }
 window.openDrivePreview = (id) => {
   document.getElementById('driveFrame').src = `https://drive.google.com/file/d/${id}/preview`;
@@ -714,7 +724,7 @@ function closeAppModal() { document.getElementById('appModal').classList.remove(
 <!-- 드라이브 파일 미리보기 모달 -->
 <div class="drive-modal" id="driveModal" onclick="if(event.target===this)closeDrivePreview()">
   <div class="drive-modal-box">
-    <div class="drive-modal-head"><button onclick="closeDrivePreview()">✕</button></div>
+    <div class="drive-modal-head"><button onclick="closeDrivePreview()"><svg width="15" height="15"><use href="#ic-close"/></svg></button></div>
     <iframe id="driveFrame" src=""></iframe>
   </div>
 </div>
