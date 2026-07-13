@@ -164,6 +164,14 @@
     .tag { display: inline-block; font-size: 0.7rem; font-weight: 700; padding: 2px 9px; border-radius: 50px; }
     .tag.open { background: rgba(34,197,94,0.15); color: #15803d; }
     .tag.closed { background: rgba(239,68,68,0.1); color: #b91c1c; }
+  .icon-action {
+    width: 32px; height: 32px; border-radius: 50%; border: none; background: none; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; color: var(--sub); flex-shrink: 0;
+    transition: background 0.15s, color 0.15s;
+  }
+  .icon-action:hover { background: var(--glass); color: var(--text); }
+  .icon-action.danger { color: #ef4444; }
+  .icon-action.danger:hover { background: rgba(239,68,68,0.1); color: #ef4444; }
   </style>
 </head>
 <body>
@@ -180,6 +188,10 @@
     <symbol id="ic-radio" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="3.6" fill="currentColor"/></symbol>
     <symbol id="ic-paperclip" viewBox="0 0 24 24"><path d="M8 12.5 15 5.5a3.2 3.2 0 0 1 4.5 4.5l-8.3 8.3a2.1 2.1 0 0 1-3-3l7.3-7.3a1 1 0 0 1 1.4 1.4L10 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="ic-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="currentColor"/></symbol>
+    <symbol id="ic-download" viewBox="0 0 24 24"><line x1="12" y1="4" x2="12" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="7,10 12,15 17,10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><line x1="5" y1="19" x2="19" y2="19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M5.5 15.5h-1a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+    <symbol id="ic-trash" viewBox="0 0 24 24"><line x1="5" y1="7" x2="19" y2="7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8 7V5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M7 7l1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><line x1="10" y1="11" x2="10" y2="17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="14" y1="11" x2="14" y2="17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="ic-edit" viewBox="0 0 24 24"><path d="M15.5 5.5 18.5 8.5 8 19 4.5 19.5 5 16Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><line x1="13.7" y1="7.3" x2="16.7" y2="10.3" stroke="currentColor" stroke-width="1.7"/></symbol>
     <symbol id="ic-chat" viewBox="0 0 24 24"><path d="M4 5.5h16a1 1 0 0 1 1 1V16a1 1 0 0 1-1 1H9l-4.5 4V17H4a1 1 0 0 1-1-1V6.5a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
   </defs>
 </svg>
@@ -252,7 +264,7 @@
     </div>
 
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
-      <button class="btn accent" onclick="saveForm()" id="bSaveBtn">저장 & 공유 링크 받기</button>
+      <button class="btn accent" onclick="saveForm()" id="bSaveBtn">저장</button>
       <button class="btn ghost" onclick="showPage('pageList')">취소</button>
       <span id="bSaveMsg" style="font-size:0.8rem;color:var(--sub);"></span>
     </div>
@@ -270,13 +282,13 @@
       <div style="font-size:0.8rem;font-weight:700;color:var(--sub);margin-bottom:8px;">공유 링크</div>
       <div class="share-box">
         <div class="share-link" id="shareLink"></div>
-        <button class="btn sm" onclick="copyLink()">복사</button>
+        <button class="icon-action" title="복사" onclick="copyLink()"><svg width="16" height="16"><use href="#ic-copy"/></svg></button>
       </div>
       <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
         <button class="status-pill" id="statusToggleBtn" onclick="toggleStatus()"></button>
-        <button class="btn sm danger" onclick="deleteForm()">삭제</button>
-        <button class="btn sm" onclick="editForm()">수정</button>
-        <button class="btn sm accent" onclick="exportCsv()">CSV 내보내기</button>
+        <button class="icon-action" title="수정" onclick="editForm()"><svg width="16" height="16"><use href="#ic-edit"/></svg></button>
+        <button class="icon-action" title="CSV 내보내기" onclick="exportCsv()"><svg width="16" height="16"><use href="#ic-download"/></svg></button>
+        <button class="icon-action danger" title="삭제" onclick="deleteForm()"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
       </div>
     </div>
 
@@ -376,8 +388,8 @@ async function loadMyForms() {
         ${status}
         <div class="fi-resp">응답 ${resCount}개</div>
         <div style="display:flex;gap:6px;" onclick="event.stopPropagation()">
-          <button class="btn sm" onclick="editFormId('${f.id}')">수정</button>
-          <button class="btn sm danger" onclick="deleteFormId('${f.id}')">삭제</button>
+          <button class="icon-action" title="수정" onclick="editFormId('${f.id}')"><svg width="16" height="16"><use href="#ic-edit"/></svg></button>
+          <button class="icon-action danger" title="삭제" onclick="deleteFormId('${f.id}')"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
         </div>
       </div>`;
     }).join('');
@@ -446,7 +458,7 @@ function renderQCard(q, i) {
     <button class="add-opt" onclick="addOpt('${q.id}')">+ 옵션 추가</button>
   ` : '';
   const imgHtml = q.imageUrl
-    ? `<img class="q-img-preview" src="${q.imageUrl}"><button class="btn sm danger" onclick="removeQImg('${q.id}')" style="margin-bottom:8px;display:block;">이미지 삭제</button>`
+    ? `<img class="q-img-preview" src="${q.imageUrl}"><button class="icon-action danger" title="이미지 삭제" onclick="removeQImg('${q.id}')" style="margin-bottom:8px;"><svg width="15" height="15"><use href="#ic-trash"/></svg></button>`
     : `<input type="file" accept="image/*" id="imgf_${q.id}" style="display:none" onchange="onQImg(this,'${q.id}')"><button class="btn sm ghost" onclick="document.getElementById('imgf_${q.id}').click()" style="margin-bottom:8px;"><svg width="13" height="13" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-image"/></svg>이미지 첨부</button>`;
 
   return `<div class="q-card" id="qc_${q.id}">
@@ -515,7 +527,7 @@ let formDescImage = '';
 function renderDescImg() {
   const wrap = document.getElementById('descImgWrap'); if (!wrap) return;
   wrap.innerHTML = formDescImage
-    ? `<img class="q-img-preview" src="${formDescImage}"><button class="btn sm danger" onclick="removeDescImg()" style="display:block;margin-top:4px;">이미지 삭제</button>`
+    ? `<img class="q-img-preview" src="${formDescImage}"><button class="icon-action danger" title="이미지 삭제" onclick="removeDescImg()" style="margin-top:4px;"><svg width="15" height="15"><use href="#ic-trash"/></svg></button>`
     : '';
 }
 window.onDescImg = (input) => {
