@@ -44,7 +44,13 @@
     font-variant-numeric: tabular-nums;
   }
   .inset-row input::placeholder { color: var(--text-3, #a0a4b0); }
-  .inset-row select { appearance: none; -webkit-appearance: none; cursor: pointer; padding-right: 2px; }
+  .inset-row select {
+    appearance: none; -webkit-appearance: none; cursor: pointer;
+    padding-right: 18px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a0a4b0' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M8 9.5 12 5.5l4 4M8 14.5l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right center; background-size: 12px;
+  }
+  .inset-row select.placeholder { color: var(--text-3, #a0a4b0); }
   .inset-row input[type="date"] { cursor: pointer; }
   .inset-row.tappable { cursor: pointer; transition: background 0.12s; }
   .inset-row.tappable:active { background: var(--glass); }
@@ -191,7 +197,7 @@
       <div class="inset-group">
         <div class="inset-row">
           <span class="row-label">프로젝트</span>
-          <select id="tripSelect"><option value="">선택</option></select>
+          <select id="tripSelect" class="placeholder" onchange="this.classList.toggle('placeholder', !this.value)"><option value="">선택</option></select>
         </div>
         <div class="inset-row">
           <span class="row-label">비밀코드</span>
@@ -391,6 +397,7 @@ async function loadTrips() {
   const snap = await getDocs(collection(db, 'settle_trips'));
   const sel = document.getElementById('tripSelect');
   sel.innerHTML = '<option value="">선택</option>';
+  sel.classList.add('placeholder');
   snap.docs.forEach(d => {
     const data = d.data();
     if (data.status === 'done') return;
