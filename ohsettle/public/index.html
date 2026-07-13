@@ -500,8 +500,9 @@ window.refreshStats = () => {
 };
 
 window.showSettlement = () => {
-  const flow = {};
-  function addFlow(from, to, amount) { flow[from] = flow[from] || {}; flow[from][to] = (flow[from][to] || 0) + amount; }
+  // owed[p] > 0: p가 그룹에 더 내야 할 돈(빚) / owed[p] < 0: p가 돌려받아야 할 돈
+  const owed = {};
+  function add(p, amt) { owed[p] = (owed[p] || 0) + amt; }
 
   let report = `=== [${currentTripName}] 정산 결과 ===\n\n`;
   let totalSpent = 0;
@@ -510,14 +511,15 @@ window.showSettlement = () => {
     const amt = Number(e.amount);
     totalSpent += amt;
     report += `- ${e.desc}: ${fmt(amt)} (${e.payer} 결제)\n`;
+    add(e.payer, -amt);
     if (!e.memberData.includes(':')) {
       const mems = e.memberData.split(',').map(m => m.trim()).filter(Boolean);
       const split = amt / mems.length;
-      mems.forEach(m => { if (m !== e.payer) addFlow(m, e.payer, split); });
+      mems.forEach(m => add(m, split));
     } else {
       e.memberData.split(',').forEach(p => {
         const [m, cost] = p.split(':');
-        if (m.trim() !== e.payer) addFlow(m.trim(), e.payer, Number(cost));
+        add(m.trim(), Number(cost));
       });
     }
   });
@@ -527,26 +529,33 @@ window.showSettlement = () => {
     report += '\n[중간 송금 내역]\n';
     allDataCache.transfers.forEach(t => {
       report += `- ${t.sender} → ${t.receiver}: ${fmt(t.amount)}\n`;
-      addFlow(t.sender, t.receiver, -Number(t.amount));
+      add(t.sender, -Number(t.amount));
+      add(t.receiver, Number(t.amount));
     });
   }
 
   report += '\n[최종 정산 요청]\n';
-  const people = Object.keys(flow);
-  const processed = new Set();
-  let hasAny = false;
-  people.forEach(p1 => {
-    Object.keys(flow[p1]).forEach(p2 => {
-      const key = [p1, p2].sort().join('--');
-      if (processed.has(key)) return;
-      processed.add(key);
-      const p1top2 = flow[p1]?.[p2] || 0;
-      const p2top1 = flow[p2]?.[p1] || 0;
-      const net = Math.round(p1top2 - p2top1);
-      if (net > 10) { report += `${p1} → ${p2} : ${fmt(net)}\n`; hasAny = true; }
-      else if (net < -10) { report += `${p2} → ${p1} : ${fmt(Math.abs(net))}\n`; hasAny = true; }
-    });
+  // 전체 잔액 기준 최소 송금 횟수 계산 (최대 빚 ↔ 최대 크레딧 그리디 매칭)
+  const debtors = [], creditors = [];
+  Object.entries(owed).forEach(([p, v]) => {
+    const r = Math.round(v);
+    if (r > 10) debtors.push({ name: p, amt: r });
+    else if (r < -10) creditors.push({ name: p, amt: -r });
   });
+  debtors.sort((a, b) => b.amt - a.amt);
+  creditors.sort((a, b) => b.amt - a.amt);
+
+  let hasAny = false;
+  let di = 0, ci = 0;
+  while (di < debtors.length && ci < creditors.length) {
+    const d = debtors[di], c = creditors[ci];
+    const pay = Math.min(d.amt, c.amt);
+    report += `${d.name} → ${c.name} : ${fmt(pay)}\n`;
+    hasAny = true;
+    d.amt -= pay; c.amt -= pay;
+    if (d.amt <= 10) di++;
+    if (c.amt <= 10) ci++;
+  }
   if (!hasAny) report += '정산할 내용이 없습니다.';
 
   const box = document.getElementById('resultArea');
