@@ -180,6 +180,16 @@
     .btn.sm { padding: 5px 14px; font-size: 0.78rem; }
     .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
 
+    /* ICON ACTION — 텍스트 없이 아이콘만, 색은 위험 액션에만 예외 */
+    .icon-action {
+      width: 32px; height: 32px; border-radius: 50%; border: none; background: none; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; color: var(--sub); flex-shrink: 0;
+      transition: background 0.15s, color 0.15s;
+    }
+    .icon-action:hover { background: var(--glass); color: var(--text); }
+    .icon-action.danger { color: #ef4444; }
+    .icon-action.danger:hover { background: rgba(239,68,68,0.1); color: #ef4444; }
+
     /* 리스트 아이템 */
     .list-item {
       display: flex; justify-content: space-between; align-items: center;
@@ -424,6 +434,8 @@
     <symbol id="ic-timer" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" fill="none" stroke="currentColor" stroke-width="1.8"/><line x1="12" y1="13" x2="12" y2="8.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="12" y1="13" x2="15" y2="14.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="9.5" y1="2.5" x2="14.5" y2="2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
     <symbol id="ic-notice" viewBox="0 0 24 24"><path d="M4 9v6h3l6 4V5L7 9Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M17.5 9.5a4 4 0 0 1 0 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
     <symbol id="ic-close" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7"/><ellipse cx="12" cy="12" rx="3.6" ry="8.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="3.5" y1="12" x2="20.5" y2="12" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="ic-download" viewBox="0 0 24 24"><line x1="12" y1="4" x2="12" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="7,10 12,15 17,10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><line x1="5" y1="19" x2="19" y2="19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
   </defs>
 </svg>
 
@@ -660,11 +672,11 @@
 
     <!-- 시험 탭 -->
     <div style="display:flex;gap:8px;margin-bottom:20px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;">
-      <button class="btn accent sm" id="examSubTab-list" onclick="showExamTab('list')" style="white-space:nowrap;flex-shrink:0;">📋 시험 목록</button>
-      <button class="btn ghost sm" id="examSubTab-questions" onclick="showExamTab('questions')" style="white-space:nowrap;flex-shrink:0;">❓ 문제 관리</button>
-      <button class="btn ghost sm" id="examSubTab-assign" onclick="showExamTab('assign')" style="white-space:nowrap;flex-shrink:0;">🎯 배정 관리</button>
-      <button class="btn ghost sm" id="examSubTab-results" onclick="showExamTab('results')" style="white-space:nowrap;flex-shrink:0;">📊 결과 조회</button>
-      <button class="btn ghost sm" id="examSubTab-legacy" onclick="showExamTab('legacy')" style="white-space:nowrap;flex-shrink:0;">🗄 레거시 가져오기</button>
+      <button class="btn accent sm" id="examSubTab-list" onclick="showExamTab('list')" style="white-space:nowrap;flex-shrink:0;">시험 목록</button>
+      <button class="btn ghost sm" id="examSubTab-questions" onclick="showExamTab('questions')" style="white-space:nowrap;flex-shrink:0;">문제 관리</button>
+      <button class="btn ghost sm" id="examSubTab-assign" onclick="showExamTab('assign')" style="white-space:nowrap;flex-shrink:0;">배정 관리</button>
+      <button class="btn ghost sm" id="examSubTab-results" onclick="showExamTab('results')" style="white-space:nowrap;flex-shrink:0;">결과 조회</button>
+      <button class="btn ghost sm" id="examSubTab-legacy" onclick="showExamTab('legacy')" style="white-space:nowrap;flex-shrink:0;">레거시 가져오기</button>
     </div>
 
     <!-- 시험 목록 탭 -->
@@ -804,7 +816,7 @@
       <div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
           <h2 style="margin:0;"><span class="icon"><svg width="18" height="18"><use href="#ic-doc"/></svg></span> 문제 목록</h2>
-          <button class="btn ghost sm" onclick="fixMissingTranslations()">🌐 번역 보완</button>
+          <button class="icon-action" title="번역 보완" onclick="fixMissingTranslations()"><svg width="17" height="17"><use href="#ic-globe"/></svg></button>
         </div>
         <div style="margin-bottom:12px;">
           <select class="inp" id="qlist_examId" style="width:100%;" onchange="loadQList()">
@@ -893,7 +905,7 @@
             </select>
           </div>
           <div style="display:flex;align-items:flex-end;gap:8px;">
-            <button class="btn ghost sm" onclick="exportResults()">📥 CSV 내보내기</button>
+            <button class="icon-action" title="CSV 내보내기" onclick="exportResults()"><svg width="17" height="17"><use href="#ic-download"/></svg></button>
             <button class="btn accent sm" onclick="exportResultsPDF()">📄 PDF 내보내기</button>
           </div>
         </div>
@@ -920,7 +932,7 @@
             <textarea class="inp" id="lg_results" rows="4" style="font-family:monospace;font-size:0.8rem;resize:vertical;" placeholder="타임스탬프	시험ID	학번	이름	..."></textarea>
           </div>
         </div>
-        <button class="btn ghost sm" onclick="previewLegacy()">🔍 미리보기</button>
+        <button class="btn ghost sm" onclick="previewLegacy()">미리보기</button>
         <div id="lg_preview" class="hidden" style="margin-top:16px;">
           <div id="lg_summary" style="font-size:0.85rem;margin-bottom:12px;"></div>
           <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:14px;flex-wrap:wrap;">
@@ -1083,7 +1095,7 @@
     el.innerHTML = schools.map(s => `
       <div class="list-item">
         <div class="list-item-info">
-          <div class="list-item-name">🏫 ${s.name}</div>
+          <div class="list-item-name"><svg width="15" height="15" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-school"/></svg>${s.name}</div>
           <div class="list-item-sub">ID: ${s.id}${s.code ? ' · 코드: ' + s.code : ''}</div>
         </div>
         <div class="list-item-actions">
@@ -1631,7 +1643,7 @@
     const renderItem = c => `
       <div class="list-item">
         <div>
-          <div class="list-item-name">📌 ${c.name}</div>
+          <div class="list-item-name"><svg width="15" height="15" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-board"/></svg>${c.name}</div>
           <div class="list-item-sub">${c.schoolName||'관산중학교'} · ${!c.grade ? '학교 전체' : !c.group ? c.grade+'학년 전체' : c.grade+'학년 '+c.group+'반'} <span style="font-size:0.75rem;padding:2px 7px;border-radius:6px;font-weight:700;background:${c.status==='ON'?'rgba(34,197,94,0.15)':'rgba(239,68,68,0.12)'};color:${c.status==='ON'?'#16a34a':'#ef4444'}">${c.status}</span></div>
         </div>
         <div class="list-item-actions" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -1640,7 +1652,7 @@
             <option value="OFF" ${c.status!=='ON'?'selected':''}>OFF</option>
           </select>
           <button class="btn ghost sm" onclick='editAdminUI(${JSON.stringify(c).replace(/'/g,"&#39;")})'>수정</button>
-          <button class="btn ghost sm" style="color:var(--accent)" onclick="openTranslateModal('${c.id}','${c.name.replace(/'/g,"\\'")}')">🌐 번역</button>
+          <button class="btn ghost sm" style="color:var(--accent)" onclick="openTranslateModal('${c.id}','${c.name.replace(/'/g,"\\'")}')">번역</button>
           <button class="btn danger sm" onclick="delAdminClass('${c.id}')">삭제</button>
         </div>
       </div>`;
@@ -1871,7 +1883,7 @@
     el.innerHTML = exams.map(e => `
       <div class="list-item">
         <div class="list-item-info">
-          <div class="list-item-name">📋 ${e.title}</div>
+          <div class="list-item-name"><svg width="15" height="15" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-clipboard"/></svg>${e.title}</div>
           ${e.desc ? `<div class="list-item-sub">${e.desc}</div>` : ''}
         </div>
         <div class="list-item-actions">
@@ -1962,7 +1974,7 @@
       <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px;">
         <div style="font-size:0.8rem;"><span style="color:var(--sub);">입력</span><br><pre style="margin:2px 0;font-size:0.82rem;white-space:pre-wrap;">${tc.input||'(없음)'}</pre></div>
         <div style="font-size:0.8rem;"><span style="color:var(--sub);">출력</span><br><pre style="margin:2px 0;font-size:0.82rem;white-space:pre-wrap;">${tc.expected||''}</pre></div>
-        <button class="btn ghost sm" onclick="removeTestCase(${i})" style="color:#e74c3c;">✕</button>
+        <button class="btn ghost sm" onclick="removeTestCase(${i})" style="color:#e74c3c;"><svg width="12" height="12"><use href="#ic-close"/></svg></button>
       </div>`).join('');
   };
 
@@ -2229,7 +2241,7 @@
       const exam = exams.find(e=>e.id===a.examId);
       return `<div class="list-item">
         <div class="list-item-info">
-          <div class="list-item-name">🎯 <b style="letter-spacing:0.1em;">${a.code}</b> — ${exam?.title||a.examId}</div>
+          <div class="list-item-name"><svg width="15" height="15" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-target"/></svg><b style="letter-spacing:0.1em;">${a.code}</b> — ${exam?.title||a.examId}</div>
           <div class="list-item-sub">${a.schoolName?a.schoolName+' · ':'전체 학교 · '}${!a.grade ? '전체 학년' : (!a.class ? a.grade+'학년 전체' : a.grade+'학년 '+a.class+'반')} · ${a.duration>0?a.duration+'분':'무제한'}</div>
         </div>
         <div class="list-item-actions" style="display:flex;gap:8px;align-items:center;">
@@ -2468,7 +2480,7 @@
             <div style="font-size:1.05rem;font-weight:900;color:${fg};">${escHtml(name)} 채점</div>
             <div style="font-size:0.78rem;color:${sub};margin-top:2px;">${progData.grade||'-'}학년 ${progData.class||'-'}반 ${progData.num||'-'}번</div>
           </div>
-          <button onclick="document.getElementById('gradeModal').remove()" style="background:none;border:1px solid ${border};border-radius:50px;padding:6px 14px;cursor:pointer;font-size:0.82rem;color:${fg};">✕ 닫기</button>
+          <button onclick="document.getElementById('gradeModal').remove()" style="background:none;border:1px solid ${border};border-radius:50px;padding:6px 14px;cursor:pointer;font-size:0.82rem;color:${fg};">닫기</button>
         </div>
         ${items.length === 0
           ? `<div style="text-align:center;padding:40px;color:${sub};">제출 데이터가 없습니다.</div>`
@@ -2925,7 +2937,7 @@
         <div style="font-size:1.05rem;font-weight:900;">🌐 일괄 번역</div>
         <div style="font-size:0.8rem;color:var(--sub);margin-top:2px;" id="txClassName"></div>
       </div>
-      <button onclick="closeTranslateModal()" style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--sub);line-height:1;">✕</button>
+      <button onclick="closeTranslateModal()" style="background:none;border:none;cursor:pointer;color:var(--sub);line-height:1;display:flex;"><svg width="16" height="16"><use href="#ic-close"/></svg></button>
     </div>
     <div style="padding:14px 24px 8px;flex-shrink:0;display:flex;align-items:center;gap:10px;">
       <label style="font-size:0.82rem;font-weight:600;display:flex;align-items:center;gap:6px;cursor:pointer;">
