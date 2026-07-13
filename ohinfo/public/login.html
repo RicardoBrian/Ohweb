@@ -35,11 +35,20 @@
   </style>
 </head>
 <body>
+
+<svg width="0" height="0" style="position:absolute;">
+  <defs>
+    <symbol id="ic-lock" viewBox="0 0 24 24"><rect x="5.5" y="11" width="13" height="9.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="15.3" r="1.3" fill="currentColor"/></symbol>
+    <symbol id="ic-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7"/><ellipse cx="12" cy="12" rx="3.6" ry="8.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="3.5" y1="12" x2="20.5" y2="12" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="ic-check" viewBox="0 0 24 24"><polyline points="5,13 9.5,17.5 19,6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
 <nav class="nav" onclick="closeLangDD()">
   <div class="nav-brand"><img src="logo.png" alt="OHinfo" style="height:32px;width:auto;display:block;"></div>
   <div class="nav-end">
     <div class="lang-globe" id="langGlobe">
-      <button class="lang-globe-btn" onclick="event.stopPropagation();toggleLangDD()" title="언어">🌐</button>
+      <button class="lang-globe-btn" onclick="event.stopPropagation();toggleLangDD()" title="언어"><svg width="16" height="16"><use href="#ic-globe"/></svg></button>
       <div class="lang-globe-dd hidden" id="langGlobeDD" onclick="event.stopPropagation()">
         <div class="lang-globe-item" onclick="setLang('ko')"><span>한국어</span><span class="check" id="lck-ko"></span></div>
         <div class="lang-globe-item" onclick="setLang('zh')"><span>中文</span><span class="check" id="lck-zh"></span></div>
@@ -53,7 +62,7 @@
 
 <div class="wrap">
   <div class="login-card">
-    <div class="login-title" id="uiTitle">🔐 로그인</div>
+    <div class="login-title"><svg width="20" height="20" style="vertical-align:-3px;margin-right:5px;color:var(--sub);"><use href="#ic-lock"/></svg><span id="uiTitle">로그인</span></div>
     <div class="login-sub" id="uiSub">설문에 참여하려면 로그인하세요</div>
 
     <div id="redirectNotice" class="redirect-notice hidden">
@@ -83,7 +92,7 @@
         <label id="uiPwLbl">비밀번호</label>
         <input class="inp" id="loginPw" type="password" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')doLogin()">
       </div>
-      <button class="btn accent" id="loginBtn" onclick="doLogin()">로그인</button>
+      <button class="btn" id="loginBtn" onclick="doLogin()">로그인</button>
       <div class="err" id="loginErr"></div>
     </div>
   </div>
@@ -101,28 +110,28 @@ window.toggleDark = () => { document.body.classList.toggle('dark'); localStorage
 
 // ── i18n ──
 const T = {
-  ko: { title:'🔐 로그인', sub:'설문에 참여하려면 로그인하세요', notice:'로그인 후 설문 페이지로 이동합니다',
+  ko: { title:'로그인', sub:'설문에 참여하려면 로그인하세요', notice:'로그인 후 설문 페이지로 이동합니다',
     school:'학교명', schoolPh:'학교 이름 입력', grade:'학년', cls:'반', num:'번호', numOpt:'선택',
     pw:'비밀번호', pwPh:'비밀번호 입력', btn:'로그인',
     gradeOpt: n => n + '학년', clsOpt: n => n + '반',
     errSchool:'학교 이름을 입력하세요.', errNum:'번호를 선택하세요.', errPw:'비밀번호를 입력하세요.',
     errNotFound:'학생 정보를 찾을 수 없습니다.', errNotReg:'아직 등록되지 않은 계정입니다.', errWrongPw:'비밀번호가 맞지 않습니다.',
     loading:'확인 중...', ok:'로그인' },
-  zh: { title:'🔐 登录', sub:'请登录以参与问卷', notice:'登录后将跳转至问卷页面',
+  zh: { title:'登录', sub:'请登录以参与问卷', notice:'登录后将跳转至问卷页面',
     school:'学校名', schoolPh:'输入学校名称', grade:'年级', cls:'班', num:'学号', numOpt:'选择',
     pw:'密码', pwPh:'输入密码', btn:'登录',
     gradeOpt: n => n + '年级', clsOpt: n => n + '班',
     errSchool:'请输入学校名称。', errNum:'请选择学号。', errPw:'请输入密码。',
     errNotFound:'未找到学生信息。', errNotReg:'账号尚未注册。', errWrongPw:'密码错误。',
     loading:'验证中...', ok:'登录' },
-  ru: { title:'🔐 Вход', sub:'Войдите, чтобы пройти опрос', notice:'После входа вы будете перенаправлены на опрос',
+  ru: { title:'Вход', sub:'Войдите, чтобы пройти опрос', notice:'После входа вы будете перенаправлены на опрос',
     school:'Школа', schoolPh:'Введите название школы', grade:'Класс', cls:'Группа', num:'Номер', numOpt:'Выбрать',
     pw:'Пароль', pwPh:'Введите пароль', btn:'Войти',
     gradeOpt: n => n + ' кл.', clsOpt: n => n + ' гр.',
     errSchool:'Введите название школы.', errNum:'Выберите номер.', errPw:'Введите пароль.',
     errNotFound:'Ученик не найден.', errNotReg:'Аккаунт не зарегистрирован.', errWrongPw:'Неверный пароль.',
     loading:'Проверка...', ok:'Войти' },
-  en: { title:'🔐 Login', sub:'Sign in to participate in the survey', notice:'You will be redirected to the survey after login',
+  en: { title:'Login', sub:'Sign in to participate in the survey', notice:'You will be redirected to the survey after login',
     school:'School', schoolPh:'Enter school name', grade:'Grade', cls:'Class', num:'Number', numOpt:'Select',
     pw:'Password', pwPh:'Enter password', btn:'Login',
     gradeOpt: n => 'Grade ' + n, clsOpt: n => 'Class ' + n,
@@ -152,7 +161,7 @@ function applyLang() {
 }
 
 function updateLangCheck(l) {
-  ['ko','zh','ru','en'].forEach(k => { document.getElementById('lck-' + k).textContent = k === l ? '✓' : ''; });
+  ['ko','zh','ru','en'].forEach(k => { document.getElementById('lck-' + k).innerHTML = k === l ? '<svg width="14" height="14"><use href="#ic-check"/></svg>' : ''; });
 }
 
 window.setLang = function(l) { lang = l; localStorage.setItem('ohinfo_lang', l); closeLangDD(); applyLang(); };
