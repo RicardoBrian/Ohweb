@@ -101,7 +101,8 @@
     .res-bar-fill { height: 100%; border-radius: 50px; transition: width 0.5s; }
     .res-bar-count { min-width: 28px; text-align: right; color: var(--sub); font-weight: 600; }
     .res-texts { max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
-    .res-text-item { background: var(--glass); border: 1px solid var(--border-card); border-radius: 8px; padding: 7px 12px; font-size: 0.84rem; }
+    .res-text-item { background: var(--glass); border: 1px solid var(--border-card); border-radius: 8px; padding: 7px 12px; font-size: 0.84rem; word-break: break-all; }
+    .res-text-item a, .resp-detail a { color: var(--accent); text-decoration: underline; }
     .res-stat-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
     .res-stat { background: var(--glass); border: 1px solid var(--border-card); border-radius: var(--radius-sm); padding: 10px 18px; text-align: center; }
     .res-stat-num { font-size: 1.6rem; font-weight: 900; color: var(--accent); line-height: 1; }
@@ -322,6 +323,11 @@ if (localStorage.getItem('dark')==='1') document.body.classList.add('dark');
 window.toggleDark = toggleDark;
 function showLoading(v) { document.getElementById('loadingOverlay').style.display = v ? 'flex' : 'none'; }
 function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+// URL을 클릭 가능한 링크로 변환 (이스케이프 후 처리)
+function linkify(s) {
+  const esc = escHtml(s);
+  return esc.replace(/(https?:\/\/[^\s<]+)/g, url => `<a href="${url}" target="_blank" rel="noopener">${url}</a>`);
+}
 function uid() { return Math.random().toString(36).slice(2,10); }
 
 // ── 글로브/프로필 nav ──
@@ -736,7 +742,7 @@ function renderSummary(el) {
     }
     return `<div class="card res-q-block">
       ${header}
-      <div class="res-texts">${answers.map(a=>`<div class="res-text-item">${escHtml(String(a))}</div>`).join('')}</div>
+      <div class="res-texts">${answers.map(a=>`<div class="res-text-item">${linkify(String(a))}</div>`).join('')}</div>
     </div>`;
   }).join('');
 }
@@ -771,7 +777,7 @@ function renderIndividual(el) {
         if (q.type==='file') disp = Array.isArray(a)&&a.length ? `<div class="file-tiles">${a.map(f=>fileTileSmall(f)).join('')}</div>` : '(미응답)';
         else if (['mc','dropdown'].includes(q.type)) disp = a !== undefined ? escHtml(q.options?.[a]||a) : '(미응답)';
         else if (q.type==='checkbox') disp = Array.isArray(a) ? a.map(i=>escHtml(q.options?.[i]||i)).join(', ') : '(미응답)';
-        else disp = escHtml(String(a||'(미응답)'));
+        else disp = a ? linkify(String(a)) : '(미응답)';
         return `<div style="margin-bottom:8px;"><div style="font-size:0.75rem;color:var(--sub);font-weight:600;">${escHtml(q.text||'(질문)')}</div><div style="font-size:0.87rem;">${disp}</div></div>`;
       }).join('')}
     </div>`;
