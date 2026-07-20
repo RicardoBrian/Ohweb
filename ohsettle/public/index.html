@@ -388,13 +388,24 @@ init();
 async function init() {
   await loadTrips();
   // 마지막 입장 기억 → 자동 재입장
+  let reentered = false;
   try {
     const last = JSON.parse(localStorage.getItem('ohsettle_last') || 'null');
     if (last && last.tripId && last.code) {
       const ok = await enterTrip(last.tripId, last.code, true);
       if (!ok) localStorage.removeItem('ohsettle_last');
+      reentered = ok;
     }
   } catch {}
+
+  // URL로 넘어온 여행 이름 자동 채움 (ohtravel "정산" 링크 연동)
+  if (!reentered) {
+    const urlName = new URLSearchParams(location.search).get('name');
+    if (urlName) {
+      document.getElementById('regName').value = urlName;
+      toggleRegister(true);
+    }
+  }
 }
 
 async function loadTrips() {
