@@ -653,7 +653,10 @@ window.openResults = async (formId) => {
     document.getElementById('resTitle').innerText = currentFormData.title || '(제목 없음)';
     document.getElementById('resMeta').innerText = `응답 ${responses.length}개 · ${currentFormData.allowAnon?'비로그인 허용':'로그인 필요'} · ${currentFormData.showResultToRespondent?'결과 공개':'결과 비공개'}`;
 
-    const baseUrl = location.origin + location.pathname.replace('formlab.html', 'formfill.html');
+    // 주소가 /formlab.html 이든 확장자 없는 /formlab 이든 응답 페이지를 가리키도록
+    // 상대 경로로 해석한다. 문자열 치환은 확장자가 없으면 아무것도 못 바꿔서,
+    // 공유 링크가 이 편집 화면을 도로 가리키게 된다.
+    const baseUrl = new URL('formfill.html', location.href).href;
     document.getElementById('shareLink').innerText = `${baseUrl}?id=${formId}`;
     const btn = document.getElementById('statusToggleBtn');
     const isOpen = currentFormData.status === 'open';
