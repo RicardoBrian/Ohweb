@@ -1,0 +1,8 @@
+name = "ohinfo"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
+
+# Pages in ./public are served as static assets; unmatched paths fall through
+# to the Worker, which serves /api/translate.
+[assets]
+directory = "./public"

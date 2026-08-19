@@ -1,0 +1,6 @@
+name = "ohsettle"
+compatibility_date = "2024-11-01"
+
+# Fully static — no Worker script, so ./public is served directly.
+[assets]
+directory = "./public"
