@@ -3,6 +3,12 @@ main = "src/index.js"
 compatibility_date = "2024-11-01"
 
 # Pages in ./public are served as static assets; unmatched paths fall through
-# to the Worker, which serves /api/translate.
+# to the Worker, which serves /api/translate and the short-link redirects.
 [assets]
 directory = "./public"
+
+# Same namespace the shortener writes to, so links stay managed from its admin
+# page while resolving under this hostname.
+[[kv_namespaces]]
+binding = "LINKS"
+id = "7105a4ca6e86400fb697f9c1b9f61254"

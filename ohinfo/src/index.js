@@ -45,9 +45,18 @@ async function handleTranslate(request) {
 }
 
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     const url = new URL(request.url);
     if (url.pathname === "/api/translate") return handleTranslate(request);
+
+    // Nothing here matched a page, so try the shared short-link namespace:
+    // kakainfo.com/gs resolves to whatever the shortener stored under "gs".
+    const code = url.pathname.slice(1);
+    if (request.method === "GET" && code && !code.includes("/") && env.LINKS) {
+      const raw = await env.LINKS.get(code);
+      if (raw) return Response.redirect(JSON.parse(raw).url, 302);
+    }
+
     return new Response("Not Found", {
       status: 404,
       headers: { "Content-Type": "text/plain; charset=utf-8" },
