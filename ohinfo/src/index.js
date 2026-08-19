@@ -51,9 +51,17 @@ export default {
 
     // Nothing here matched a page, so try the shared short-link namespace:
     // kakainfo.com/gs resolves to whatever the shortener stored under "gs".
-    const code = url.pathname.slice(1);
-    if (request.method === "GET" && code && !code.includes("/") && env.LINKS) {
-      const raw = await env.LINKS.get(code);
+    // Korean codes arrive percent-encoded, so decode before looking up; a
+    // malformed escape throws and is treated as a miss.
+    const segment = url.pathname.slice(1);
+    if (request.method === "GET" && segment && !segment.includes("/") && env.LINKS) {
+      let code = null;
+      try {
+        code = decodeURIComponent(segment);
+      } catch {
+        code = null;
+      }
+      const raw = code && (await env.LINKS.get(code));
       if (raw) return Response.redirect(JSON.parse(raw).url, 302);
     }
 
