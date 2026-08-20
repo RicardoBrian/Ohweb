@@ -1,0 +1,122 @@
+/* ============================================================
+   SeatChange — 페이지 전용 스타일
+   theme.css의 토큰만 쓰고 새 색을 만들지 않는다.
+   inset-group / seg / icon-action / hero-stat은 design-reference의
+   공용 패턴을 그대로 가져온 것 — 규격이 바뀌면 그쪽을 기준으로 맞춘다.
+   ============================================================ */
+
+.wrap { max-width: 780px; margin: 0 auto; padding: 20px 16px 120px; }
+.card {
+  background: var(--surface); border-radius: var(--radius);
+  padding: 18px; margin-bottom: 14px;
+}
+.card-h { font-size: 0.95rem; font-weight: 700; margin: 0 0 12px; letter-spacing: -0.01em; }
+.card-h .hint { font-weight: 400; font-size: 0.8rem; color: var(--sub); margin-left: 8px; }
+
+/* ---- 공용 패턴 (design-reference/reference.html 발췌) ---- */
+.icon-action {
+  width: 34px; height: 34px; border-radius: 50%; border: none; background: none; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; color: var(--sub); flex-shrink: 0;
+  transition: background 0.15s, color 0.15s;
+}
+.icon-action:hover { background: var(--glass); color: var(--text); }
+.icon-action.danger { color: var(--danger); }
+.icon-action.danger:hover { background: var(--danger-light); }
+
+.inset-group { background: var(--glass-strong); border-radius: var(--radius); overflow: hidden; }
+.inset-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; min-height: 48px; position: relative; }
+.inset-row + .inset-row::before {
+  content: ''; position: absolute; top: 0; left: 16px; right: 0; height: 1px; background: var(--hairline);
+}
+.inset-row .row-label { font-size: 0.92rem; color: var(--text); flex-shrink: 0; min-width: 88px; }
+.inset-row input[type=number], .inset-row select {
+  flex: 1; border: none; background: none; font-family: inherit; font-size: 0.95rem;
+  color: var(--text); text-align: right; outline: none; min-width: 0; font-variant-numeric: tabular-nums;
+}
+.inset-row .row-sub { font-size: 0.78rem; color: var(--text-3); margin-top: 2px; }
+
+.hero-stat { text-align: center; padding: 22px 0 6px; }
+.hero-stat .cap { font-size: 0.78rem; font-weight: 600; color: var(--sub); }
+.hero-stat .num { font-size: 2.5rem; font-weight: 900; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.hero-stat .sub { font-size: 0.8rem; color: var(--sub); margin-top: 4px; }
+
+/* ---- iOS 스타일 스위치 ---- */
+.sw { width: 44px; height: 26px; border-radius: var(--radius-pill); background: var(--glass); border: 1px solid var(--border-card);
+      cursor: pointer; position: relative; flex-shrink: 0; margin-left: auto; transition: background var(--dur) var(--ease); }
+.sw.on { background: var(--accent); border-color: transparent; }   /* 색 = 상태 */
+.sw::after { content:''; position:absolute; top:2px; left:2px; width:20px; height:20px; border-radius:50%;
+             background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.3); transition: transform var(--dur) var(--ease); }
+.sw.on::after { transform: translateX(18px); }
+
+/* ---- 명단 ---- */
+.roster { display: flex; flex-wrap: wrap; gap: 7px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 5px; padding: 5px 6px 5px 12px;
+  background: var(--glass); border: 1px solid var(--border-card); border-radius: var(--radius-pill);
+  font-size: 0.86rem; font-weight: 600;
+}
+.chip .x { width: 20px; height: 20px; border: none; background: none; cursor: pointer; color: var(--text-3);
+           display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; padding: 0; }
+.chip .x:hover { background: var(--danger-light); color: var(--danger); }
+.chip.tag-front { border-color: var(--accent); }
+.empty { font-size: 0.86rem; color: var(--text-3); padding: 6px 0; }
+
+/* ---- 좌석 격자 ---- */
+.board { overflow-x: auto; padding: 4px; }
+.teacher {
+  text-align: center; font-size: 0.72rem; font-weight: 700; color: var(--text-3);
+  letter-spacing: 0.08em; padding: 8px; margin-bottom: 14px;
+  border: 1px dashed var(--hairline); border-radius: var(--radius-sm);
+}
+.grid { display: grid; gap: 8px; justify-content: center; min-width: max-content; margin: 0 auto; }
+.seat {
+  min-width: 76px; min-height: 58px; border-radius: var(--radius-sm);
+  background: var(--glass-strong); border: 1px solid var(--border-card);
+  box-shadow: var(--highlight), var(--shadow-sm);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 6px 4px; text-align: center; cursor: pointer;
+  transition: transform 0.12s var(--ease), box-shadow var(--dur) var(--ease), opacity var(--dur) var(--ease);
+}
+.seat:hover { transform: translateY(-1px); box-shadow: var(--highlight), var(--shadow); }
+.seat .nm { font-size: 0.88rem; font-weight: 700; letter-spacing: -0.01em; word-break: keep-all; line-height: 1.25; }
+.seat .no { font-size: 0.64rem; color: var(--text-3); font-variant-numeric: tabular-nums; margin-top: 2px; }
+.seat.off { opacity: 0.32; box-shadow: none; border-style: dashed; }
+.seat.off .nm { color: var(--text-3); }
+.seat.gap { visibility: hidden; pointer-events: none; }   /* 통로 */
+.seat.pinned { border-color: var(--accent); }
+.seat.landing { animation: land 0.42s var(--ease); }
+@keyframes land { 0% { transform: scale(0.7); opacity: 0; } 60% { transform: scale(1.06); } 100% { transform: scale(1); opacity: 1; } }
+
+/* ---- 하단 고정 액션 바 ---- */
+.actionbar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 150;
+  display: flex; gap: 10px; justify-content: center; align-items: center;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  background: var(--glass-nav); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+  border-top: 1px solid var(--hairline);
+}
+
+/* ---- 뽑기(프로젝터) 모드 ---- */
+.stage { position: fixed; inset: 0; z-index: 500; background: var(--bg); background-attachment: fixed;
+         display: flex; flex-direction: column; padding: 24px; overflow: auto; }
+.stage-top { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.stage-name { font-size: clamp(2rem, 7vw, 4.5rem); font-weight: 900; letter-spacing: -0.04em; text-align: center; line-height: 1.1; }
+.stage-cap { text-align: center; font-size: 0.8rem; font-weight: 600; color: var(--sub); letter-spacing: 0.06em; }
+.stage .board { flex: 1; display: flex; align-items: center; justify-content: center; }
+.stage .seat { min-width: 92px; min-height: 68px; }
+.stage .seat .nm { font-size: 1rem; }
+
+.banner { font-size: 0.84rem; padding: 10px 14px; border-radius: var(--radius-sm);
+          background: var(--danger-light); color: var(--danger); font-weight: 600; margin-bottom: 12px; }
+.banner.warn { background: var(--accent-light); color: var(--accent); }
+
+@media print {
+  .nav, .actionbar, .noprint { display: none !important; }
+  body { background: #fff !important; }
+  .wrap { padding: 0; max-width: none; }
+  .card { background: none; box-shadow: none; border: none; padding: 0; }
+  .seat { box-shadow: none; background: none; border: 1px solid #bbb; break-inside: avoid; }
+}
+
+/* 하단 액션바가 있는 화면이라 토스트를 그 위로 올린다 — 겹치면 버튼이 가려진다. */
+.toast { bottom: calc(84px + env(safe-area-inset-bottom)); }
