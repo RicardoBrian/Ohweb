@@ -9,12 +9,16 @@
 
 ```
 public/
-  index.html   화면
-  app.js       상태 관리 · 렌더링
-  app.css      페이지 전용 스타일 (theme.css 토큰만 사용)
-  arrange.js   배정 엔진 — DOM 의존 없음
-  theme.css    공용 디자인 시스템 (design-reference에서 복사)
-arrange.test.mjs  엔진 테스트
+  index.html           화면
+  app.js               상태 관리 · 렌더링
+  app.css              페이지 전용 스타일 (theme.css 토큰만 사용)
+  arrange.js           배정 엔진 — DOM 의존 없음
+  store.js             Firestore 저장 계층 — 방 열기/저장/공유 링크
+  firebase-config.js   Firebase 초기화 + 익명 인증
+  theme.css            공용 디자인 시스템 (design-reference에서 복사)
+arrange.test.mjs       엔진 테스트
+firestore.rules        Firestore 보안 규칙
+rules-test/            firestore.rules 에뮬레이터 테스트
 ```
 
 ## 배정 엔진
@@ -45,13 +49,26 @@ MRV(선택지가 적은 학생부터) 휴리스틱 + 백트래킹으로 탐색�
 node seatchange/arrange.test.mjs
 ```
 
+## 저장 · 공유
+
+`store.js`가 Firestore(`seat_rooms` 컬렉션)에 저장한다. 로그인 화면 없이
+`firebase-config.js`의 익명 인증으로 브라우저마다 uid를 받고, 그 uid를
+좌석표의 `ownerUid`로 기록한다.
+
+- 방은 URL의 `?room=<id>`로 식별한다. 처음 뭔가 바뀌면(디바운스 600ms)
+  Firestore에 새 문서를 만들고 주소창에 자동으로 반영된다.
+- **공유** 아이콘이 그 링크를 클립보드에 복사한다.
+- 링크를 받은 사람은 같은 문서를 볼 수 있지만(rules: read는 열려 있음),
+  자기 uid가 `ownerUid`와 다르면 쓰기가 막힌다 — 그래서 자동으로
+  **읽기 전용 뷰**가 된다(교실/명단/규칙 카드가 숨겨지고 배치도만 보임).
+  뽑기 모드·인쇄는 읽기 전용에서도 그대로 쓸 수 있다(로컬 연출일 뿐 저장을
+  건드리지 않으므로).
+- Firestore를 못 붙였을 때(오프라인, 아직 익명 인증 안 켬 등)는 토스트로
+  알리고 로컬 상태로 계속 쓸 수 있다 — 다만 저장은 안 된다.
+
 ## 현재 한계
 
-- 저장은 **localStorage**다. 브라우저를 바꾸면 명단이 따라오지 않는다.
-  다른 앱들처럼 Firestore를 붙이려면 `app.js`의 `save()` / `load()`만 갈아끼우면 된다.
-  (그러려면 Firebase 프로젝트를 하나 만들고 `firebase-config.js`를 추가해야 한다.)
-- 공유 링크가 아직 없다. 위의 Firestore 작업이 선행되어야 한다.
-- 인쇄는 브라우저 인쇄를 그대로 쓴다. PNG 내보내기는 아직 없다.
+인쇄는 브라우저 인쇄를 그대로 쓴다. PNG 내보내기는 아직 없다.
 
 ## Firestore 규칙
 
@@ -81,6 +98,6 @@ npx firebase-tools emulators:exec --only firestore --project demo-seatchange \
   "node rules-test/firestore.rules.test.mjs"
 ```
 
-Firestore를 아직 연결하지 않은 지금(저장은 localStorage)도 규칙 파일을 미리
-넣어둔 이유는, Firestore를 붙이는 순간 테스트 모드로 시작하고 싶은 유혹을
-없애기 위해서다. 붙일 때 콘솔의 Rules 탭에 이 파일 내용을 그대로 붙여넣으면 된다.
+Firebase 콘솔의 Firestore → Rules 탭에 `firestore.rules` 내용을 그대로
+붙여넣으면 된다. **Authentication에서 "익명" 로그인 제공업체도 켜야 한다** —
+안 켜면 `whenSignedIn()`이 끝나지 않아 저장이 전부 실패한다.

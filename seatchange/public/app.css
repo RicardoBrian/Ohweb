@@ -120,3 +120,10 @@
 
 /* 하단 액션바가 있는 화면이라 토스트를 그 위로 올린다 — 겹치면 버튼이 가려진다. */
 .toast { bottom: calc(84px + env(safe-area-inset-bottom)); }
+
+/* ---- 읽기 전용 뷰(공유받은 좌석표) ---- */
+body.readonly .edit-only { display: none !important; }
+body.readonly #roomTitleView { display: block; }
+
+/* 첫 로딩 동안 조작을 막는다 — Firestore 응답 전에 누른 액션이 유실되는 것을 방지. */
+body.loading .actionbar button { pointer-events: none; opacity: 0.5; }

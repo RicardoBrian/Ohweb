@@ -1,16 +1,15 @@
 /**
  * SeatChange — UI.
- * 배정 로직은 arrange.js에 있고, 이 파일은 상태 관리와 렌더링만 한다.
- *
- * 저장은 현재 localStorage. 기기 간 공유가 필요해지면 store 계층만
- * Firestore로 갈아끼우면 되도록 read/write를 한곳에 모아뒀다.
+ * 배정 로직은 arrange.js, 저장은 store.js(Firestore)에 있고
+ * 이 파일은 상태 관리와 렌더링만 한다.
  */
 import { arrange, makeGrid, makeSeed } from './arrange.js';
+import { openRoom, saveRoom, shareUrl } from './store.js';
 
 const $ = id => document.getElementById(id);
-const KEY = 'seatchange.v1';
 
 const S = {
+  name: '', roomId: null, isOwner: true,
   rows: 5, cols: 6, aisleEvery: 3,
   disabled: [],          // seatId[]
   members: [],           // {id, name, front}
@@ -22,10 +21,38 @@ const S = {
   result: null,          // {placements, seed, relaxed}
 };
 
-/* ---------- 저장 ---------- */
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} };
-function load() {
-  try { Object.assign(S, JSON.parse(localStorage.getItem(KEY) || '{}')); } catch {}
+/* ---------- 저장 ----------
+ * Firestore에 쓰기 전, 서버 응답을 기다리지 않고 로컬 상태를 먼저 바꾼 뒤
+ * 디바운스해서 보낸다. 소유자가 아니면(공유 링크로 열람 중) 아예 보내지
+ * 않는다 — rules가 거부하기도 하지만, 여기서 먼저 걸러 헛 요청을 안 만든다.
+ */
+let saveTimer = null;
+function scheduleSave() {
+  if (!S.isOwner) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try {
+      const id = await saveRoom(S.roomId, S);
+      if (!S.roomId) { S.roomId = id; renderRoomBar(); }
+    } catch (e) {
+      toast('저장 실패: ' + e.message);
+    }
+  }, 600);
+}
+
+function applyLoadedData(data) {
+  S.name = data.name || '';
+  S.rows = data.rows ?? S.rows;
+  S.cols = data.cols ?? S.cols;
+  S.aisleEvery = data.aisleEvery ?? S.aisleEvery;
+  S.disabled = data.disabled ?? [];
+  S.members = data.members ?? [];
+  S.avoidPairs = data.avoidPairs ?? [];
+  S.frontRows = data.frontRows ?? S.frontRows;
+  S.avoidPrevSeat = !!data.avoidPrevSeat;
+  S.avoidPrevMate = !!data.avoidPrevMate;
+  S.prev = data.prev ?? null;
+  S.result = data.result ?? null;
 }
 
 /* ---------- 파생 ---------- */
@@ -49,7 +76,14 @@ function toast(msg) {
 }
 
 /* ---------- 렌더 ---------- */
-function render() {
+function renderRoomBar() {
+  $('roomName').value = S.name;
+  $('roomTitleText').textContent = S.name || '이름 없는 좌석표';
+  $('btnShare').disabled = !S.roomId;
+}
+
+/** 상태를 화면에 반영만 한다. 저장을 트리거하지 않는다 — 초기 로드 직후에도 안전하게 부를 수 있다. */
+function paint() {
   const seats = usableCount(), people = S.members.length;
   $('statSeats').textContent = seats;
   $('statSub').textContent = people
@@ -61,12 +95,15 @@ function render() {
     : (S.result?.relaxed?.length
         ? `<div class="banner warn">규칙을 다 지킬 수 없어 일부를 완화했습니다: ${S.result.relaxed.map(labelOf).join(', ')}</div>` : '');
 
+  renderRoomBar();
   renderRoster();
   renderFrontPicker();
   renderAvoid();
   renderResult();
-  save();
 }
+
+/** 상태 변경 뒤에는 항상 이걸 부른다: 화면 반영 + 저장 예약. */
+function render() { paint(); scheduleSave(); }
 
 const labelOf = r => ({ avoidPrevNeighbor: '직전과 다른 짝', avoidPrevSeat: '직전과 다른 자리', avoidPairs: '짝 금지' }[r] ?? r);
 
@@ -116,7 +153,7 @@ function renderAvoid() {
   });
 }
 
-/** 좌석 격자를 그린다. cellFn이 각 좌석에 들어갈 이름을 정한다. */
+/** 좌석 격자를 그린다. */
 function paintGrid(container, placements, { clickable = false } = {}) {
   const seats = allSeats();
   const maxCol = Math.max(...seats.map(s => s.col), 0);
@@ -150,7 +187,7 @@ function renderResult() {
   $('emptyCard').hidden = has;
   if (!has) return;
   $('seedLabel').textContent = `seed ${S.result.seed}`;
-  paintGrid($('grid'), S.result.placements, { clickable: true });
+  paintGrid($('grid'), S.result.placements, { clickable: S.isOwner });
 }
 
 const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
@@ -253,14 +290,38 @@ function bindNumber(id, key, min, max) {
 function bindSwitch(id, key) {
   const el = $(id);
   const sync = () => el.classList.toggle('on', !!S[key]);
-  const flip = () => { S[key] = !S[key]; sync(); save(); };
+  const flip = () => { S[key] = !S[key]; sync(); render(); };
   el.onclick = flip;
   el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); } };
   sync();
 }
 
-function init() {
-  load();
+function applyReadOnly() {
+  document.body.classList.toggle('readonly', !S.isOwner);
+  $('readonlyBanner').hidden = S.isOwner;
+  $('roomTitleView').hidden = S.isOwner;
+}
+
+async function init() {
+  document.body.classList.add('loading');
+
+  const dark = $('darkToggle');
+  const setDark = on => { document.body.classList.toggle('dark', on); localStorage.setItem('seatchange.dark', on ? '1' : '0'); };
+  setDark(localStorage.getItem('seatchange.dark') === '1');
+  dark.onclick = () => setDark(!document.body.classList.contains('dark'));
+
+  addEventListener('keydown', e => { if (e.key === 'Escape') $('stage').classList.add('hidden'); });
+
+  try {
+    const opened = await openRoom();
+    S.roomId = opened.roomId;
+    S.isOwner = opened.isOwner;
+    if (opened.data) applyLoadedData(opened.data);
+  } catch (e) {
+    toast('저장소에 연결하지 못했습니다: ' + e.message);
+  }
+  document.body.classList.remove('loading');
+  applyReadOnly();
 
   bindNumber('rows', 'rows', 1, 12);
   bindNumber('cols', 'cols', 1, 12);
@@ -270,6 +331,16 @@ function init() {
 
   bindSwitch('swSeat', 'avoidPrevSeat');
   bindSwitch('swMate', 'avoidPrevMate');
+
+  $('roomName').oninput = e => { S.name = e.target.value; renderRoomBar(); scheduleSave(); };
+  $('btnShare').onclick = async () => {
+    if (!S.roomId) return toast('먼저 뭔가 저장될 때까지 기다려 주세요');
+    try {
+      await navigator.clipboard.writeText(shareUrl(S.roomId));
+      toast('공유 링크를 복사했습니다');
+    } catch { toast(shareUrl(S.roomId)); }
+  };
+  $('btnNewRoom').onclick = () => { location.href = location.pathname; };
 
   $('addNames').onclick = () => addMembers($('names').value);
   $('names').onkeydown = e => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) addMembers($('names').value); };
@@ -292,14 +363,8 @@ function init() {
   $('drawNext').onclick = drawNext;
   $('drawAll').onclick = () => { while (draw.i < draw.order.length) drawNext(); };
   $('drawExit').onclick = () => $('stage').classList.add('hidden');
-  addEventListener('keydown', e => { if (e.key === 'Escape') $('stage').classList.add('hidden'); });
 
-  const dark = $('darkToggle');
-  const setDark = on => { document.body.classList.toggle('dark', on); localStorage.setItem('seatchange.dark', on ? '1' : '0'); };
-  setDark(localStorage.getItem('seatchange.dark') === '1');
-  dark.onclick = () => setDark(!document.body.classList.contains('dark'));
-
-  render();
+  paint();   // 로드된 상태를 반영만 하고, 곧바로 다시 저장을 트리거하지 않는다.
 }
 
 init();
