@@ -75,7 +75,12 @@ body.dark {
 .boardcard { background: var(--surface); border-radius: var(--radius); padding: 16px; margin-bottom: 14px;
              transition: transform 0.4s var(--ease); }
 .board { overflow-x: auto; padding: 4px; }
-.grid { display: grid; gap: 10px; justify-content: center; min-width: max-content; margin: 0 auto; touch-action: none; }
+.grid { display: grid; gap: 10px; justify-content: center; min-width: max-content; margin: 0 auto; }
+/* 드래그 이동은 설계 모드(소유자 + 배치 전)에서만 가능하다. 그때만
+   touch-action:none을 걸어서 포인터 드래그가 브라우저 스크롤과 안 부딪히게
+   한다 — 다른 모든 상태(뷰어, 배치 완료 후)에서 이걸 걸어두면 분단이 많은
+   넓은 격자를 모바일에서 옆으로 스와이프해서 볼 수가 없어진다. */
+body:not(.readonly):not(.arranged) .grid { touch-action: none; }
 
 /* 칠판은 격자 아래에 있다 — 실제 교실도 "앞"이 어느 쪽인지는 칠판을 보고
    알지, 학생이 맨 위 줄에 앉아서 아는 게 아니다. 진짜 칠판 색(짙은 초록)을
@@ -134,18 +139,25 @@ body.dark {
 .seat:hover .seat-del, .seat:focus-within .seat-del { opacity: 1; }
 .seat .seat-del:hover { background: var(--danger-light); color: var(--danger); border-color: transparent; }
 
-/* 배치 완료 후 — 아직 안 누른 책상은 비워둔다 (몰래 배정의 핵심) */
+/* 배치 완료 후 — 아직 안 누른 책상은 비워둔다 (몰래 배정의 핵심).
+   한 번 눌러서 공개된 책상(.revealed)은 이름을 계속 보여준다 — 다시
+   설계하기 전까지는 확인한 사실 자체가 사라질 이유가 없다. */
 .seat.blank { cursor: pointer; }
 .seat.blank::after {
   content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--text-3); opacity: 0.5;
 }
+.seat.blank.revealed::after { content: none; }
 
-/* ---- 보드 하단 편집 툴바 ---- */
+/* ---- 보드 하단 편집 툴바 / 공개 진행 상태 ---- */
 .boardtools { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 14px;
               padding-top: 14px; border-top: 1px solid var(--hairline); }
 .boardtools .bt-label { font-size: 0.78rem; font-weight: 700; color: var(--sub); }
 .boardtools .icon-action { width: 28px; height: 28px; background: var(--glass); border: 1px solid var(--border-card); }
 .boardtools .bt-hint { font-size: 0.76rem; color: var(--text-3); margin-left: auto; }
+
+.boardstatus { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 14px;
+               padding-top: 14px; border-top: 1px solid var(--hairline); }
+.boardstatus #revealProgress { font-size: 0.84rem; font-weight: 700; color: var(--sub); font-variant-numeric: tabular-nums; }
 
 /* ---- 하단 고정 액션 바 ---- */
 .actionbar {
@@ -213,6 +225,10 @@ body.flipped .boardcard { transform: rotate(180deg); }
 .load-row + .load-row { border-top: 1px solid var(--hairline); }
 .load-row .lr-name { font-weight: 600; font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .load-row .lr-time { font-size: 0.76rem; color: var(--text-3); flex-shrink: 0; }
+.load-row:disabled { cursor: default; }
+.load-row:disabled:hover { background: none; }
+.lr-badge { font-size: 0.68rem; font-weight: 700; color: var(--accent); background: var(--accent-light);
+            border-radius: var(--radius-pill); padding: 2px 7px; margin-left: 6px; vertical-align: 1px; }
 
 .panel {
   position: fixed; top: 0; right: 0; bottom: 0; z-index: 310; width: min(400px, 100vw);

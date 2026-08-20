@@ -96,6 +96,7 @@ function paint() {
   renderAvoid();
   syncSwitch('swSeat', S.avoidPrevSeat);
   syncSwitch('swMate', S.avoidPrevMate);
+  updateRevealProgress();
 }
 
 /** 상태 변경 뒤에는 항상 이걸 부른다: 화면 반영 + 저장 예약. */
@@ -170,11 +171,18 @@ function renderDesk(desk, row, editable) {
     return d;
   }
 
-  d.className = 'seat blank';
-  d.title = '눌러서 확인';
+  const already = revealed.has(desk.id);
+  d.className = 'seat blank' + (already ? ' revealed' : '');
+  d.title = already ? nameOf(who) : '눌러서 확인';
+  if (already) d.innerHTML = `<span class="nm">${esc(nameOf(who))}</span>`;
   d.onclick = () => {
+    revealed.add(desk.id);
+    d.classList.add('revealed');
+    d.innerHTML = `<span class="nm">${esc(nameOf(who))}</span>`;
+    d.title = nameOf(who);
     d.classList.remove('landing'); void d.offsetWidth; d.classList.add('landing');
     showReveal(nameOf(who));
+    updateRevealProgress();
   };
   return d;
 }
@@ -394,6 +402,7 @@ function doArrange() {
 
   S.prev = S.result?.placements ?? S.prev;
   S.result = res;
+  revealed = new Set(); // 이전 배치에서 눌렀던 책상 id가 새 배치에서 다른 학생을 가리킬 수 있다
   closeSettings();
   render();
   toast(res.relaxed.length ? '배치 완료 (일부 규칙 완화)' : '배치 완료');
@@ -403,11 +412,16 @@ function redesign() {
   if (!confirm('배치를 초기화하고 다시 설계할까요?')) return;
   if (S.result) S.prev = S.result.placements;
   S.result = null;
+  revealed = new Set();
   render();
 }
 
 /* ---------- 이름 공개 오버레이 ---------- */
+// 누가 자기 책상을 확인했는지는 방 데이터가 아니라 이 세션에서만 의미 있는
+// 상태라 S에 넣지 않는다 — 서버에 저장하지 않고, 새 배치가 나오면 비운다.
+let revealed = new Set();
 let revealTimer = null;
+
 function showReveal(name) {
   $('revealName').textContent = name;
   $('revealOverlay').classList.remove('hidden');
@@ -419,6 +433,21 @@ function hideReveal() {
   clearTimeout(revealTimer);
   $('revealOverlay').classList.remove('show');
   setTimeout(() => $('revealOverlay').classList.add('hidden'), 250);
+}
+
+function updateRevealProgress() {
+  const el = $('revealProgress');
+  if (!el) return;
+  el.textContent = S.result ? `${revealed.size} / ${S.members.length}명 확인` : '';
+}
+
+/** 하나씩 누르는 재미를 원치 않을 때 — 인쇄나 빠른 확인용으로 한 번에 다 보여준다. */
+function revealAll() {
+  if (!S.result) return;
+  for (const deskId of Object.keys(S.result.placements)) revealed.add(deskId);
+  renderBoard();
+  updateRevealProgress();
+  toast('전체 공개했습니다');
 }
 
 /* ---------- 설정 패널 · 불러오기 대화상자 (scrim을 공유한다) ---------- */
@@ -453,14 +482,17 @@ function closeLoad() {
 }
 function renderLoadList(rooms) {
   const el = $('loadList');
-  const others = rooms.filter(r => r.id !== S.roomId);
-  if (!others.length) { el.innerHTML = '<div class="empty">다른 저장된 좌석표가 없습니다.</div>'; return; }
+  if (!rooms.length) { el.innerHTML = '<div class="empty">저장된 좌석표가 없습니다.</div>'; return; }
   el.innerHTML = '';
-  others.forEach(r => {
+  rooms.forEach(r => {
+    const isCurrent = r.id === S.roomId;
     const row = document.createElement('button');
-    row.className = 'load-row';
-    row.innerHTML = `<span class="lr-name">${esc(r.name)}</span><span class="lr-time">${relTime(r.updatedAt)}</span>`;
-    row.onclick = () => { location.href = shareUrl(r.id); };
+    row.className = 'load-row' + (isCurrent ? ' current' : '');
+    row.innerHTML = `<span class="lr-name">${esc(r.name)}${isCurrent ? ' <span class="lr-badge">현재</span>' : ''}</span><span class="lr-time">${relTime(r.updatedAt)}</span>`;
+    // 지금 보고 있는 방을 다시 눌러도 해가 없지만(같은 곳으로 이동할 뿐),
+    // 굳이 새로고침을 일으킬 이유가 없으니 막아둔다.
+    if (isCurrent) row.disabled = true;
+    else row.onclick = () => { location.href = shareUrl(r.id); };
     el.appendChild(row);
   });
 }
@@ -585,6 +617,7 @@ async function init() {
 
   $('btnArrange').onclick = doArrange;
   $('btnRedesign').onclick = redesign;
+  $('btnRevealAll').onclick = revealAll;
   $('btnPrint').onclick = () => { if (!S.result) return toast('먼저 배치를 시작하세요'); print(); };
   $('btnFullscreen').onclick = toggleProjector;
   document.addEventListener('fullscreenchange', () => {
