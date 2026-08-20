@@ -52,3 +52,35 @@ node seatchange/arrange.test.mjs
   (그러려면 Firebase 프로젝트를 하나 만들고 `firebase-config.js`를 추가해야 한다.)
 - 공유 링크가 아직 없다. 위의 Firestore 작업이 선행되어야 한다.
 - 인쇄는 브라우저 인쇄를 그대로 쓴다. PNG 내보내기는 아직 없다.
+
+## Firestore 규칙
+
+`firestore.rules`가 이 앱의 실제 방어선이다. 로그인 화면이 없는 대신 익명
+인증(Anonymous Auth)으로 브라우저마다 uid를 받아 좌석표 소유자로 기록한다 —
+사용자는 로그인을 의식하지 않지만 규칙은 소유자를 구분할 수 있다.
+
+- **읽기는 열려 있다** — 공유 링크를 아는 사람이 배치도를 볼 수 있어야 하므로.
+  문서 ID(자동 생성 긴 문자열)가 사실상 비밀번호 역할을 한다.
+- **쓰기는 만든 사람만.** `create`는 `ownerUid == request.auth.uid`를 강제하고,
+  `update`는 기존 문서의 `ownerUid`와 일치해야 하며 그 값 자체는 바꿀 수 없다.
+- 스키마도 검증한다 — 허용된 필드 외에는 거부, `rows`/`cols`는 1~12,
+  `updatedAt`은 서버 시각과 일치해야 함(클라이언트가 시각을 위조 못 하게).
+- 정의하지 않은 컬렉션은 기본적으로 전부 거부된다.
+
+**절대 테스트 모드(`allow read, write: if request.time < timestamp.date(...)`)를
+쓰지 않는다.** 그 규칙은 지정한 날짜가 지나면 조건이 거짓이 되어 전 사이트가
+갑자기 전부 거부로 뒤집힌다 — 30일 뒤 접근이 막히는 원인이 이것이다.
+
+규칙은 `rules-test/`에서 실제 Firestore 에뮬레이터로 검증한다 (자세한 건
+`rules-test/README.md`):
+
+```sh
+cd seatchange
+npm --prefix rules-test install
+npx firebase-tools emulators:exec --only firestore --project demo-seatchange \
+  "node rules-test/firestore.rules.test.mjs"
+```
+
+Firestore를 아직 연결하지 않은 지금(저장은 localStorage)도 규칙 파일을 미리
+넣어둔 이유는, Firestore를 붙이는 순간 테스트 모드로 시작하고 싶은 유혹을
+없애기 위해서다. 붙일 때 콘솔의 Rules 탭에 이 파일 내용을 그대로 붙여넣으면 된다.

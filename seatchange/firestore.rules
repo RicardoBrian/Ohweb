@@ -1,0 +1,68 @@
+rules_version = '2';
+
+/**
+ * SeatChange Firestore 규칙
+ *
+ * 이 앱은 로그인 화면이 없다. 대신 익명 인증(Anonymous Auth)을 써서
+ * 브라우저마다 uid를 하나 받고, 그 uid를 좌석표의 소유자로 기록한다.
+ * 사용자는 로그인을 의식하지 못하지만 규칙은 소유자를 판별할 수 있다.
+ *
+ * 읽기는 열려 있다 — 링크를 아는 사람이 배치도를 볼 수 있어야 하므로.
+ * 쓰기는 만든 사람만 가능하다.
+ *
+ * 테스트 모드(`request.time < timestamp.date(...)`)는 절대 쓰지 않는다.
+ * 그 규칙은 날짜가 지나면 조건이 거짓이 되어 전부 거부로 뒤집힌다.
+ */
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * 형태 검증. 남의 Firestore를 공짜 저장소로 쓰지 못하게 막는 것이 주 목적이다.
+     * 읽기가 열려 있는 만큼 쓰기 쪽 상한을 확실히 걸어둔다.
+     *
+     * 숫자는 `is int`가 아니라 `is number`로 본다 — JS에서 온 값이 정수로
+     * 직렬화될지 실수로 될지에 규칙이 좌우되면 안 되기 때문.
+     */
+    function validRoom() {
+      let d = request.resource.data;
+      return d.keys().hasAll(['ownerUid', 'name', 'rows', 'cols', 'members', 'updatedAt'])
+          && d.keys().hasOnly([
+               'ownerUid', 'name', 'rows', 'cols', 'aisleEvery', 'disabled',
+               'members', 'avoidPairs', 'frontRows', 'avoidPrevSeat', 'avoidPrevMate',
+               'prev', 'result', 'createdAt', 'updatedAt'
+             ])
+          && d.ownerUid is string
+          && d.name is string && d.name.size() <= 60
+          && d.rows is number && d.rows >= 1 && d.rows <= 12
+          && d.cols is number && d.cols >= 1 && d.cols <= 12
+          && d.members is list && d.members.size() <= 80
+          && d.updatedAt == request.time;   // 클라이언트가 시각을 위조하지 못하게
+    }
+
+    match /seat_rooms/{roomId} {
+
+      // 링크를 아는 사람은 누구나 볼 수 있다. 문서 ID가 사실상 비밀번호
+      // 역할을 하므로 추측하기 어려운 자동 ID(addDoc)를 쓴다.
+      allow read: if true;
+
+      allow create: if signedIn()
+                    && request.resource.data.ownerUid == request.auth.uid
+                    && validRoom();
+
+      // 소유자만 수정할 수 있고, 소유자 자체는 바꿀 수 없다.
+      allow update: if signedIn()
+                    && resource.data.ownerUid == request.auth.uid
+                    && request.resource.data.ownerUid == resource.data.ownerUid
+                    && validRoom();
+
+      allow delete: if signedIn() && resource.data.ownerUid == request.auth.uid;
+    }
+
+    // 위에 명시하지 않은 모든 경로는 거부된다(rules_version 2의 기본값).
+    // 새 컬렉션을 추가하면 여기에 규칙을 같이 써야 동작한다.
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "seatchange-rules-test",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@firebase/rules-unit-testing": "^4",
+    "firebase": "^11"
+  }
+}
