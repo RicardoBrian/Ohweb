@@ -114,7 +114,10 @@ function renderBoard() {
 
   const editable = isEditable();
 
-  for (let r = 0; r < rows; r++) {
+  // 1줄은 칠판에 제일 가까운 줄이어야 한다. 칠판이 격자 "아래"에 있으므로
+  // (renderBoard가 그리는 순서 = 화면 위에서 아래) row 0을 맨 마지막에
+  // 그려야 실제로 칠판과 가장 가까운 줄이 된다. row가 클수록 칠판에서 멀다.
+  for (let r = rows - 1; r >= 0; r--) {
     for (let c = 0; c < cols; c++) {
       const desk = deskAt(r, c);
       grid.appendChild(desk ? renderDesk(desk, r, editable) : renderEmptyCell(r, c, editable));
@@ -327,8 +330,26 @@ function parseRosterCsv(text) {
   }).filter(r => r.name);
 }
 
+/**
+ * 엑셀에서 "CSV UTF-8"이 아니라 그냥 "CSV(쉼표로 분리)"로 저장하면, 한글
+ * Windows 기준 EUC-KR(CP949)로 저장된다. file.text()는 항상 UTF-8로만
+ * 읽어서 그 경우 한글이 마름모(◆) 같은 글자로 깨진다.
+ *
+ * UTF-8로 엄격하게(fatal) 디코딩해보고 실패하면 EUC-KR로 다시 읽는다 —
+ * CP949로 인코딩된 한글 바이트열은 거의 항상 UTF-8 규칙을 어기므로
+ * (연속 바이트 구조가 매우 엄격해서) 이 판별이 실제로 신뢰할 만하다.
+ */
+async function readRosterText(file) {
+  const buf = await file.arrayBuffer();
+  try {
+    return new TextDecoder('utf-8', { fatal: true }).decode(buf);
+  } catch {
+    return new TextDecoder('euc-kr').decode(buf);
+  }
+}
+
 async function uploadRosterFile(file) {
-  const text = await file.text();
+  const text = await readRosterText(file);
   const rows = parseRosterCsv(text);
   if (!rows.length) return toast('읽을 수 있는 이름이 없습니다');
   if (S.members.length && !confirm(`기존 명단 ${S.members.length}명을 지우고 ${rows.length}명으로 바꿀까요?`)) return;
