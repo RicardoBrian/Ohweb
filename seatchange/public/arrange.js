@@ -63,6 +63,9 @@ const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
  * @param {object}   input.rules.pins            {memberId: seatId} 고정석
  * @param {string[]} input.rules.frontRequired   앞줄이어야 하는 멤버
  * @param {number}   input.rules.frontRows       앞줄로 치는 줄 수 (기본 2)
+ * @param {object}   input.rules.rowRequired     {memberId: rowIndex} 정확히 이 줄
+ *   (명렬표 업로드로 들어오는 제약. frontRequired와 달리 "이 줄이 아니면 안 됨"이라
+ *   완화 대상이 아니다 — 명단에 명시된 값을 조용히 무시하면 안 되므로.)
  * @param {Array}    input.rules.avoidPairs      [[m1,m2]] 짝 금지
  * @param {boolean}  input.rules.avoidPrevSeat   직전과 같은 자리 금지
  * @param {boolean}  input.rules.avoidPrevNeighbor 직전과 같은 짝 금지
@@ -72,7 +75,7 @@ const pairKey = (a, b) => (a < b ? `${a}|${b}` : `${b}|${a}`);
 export function arrange({ seats, members, rules = {}, seed = makeSeed() }) {
   const usable = seats.filter(s => !s.disabled);
   const {
-    pins = {}, frontRequired = [], frontRows = 2, avoidPairs = [],
+    pins = {}, frontRequired = [], frontRows = 2, rowRequired = {}, avoidPairs = [],
     avoidPrevSeat = false, avoidPrevNeighbor = false, prev = null,
   } = rules;
 
@@ -85,6 +88,16 @@ export function arrange({ seats, members, rules = {}, seed = makeSeed() }) {
   const seatById = new Map(usable.map(s => [s.id, s]));
   const avoid = new Set(avoidPairs.map(([a, b]) => pairKey(a, b)));
   const frontSet = new Set(frontRequired);
+
+  // pins는 fits()를 거치지 않고 바로 놓이므로, rowRequired와 모순되는 고정석은
+  // 여기서 미리 걸러야 한다 — 안 그러면 명단에 적은 줄 지정이 조용히 무시된다.
+  for (const [mId, seatId] of Object.entries(pins)) {
+    const want = rowRequired[mId];
+    if (want != null && seatById.get(seatId)?.row !== want) {
+      return { ok: false, reason: 'unsatisfiable', seed,
+               detail: { hint: `고정석과 줄 지정이 서로 다른 학생이 있습니다 (${mId}).` } };
+    }
+  }
 
   // 직전 배정을 멤버 기준으로 뒤집어 둔다.
   const prevSeatOf = new Map();
@@ -156,7 +169,9 @@ export function arrange({ seats, members, rules = {}, seed = makeSeed() }) {
   function fits(mId, seatId, assign, lv) {
     const seat = seatById.get(seatId);
     if (pins[mId] && pins[mId] !== seatId) return false;
-    if (frontSet.has(mId) && seat.row >= frontRows) return false;
+    if (rowRequired[mId] != null) {
+      if (seat.row !== rowRequired[mId]) return false;
+    } else if (frontSet.has(mId) && seat.row >= frontRows) return false;
     if (lv.prevSeat && prevSeatOf.get(mId) === seatId) return false;
 
     for (const nId of deskmates.get(seatId) ?? []) {
@@ -169,13 +184,14 @@ export function arrange({ seats, members, rules = {}, seed = makeSeed() }) {
   }
 }
 
-/** 행×열 격자 생성. aisleAfter에 넣은 열 번호 뒤에 통로가 생긴다. */
-export function makeGrid(rows, cols, { aisleAfter = [] } = {}) {
+/**
+ * 꽉 찬 행×열 격자 생성 — 초기 기본 배치를 만들 때만 쓴다.
+ * 이후에는 이 결과를 편집 가능한 책상 배열(S.desks)로 다루므로, 여기서
+ * "통로" 같은 생성 규칙을 더 두지 않는다 — 통로는 그냥 책상이 없는 칸이다.
+ */
+export function makeGrid(rows, cols) {
   const seats = [];
-  let col = 0;
-  for (let c = 0; c < cols; c++) {
-    for (let r = 0; r < rows; r++) seats.push({ id: `r${r}c${col}`, row: r, col });
-    col += aisleAfter.includes(c) ? 2 : 1; // 통로 = 건너뛴 col 번호
-  }
-  return seats.sort((a, b) => a.row - b.row || a.col - b.col);
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++) seats.push({ id: `r${r}c${c}`, row: r, col: c });
+  return seats;
 }

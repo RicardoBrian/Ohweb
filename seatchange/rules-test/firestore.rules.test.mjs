@@ -18,7 +18,7 @@ const bob    = testEnv.authenticatedContext('bob-uid').firestore();
 const anon   = testEnv.unauthenticatedContext().firestore();
 
 const validRoom = (ownerUid, over = {}) => ({
-  ownerUid, name: '3반', rows: 5, cols: 6, members: [],
+  ownerUid, name: '3반', desks: [{ id: 'd1', row: 0, col: 0 }], members: [],
   updatedAt: serverTimestamp(), ...over,
 });
 
@@ -44,8 +44,9 @@ await ok('필수 필드 누락 create 거부', assertFails(
 await ok('허용 안 된 필드 create 거부', assertFails(
   setDoc(doc(alice, 'seat_rooms/r4'), validRoom('alice-uid', { secret: 'nope' }))
 ));
-await ok('rows 범위 초과 create 거부', assertFails(
-  setDoc(doc(alice, 'seat_rooms/r5'), validRoom('alice-uid', { rows: 99 }))
+await ok('desks 개수 상한 초과 create 거부', assertFails(
+  setDoc(doc(alice, 'seat_rooms/r5'),
+    validRoom('alice-uid', { desks: Array.from({ length: 81 }, (_, i) => ({ id: `d${i}`, row: 0, col: i })) }))
 ));
 
 // 5) 아무나(로그인 안 해도) 링크만 있으면 읽을 수 있다

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>SeatChange — 자리 바꾸기</title>
-  <meta name="description" content="제약조건을 지키면서 교실 자리를 공정하게 배정합니다.">
+  <meta name="description" content="교실 모양 그대로 책상을 배치하고, 규칙에 맞게 자리를 바꿉니다.">
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
@@ -16,11 +16,14 @@
 <!-- 아이콘 스프라이트 — 이모지 대신 항상 currentColor SVG. -->
 <svg width="0" height="0" style="position:absolute;">
   <defs>
-    <symbol id="ic-trash" viewBox="0 0 24 24"><line x1="5" y1="7" x2="19" y2="7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8 7V5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M7 7l1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
     <symbol id="ic-close" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
-    <symbol id="ic-refresh" viewBox="0 0 24 24"><path d="M5 12a7 7 0 0 1 12-4.9M19 12a7 7 0 0 1-12 4.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="17,3 17,7.5 12.5,7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><polyline points="7,21 7,16.5 11.5,16.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="ic-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
     <symbol id="ic-share" viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="17" cy="6" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="17" cy="18" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/><line x1="8.3" y1="10.8" x2="14.8" y2="7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="8.3" y1="13.2" x2="14.8" y2="16.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="ic-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 3.5v2.4M12 18.1v2.4M20.5 12h-2.4M5.9 12H3.5M17.7 6.3l-1.7 1.7M8 16l-1.7 1.7M17.7 17.7 16 16M8 8 6.3 6.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="ic-upload" viewBox="0 0 24 24"><path d="M12 15.5V5M12 5 7.5 9.5M12 5l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 16v2.5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-download" viewBox="0 0 24 24"><path d="M12 4v10.5M12 14.5 7.5 10M12 14.5 16.5 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 16v2.5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-expand" viewBox="0 0 24 24"><path d="M4 9V5a1 1 0 0 1 1-1h4M20 9V5a1 1 0 0 0-1-1h-4M4 15v4a1 1 0 0 0 1 1h4M20 15v4a1 1 0 0 1-1 1h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-redo" viewBox="0 0 24 24"><path d="M5 12a7 7 0 0 1 12-4.9M19 12a7 7 0 0 1-12 4.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="17,3 17,7.5 12.5,7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><polyline points="7,21 7,16.5 11.5,16.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   </defs>
 </svg>
 
@@ -31,15 +34,12 @@
 
 <div class="wrap">
 
-  <!-- ── 방 제목 · 공유 ── -->
-  <div class="card noprint edit-only" id="roomBar">
-    <div style="display:flex;align-items:center;gap:10px;">
-      <input class="inp" id="roomName" placeholder="예: 3학년 2반" maxlength="60" style="flex:1;font-weight:700;">
-      <button class="icon-action" id="btnShare" title="공유 링크 복사"><svg width="18" height="18"><use href="#ic-share"/></svg></button>
-    </div>
-  </div>
-  <div class="card noprint view-only-title" id="roomTitleView" hidden>
-    <h1 style="margin:0;font-size:1.05rem;font-weight:800;" id="roomTitleText"></h1>
+  <!-- ── 방 제목 · 공유 · 설정 ── -->
+  <div class="roombar">
+    <input class="inp edit-only" id="roomName" placeholder="예: 3학년 2반" maxlength="60">
+    <h1 class="view-title" id="roomTitleText" hidden></h1>
+    <button class="icon-action" id="btnShare" title="공유 링크 복사"><svg width="18" height="18"><use href="#ic-share"/></svg></button>
+    <button class="icon-action edit-only" id="btnSettings" title="설정"><svg width="18" height="18"><use href="#ic-gear"/></svg></button>
   </div>
 
   <div class="banner warn noprint" id="readonlyBanner" hidden>
@@ -47,84 +47,23 @@
     <button class="btn sm ghost" id="btnNewRoom" style="margin-left:6px;">내 좌석표 만들기</button>
   </div>
 
-  <div class="hero-stat">
-    <div class="cap">배치 가능 좌석</div>
-    <div class="num" id="statSeats">0</div>
-    <div class="sub" id="statSub">불러오는 중...</div>
-  </div>
-
   <div id="banner"></div>
 
-  <!-- ── 교실 크기 ── -->
-  <div class="card noprint edit-only">
-    <h2 class="card-h">교실 <span class="hint">좌석을 눌러 사용 안 함으로 바꿀 수 있습니다</span></h2>
-    <div class="inset-group">
-      <div class="inset-row"><span class="row-label">줄 수 (행)</span><input type="number" id="rows" min="1" max="12" value="5"></div>
-      <div class="inset-row"><span class="row-label">분단 (열)</span><input type="number" id="cols" min="1" max="12" value="6"></div>
-      <div class="inset-row"><span class="row-label">통로</span>
-        <select id="aisle">
-          <option value="">없음</option>
-          <option value="2">2열마다</option>
-          <option value="3" selected>3열마다</option>
-          <option value="4">4열마다</option>
-        </select>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── 명단 ── -->
-  <div class="card noprint edit-only">
-    <h2 class="card-h">명단 <span class="hint">이름을 줄바꿈 · 쉼표로 구분해 붙여넣으세요</span></h2>
-    <textarea class="inp" id="names" rows="3" placeholder="김민준, 이서연, 박도윤&#10;최지우"></textarea>
-    <div style="display:flex;gap:8px;margin:10px 0 14px;">
-      <button class="btn sm" id="addNames"><svg width="15" height="15" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-plus"/></svg>명단 추가</button>
-      <button class="btn sm ghost" id="clearNames">전체 지우기</button>
-    </div>
-    <div class="roster" id="roster"></div>
-  </div>
-
-  <!-- ── 규칙 ── -->
-  <div class="card noprint edit-only">
-    <h2 class="card-h">규칙 <span class="hint">이름을 눌러 앞줄 지정 · 두 명을 골라 짝 금지</span></h2>
-    <div class="inset-group">
-      <div class="inset-row">
-        <div><span class="row-label" style="min-width:0;">직전과 다른 자리</span><div class="row-sub">모두 자리를 옮기게 합니다</div></div>
-        <div class="sw" id="swSeat" role="switch" tabindex="0"></div>
-      </div>
-      <div class="inset-row">
-        <div><span class="row-label" style="min-width:0;">직전과 다른 짝</span><div class="row-sub">지난번 짝꿍을 피합니다</div></div>
-        <div class="sw" id="swMate" role="switch" tabindex="0"></div>
-      </div>
-      <div class="inset-row"><span class="row-label">앞줄 범위</span><input type="number" id="frontRows" min="1" max="6" value="2"></div>
-    </div>
-
-    <div style="margin-top:14px;">
-      <div class="card-h" style="font-size:0.82rem;color:var(--sub);">앞줄 고정 <span class="hint">시력·키 배려</span></div>
-      <div class="roster" id="frontPicker"></div>
-    </div>
-
-    <div style="margin-top:14px;">
-      <div class="card-h" style="font-size:0.82rem;color:var(--sub);">짝 금지</div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <select class="inp" id="avoidA" style="flex:1;min-width:120px;"></select>
-        <select class="inp" id="avoidB" style="flex:1;min-width:120px;"></select>
-        <button class="btn sm" id="addAvoid">추가</button>
-      </div>
-      <div class="roster" id="avoidList" style="margin-top:10px;"></div>
-    </div>
-  </div>
-
-  <!-- ── 결과 ── -->
-  <div class="card" id="resultCard" hidden>
-    <h2 class="card-h">배치도 <span class="hint" id="seedLabel"></span></h2>
+  <!-- ── 교실 보드: 항상 최상단, 이게 곧 메인 화면 ── -->
+  <div class="boardcard" id="boardcard">
+    <div class="blackboard">칠판</div>
     <div class="board">
-      <div class="teacher">교탁 · 칠판</div>
       <div class="grid" id="grid"></div>
     </div>
-  </div>
-
-  <div class="card noprint edit-only" id="emptyCard">
-    <div class="empty">명단을 넣고 <b>자리 배정</b>을 누르면 배치도가 나옵니다.</div>
+    <div class="boardtools edit-only pre-arrange" id="boardTools">
+      <span class="bt-label">줄</span>
+      <button class="icon-action" id="rowMinus" title="줄 삭제">−</button>
+      <button class="icon-action" id="rowPlus" title="줄 추가"><svg width="15" height="15"><use href="#ic-plus"/></svg></button>
+      <span class="bt-label" style="margin-left:14px;">분단</span>
+      <button class="icon-action" id="colMinus" title="분단 삭제">−</button>
+      <button class="icon-action" id="colPlus" title="분단 추가"><svg width="15" height="15"><use href="#ic-plus"/></svg></button>
+      <span class="bt-hint">책상을 눌러 삭제 · 드래그로 이동</span>
+    </div>
   </div>
 
 </div>
@@ -132,23 +71,71 @@
 <!-- ── 하단 액션 ── -->
 <div class="actionbar noprint">
   <button class="btn ghost sm" id="btnPrint">인쇄</button>
-  <button class="btn accent edit-only" id="btnArrange">자리 배정</button>
-  <button class="btn sm" id="btnDraw">뽑기 모드</button>
+  <button class="btn accent edit-only pre-arrange" id="btnArrange">배치 시작</button>
+  <button class="btn sm edit-only post-arrange" id="btnRedesign">다시 설계</button>
+  <button class="btn sm" id="btnFullscreen"><svg width="15" height="15" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-expand"/></svg>전체화면</button>
 </div>
 
-<!-- ── 뽑기(프로젝터) 모드 ── -->
-<div class="stage hidden" id="stage">
-  <div class="stage-top">
-    <button class="btn ghost sm" id="drawExit"><svg width="16" height="16" style="vertical-align:-3px;"><use href="#ic-close"/></svg> 닫기</button>
-    <div class="stage-cap" style="margin-left:auto;" id="drawProgress"></div>
+<!-- ── 설정 패널 (편집 전용) ── -->
+<div class="scrim hidden" id="panelScrim"></div>
+<div class="panel hidden" id="settingsPanel">
+  <div class="panel-head">
+    <span>설정</span>
+    <button class="icon-action" id="btnClosePanel"><svg width="18" height="18"><use href="#ic-close"/></svg></button>
   </div>
-  <div class="stage-cap" id="drawCap">준비되면 시작하세요</div>
-  <div class="stage-name" id="drawName">준비</div>
-  <div class="board"><div class="grid" id="drawGrid"></div></div>
-  <div style="display:flex;gap:10px;justify-content:center;padding-top:14px;">
-    <button class="btn accent" id="drawNext">한 명 뽑기</button>
-    <button class="btn sm" id="drawAll">전부 공개</button>
+  <div class="panel-body">
+
+    <section class="panel-section">
+      <div class="panel-h">명렬표 업로드 <span class="hint">이름, 줄배정(선택) 두 칸짜리 CSV</span></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn sm ghost" id="btnTemplate"><svg width="15" height="15" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-download"/></svg>양식 다운로드</button>
+        <label class="btn sm" for="fileRoster" style="cursor:pointer;"><svg width="15" height="15" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-upload"/></svg>업로드
+          <input type="file" id="fileRoster" accept=".csv,text/csv" style="display:none;">
+        </label>
+      </div>
+      <div class="row-sub" style="margin-top:8px;">줄배정 칸을 비워두면 자동 배치, 숫자(1부터)를 쓰면 그 줄에만 앉습니다 — 학생은 모릅니다.</div>
+    </section>
+
+    <section class="panel-section">
+      <div class="panel-h">명단 <span class="hint">직접 추가도 가능</span></div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <input class="inp" id="quickName" placeholder="이름 입력 후 Enter">
+        <button class="btn sm" id="clearNames">전체 지우기</button>
+      </div>
+      <div id="rosterList"></div>
+    </section>
+
+    <section class="panel-section">
+      <div class="panel-h">짝 금지</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <select class="inp" id="avoidA" style="flex:1;min-width:110px;"></select>
+        <select class="inp" id="avoidB" style="flex:1;min-width:110px;"></select>
+        <button class="btn sm" id="addAvoid">추가</button>
+      </div>
+      <div class="roster" id="avoidList" style="margin-top:10px;"></div>
+    </section>
+
+    <section class="panel-section">
+      <div class="panel-h">규칙</div>
+      <div class="inset-group">
+        <div class="inset-row">
+          <div><span class="row-label" style="min-width:0;">직전과 다른 자리</span><div class="row-sub">모두 자리를 옮기게 합니다</div></div>
+          <div class="sw" id="swSeat" role="switch" tabindex="0"></div>
+        </div>
+        <div class="inset-row">
+          <div><span class="row-label" style="min-width:0;">직전과 다른 짝</span><div class="row-sub">지난번 짝꿍을 피합니다</div></div>
+          <div class="sw" id="swMate" role="switch" tabindex="0"></div>
+        </div>
+      </div>
+    </section>
+
   </div>
+</div>
+
+<!-- ── 이름 공개 오버레이 ── -->
+<div class="reveal hidden" id="revealOverlay">
+  <div class="reveal-name" id="revealName"></div>
+  <div class="reveal-hint">화면을 누르면 닫혀요</div>
 </div>
 
 <div class="toast" id="toast"></div>

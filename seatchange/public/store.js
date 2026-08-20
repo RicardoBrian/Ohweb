@@ -19,8 +19,8 @@ const ROOM_KEY = 'seatchange.roomId';
 
 // firestore.rules의 필드 허용 목록과 일치해야 한다. 여기 없는 키를 보내면 거부된다.
 const FIELDS = [
-  'rows', 'cols', 'aisleEvery', 'disabled', 'members', 'avoidPairs',
-  'frontRows', 'avoidPrevSeat', 'avoidPrevMate', 'prev', 'result',
+  'desks', 'members', 'rowAssign', 'avoidPairs',
+  'avoidPrevSeat', 'avoidPrevMate', 'prev', 'result',
 ];
 
 function roomIdFromUrl() {
