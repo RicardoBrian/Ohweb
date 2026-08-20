@@ -9,7 +9,7 @@
  * 다른 화면이 아니라 같은 보드가 다른 상태로 보이는 것뿐이다.
  */
 import { arrange, makeGrid, makeSeed } from './arrange.js';
-import { openRoom, saveRoom, shareUrl } from './store.js';
+import { openRoom, saveRoom, shareUrl, listMyRooms } from './store.js';
 
 const $ = id => document.getElementById(id);
 const newId = prefix => `${prefix}${Date.now()}${Math.random().toString(36).slice(2, 7)}`;
@@ -400,19 +400,72 @@ function hideReveal() {
   setTimeout(() => $('revealOverlay').classList.add('hidden'), 250);
 }
 
-/* ---------- 설정 패널 ---------- */
+/* ---------- 설정 패널 · 불러오기 대화상자 (scrim을 공유한다) ---------- */
 function openSettings() {
   $('settingsPanel').classList.remove('hidden');
-  $('panelScrim').classList.remove('hidden');
-  requestAnimationFrame(() => { $('settingsPanel').classList.add('show'); $('panelScrim').classList.add('show'); });
+  $('scrim').classList.remove('hidden');
+  requestAnimationFrame(() => { $('settingsPanel').classList.add('show'); $('scrim').classList.add('show'); });
 }
 function closeSettings() {
   $('settingsPanel').classList.remove('show');
-  $('panelScrim').classList.remove('show');
-  setTimeout(() => { $('settingsPanel').classList.add('hidden'); $('panelScrim').classList.add('hidden'); }, 260);
+  $('scrim').classList.remove('show');
+  setTimeout(() => { $('settingsPanel').classList.add('hidden'); $('scrim').classList.add('hidden'); }, 260);
 }
 
-/* ---------- 전체화면(프로젝터) ---------- */
+async function openLoad() {
+  $('loadDialog').classList.remove('hidden');
+  $('scrim').classList.remove('hidden');
+  requestAnimationFrame(() => { $('loadDialog').classList.add('show'); $('scrim').classList.add('show'); });
+
+  $('loadList').innerHTML = '<div class="empty">불러오는 중...</div>';
+  try {
+    const rooms = await listMyRooms();
+    renderLoadList(rooms);
+  } catch (e) {
+    $('loadList').innerHTML = `<div class="empty">목록을 불러오지 못했습니다: ${esc(e.message)}</div>`;
+  }
+}
+function closeLoad() {
+  $('loadDialog').classList.remove('show');
+  $('scrim').classList.remove('show');
+  setTimeout(() => { $('loadDialog').classList.add('hidden'); $('scrim').classList.add('hidden'); }, 260);
+}
+function renderLoadList(rooms) {
+  const el = $('loadList');
+  const others = rooms.filter(r => r.id !== S.roomId);
+  if (!others.length) { el.innerHTML = '<div class="empty">다른 저장된 좌석표가 없습니다.</div>'; return; }
+  el.innerHTML = '';
+  others.forEach(r => {
+    const row = document.createElement('button');
+    row.className = 'load-row';
+    row.innerHTML = `<span class="lr-name">${esc(r.name)}</span><span class="lr-time">${relTime(r.updatedAt)}</span>`;
+    row.onclick = () => { location.href = shareUrl(r.id); };
+    el.appendChild(row);
+  });
+}
+function relTime(ms) {
+  if (!ms) return '';
+  const min = Math.floor((Date.now() - ms) / 60000);
+  if (min < 1) return '방금 전';
+  if (min < 60) return `${min}분 전`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}시간 전`;
+  return `${Math.floor(hr / 24)}일 전`;
+}
+
+/* ---------- 명시적 저장 ---------- */
+async function saveNow() {
+  clearTimeout(saveTimer);
+  try {
+    const id = await saveRoom(S.roomId, S);
+    if (!S.roomId) { S.roomId = id; renderRoomBar(); }
+    toast(`"${S.name || '이름 없는 좌석표'}" 저장했습니다`);
+  } catch (e) {
+    toast('저장 실패: ' + e.message);
+  }
+}
+
+/* ---------- 전체화면(프로젝터) · 화면 반전 ---------- */
 let inProjector = false;
 async function toggleProjector() {
   inProjector = !inProjector;
@@ -421,6 +474,13 @@ async function toggleProjector() {
     if (inProjector) await document.documentElement.requestFullscreen?.();
     else if (document.fullscreenElement) await document.exitFullscreen?.();
   } catch { /* 전체화면 API가 막혀 있어도 projector 클래스만으로 충분히 커진다 */ }
+}
+
+/** 마주 앉은 사람에게 보드를 보여줄 때 쓴다 — 180도 돌려서 그 사람 기준으로 똑바로 보이게. */
+function toggleFlip() {
+  const on = !document.body.classList.contains('flipped');
+  document.body.classList.toggle('flipped', on);
+  localStorage.setItem('seatchange.flipped', on ? '1' : '0');
 }
 
 /* ---------- 배선 ---------- */
@@ -439,7 +499,9 @@ async function init() {
   setDark(localStorage.getItem('seatchange.dark') === '1');
   dark.onclick = () => setDark(!document.body.classList.contains('dark'));
 
-  addEventListener('keydown', e => { if (e.key === 'Escape') { hideReveal(); closeSettings(); } });
+  if (localStorage.getItem('seatchange.flipped') === '1') document.body.classList.add('flipped');
+
+  addEventListener('keydown', e => { if (e.key === 'Escape') { hideReveal(); closeSettings(); closeLoad(); } });
 
   try {
     const opened = await openRoom();
@@ -456,15 +518,20 @@ async function init() {
   document.body.classList.remove('loading');
 
   $('roomName').oninput = e => { S.name = e.target.value; renderRoomBar(); scheduleSave(); };
+  $('btnSave').onclick = saveNow;
   $('btnShare').onclick = async () => {
-    if (!S.roomId) return toast('먼저 뭔가 저장될 때까지 기다려 주세요');
+    if (!S.roomId) return toast('먼저 저장을 한 번 눌러 주세요');
     try { await navigator.clipboard.writeText(shareUrl(S.roomId)); toast('공유 링크를 복사했습니다'); }
     catch { toast(shareUrl(S.roomId)); }
   };
   $('btnNewRoom').onclick = () => { location.href = location.pathname; };
   $('btnSettings').onclick = openSettings;
   $('btnClosePanel').onclick = closeSettings;
-  $('panelScrim').onclick = closeSettings;
+  $('btnLoad').onclick = openLoad;
+  $('btnCloseLoad').onclick = closeLoad;
+  $('btnNewRoomFromLoad').onclick = () => { location.href = location.pathname; };
+  $('scrim').onclick = () => { closeSettings(); closeLoad(); };
+  $('btnFlip').onclick = toggleFlip;
 
   $('rowPlus').onclick = addRow; $('rowMinus').onclick = removeRow;
   $('colPlus').onclick = addCol; $('colMinus').onclick = removeCol;

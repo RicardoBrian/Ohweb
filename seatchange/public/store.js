@@ -12,6 +12,7 @@
 import { db, whenSignedIn } from './firebase-config.js';
 import {
   doc, getDoc, setDoc, addDoc, collection, serverTimestamp,
+  query, where, limit, getDocs,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const ROOMS = 'seat_rooms';
@@ -79,6 +80,25 @@ export async function saveRoom(roomId, state) {
   localStorage.setItem(ROOM_KEY, ref.id);
   setRoomIdInUrl(ref.id);
   return ref.id;
+}
+
+/**
+ * 내가 만든 좌석표 목록 ("불러오기"). firestore.rules는 list 쿼리를
+ * `ownerUid == request.auth.uid`로 제한하므로, 정렬 없이 이 필터로만
+ * 가져온 뒤 클라이언트에서 최신순으로 정렬한다 — orderBy를 같이 쓰면
+ * 복합 색인이 필요해지는데, 방 개수가 많지 않은 앱이라 그럴 값어치가 없다.
+ */
+export async function listMyRooms() {
+  const user = await whenSignedIn();
+  const q = query(collection(db, ROOMS), where('ownerUid', '==', user.uid), limit(50));
+  const snap = await getDocs(q);
+  const rooms = snap.docs.map(d => ({
+    id: d.id,
+    name: d.data().name || '이름 없는 좌석표',
+    updatedAt: d.data().updatedAt?.toMillis?.() ?? 0,
+  }));
+  rooms.sort((a, b) => b.updatedAt - a.updatedAt);
+  return rooms;
 }
 
 export function shareUrl(roomId) {

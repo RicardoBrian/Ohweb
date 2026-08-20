@@ -1,6 +1,6 @@
 import { initializeTestEnvironment, assertSucceeds, assertFails } from '@firebase/rules-unit-testing';
 import { readFileSync } from 'fs';
-import { doc, setDoc, getDoc, updateDoc, deleteDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, deleteDoc, collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 
 const testEnv = await initializeTestEnvironment({
   projectId: 'demo-seatchange',
@@ -49,9 +49,25 @@ await ok('desks 개수 상한 초과 create 거부', assertFails(
     validRoom('alice-uid', { desks: Array.from({ length: 81 }, (_, i) => ({ id: `d${i}`, row: 0, col: i })) }))
 ));
 
-// 5) 아무나(로그인 안 해도) 링크만 있으면 읽을 수 있다
+// 5) 아무나(로그인 안 해도) 링크만 있으면 읽을 수 있다 (get)
 await ok('비로그인 read 허용 (공유 링크)', assertSucceeds(
   getDoc(doc(anon, 'seat_rooms/r1'))
+));
+
+// 5b) 목록 조회(list, "내 좌석표 불러오기")는 소유자 본인만 — 그리고 쿼리
+// 자체가 ownerUid로 좁혀져 있어야 한다. firebaseConfig는 공개 정보이므로
+// 이 규칙이 없으면 아무나 전체 좌석표 목록을 긁어갈 수 있다.
+await ok('소유자가 자기 uid로 필터한 list 허용', assertSucceeds(
+  getDocs(query(collection(alice, 'seat_rooms'), where('ownerUid', '==', 'alice-uid')))
+));
+await ok('필터 없는 list(컬렉션 전체 훑기) 거부', assertFails(
+  getDocs(collection(alice, 'seat_rooms'))
+));
+await ok('남의 uid로 필터해도 list 거부', assertFails(
+  getDocs(query(collection(bob, 'seat_rooms'), where('ownerUid', '==', 'alice-uid')))
+));
+await ok('비로그인 list 거부', assertFails(
+  getDocs(query(collection(anon, 'seat_rooms'), where('ownerUid', '==', 'alice-uid')))
 ));
 
 // 6) 소유자만 수정 가능

@@ -3,7 +3,21 @@
    theme.css의 토큰만 쓰고 새 색을 만들지 않는다.
    inset-group / icon-action / sw는 design-reference의 공용 패턴을
    그대로 가져온 것 — 규격이 바뀌면 그쪽을 기준으로 맞춘다.
+
+   예외 하나: 책상과 칠판만은 실제 사물 색을 쓴다("책상은 책상색,
+   칠판은 칠판색"). 여기는 chrome(버튼·패널)이 아니라 이 앱의 콘텐츠
+   자체라, 디자인 시스템의 "색은 상태 전용" 원칙을 그대로 적용하면
+   오히려 가독성이 떨어진다. 새 토큰(--desk-*, --board-*)으로 완전히
+   분리해뒀으니 theme.css의 상태색 규칙과 섞이지 않는다.
    ============================================================ */
+
+:root {
+  --desk-bg: #f3e6d0; --desk-border: #d9c19c; --desk-shadow: rgba(120,90,40,0.16);
+}
+body.dark {
+  --desk-bg: #3c3122; --desk-border: #5c4a30; --desk-shadow: rgba(0,0,0,0.35);
+}
+/* 칠판은 라이트/다크 상관없이 항상 짙은 초록 — 실제 칠판이 그렇듯 테마를 안 탄다. */
 
 .wrap { max-width: 780px; margin: 0 auto; padding: 16px 16px 120px; }
 .card {
@@ -58,30 +72,37 @@
 .view-title { flex: 1; margin: 0; font-size: 1.05rem; font-weight: 800; letter-spacing: -0.01em; }
 
 /* ---- 교실 보드: 이게 메인 화면이다 ---- */
-.boardcard { background: var(--surface); border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
-.blackboard {
-  text-align: center; font-size: 0.72rem; font-weight: 700; color: var(--text-3);
-  letter-spacing: 0.1em; padding: 9px; margin-bottom: 16px;
-  border: 1px dashed var(--hairline); border-radius: var(--radius-sm);
-}
+.boardcard { background: var(--surface); border-radius: var(--radius); padding: 16px; margin-bottom: 14px;
+             transition: transform 0.4s var(--ease); }
 .board { overflow-x: auto; padding: 4px; }
-.grid { display: grid; gap: 8px; justify-content: center; min-width: max-content; margin: 0 auto; touch-action: none; }
+.grid { display: grid; gap: 10px; justify-content: center; min-width: max-content; margin: 0 auto; touch-action: none; }
+
+/* 칠판은 격자 아래에 있다 — 실제 교실도 "앞"이 어느 쪽인지는 칠판을 보고
+   알지, 학생이 맨 위 줄에 앉아서 아는 게 아니다. 진짜 칠판 색(짙은 초록)을
+   그대로 써서 격자의 유리 카드들과 확실히 구분되게 한다. */
+.blackboard {
+  text-align: center; font-size: 0.92rem; font-weight: 700; letter-spacing: 0.14em;
+  color: #f4ecd8; background: linear-gradient(180deg, #2f5240 0%, #23402f 100%);
+  padding: 16px; margin-top: 18px; border-radius: var(--radius-sm);
+  border: 3px solid #6b5232; box-shadow: inset 0 2px 6px rgba(0,0,0,0.35), var(--shadow-sm);
+}
 
 .seat {
-  width: 76px; height: 58px; border-radius: var(--radius-sm);
-  background: var(--glass-strong); border: 1px solid var(--border-card);
-  box-shadow: var(--highlight), var(--shadow-sm);
+  width: 92px; height: 74px; border-radius: var(--radius-sm);
+  background: var(--desk-bg); border: 1px solid var(--desk-border);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 3px 8px var(--desk-shadow);
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: 6px 4px; text-align: center; cursor: pointer; position: relative;
   transition: transform 0.12s var(--ease), box-shadow var(--dur) var(--ease), opacity var(--dur) var(--ease);
 }
-.seat:hover { transform: translateY(-1px); box-shadow: var(--highlight), var(--shadow); }
-.seat .nm { font-size: 0.88rem; font-weight: 700; letter-spacing: -0.01em; word-break: keep-all; line-height: 1.25; }
-.seat .no { font-size: 0.62rem; color: var(--text-3); font-variant-numeric: tabular-nums; margin-top: 2px; }
+.seat:hover { transform: translateY(-1px); box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 5px 14px var(--desk-shadow); }
+.seat .nm { font-size: 0.98rem; font-weight: 700; letter-spacing: -0.01em; word-break: keep-all; line-height: 1.25; color: var(--text); }
+.seat .no { font-size: 0.64rem; color: var(--text-2); font-variant-numeric: tabular-nums; margin-top: 2px; }
 .seat.landing { animation: land 0.42s var(--ease); }
 @keyframes land { 0% { transform: scale(0.7); opacity: 0; } 60% { transform: scale(1.06); } 100% { transform: scale(1); opacity: 1; } }
 
-/* 빈 칸 — 편집 모드에서만 보이는 "+ 추가" 자리 */
+/* 빈 칸 — 편집 모드에서만 보이는 "+ 추가" 자리. 아직 책상이 아니므로
+   책상색을 쓰지 않는다. */
 .seat.empty-slot {
   background: transparent; border: 1.5px dashed var(--hairline); box-shadow: none;
   color: var(--text-3); font-size: 1.3rem; font-weight: 300;
@@ -92,12 +113,12 @@
 .seat.gap { visibility: hidden; pointer-events: none; box-shadow: none; }
 
 /* 배치는 됐지만 이 책상엔 아무도 안 앉은 경우 (학생보다 책상이 많을 때) */
-.seat.spare { opacity: 0.4; cursor: default; box-shadow: none; }
+.seat.spare { opacity: 0.45; cursor: default; }
 .seat.spare:hover { transform: none; }
 
-/* 뷰어가 배치 전 상태를 볼 때 — 눌러도 아무 일도 안 일어난다 */
-.seat.preview { background: var(--glass); box-shadow: none; cursor: default; }
-.seat.preview:hover { transform: none; box-shadow: none; }
+/* 뷰어가 배치 전 상태를 볼 때 — 책상은 보이되, 눌러도 아무 일도 안 일어난다 */
+.seat.preview { cursor: default; }
+.seat.preview:hover { transform: none; }
 
 /* 드래그로 옮기는 중 */
 .seat.dragging { opacity: 0.35; }
@@ -144,9 +165,12 @@ body.projector .boardcard { position: fixed; inset: 0; z-index: 400; margin: 0; 
   display: flex; flex-direction: column; justify-content: center; background: var(--bg); background-attachment: fixed; }
 body.projector .boardtools { display: none; }
 body.projector .actionbar { z-index: 401; background: var(--glass-nav); }
-body.projector .seat { width: 108px; height: 80px; }
-body.projector .seat .nm { font-size: 1.15rem; }
-body.projector .blackboard { font-size: 0.9rem; padding: 14px; }
+body.projector .seat { width: 132px; height: 98px; }
+body.projector .seat .nm { font-size: 1.3rem; }
+body.projector .blackboard { font-size: 1.1rem; padding: 20px; }
+
+/* ---- 화면 반전 — 마주 앉은 사람에게 보여줄 때, 그 사람 기준으로 똑바로 보이게 ---- */
+body.flipped .boardcard { transform: rotate(180deg); }
 
 .banner { font-size: 0.84rem; padding: 10px 14px; border-radius: var(--radius-sm);
           background: var(--danger-light); color: var(--danger); font-weight: 600; margin-bottom: 12px; }
@@ -164,10 +188,32 @@ body.projector .blackboard { font-size: 0.9rem; padding: 14px; }
 .reveal-name { font-size: clamp(2.4rem, 10vw, 5.5rem); font-weight: 900; letter-spacing: -0.04em; text-align: center; }
 .reveal-hint { font-size: 0.82rem; color: var(--sub); font-weight: 600; }
 
-/* ---- 설정 패널 (슬라이드 오버) ---- */
+/* ---- 설정 패널 · 불러오기 대화상자가 함께 쓰는 배경 ---- */
 .scrim { position: fixed; inset: 0; z-index: 300; background: rgba(0,0,0,0.28);
          opacity: 0; transition: opacity var(--dur) var(--ease); }
 .scrim.show { opacity: 1; }
+
+/* ---- 불러오기 대화상자 (가운데 뜨는 형태 — 설정 패널과 달리 슬라이드가 아님) ---- */
+.dialog {
+  position: fixed; top: 50%; left: 50%; z-index: 320; width: min(360px, calc(100vw - 32px));
+  max-height: 70vh; display: flex; flex-direction: column;
+  background: var(--surface); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+  border-radius: var(--radius); box-shadow: var(--shadow-lg); border: 1px solid var(--border-card);
+  transform: translate(-50%, -50%) scale(0.96); opacity: 0; pointer-events: none;
+  transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
+}
+.dialog.show { opacity: 1; transform: translate(-50%, -50%) scale(1); pointer-events: auto; }
+.dialog-body { overflow-y: auto; padding: 6px 18px 18px; }
+.load-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%;
+  text-align: left; padding: 11px 6px; background: none; border: none; cursor: pointer;
+  font-family: inherit; color: var(--text); border-radius: var(--radius-sm);
+}
+.load-row:hover { background: var(--glass); }
+.load-row + .load-row { border-top: 1px solid var(--hairline); }
+.load-row .lr-name { font-weight: 600; font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.load-row .lr-time { font-size: 0.76rem; color: var(--text-3); flex-shrink: 0; }
+
 .panel {
   position: fixed; top: 0; right: 0; bottom: 0; z-index: 310; width: min(400px, 100vw);
   background: var(--surface); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
@@ -200,6 +246,8 @@ body.projector .blackboard { font-size: 0.9rem; padding: 14px; }
   .boardcard, .card { background: none; box-shadow: none; border: none; padding: 0; }
   .seat { box-shadow: none; background: none; border: 1px solid #bbb; break-inside: avoid; }
   .seat .seat-del, .seat.empty-slot { display: none; }
+  /* 화면용 진한 칠판 배경은 인쇄에선 잉크 낭비라 뺀다 */
+  .blackboard { background: none; color: #333; border: 1px solid #999; box-shadow: none; }
 }
 
 /* 하단 액션바가 있는 화면이라 토스트를 그 위로 올린다 — 겹치면 버튼이 가려진다. */
