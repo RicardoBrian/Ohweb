@@ -46,12 +46,25 @@ export async function onRequest({ request }) {
         + `&tl=${encodeURIComponent(targetLang.toLowerCase())}`
         + `&dt=t&q=${encodeURIComponent(text)}`;
       const r = await fetch(url);
-      if (!r.ok) throw new Error(`translate HTTP ${r.status}`);
-      const data = await r.json();
-      return (data[0] || []).map(s => s[0] || '').join('');
+      const raw = await r.text();
+
+      // translate_a/single은 비공식 엔드포인트라 문서화된 계약이 없다.
+      // 대량 공유 IP(Cloudflare Workers 등)에서 오는 요청은 봇 트래픽으로
+      // 보고 정상 200에 다른 모양(또는 빈 배열, HTML)을 얹어 돌려줄 수
+      // 있다 — 이걸 그냥 "번역 없음"으로 조용히 넘기면 프론트엔드는 빈
+      // 결과를 정상 응답처럼 받는다. 그래서 모양이 기대와 다르면 여기서
+      // 바로 에러로 터뜨리고, 원문 앞부분을 실어 보내 원인을 바로 보이게 한다.
+      let data;
+      try { data = JSON.parse(raw); }
+      catch { throw new Error(`translate: JSON 아닌 응답 (HTTP ${r.status}) — ${raw.slice(0, 200)}`); }
+
+      if (!r.ok) throw new Error(`translate HTTP ${r.status} — ${raw.slice(0, 200)}`);
+      if (!Array.isArray(data[0])) throw new Error(`translate: 예상과 다른 응답 형태 — ${raw.slice(0, 200)}`);
+
+      return data[0].map(s => s[0] || '').join('');
     }));
     return json({ translations: results.map(text => ({ text })) });
   } catch (e) {
-    return json({ error: e.message }, 500);
+    return json({ error: e.message }, 502);
   }
 }
