@@ -1554,17 +1554,21 @@
   }
 
   // ── 기존 게시글 일괄 번역 ──
-  const MIG_DEEPL_KEY = 'cf131ad1-2cd2-455b-8915-dd32ddfce706:fx';
+  // 예전엔 브라우저에서 DeepL을 직접 호출했다 — 키가 그대로 노출되는 것도
+  // 문제지만, 브라우저발 요청은 CORS나 잘린 응답 같은 문제에 취약해서
+  // "Unexpected end of JSON input"(빈 응답을 JSON으로 파싱 시도) 같은
+  // 원인 불명 오류가 났다. /api/translate(서버 쪽에서 DeepL 호출)를
+  // 거치도록 바꿔서 둘 다 해결한다 — 이제 이 브라우저 안에는 키가 없다.
   const MIG_TGT = { Zh:'ZH', Ru:'RU', En:'EN-US' };
   async function migDeepL(text, tgt) {
     if (!text?.trim()) return text || '';
-    const r = await fetch('https://api-free.deepl.com/v2/translate', {
-      method:'POST',
-      headers:{'Authorization':`DeepL-Auth-Key ${MIG_DEEPL_KEY}`,'Content-Type':'application/json'},
-      body: JSON.stringify({text:[text], target_lang:tgt, source_lang:'KO'})
+    const r = await fetch('/api/translate', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ texts:[text], targetLang: tgt, sourceLang: 'KO' })
     });
-    const j = await r.json();
-    return j.translations?.[0]?.text || text;
+    const data = await r.json();
+    if (!r.ok || data.error || !data.translations) throw new Error(data.error || `HTTP ${r.status}`);
+    return data.translations[0]?.text || text;
   }
   window.migratePosts = async () => {
     const btn = document.getElementById('migrateBtn');
