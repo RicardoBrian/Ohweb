@@ -691,11 +691,15 @@
     addDoc, updateDoc, deleteDoc, doc, serverTimestamp, increment, onSnapshot
   } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
   import { saveSession, loadSession, clearSession } from './session.js';
-  import { changeStudentPassword, AuthError } from './student-auth.js';
+  import { changeStudentPassword, AuthError, authReady, currentAuthUser } from './student-auth.js';
 
   // ── 세션 체크 ──
   const _st = loadSession();
   if (!_st) { window.location.href = 'index.html'; }
+  else {
+    await authReady;
+    if (!currentAuthUser()) { clearSession(); window.location.href = 'index.html'; }
+  }
   const _nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
   const SESSION = {
     id: _st?.id || '',
