@@ -103,6 +103,7 @@
 import { db } from './firebase-config.js';
 import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { saveSession, loadSession } from './session.js';
+import { loginStudent, AuthError } from './student-auth.js';
 
 // ── dark ──
 const savedDark = localStorage.getItem('dark');
@@ -257,8 +258,15 @@ window.doLogin = async () => {
     });
     if (!match) { errEl.textContent = t.errNotFound; btn.disabled = false; btn.textContent = t.ok; return; }
     const data = match.data();
-    if (!data.registered) { errEl.textContent = t.errNotReg; btn.disabled = false; btn.textContent = t.ok; return; }
-    if (data.password !== pw) { errEl.textContent = t.errWrongPw; document.getElementById('loginPw').value = ''; btn.disabled = false; btn.textContent = t.ok; return; }
+    try {
+      await loginStudent(match.id, data, pw);
+    } catch (ae) {
+      if (ae instanceof AuthError && ae.code === 'not-registered') errEl.textContent = t.errNotReg;
+      else if (ae instanceof AuthError && ae.code === 'wrong-password') { errEl.textContent = t.errWrongPw; document.getElementById('loginPw').value = ''; }
+      else errEl.textContent = '오류: ' + ae.message;
+      btn.disabled = false; btn.textContent = t.ok;
+      return;
+    }
 
     saveSession({ id: match.id, ...data });
     const dest = sessionStorage.getItem('ohinfo_redirect');

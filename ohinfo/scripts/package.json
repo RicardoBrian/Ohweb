@@ -1,0 +1,9 @@
+{
+  "name": "ohinfo-migration-scripts",
+  "private": true,
+  "type": "module",
+  "description": "일회성 관리자 스크립트. 브라우저 앱(public/)과는 무관 — npm install 후 로컬에서만 실행.",
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}

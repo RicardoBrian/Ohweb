@@ -691,6 +691,7 @@
     addDoc, updateDoc, deleteDoc, doc, serverTimestamp, increment, onSnapshot
   } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
   import { saveSession, loadSession, clearSession } from './session.js';
+  import { changeStudentPassword, AuthError } from './student-auth.js';
 
   // ── 세션 체크 ──
   const _st = loadSession();
@@ -780,17 +781,24 @@
     const updates = {};
     if (_mpPhotoB64) updates.photoUrl = _mpPhotoB64;
     const _t = uiText[currentLang] || uiText.ko;
+    let pwChange = false;
     if (newPw || curPw) {
       if (!curPw) { msgEl.className='modal-msg err'; msgEl.innerText=_t.mpErrCur; return; }
-      if (curPw !== _mpStudent.password) { msgEl.className='modal-msg err'; msgEl.innerText=_t.mpErrCur; return; }
       if (newPw.length < 4) { msgEl.className='modal-msg err'; msgEl.innerText=_t.mpErrShort; return; }
       if (newPw !== newPw2) { msgEl.className='modal-msg err'; msgEl.innerText=_t.mpErrMatch; return; }
-      updates.password = newPw;
+      pwChange = true;
     }
-    if (!Object.keys(updates).length) { msgEl.className='modal-msg err'; msgEl.innerText=_t.mpErrCur; return; }
+    if (!Object.keys(updates).length && !pwChange) { msgEl.className='modal-msg err'; msgEl.innerText=_t.mpErrCur; return; }
     const saveBtn = document.getElementById('mpSaveBtn'); saveBtn.disabled = true;
     try {
-      await updateDoc(doc(db, 'students', _mpStudent.id), updates);
+      if (pwChange) {
+        try { await changeStudentPassword(_mpStudent.id, curPw, newPw); }
+        catch (ae) {
+          if (ae instanceof AuthError && ae.code === 'wrong-password') { msgEl.className='modal-msg err'; msgEl.innerText=_t.mpErrCur; saveBtn.disabled=false; return; }
+          throw ae;
+        }
+      }
+      if (Object.keys(updates).length) await updateDoc(doc(db, 'students', _mpStudent.id), updates);
       Object.assign(_mpStudent, updates);
       saveSession(_mpStudent);
       renderAvatar(document.getElementById('navAvatar'), _mpStudent);

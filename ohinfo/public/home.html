@@ -404,6 +404,7 @@
   import { db } from './firebase-config.js';
   import { doc, getDoc, updateDoc, collection, query, where, orderBy, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import { saveSession, loadSession, clearSession } from './session.js';
+  import { changeStudentPassword, AuthError } from './student-auth.js';
 
   const student = loadSession();
   if (!student) { window.location.href = 'index.html'; }
@@ -489,20 +490,27 @@
 
     if (_mpPhotoB64) updates.photoUrl = _mpPhotoB64;
 
+    let pwChange = false;
     if (newPw || curPw) {
       if (!curPw) { msgEl.className='modal-msg err'; msgEl.innerText=t.mpErrCurPw; return; }
-      if (curPw !== student.password) { msgEl.className='modal-msg err'; msgEl.innerText=t.mpErrWrongPw; return; }
       if (newPw.length < 4) { msgEl.className='modal-msg err'; msgEl.innerText=t.mpErrShort; return; }
       if (newPw !== newPw2) { msgEl.className='modal-msg err'; msgEl.innerText=t.mpErrMismatch; return; }
-      updates.password = newPw;
+      pwChange = true;
     }
 
-    if (!Object.keys(updates).length) { msgEl.className='modal-msg err'; msgEl.innerText=t.mpErrNone; return; }
+    if (!Object.keys(updates).length && !pwChange) { msgEl.className='modal-msg err'; msgEl.innerText=t.mpErrNone; return; }
 
     const saveBtn = document.getElementById('mpSaveBtn');
     saveBtn.disabled = true;
     try {
-      await updateDoc(doc(db, 'students', student.id), updates);
+      if (pwChange) {
+        try { await changeStudentPassword(student.id, curPw, newPw); }
+        catch (ae) {
+          if (ae instanceof AuthError && ae.code === 'wrong-password') { msgEl.className='modal-msg err'; msgEl.innerText=t.mpErrWrongPw; saveBtn.disabled=false; return; }
+          throw ae;
+        }
+      }
+      if (Object.keys(updates).length) await updateDoc(doc(db, 'students', student.id), updates);
       Object.assign(student, updates);
       saveSession(student);
       renderAvatar(document.getElementById('navAvatar'), student);
