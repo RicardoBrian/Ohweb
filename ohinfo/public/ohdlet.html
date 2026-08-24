@@ -878,15 +878,34 @@
     return data.translations.map(t => t.text);
   }
 
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  // 학생 여러 명이 동시에 글을 올리면 DeepL 무료 플랜에 순간적으로 요청이
+  // 몰려 429/타임아웃이 날 수 있다. 실패한 언어만 한두 번 짧게 재시도한다.
+  async function deeplWithRetry(texts, targetLang, sourceLang, retries = 2) {
+    for (let attempt = 0; ; attempt++) {
+      try { return await deepl(texts, targetLang, sourceLang); }
+      catch (e) {
+        if (attempt >= retries) throw e;
+        await sleep(300 * (attempt + 1) + Math.random() * 200);
+      }
+    }
+  }
+
   // srcLang: 원문 언어 ('ko'|'zh'|'ru'|'en'), sub/msg: 원문
   // 반환: { subKo, msgKo, subZh, msgZh, subRu, msgRu, subEn, msgEn }
   async function translatePostAll(sub, msg, srcLang) {
     const sl = srcLang === 'zh' ? 'zh-cn' : srcLang;
-    const targets = ['ko','zh-cn','ru','en'].filter(t => t !== sl && !(t === 'zh-cn' && sl === 'zh'));
-    const results = await Promise.all(targets.map(tl => deepl([sub, msg], tl, sl)));
+    const targets = ['ko','zh-cn','ru','en'].filter(t => t !== sl);
+    // 동시에 3개를 한꺼번에 쏘지 않고 살짝 시간차를 둬서 순간 동시요청 수를 낮춘다.
+    // Promise.all이 아니라 allSettled를 써서, 한 언어가 실패해도 나머지 성공한
+    // 번역까지 같이 버려지지 않게 한다.
+    const settled = await Promise.allSettled(
+      targets.map((tl, i) => sleep(i * 150).then(() => deeplWithRetry([sub, msg], tl, sl)))
+    );
     const map = {};
-    targets.forEach((tl, i) => { map[tl] = results[i]; });
-    const g = (tl) => map[tl] || (sl === tl || (tl === 'zh-cn' && sl === 'zh') ? [sub, msg] : ['','']);
+    targets.forEach((tl, i) => { if (settled[i].status === 'fulfilled') map[tl] = settled[i].value; });
+    const g = (tl) => map[tl] || (sl === tl ? [sub, msg] : ['', '']);
     return {
       subKo: srcLang === 'ko' ? sub : (g('ko')[0] || ''),
       msgKo: srcLang === 'ko' ? msg : (g('ko')[1] || ''),
