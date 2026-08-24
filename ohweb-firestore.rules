@@ -1,0 +1,47 @@
+rules_version = '2';
+
+/**
+ * ohweb-93062 Firestore 규칙 — ohweb(admin.kakainfo.com)과 ohinfo
+ * (info.kakainfo.com)가 이 프로젝트를 같이 쓴다.
+ *
+ * 이 파일은 Firebase 콘솔의 Rules 탭에 수동으로 붙여넣어 배포한다(이
+ * 레포에 Firebase CLI 배포 설정이 없어서 자동 배포되지 않음 — seatchange의
+ * firebase.json/firestore.rules와 달리 참고용 기록일 뿐이다).
+ *
+ * 학생 쪽(ohinfo)엔 아직 진짜 인증이 없다(localStorage 기반 자체 세션뿐).
+ * 그래서 학생이 직접 쓰는 컬렉션(students/posts/qna_threads/student_forms/
+ * student_form_responses/exam_progress/exam_results)은 지금 완전히 잠글 수
+ * 없다 — 잠그면 회원가입/게시글 작성/시험 응시가 그대로 깨진다. 학생 인증을
+ * 붙이는 다음 단계(Phase 2)에서 이 컬렉션들도 손봐야 한다.
+ *
+ * 지금 당장 잠근 건 "학생 쪽에서 쓰기 경로가 아예 없는" 컬렉션들 —
+ * schools/classes/exams/exam_questions/exam_assignments/appSettings.
+ * 이전엔 이 프로젝트 전체가 `allow read, write: if true`였다.
+ */
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == 'qjatjr7575@gmail.com';
+    }
+
+    // 학생 쪽에서 건드릴 일이 아예 없는 것들 — 관리자만
+    match /schools/{id}          { allow read, write: if isAdmin(); }
+    match /classes/{id}          { allow read: if true; allow write: if isAdmin(); }
+    match /exams/{id}            { allow read: if true; allow write: if isAdmin(); }
+    match /exam_questions/{id}   { allow read: if true; allow write: if isAdmin(); }
+    match /exam_assignments/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /appSettings/{id}      { allow read: if true; allow write: if isAdmin(); }
+
+    // 학생이 직접 쓰는 데이터 — 학생 인증(Phase 2) 전까지는 기존과 동일하게 열어둠
+    match /students/{id}               { allow read, write: if true; }
+    match /posts/{id}                  { allow read, write: if true; }
+    match /qna_threads/{id}            { allow read, write: if true; }
+    match /student_forms/{id}          { allow read, write: if true; }
+    match /student_form_responses/{id} { allow read, write: if true; }
+    match /exam_progress/{id}          { allow read, write: if true; }
+    match /exam_results/{id}           { allow read, write: if true; }
+
+    // 명시 안 한 나머지 컬렉션은 전부 거부(기본값)
+  }
+}
