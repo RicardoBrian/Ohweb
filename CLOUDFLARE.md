@@ -46,20 +46,19 @@ Vercel의 Ignored Build Step에 대응하는 설정이다.
 ## 4. `/api/translate` — Vercel 함수의 Cloudflare 대응
 
 `ohinfo`와 `ohweb`은 번역 API를 쓴다. Vercel의 `api/translate.js`는 Node 스타일
-`(req, res)` 시그니처라 Cloudflare에서 그대로 돌지 않는다. 웹 표준 `Request → Response`로
-옮긴 파일을 새로 추가해뒀다:
+`(req, res)` 시그니처라 Cloudflare에서 그대로 돌지 않아서, 웹 표준
+`Request → Response`로 옮긴 `functions/api/translate.js`를 각 프로젝트에 추가했다:
 
 ```
-ohinfo/functions/api/translate.js   (신규 — Cloudflare)
-ohinfo/api/translate.js             (기존 — Vercel, 아직 그대로 둠)
-ohweb/functions/api/translate.js    (신규 — Cloudflare)
-ohweb/api/translate.js              (기존 — Vercel, 아직 그대로 둠)
+ohinfo/functions/api/translate.js   (Cloudflare)
+ohweb/functions/api/translate.js    (Cloudflare)
 ```
 
-호출부(`fetch('/api/translate', ...)`)는 경로가 같아서 **한 줄도 고치지 않았다.**
+호출부(`fetch('/api/translate', ...)`)는 경로가 같아서 한 줄도 고치지 않았다.
 
-기존 Vercel 파일을 남겨둔 이유는 이전이 끝날 때까지 라이브 사이트를 깨뜨리지 않기
-위해서다. Cloudflare 쪽 동작을 확인한 뒤 `api/`와 `vercel.json`을 지우면 된다.
+이전이 끝난 뒤 옛 Vercel 파일(`ohinfo/api/`, `ohweb/api/`, 각 프로젝트의
+`vercel.json`)은 모두 삭제했다. 이제 4개 앱 전부 Cloudflare Pages에서만
+서빙된다.
 
 ### 첫 배포 때 확인할 것
 
@@ -87,9 +86,11 @@ curl -X POST https://admin.kakainfo.com/api/translate \
    - Firebase 콘솔 → Authentication → Settings → Authorized domains에
      `*.pages.dev`와 최종 도메인을 추가해야 로그인이 동작한다.
 3. 문제없으면 커스텀 도메인을 붙인다.
-4. 며칠 지켜본 뒤 Vercel 프로젝트를 지우고, 레포에서 `vercel.json`과 `api/`를 삭제한다.
+4. Vercel 프로젝트를 지우고, 레포에서 `vercel.json`과 `api/`를 삭제한다.
 
-되돌리려면 Cloudflare에서 커스텀 도메인만 떼면 Vercel 쪽이 그대로 살아있다.
+**완료됨.** 4개 앱 전부 `kakainfo.com` 하위 서브도메인(Cloudflare에서 구입한
+도메인)에 연결돼 있고, Vercel 프로젝트·`vercel.json`·`api/`는 레포에서 모두
+제거했다.
 
 ## 6. seatchange
 
