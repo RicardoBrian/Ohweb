@@ -11,6 +11,11 @@
  * 대역을 쓰는데, 비공식 엔드포인트가 이런 대량 트래픽을 봇으로 보고
  * 다르게(또는 빈 값으로) 응답했을 가능성이 높다. admin.html의 마이그레이션
  * 스크립트가 이미 쓰고 있던 DeepL 키를 그대로 재사용해 정식 API로 바꿨다.
+ *
+ * 운영에서 원인 불명의 500이 재현되는 중이라, 아래 로직 전체를 바깥에서
+ * try/catch로 한 번 더 감싸 — 어떤 예외가 어디서 나든 절대 그냥 500으로
+ * 삼켜지지 않고 진단 가능한 JSON(200)으로 응답 본문에 그대로 드러나게
+ * 했다. 원인이 확인되면 이 래퍼는 걷어내도 된다.
  */
 
 const CORS = {
@@ -42,7 +47,7 @@ function toDeepLLang(code, isTarget) {
   return base;
 }
 
-export async function onRequest({ request }) {
+async function handle(request) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
   if (request.method !== 'POST') return json({ error: 'Method Not Allowed' }, 405);
 
@@ -85,5 +90,15 @@ export async function onRequest({ request }) {
     return json({ translations: out.map(text => ({ text })) });
   } catch (e) {
     return json({ error: e.message }, 502);
+  }
+}
+
+export async function onRequest({ request }) {
+  try {
+    return await handle(request);
+  } catch (e) {
+    // 여기 걸린다는 건 위 handle() 안의 두 try/catch가 잡지 못한,
+    // 완전히 예상 밖의 예외라는 뜻 — 정확한 종류·위치를 그대로 노출한다.
+    return json({ error: 'UNCAUGHT', name: e && e.name, message: e && e.message, stack: String(e && e.stack).slice(0, 1000) }, 200);
   }
 }
