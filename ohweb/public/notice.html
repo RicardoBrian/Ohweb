@@ -230,7 +230,7 @@
   </div>
 
   <script>
-    if (!window.AdminAuth.isValid()) location.href = 'index.html';
+    (async () => { await window.AdminAuth.ready; if (!window.AdminAuth.isValid()) location.href = 'index.html'; })();
 
     function toggleDark() { document.body.classList.toggle('dark'); localStorage.setItem('dark', document.body.classList.contains('dark')?'1':'0'); }
     if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');

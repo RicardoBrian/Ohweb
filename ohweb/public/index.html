@@ -138,28 +138,24 @@
       <h1>OHweb</h1>
       <p>관리자 페이지</p>
     </div>
-    <div class="field">
-      <label>관리자 비밀번호</label>
-      <input class="inp" id="pwInput" type="password" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')login()">
-    </div>
-    <button class="btn" onclick="login()">로그인</button>
+    <button class="btn" onclick="login()">Google로 로그인</button>
     <div class="error-msg" id="errMsg"></div>
   </div>
 
   <script>
-    const ADMIN_PW = "9600";
-
-    function login() {
-      const pw = document.getElementById('pwInput').value;
-      if (pw === ADMIN_PW) {
-        AdminAuth.login();
-        window.location.href = 'admin.html';
-      } else {
-        const err = document.getElementById('errMsg');
-        err.innerText = '비밀번호가 올바르지 않습니다.';
-        document.getElementById('pwInput').value = '';
-        document.getElementById('pwInput').focus();
-        setTimeout(() => err.innerText = '', 3000);
+    async function login() {
+      const err = document.getElementById('errMsg');
+      err.innerText = '';
+      try {
+        await AdminAuth.login();
+        if (AdminAuth.isValid()) {
+          window.location.href = 'admin.html';
+        } else {
+          err.innerText = '관리자 계정이 아닙니다.';
+          await AdminAuth.logout();
+        }
+      } catch (e) {
+        err.innerText = '로그인 실패: ' + e.message;
       }
     }
 
@@ -170,7 +166,7 @@
     if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
 
     // 이미 로그인 상태면 바로 이동
-    if (AdminAuth.isValid()) window.location.href = 'admin.html';
+    AdminAuth.ready.then(() => { if (AdminAuth.isValid()) window.location.href = 'admin.html'; });
   </script>
 </body>
 </html>

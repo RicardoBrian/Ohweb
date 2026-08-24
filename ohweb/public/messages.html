@@ -196,6 +196,7 @@
 </div>
 
 <script type="module">
+await window.AdminAuth.ready;
 if (!window.AdminAuth.isValid()) { window.location.href = 'index.html'; }
 import { db } from './firebase-config.js';
 import {

@@ -994,6 +994,7 @@
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   // 인증 확인
+  await window.AdminAuth.ready;
   if (!window.AdminAuth.isValid()) {
     window.location.href = 'index.html';
   }
