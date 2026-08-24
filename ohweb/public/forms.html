@@ -619,7 +619,7 @@ window.togglePanel = (id) => {
   renderResponses(id);
 };
 window.copyLink = (id) => {
-  const url = `https://info.kakainfo.com/formfill.html?id=${id}`;
+  const url = `https://kakainfo.com/formfill.html?id=${id}`;
   navigator.clipboard.writeText(url).then(() => showToast('링크가 복사되었습니다!')).catch(() => prompt('아래 링크를 복사하세요:', url));
 };
 window.toggleStatus = async (id, currentStatus) => {

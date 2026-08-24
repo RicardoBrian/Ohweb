@@ -10,7 +10,7 @@ Cloudflare 대시보드 → Workers & Pages → Create → Pages → Connect to 
 
 | 프로젝트 | Root directory | Build command | Build output directory | 도메인 |
 |---|---|---|---|---|
-| `ohinfo` | `ohinfo` | *(비움)* | `public` | `info.kakainfo.com` |
+| `ohinfo` | `ohinfo` | *(비움)* | `public` | `kakainfo.com` (학생용, 루트 도메인) |
 | `ohweb` | `ohweb` | *(비움)* | `public` | `admin.kakainfo.com` |
 | `ohsettle` | `ohsettle` | *(비움)* | `public` | `settle.kakainfo.com` |
 | `seatchange` | `seatchange` | *(비움)* | `public` | `seat.kakainfo.com` |
