@@ -1029,17 +1029,21 @@
     if (!res.ok || data.error || !data.translations) throw new Error(data.error || `HTTP ${res.status}`);
     return data.translations.map(t => t.text);
   }
-  // desc/ex 를 zh/ru/en 으로 번역해 {descZh,descRu,descEn,exZh,exRu,exEn} 반환 (실패 시 빈 값)
-  async function translateClassFields(desc, ex) {
-    const out = { descZh:'', descRu:'', descEn:'', exZh:'', exRu:'', exEn:'' };
-    if (!desc && !ex) return out;
+  // name/desc/ex 를 zh/ru/en 으로 번역해 {nameZh,nameRu,nameEn,descZh,...,exZh,...} 반환
+  // (언어별로 개별 실패해도 나머지는 살린다 — 실패한 언어만 빈 값)
+  async function translateClassFields(name, desc, ex) {
+    const out = { nameZh:'', nameRu:'', nameEn:'', descZh:'', descRu:'', descEn:'', exZh:'', exRu:'', exEn:'' };
+    if (!name && !desc && !ex) return out;
     const langs = [['zh-cn','Zh'], ['ru','Ru'], ['en','En']];
-    try {
-      await Promise.all(langs.map(async ([code, sfx]) => {
-        const [d, e] = await translateTexts([desc || '', ex || ''], code);
-        out['desc'+sfx] = d || ''; out['ex'+sfx] = e || '';
-      }));
-    } catch (err) { console.error('translateClassFields:', err); }
+    const settled = await Promise.allSettled(langs.map(([code]) => translateTexts([name || '', desc || '', ex || ''], code)));
+    langs.forEach(([, sfx], i) => {
+      if (settled[i].status === 'fulfilled') {
+        const [n, d, e] = settled[i].value;
+        out['name'+sfx] = n || ''; out['desc'+sfx] = d || ''; out['ex'+sfx] = e || '';
+      } else {
+        console.error('translateClassFields:', sfx, settled[i].reason);
+      }
+    });
     return out;
   }
 
@@ -1696,7 +1700,7 @@
     showLoading(true);
     try {
       // 수업 설명/안내 자동 번역 (zh/ru/en)
-      const tr = await translateClassFields(desc, ex);
+      const tr = await translateClassFields(name, desc, ex);
       if (id) {
         // 수정 — 단일 문서 (현재 드롭다운 값 사용)
         const school = document.getElementById('adm_school').value.trim();

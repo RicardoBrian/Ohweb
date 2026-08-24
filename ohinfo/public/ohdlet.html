@@ -1119,8 +1119,10 @@
         .filter(c => c.status === 'ON' && _classAudienceOk(c))
         .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'));
       const sel = document.getElementById('classList');
+      const nsfx = langSfx(currentLang);
       sel.innerHTML = `<option>${uiText[currentLang]?.opt||uiText.ko.opt}</option>`;
-      classes.forEach(c => { sel.innerHTML += `<option value="${c.name}">${c.name}</option>`; });
+      // option의 value는 게시글 조회 키(classTitle)라 원문 이름 그대로 둬야 한다 — 화면에 보이는 텍스트만 번역.
+      classes.forEach(c => { sel.innerHTML += `<option value="${c.name}">${c['name'+nsfx] || c.name}</option>`; });
     } catch(e) { console.error('updateClassList:', e); }
   }
 
@@ -1140,11 +1142,13 @@
       const snap = await getDocs(collection(db, 'classes'));
       const classes = snap.docs.map(d => d.data()).filter(c => c.status === 'ON').sort((a,b)=>(a.name||'').localeCompare(b.name||'','ko'));
       if (!classes.length) { grid.innerHTML = '<div style="color:var(--sub);font-size:0.85rem;">등록된 수업이 없습니다.</div>'; return; }
+      const nsfx = langSfx(currentLang);
+      // 카드 클릭 시 넘기는 이름(enterMasterClass 인자)은 게시글 조회 키라 원문 그대로, 화면 텍스트만 번역.
       grid.innerHTML = classes.map(c => `
         <button onclick="enterMasterClass('${(c.name||'').replace(/'/g,"\\'")}','${(c.grade||'').replace(/'/g,"\\'")}','${(c.group||'').replace(/'/g,"\\'")}')"
           style="background:var(--glass-strong);border:1px solid var(--border-card);border-radius:16px;padding:18px 16px;text-align:left;cursor:pointer;transition:all 0.2s;font-family:inherit;"
           onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border-card)'">
-          <div style="font-weight:800;font-size:0.97rem;margin-bottom:4px;display:flex;align-items:center;gap:5px;"><svg width="14" height="14" style="color:var(--sub);flex-shrink:0;"><use href="#ic-board"/></svg>${c.name||'(이름없음)'}</div>
+          <div style="font-weight:800;font-size:0.97rem;margin-bottom:4px;display:flex;align-items:center;gap:5px;"><svg width="14" height="14" style="color:var(--sub);flex-shrink:0;"><use href="#ic-board"/></svg>${(c['name'+nsfx] || c.name || '(이름없음)')}</div>
           <div style="font-size:0.78rem;color:var(--sub);">${c.schoolName||''} ${c.grade||''}학년 ${c.group||''}반</div>
         </button>`).join('');
     } catch(e) { grid.innerHTML = `<div style="color:#ef4444;font-size:0.82rem;">오류: ${e.message}</div>`; }
@@ -1204,9 +1208,10 @@
       const sfx = langSfx(currentLang);
       const example = cls['ex'+sfx] || cls.ex || '';
       const desc = cls['desc'+sfx] || cls.desc || '';
-      document.getElementById('boardTitle').innerText = cls.name || classTitle;
+      const title = cls['name'+sfx] || cls.name || classTitle;
+      document.getElementById('boardTitle').innerText = title;
       document.getElementById('boardDesc').innerText = desc;
-      document.getElementById('sidebarTitle').innerText = cls.name || classTitle;
+      document.getElementById('sidebarTitle').innerText = title;
       document.getElementById('sidebarDesc').innerText = desc;
       const wrap = document.getElementById('sidebarDescWrap');
       wrap.style.display = desc.trim() ? '' : 'none';
