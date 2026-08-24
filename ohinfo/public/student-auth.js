@@ -13,18 +13,8 @@ import { auth, db } from './firebase-config.js';
 import {
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
   updatePassword, EmailAuthProvider, reauthenticateWithCredential,
-  onAuthStateChanged,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { doc, updateDoc, deleteField } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-
-// 로그인 직후 페이지를 새로고침하면 Firebase가 세션을 복원하는 데 약간
-// 시간이 걸린다(비동기) — 그 사이에 auth.currentUser를 바로 읽으면 아직
-// null이다. authReady를 기다린 뒤에야 currentAuthUser()가 정확하다.
-let _authUser;
-let _resolveAuthReady;
-export const authReady = new Promise(res => { _resolveAuthReady = res; });
-onAuthStateChanged(auth, user => { _authUser = user; _resolveAuthReady(); });
-export function currentAuthUser() { return _authUser; }
 
 const EMAIL_SUFFIX = '@ohinfo.local';
 const emailFor = id => `${id}${EMAIL_SUFFIX}`;

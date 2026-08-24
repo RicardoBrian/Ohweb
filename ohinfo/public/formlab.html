@@ -314,15 +314,10 @@ import {
   collection, query, where, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, doc, serverTimestamp, onSnapshot
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { loadSession, clearSession } from './session.js';
-import { authReady, currentAuthUser } from './student-auth.js';
 
 // ── 유틸 ──
 const SESSION = loadSession();
 if (!SESSION) { window.location.href = 'index.html'; }
-else {
-  await authReady;
-  if (!currentAuthUser()) { clearSession(); window.location.href = 'index.html'; }
-}
 function toggleDark() { document.body.classList.toggle('dark'); localStorage.setItem('dark', document.body.classList.contains('dark')?'1':'0'); }
 if (localStorage.getItem('dark')==='1') document.body.classList.add('dark');
 window.toggleDark = toggleDark;
