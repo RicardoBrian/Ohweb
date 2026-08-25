@@ -15,6 +15,15 @@
  *   2. 무슨 일이 있어도 예외를 밖으로 던지지 않는다. 조회가 실패하든 Firestore가
  *      죽어있든 next()로 넘겨서, 이 기능의 장애가 학생 사이트를 못 깨뜨리게 한다.
  *
+ * 한글 코드는 실패하고 영문 코드만 되던 문제 — URL.pathname은 비-ASCII 구간을
+ * 디코딩하지 않고 퍼센트 인코딩된 채로 돌려준다(node -e로 직접 확인함:
+ * new URL('.../한글').pathname === '/%ED%95%9C%EA%B8%80', 디코딩된 문자열이
+ * 아니다). 그 상태로 다시 encodeURIComponent를 씌우면 %가 %25로 한 번 더
+ * 인코딩되어 Firestore가 전혀 다른 경로를 조회하게 된다. 그래서 반드시
+ * decodeURIComponent로 한 번 푼 뒤에 NFC 정규화하고, 그 순수 문자열을
+ * encodeURIComponent로 다시 인코딩해서 Firestore REST 경로에 넣는다.
+ * 영문 코드는 퍼센트 인코딩될 게 없어서 이 문제가 안 보였을 뿐이다.
+ *
  * 조회는 Firestore REST API를 그냥 fetch로 친다 — Admin SDK도 API 키도 필요
  * 없다. short_links/{code} 개별 문서는 규칙상 누구나 get 할 수 있다(레포 루트의
  * ohweb-firestore.rules).
@@ -23,19 +32,20 @@
 const PROJECT_ID = 'ohweb-93062';
 
 export async function onRequest(context) {
-  const { params, next, request } = context;
+  const { next, request } = context;
   try {
-    const segments = params.code;
-    // 루트("/")거나 여러 단계 경로면 단축코드가 아니다.
-    if (!segments || segments.length !== 1 || !segments[0]) return next();
+    if (request.method !== 'GET') return next();
 
-    // NFC로 통일 — public/app.js가 저장할 때도 NFC로 정규화한다. 한글 등은
-    // 브라우저가 URL을 만들 때 다른 정규화 형태(NFD)로 보낼 수 있어서, 여기서
-    // 안 맞춰주면 "코드는 맞는데 Firestore가 못 찾는" 문제가 생긴다.
-    const code = segments[0].normalize('NFC');
+    const { pathname } = new URL(request.url);
+    const stripped = pathname.replace(/^\/+|\/+$/g, '');
+    if (!stripped || stripped.includes('/')) return next();
+
+    let code;
+    try { code = decodeURIComponent(stripped); } catch { return next(); }
+    code = code.normalize('NFC');
+
     // 점이 있으면 정적 파일(*.html, *.css, *.js, favicon.ico ...) — 코드가 아니다.
     if (code.includes('.')) return next();
-    if (request.method !== 'GET') return next();
 
     const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/short_links/${encodeURIComponent(code)}`;
     const r = await fetch(url);
