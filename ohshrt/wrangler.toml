@@ -1,0 +1,5 @@
+# Pages 전용 설정 — 빌드 결과물이 어디 있는지 대시보드의 수동 입력에
+# 의존하지 않고 레포 자체에 못박아둔다. (ohshrt는 Workers가 아니라 Pages
+# 프로젝트다 — 이 파일에 main/[[kv_namespaces]] 같은 Workers 전용 키는
+# 안 쓴다.)
+pages_build_output_dir = "public"
