@@ -1,97 +1,79 @@
-const app = document.getElementById("app");
+import { db } from './firebase-config.js';
+import {
+  collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, orderBy, serverTimestamp,
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-// Origin the short links are handed out under. The admin page may be served
-// from a different hostname, so /api/session tells us the public one.
-let publicBase = location.origin;
+const app = document.getElementById('app');
+const publicBase = location.origin;
+
+const CODE_RE = /^[\p{L}\p{N}_-]{2,32}$/u;
+const RESERVED = new Set(['api', 'admin', 'login', 'logout', 'favicon.ico', 'style.css', 'app.js', 'firebase-config.js', 'admin-auth.js']);
 
 function escapeHtml(str) {
   return str.replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;",
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   }[c]));
 }
 
 function formatDate(ts) {
-  const d = new Date(ts);
-  return d.toLocaleString("ko-KR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  if (!ts) return '';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
-function showToast(message, type = "success") {
-  const existing = document.querySelector(".toast");
+function isValidUrl(value) {
+  try {
+    const u = new URL(value);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function randomCode(len = 6) {
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const bytes = crypto.getRandomValues(new Uint8Array(len));
+  return Array.from(bytes, (b) => chars[b % chars.length]).join('');
+}
+
+function showToast(message, type = 'success') {
+  const existing = document.querySelector('.toast');
   if (existing) existing.remove();
-  const toast = document.createElement("div");
+  const toast = document.createElement('div');
   toast.className = `toast ${type}`;
   toast.textContent = message;
   document.body.appendChild(toast);
-  requestAnimationFrame(() => toast.classList.add("show"));
+  requestAnimationFrame(() => toast.classList.add('show'));
   setTimeout(() => {
-    toast.classList.remove("show");
+    toast.classList.remove('show');
     setTimeout(() => toast.remove(), 300);
   }, 2200);
 }
 
-async function api(path, options = {}) {
-  const res = await fetch(path, {
-    ...options,
-    headers: { "Content-Type": "application/json", ...(options.headers || {}) },
-  });
-  let data = null;
-  try {
-    data = await res.json();
-  } catch {
-    // no body
-  }
-  if (!res.ok) {
-    const message = (data && data.error) || `요청 실패 (${res.status})`;
-    throw new Error(message);
-  }
-  return data;
-}
-
-function renderLogin(errorMessage = "") {
+function renderLogin(errorMessage = '') {
   app.innerHTML = `
     <div class="login-wrap">
       <div class="login-card">
         <p class="brand">oh sh.rt</p>
-        <p class="brand-sub">계속하려면 비밀번호를 입력하세요</p>
-        <form id="loginForm">
-          <div class="field">
-            <label for="password">비밀번호</label>
-            <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="current-password" autofocus required />
-          </div>
-          <button type="submit" class="btn btn-primary" id="loginBtn">입장하기</button>
-          <p class="error-msg" id="loginError">${errorMessage ? escapeHtml(errorMessage) : ""}</p>
-        </form>
+        <p class="brand-sub">계속하려면 로그인하세요</p>
+        <button class="btn btn-primary" id="loginBtn">Google로 로그인</button>
+        <p class="error-msg" id="loginError">${errorMessage ? escapeHtml(errorMessage) : ''}</p>
       </div>
     </div>
   `;
-
-  const form = document.getElementById("loginForm");
-  const errorEl = document.getElementById("loginError");
-  const btn = document.getElementById("loginBtn");
-
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    errorEl.textContent = "";
-    btn.disabled = true;
-    btn.textContent = "확인 중...";
+  document.getElementById('loginBtn').addEventListener('click', async () => {
+    const errorEl = document.getElementById('loginError');
+    errorEl.textContent = '';
     try {
-      const password = document.getElementById("password").value;
-      await api("/api/login", { method: "POST", body: JSON.stringify({ password }) });
-      await renderDashboard();
-    } catch (err) {
-      errorEl.textContent = err.message;
-      btn.disabled = false;
-      btn.textContent = "입장하기";
+      await window.AdminAuth.login();
+      if (window.AdminAuth.isValid()) {
+        await renderDashboard();
+      } else {
+        errorEl.textContent = '관리자 계정이 아닙니다.';
+        await window.AdminAuth.logout();
+      }
+    } catch (e) {
+      errorEl.textContent = '로그인 실패: ' + e.message;
     }
   });
 }
@@ -131,32 +113,50 @@ async function renderDashboard() {
     </div>
   `;
 
-  document.getElementById("logoutBtn").addEventListener("click", async () => {
-    await api("/api/logout", { method: "POST" });
+  document.getElementById('logoutBtn').addEventListener('click', async () => {
+    await window.AdminAuth.logout();
     renderLogin();
   });
 
-  const createForm = document.getElementById("createForm");
-  const createError = document.getElementById("createError");
-  const createBtn = document.getElementById("createBtn");
+  const createForm = document.getElementById('createForm');
+  const createError = document.getElementById('createError');
+  const createBtn = document.getElementById('createBtn');
 
-  createForm.addEventListener("submit", async (e) => {
+  createForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    createError.textContent = "";
+    createError.textContent = '';
     createBtn.disabled = true;
-    createBtn.textContent = "생성 중...";
-    const url = document.getElementById("url").value.trim();
-    const alias = document.getElementById("alias").value.trim();
+    createBtn.textContent = '생성 중...';
     try {
-      await api("/api/links", { method: "POST", body: JSON.stringify({ url, alias: alias || undefined }) });
+      const url = document.getElementById('url').value.trim();
+      const alias = document.getElementById('alias').value.trim();
+      if (!isValidUrl(url)) throw new Error('유효한 URL을 입력하세요 (http:// 또는 https://)');
+
+      let code = alias;
+      if (code) {
+        if (!CODE_RE.test(code) || RESERVED.has(code.toLowerCase())) {
+          throw new Error('커스텀 코드는 한글/영문/숫자/-/_ 2~32자여야 하며 예약어는 사용할 수 없습니다');
+        }
+        if ((await getDoc(doc(db, 'short_links', code))).exists()) {
+          throw new Error('이미 사용 중인 코드입니다');
+        }
+      } else {
+        for (let i = 0; i < 5; i++) {
+          const candidate = randomCode();
+          if (!(await getDoc(doc(db, 'short_links', candidate))).exists()) { code = candidate; break; }
+        }
+        if (!code) throw new Error('코드 생성에 실패했습니다. 다시 시도하세요');
+      }
+
+      await setDoc(doc(db, 'short_links', code), { url, createdAt: serverTimestamp() });
       createForm.reset();
-      showToast("단축 URL이 생성되었습니다");
+      showToast('단축 URL이 생성되었습니다');
       await loadLinks();
     } catch (err) {
       createError.textContent = err.message;
     } finally {
       createBtn.disabled = false;
-      createBtn.textContent = "단축하기";
+      createBtn.textContent = '단축하기';
     }
   });
 
@@ -164,10 +164,11 @@ async function renderDashboard() {
 }
 
 async function loadLinks() {
-  const listEl = document.getElementById("linkList");
+  const listEl = document.getElementById('linkList');
   if (!listEl) return;
   try {
-    const { links } = await api("/api/links");
+    const snap = await getDocs(query(collection(db, 'short_links'), orderBy('createdAt', 'desc')));
+    const links = snap.docs.map((d) => ({ code: d.id, ...d.data() }));
     if (!links.length) {
       listEl.innerHTML = `<div class="empty-state">아직 생성된 링크가 없습니다.</div>`;
       return;
@@ -190,28 +191,28 @@ async function loadLinks() {
           </div>
         `;
       })
-      .join("");
+      .join('');
 
-    listEl.querySelectorAll(".copy-btn").forEach((btn) => {
-      btn.addEventListener("click", async () => {
+    listEl.querySelectorAll('.copy-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
         try {
           await navigator.clipboard.writeText(btn.dataset.url);
-          showToast("클립보드에 복사되었습니다");
+          showToast('클립보드에 복사되었습니다');
         } catch {
-          showToast("복사에 실패했습니다", "error");
+          showToast('복사에 실패했습니다', 'error');
         }
       });
     });
 
-    listEl.querySelectorAll(".delete-btn").forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        if (!confirm("이 링크를 삭제할까요?")) return;
+    listEl.querySelectorAll('.delete-btn').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('이 링크를 삭제할까요?')) return;
         try {
-          await api(`/api/links/${encodeURIComponent(btn.dataset.code)}`, { method: "DELETE" });
-          showToast("삭제되었습니다");
+          await deleteDoc(doc(db, 'short_links', btn.dataset.code));
+          showToast('삭제되었습니다');
           await loadLinks();
         } catch (err) {
-          showToast(err.message, "error");
+          showToast(err.message, 'error');
         }
       });
     });
@@ -221,15 +222,10 @@ async function loadLinks() {
 }
 
 async function init() {
-  try {
-    const { authenticated, baseUrl } = await api("/api/session");
-    if (baseUrl) publicBase = baseUrl.replace(/\/+$/, "");
-    if (authenticated) {
-      await renderDashboard();
-    } else {
-      renderLogin();
-    }
-  } catch {
+  await window.AdminAuth.ready;
+  if (window.AdminAuth.isValid()) {
+    await renderDashboard();
+  } else {
     renderLogin();
   }
 }

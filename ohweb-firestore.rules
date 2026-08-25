@@ -1,8 +1,9 @@
 rules_version = '2';
 
 /**
- * ohweb-93062 Firestore 규칙 — ohweb(admin.kakainfo.com)과 ohinfo
- * (info.kakainfo.com)가 이 프로젝트를 같이 쓴다.
+ * ohweb-93062 Firestore 규칙 — ohweb(admin.kakainfo.com), ohinfo
+ * (info.kakainfo.com/kakainfo.com), ohshrt(short.kakainfo.com)가 이
+ * 프로젝트를 같이 쓴다.
  *
  * 이 파일은 Firebase 콘솔의 Rules 탭에 수동으로 붙여넣어 배포한다(이
  * 레포에 Firebase CLI 배포 설정이 없어서 자동 배포되지 않음 — seatchange의
@@ -32,6 +33,21 @@ service cloud.firestore {
     match /exam_questions/{id}   { allow read: if true; allow write: if isAdmin(); }
     match /exam_assignments/{id} { allow read: if true; allow write: if isAdmin(); }
     match /appSettings/{id}      { allow read: if true; allow write: if isAdmin(); }
+
+    // ohshrt — 단축 URL. get(단축코드로 직접 열기)은 누구나(리다이렉트가
+    // 그렇게 동작해야 하므로, functions/[[code]].js가 인증 없이 REST로 읽음).
+    // 목록 조회·생성·삭제는 관리자만.
+    function validShortLink() {
+      let d = request.resource.data;
+      return d.keys().hasAll(['url', 'createdAt']) && d.keys().hasOnly(['url', 'createdAt'])
+          && d.url is string && d.url.size() <= 2000;
+    }
+    match /short_links/{code} {
+      allow get: if true;
+      allow list: if isAdmin();
+      allow create, update: if isAdmin() && validShortLink();
+      allow delete: if isAdmin();
+    }
 
     // 학생이 직접 쓰는 데이터 — 학생 인증(Phase 2) 전까지는 기존과 동일하게 열어둠
     match /students/{id}               { allow read, write: if true; }

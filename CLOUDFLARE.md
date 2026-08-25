@@ -97,24 +97,21 @@ curl -X POST https://admin.kakainfo.com/api/translate \
 새로 추가한 4번째 앱. `theme.css`는 `design-reference/`에서 복사한 것으로 나머지
 3개와 동일하다. 자세한 내용은 `seatchange/README.md`.
 
-## 7. ohshrt — 나머지 4개와 다른 종류의 프로젝트 (Workers, Pages 아님)
+## 7. ohshrt — URL 단축기, 나머지 4개와 동일한 방식(Pages)
 
-`ohshrt`는 URL 단축기다. 위 4개 앱과 달리 **Cloudflare Workers** 프로젝트다 —
-정적 사이트가 아니라 `src/index.js`가 진입점인 실제 Worker 스크립트이고,
-KV 네임스페이스(단축 링크 저장)를 쓴다. 그래서 만들 때 반드시:
+`ohshrt`는 URL 단축기다. 처음엔 Cloudflare Workers + KV로 독립적으로 만들었었는데,
+Workers Builds(Git 연동 배포)에서 시크릿이 실제 배포된 Worker에 안 붙는 문제를
+반복적으로 겪어서(대시보드 프로젝트 이름과 `wrangler.toml`의 `name`이 서로 다른
+리소스를 가리키는 등) 포기하고, **나머지 4개와 동일하게 Pages + Firebase**로
+다시 만들었다. 그래서 이 프로젝트도:
 
-> Workers & Pages → Create → **Workers**(Pages 아님) → Import a repository →
-> `RicardoBrian/Ohweb` 선택 → Root directory `ohshrt`
+> Workers & Pages → Create → **Pages**(Workers 아님) → Connect to Git →
+> `RicardoBrian/Ohweb` 선택 → Root directory `ohshrt`, Build output directory `public`
 
-로 만들어야 한다. Pages로 만들면 `wrangler.toml`/`[assets]`/`[[kv_namespaces]]`가
-전부 무시되고 지난번 ohinfo처럼 배포가 깨진다.
+1번 섹션의 나머지 4개와 완전히 동일한 설정이다. 별도의 KV/Secret/wrangler.toml이
+필요 없다 — 데이터는 `ohweb-93062`의 Firestore `short_links` 컬렉션에 저장되고
+(규칙은 `ohweb-firestore.rules` 참고), 로그인은 ohweb과 동일한 Google 로그인
+(`admin-auth.js`)이다.
 
-배포 전에 필요한 것 (자세한 절차는 `ohshrt/README.md`):
-1. `npx wrangler kv namespace create LINKS`로 KV 네임스페이스 생성 → 나온 id를
-   `ohshrt/wrangler.toml`의 `[[kv_namespaces]]` id에 반영
-2. Secret 2개 등록 (대시보드 Settings → Variables and Secrets, 또는
-   `npx wrangler secret put`): `ADMIN_PASSWORD`, `SESSION_SECRET`
-3. Custom domain: **`short.kakainfo.com`** (다른 4개 앱과 달리 admin 페이지(`/`)와
-   단축 리다이렉트(`/코드`)가 같은 Worker, 같은 도메인에서 같이 서빙된다)
-
-Build watch paths도 다른 4개와 동일하게 `ohshrt/*`로 좁혀야 한다.
+Custom domain: **`short.kakainfo.com`**. Build watch paths도 다른 4개와 동일하게
+`ohshrt/*`로 좁힌다. 자세한 내용은 `ohshrt/README.md`.
