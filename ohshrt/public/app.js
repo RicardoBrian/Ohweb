@@ -4,7 +4,9 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const app = document.getElementById('app');
-const publicBase = location.origin;
+// 단축 링크가 배포되는 곳 — 관리 페이지(short.kakainfo.com)와 다른 도메인이다.
+// 실제 리다이렉트는 ohinfo 프로젝트의 functions/[[code]].js가 처리한다.
+const publicBase = 'https://kakainfo.com';
 
 const CODE_RE = /^[\p{L}\p{N}_-]{2,32}$/u;
 const RESERVED = new Set(['api', 'admin', 'login', 'logout', 'favicon.ico', 'style.css', 'app.js', 'firebase-config.js', 'admin-auth.js']);

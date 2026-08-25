@@ -17,6 +17,21 @@ Cloudflare Pages 기반 URL 단축기입니다.
 - 관리 페이지에서 링크 목록 조회 / 복사 / 삭제
 - 별도 빌드 과정 없는 순수 HTML/CSS/JS + Pages Functions
 
+## 도메인이 두 개다 — 관리 페이지와 단축 링크가 서로 다른 곳에 산다
+
+| | 도메인 | 어느 프로젝트 |
+|---|---|---|
+| 관리 페이지 | `short.kakainfo.com` | `ohshrt` (이 폴더) |
+| 단축 링크 | `kakainfo.com/코드` | **`ohinfo`** |
+
+단축 링크는 학생들이 바로 열 수 있게 짧은 학생용 도메인(`kakainfo.com`)에
+있어야 한다. 그런데 그 도메인은 ohinfo 프로젝트가 서빙하므로, 리다이렉트
+Function은 `ohinfo/functions/[[code]].js`에 있다. 이 폴더에도 같은 파일을
+두어서 `short.kakainfo.com/코드`로도 열리긴 하지만, 관리 페이지가 만들어
+보여주는 링크는 항상 `kakainfo.com/코드`다(`public/app.js`의 `publicBase`).
+
+두 Function은 같은 내용이라 한쪽을 고치면 다른 쪽도 같이 고쳐야 한다.
+
 ## 구조
 
 ```
@@ -27,8 +42,8 @@ public/
   firebase-config.js    ohweb-93062 프로젝트 설정
   style.css
 functions/
-  [[code]].js           단축코드 → 원본 URL 리다이렉트 (Firestore REST GET,
-                         public/의 정적 파일과 경로가 안 겹치는 요청만 여기로 옴)
+  [[code]].js           단축코드 → 원본 URL 리다이렉트
+                         (ohinfo/functions/[[code]].js와 동일한 사본)
 ```
 
 데이터는 Firestore의 `short_links` 컬렉션에 저장됩니다 — 문서 ID가 단축 코드,

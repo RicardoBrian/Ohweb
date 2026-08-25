@@ -113,5 +113,10 @@ Workers Builds(Git 연동 배포)에서 시크릿이 실제 배포된 Worker에 
 (규칙은 `ohweb-firestore.rules` 참고), 로그인은 ohweb과 동일한 Google 로그인
 (`admin-auth.js`)이다.
 
-Custom domain: **`short.kakainfo.com`**. Build watch paths도 다른 4개와 동일하게
-`ohshrt/*`로 좁힌다. 자세한 내용은 `ohshrt/README.md`.
+Custom domain: **`short.kakainfo.com`** — 단, 이건 **관리 페이지**의 도메인이다.
+단축 링크 자체는 학생용 짧은 도메인인 **`kakainfo.com/코드`**로 나가고, 그
+리다이렉트는 ohinfo 프로젝트의 `ohinfo/functions/[[code]].js`가 처리한다
+(ohshrt에도 같은 사본이 있다 — 한쪽 고치면 다른 쪽도 같이 고쳐야 함).
+
+Build watch paths도 다른 4개와 동일하게 `ohshrt/*`로 좁힌다. 자세한 내용은
+`ohshrt/README.md`.
