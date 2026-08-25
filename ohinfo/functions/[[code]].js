@@ -29,7 +29,10 @@ export async function onRequest(context) {
     // 루트("/")거나 여러 단계 경로면 단축코드가 아니다.
     if (!segments || segments.length !== 1 || !segments[0]) return next();
 
-    const code = segments[0];
+    // NFC로 통일 — public/app.js가 저장할 때도 NFC로 정규화한다. 한글 등은
+    // 브라우저가 URL을 만들 때 다른 정규화 형태(NFD)로 보낼 수 있어서, 여기서
+    // 안 맞춰주면 "코드는 맞는데 Firestore가 못 찾는" 문제가 생긴다.
+    const code = segments[0].normalize('NFC');
     // 점이 있으면 정적 파일(*.html, *.css, *.js, favicon.ico ...) — 코드가 아니다.
     if (code.includes('.')) return next();
     if (request.method !== 'GET') return next();

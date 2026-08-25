@@ -134,7 +134,11 @@ async function renderDashboard() {
       const alias = document.getElementById('alias').value.trim();
       if (!isValidUrl(url)) throw new Error('유효한 URL을 입력하세요 (http:// 또는 https://)');
 
-      let code = alias;
+      // 유니코드 정규화(NFC) — 한글 등은 브라우저/입력기에 따라 같은 글자도
+      // 다른 바이트 조합(NFC/NFD)으로 만들어질 수 있다. 저장할 때와 나중에
+      // URL로 조회할 때 형태가 어긋나면 Firestore가 다른 문서로 취급해서
+      // "코드는 맞는데 못 찾는" 문제가 생긴다 — 항상 NFC로 통일해서 막는다.
+      let code = alias.normalize('NFC');
       if (code) {
         if (!CODE_RE.test(code) || RESERVED.has(code.toLowerCase())) {
           throw new Error('커스텀 코드는 한글/영문/숫자/-/_ 2~32자여야 하며 예약어는 사용할 수 없습니다');
