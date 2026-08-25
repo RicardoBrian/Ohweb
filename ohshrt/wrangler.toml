@@ -1,0 +1,17 @@
+name = "ohshrt"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
+
+# The admin SPA in ./public is served as static assets; any path that does not
+# match an asset falls through to the Worker (short-code redirects and /api/*).
+[assets]
+directory = "./public"
+
+# Where the short links are meant to be handed out. The admin page lives on
+# its own hostname, but the links it shows and copies use this one.
+[vars]
+PUBLIC_BASE_URL = "https://short.kakainfo.com"
+
+[[kv_namespaces]]
+binding = "LINKS"
+id = "7105a4ca6e86400fb697f9c1b9f61254"
