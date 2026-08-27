@@ -1592,7 +1592,7 @@
             <option value="OFF" ${c.status!=='ON'?'selected':''}>OFF</option>
           </select>
           <button class="icon-action" title="수정" onclick='editAdminUI(${JSON.stringify(c).replace(/'/g,"&#39;")})'><svg width="16" height="16"><use href="#ic-edit"/></svg></button>
-          <button class="btn ghost sm" style="color:var(--accent)" onclick="openTranslateModal('${c.id}','${c.name.replace(/'/g,"\\'")}')">번역</button>
+          <button class="btn ghost sm" style="color:var(--accent)" onclick='openTranslateModal(${JSON.stringify(c).replace(/'/g,"&#39;")})'>번역</button>
           <button class="icon-action danger" title="삭제" onclick="delAdminClass('${c.id}')"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
         </div>
       </div>`;
@@ -2779,19 +2779,30 @@
     };
   }
 
-  let _txClassId = '', _txPosts = [], _txChecked = new Set();
+  // ohdlet.html의 classBoardKey와 반드시 동일해야 한다 — 게시글이 어느 수업에
+  // 속하는지 이 값으로 구분한다(이름만으로는 학교가 다른 동명 수업과 섞인다).
+  function classBoardKey(c) {
+    const g = c.grade || '', grp = c.group || '';
+    return `${c.name||''}__${c.schoolName||''}${g?('__g'+g):''}${grp?('__c'+grp):''}`;
+  }
 
-  window.openTranslateModal = async (classId, className) => {
-    _txClassId = classId; _txPosts = []; _txChecked = new Set();
+  let _txClass = null, _txPosts = [], _txChecked = new Set();
+
+  window.openTranslateModal = async (c) => {
+    _txClass = c; _txPosts = []; _txChecked = new Set();
+    const _txBoardKey = classBoardKey(c);
     const modal = document.getElementById('translateModal');
-    document.getElementById('txClassName').textContent = className;
+    document.getElementById('txClassName').textContent = c.name;
     document.getElementById('txList').innerHTML = '<div style="padding:20px;text-align:center;color:var(--sub)">불러오는 중...</div>';
     document.getElementById('txProgress').textContent = '';
     document.getElementById('txRunBtn').disabled = false;
     modal.classList.remove('hidden');
     try {
-      const snap = await getDocs(query(collection(db,'posts'), where('classTitle','==',className)));
-      _txPosts = snap.docs.map(d => ({id:d.id,...d.data()}));
+      // classTitle(이름)만으로 걸러진 posts 중, 이 수업 것이 아닌(동명이지만
+      // 다른 학교/학년/반) 게시글은 boardKey로 한 번 더 걸러낸다. boardKey가
+      // 없는 옛 게시글은 이름만으로 계속 포함한다(ohdlet.html과 동일한 하위호환).
+      const snap = await getDocs(query(collection(db,'posts'), where('classTitle','==',c.name)));
+      _txPosts = snap.docs.map(d => ({id:d.id,...d.data()})).filter(p => !p.boardKey || p.boardKey === _txBoardKey);
       // 번역 누락 감지: subKo 비어있거나, 어느 언어 번역이라도 비어있는 게시물
       const isMissing = p => {
         const src = p.srcLang || 'ko';
@@ -2865,7 +2876,7 @@
     document.getElementById('txRunBtn').disabled = false;
     toast(`${done}건 번역 완료!`, 'success');
     // 목록 갱신
-    await openTranslateModal(_txClassId, document.getElementById('txClassName').textContent);
+    await openTranslateModal(_txClass);
   };
 </script>
 
