@@ -684,7 +684,7 @@
 <script type="module">
   import { db } from './firebase-config.js';
   import {
-    collection, query, where, orderBy, getDocs,
+    collection, query, where, orderBy, getDocs, documentId,
     addDoc, updateDoc, deleteDoc, doc, serverTimestamp, increment, onSnapshot
   } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
   import { saveSession, loadSession, clearSession } from './session.js';
@@ -714,6 +714,19 @@
     if (!c.group) return true;
     return c.group === SESSION.group;
   }
+  // 게시글 작성자들의 프로필 사진을 한 번에 조회 (studentId → photoUrl).
+  // 게시글마다 학생 문서를 따로 읽지 않도록 10명씩 묶어서(문서ID 'in' 쿼리 한도) 조회한다.
+  async function fetchPhotoMap(studentIds) {
+    const map = {};
+    const ids = [...new Set(studentIds.filter(Boolean).map(String))];
+    for (let i = 0; i < ids.length; i += 10) {
+      const batch = ids.slice(i, i + 10);
+      const snap = await getDocs(query(collection(db, 'students'), where(documentId(), 'in', batch)));
+      snap.docs.forEach(d => { const u = d.data().photoUrl; if (u) map[d.id] = u; });
+    }
+    return map;
+  }
+
   function classBoardKey(c) {
     const g = c.grade || '', grp = c.group || '';
     return `${c.name||''}__${c.schoolName||''}${g?('__g'+g):''}${grp?('__c'+grp):''}`;
@@ -1231,11 +1244,13 @@
       document.getElementById('sidebarDesc').innerText = desc;
       const wrap = document.getElementById('sidebarDescWrap');
       wrap.style.display = desc.trim() ? '' : 'none';
+      const photoMap = await fetchPhotoMap(rawPosts.map(p => p.studentId));
       currentPosts = rawPosts.map(p => ({
         ...p,
         subject: p['sub'+sfx] || p.subKo || '',
         message: p['msg'+sfx] || p.msgKo || '',
-        time: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : ''
+        time: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : '',
+        photoUrl: photoMap[String(p.studentId)] || ''
       }));
       currentExample = example;
       render(example, sortedPosts());
@@ -1305,7 +1320,7 @@
             ${!p._readonly && String(p.studentId)===String(SESSION.id) ? `<a onclick="handleEditClick('${p.id}')">${uiText[currentLang]?.edit||uiText.ko.edit}</a><a class="del-link" onclick="openDelete('${p.id}')">${uiText[currentLang]?.del||uiText.ko.del}</a>` : ''}
           </div>
         </div>
-        <div class="post-byline">${p.name}(${p.num}) · ${p.time}</div>
+        <div class="post-byline">${p.photoUrl ? `<img src="${p.photoUrl}" style="width:18px;height:18px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:5px;">` : ''}${p.name}(${p.num}) · ${p.time}</div>
       </div>`;
     });
     display.innerHTML = html;
