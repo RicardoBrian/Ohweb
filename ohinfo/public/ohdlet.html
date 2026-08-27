@@ -1153,7 +1153,7 @@
       const nsfx = langSfx(currentLang);
       // 카드 클릭 시 넘기는 이름(enterMasterClass 인자)은 게시글 조회 키라 원문 그대로, 화면 텍스트만 번역.
       grid.innerHTML = classes.map(c => `
-        <button onclick="enterMasterClass('${(c.name||'').replace(/'/g,"\\'")}','${(c.grade||'').replace(/'/g,"\\'")}','${(c.group||'').replace(/'/g,"\\'")}')"
+        <button onclick="enterMasterClass('${(c.name||'').replace(/'/g,"\\'")}','${(c.grade||'').replace(/'/g,"\\'")}','${(c.group||'').replace(/'/g,"\\'")}','${(c.schoolName||'').replace(/'/g,"\\'")}')"
           style="background:var(--glass-strong);border:1px solid var(--border-card);border-radius:16px;padding:18px 16px;text-align:left;cursor:pointer;transition:all 0.2s;font-family:inherit;"
           onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border-card)'">
           <div style="font-weight:800;font-size:0.97rem;margin-bottom:4px;display:flex;align-items:center;gap:5px;"><svg width="14" height="14" style="color:var(--sub);flex-shrink:0;"><use href="#ic-board"/></svg>${(c['name'+nsfx] || c.name || '(이름없음)')}</div>
@@ -1162,9 +1162,10 @@
     } catch(e) { grid.innerHTML = `<div style="color:#ef4444;font-size:0.82rem;">오류: ${e.message}</div>`; }
   }
 
-  window.enterMasterClass = (cls, grade, group) => {
+  window.enterMasterClass = (cls, grade, group, schoolName) => {
     setHidden('f_mode','add'); setHidden('f_postId','');
     setHidden('f_grade', grade); setHidden('f_group', group); setHidden('f_class', cls);
+    setHidden('f_school', schoolName);
     document.getElementById('step1').classList.add('hidden');
     document.getElementById('step2').classList.remove('hidden');
     manualRefresh();
@@ -1180,6 +1181,7 @@
     setHidden('f_grade', SESSION.grade);
     setHidden('f_group', SESSION.group);
     setHidden('f_class', cls);
+    setHidden('f_school', SESSION.schoolName);
     document.getElementById('step1').classList.add('hidden');
     document.getElementById('step2').classList.remove('hidden');
     manualRefresh();
@@ -1195,11 +1197,25 @@
       const classTitle = getHidden('f_class');
 
       // 수업 정보 조회
+      // 이름이 같은 수업이 학교/학년/반 다르게 여러 개 있을 수 있어서(마스터
+      // 계정은 전체를 다 보므로 특히 흔함), SESSION이 아니라 이 게시판에
+      // 진입할 때(startBoard/enterMasterClass) 남겨둔 학교/학년/반으로
+      // 정확히 하나만 골라야 한다 — 예전엔 마스터일 때 _classAudienceOk가
+      // 무조건 true라서 후보가 여러 개 남았고, 그중 하나가 임의로 뽑히면서
+      // 같은 이름의 다른 학교 게시글이 통째로 안 보이는 문제가 있었다.
+      const audSchool = getHidden('f_school');
+      const audGrade = getHidden('f_grade');
+      const audGroup = getHidden('f_group');
       let cls = {};
       const clsSnap = await getDocs(query(collection(db, 'classes'), where('name', '==', classTitle)));
       if (!clsSnap.empty) {
+        const candidates = clsSnap.docs.map(d => d.data()).filter(c => {
+          if ((c.schoolName || '관산중학교') !== audSchool) return false;
+          if (c.grade && c.grade !== audGrade) return false;
+          if (c.group && c.group !== audGroup) return false;
+          return true;
+        });
         // 매칭 범위 우선순위: 반 지정 > 학년 지정 > 학교 전체
-        const candidates = clsSnap.docs.map(d => d.data()).filter(_classAudienceOk);
         candidates.sort((a, b) => (b.group ? 2 : b.grade ? 1 : 0) - (a.group ? 2 : a.grade ? 1 : 0));
         cls = candidates[0] || clsSnap.docs[0].data();
       }
