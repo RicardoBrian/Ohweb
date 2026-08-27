@@ -52,7 +52,12 @@ service cloud.firestore {
     // 학생이 직접 쓰는 데이터 — 학생 인증(Phase 2) 전까지는 기존과 동일하게 열어둠
     match /students/{id}               { allow read, write: if true; }
     match /posts/{id}                  { allow read, write: if true; }
+    // qna_threads 자체 문서뿐 아니라 실제 질문/답변이 쓰이는 하위 컬렉션
+    // (qna_threads/{학생ID}/messages/{msgId})까지 열어야 한다 — 규칙은
+    // 하위 컬렉션에 자동으로 상속되지 않아서, 이걸 빠뜨리면 스레드 문서는
+    // 되는데 정작 메시지 전송(addDoc)은 기본 거부에 걸려 permission-denied가 난다.
     match /qna_threads/{id}            { allow read, write: if true; }
+    match /qna_threads/{id}/{document=**} { allow read, write: if true; }
     match /student_forms/{id}          { allow read, write: if true; }
     match /student_form_responses/{id} { allow read, write: if true; }
     match /exam_progress/{id}          { allow read, write: if true; }
