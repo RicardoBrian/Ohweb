@@ -105,12 +105,12 @@ function renderFeatures() {
       </div>
       <div class="feature-row">
         <label>기능 이름</label>
-        <input type="text" class="text-inp" placeholder="예: 집중 타이머" value="${esc(f.name)}"
+        <input type="text" class="inp" placeholder="예: 집중 타이머" value="${esc(f.name)}"
           oninput="updateFeatureField('${f.key}', 'name', this.value)">
       </div>
       <div class="feature-row">
         <label>기능 소개 (1~2줄)</label>
-        <input type="text" class="text-inp" placeholder="예: 설정한 시간 동안 카운트다운하고 종료 시 알림을 준다"
+        <input type="text" class="inp" placeholder="예: 설정한 시간 동안 카운트다운하고 종료 시 알림을 준다"
           value="${esc(f.desc)}" oninput="updateFeatureField('${f.key}', 'desc', this.value)">
       </div>
       <div class="feature-row">
@@ -118,7 +118,8 @@ function renderFeatures() {
         <div class="step-list">
           ${f.steps.map((s, si) => `
             <div class="step-row">
-              <input type="text" class="text-inp" placeholder="예: 사용자가 시작 버튼을 누른다"
+              <span class="step-row-num">${si + 1}단계</span>
+              <input type="text" class="inp" placeholder="예: 사용자가 시작 버튼을 누른다"
                 value="${esc(s)}" oninput="updateStepField('${f.key}', ${si}, this.value)">
               ${f.steps.length > 1 ? `<button class="icon-btn" type="button" title="단계 삭제" onclick="removeStep('${f.key}', ${si})">✕</button>` : ''}
             </div>
@@ -238,6 +239,11 @@ function generatePrompt() {
 
   const lines = [];
 
+  // 0. 앱을 만들어달라는 지시문임을 맨 앞에 명확히 한다 — 뒤따르는 문장들은
+  // 전부 이 지시를 위한 조건/맥락이지, 앱 자체를 소개하는 글이 아니다.
+  lines.push('아래 조건에 맞는 웹앱을 만들어주세요.');
+  lines.push('');
+
   // 1. 목적별 삽입 문구
   lines.push(PURPOSE_TEXT[purpose]);
   lines.push('');
@@ -268,7 +274,6 @@ function generatePrompt() {
   lines.push(CLOSING_TEXT);
 
   document.getElementById('resultText').value = lines.join('\n');
-  document.getElementById('copiedMsg').hidden = true;
   showStep(4);
 }
 
@@ -280,7 +285,7 @@ async function copyResult() {
   const text = document.getElementById('resultText').value;
   try {
     await navigator.clipboard.writeText(text);
-    showCopied();
+    toast('클립보드에 복사되었습니다');
   } catch {
     // Clipboard API를 못 쓰는 환경 — textarea 선택으로 대체
     const ta = document.getElementById('resultText');
@@ -288,19 +293,20 @@ async function copyResult() {
     ta.select();
     try {
       document.execCommand('copy');
-      showCopied();
+      toast('클립보드에 복사되었습니다');
     } catch {
       alert('복사에 실패했습니다. 직접 선택해서 복사해주세요.');
     }
   }
 }
 
-let copiedTimer = null;
-function showCopied() {
-  const msg = document.getElementById('copiedMsg');
-  msg.hidden = false;
-  clearTimeout(copiedTimer);
-  copiedTimer = setTimeout(() => { msg.hidden = true; }, 2500);
+let toastTimer = null;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2400);
 }
 
 function resetAll() {
@@ -318,6 +324,19 @@ function resetAll() {
   document.getElementById('err-design').hidden = true;
   showStep(1);
 }
+
+// ============================================================
+//  다크모드
+// ============================================================
+
+function toggleDark() {
+  document.body.classList.toggle('dark');
+  localStorage.setItem('dark', document.body.classList.contains('dark') ? '1' : '0');
+}
+if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
+const darkToggleEl = document.getElementById('darkToggle');
+darkToggleEl.addEventListener('click', toggleDark);
+darkToggleEl.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleDark(); } });
 
 // ============================================================
 //  초기화
