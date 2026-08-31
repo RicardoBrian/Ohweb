@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>프롬프트 생성기 · 바이브코딩 연수</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <span class="brand">프롬프트 생성기</span>
+      <span class="brand-sub">Google AI Studio(Gemini)에 던질 프롬프트를 한 번에 완성하세요</span>
+    </div>
+  </header>
+
+  <div class="steps" id="steps">
+    <div class="step active" data-step="1"><span class="step-num">1</span><span class="step-label">목적</span></div>
+    <div class="step" data-step="2"><span class="step-num">2</span><span class="step-label">주제 &amp; 기능</span></div>
+    <div class="step" data-step="3"><span class="step-num">3</span><span class="step-label">디자인</span></div>
+    <div class="step" data-step="4"><span class="step-num">4</span><span class="step-label">결과</span></div>
+  </div>
+
+  <main class="wrap">
+
+    <!-- ══ STEP 1: 목적 ══ -->
+    <section class="panel active" id="panel-1">
+      <h2>이 웹앱을 만드는 목적이 무엇인가요?</h2>
+      <p class="hint">하나만 선택해주세요. 선택에 따라 프롬프트에 안내 문구가 자동으로 들어갑니다.</p>
+
+      <div class="radio-group">
+        <label class="radio-card">
+          <input type="radio" name="purpose" value="work">
+          <div class="radio-card-body">
+            <div class="radio-card-title">업무 효율화</div>
+            <div class="radio-card-desc">빠른 입력과 결과 확인에 집중한 실용적 도구</div>
+          </div>
+        </label>
+        <label class="radio-card">
+          <input type="radio" name="purpose" value="edu">
+          <div class="radio-card-body">
+            <div class="radio-card-title">수업·평가·기록 활용</div>
+            <div class="radio-card-desc">교육 현장에서 사용, 학생 개인정보 보호 고려</div>
+          </div>
+        </label>
+        <label class="radio-card">
+          <input type="radio" name="purpose" value="personal">
+          <div class="radio-card-body">
+            <div class="radio-card-title">개인적 사용</div>
+            <div class="radio-card-desc">내 취향대로 자유롭게</div>
+          </div>
+        </label>
+      </div>
+
+      <p class="err" id="err-purpose" hidden>목적을 하나 선택해주세요.</p>
+
+      <div class="nav-btns">
+        <span></span>
+        <button class="btn primary" onclick="goStep(2)">다음</button>
+      </div>
+    </section>
+
+    <!-- ══ STEP 2: 주제 & 기능 ══ -->
+    <section class="panel" id="panel-2">
+      <h2>앱 주제와 기능을 알려주세요</h2>
+
+      <div class="field-block">
+        <label class="field-label" for="topic">앱 주제</label>
+        <input type="text" id="topic" class="text-inp" placeholder="예: 수업 집중용 타이머, 학생 출석 체크 앱">
+        <p class="err" id="err-topic" hidden>앱 주제를 입력해주세요.</p>
+      </div>
+
+      <div class="field-block">
+        <div class="field-label-row">
+          <label class="field-label">기능 목록</label>
+          <button class="btn ghost sm" type="button" onclick="addFeature()">+ 기능 추가</button>
+        </div>
+        <p class="hint">최소 1개 이상의 기능이 필요합니다.</p>
+        <div id="featureList"></div>
+        <p class="err" id="err-features" hidden>기능을 최소 1개 이상 추가하고, 기능 이름을 입력해주세요.</p>
+      </div>
+
+      <div class="nav-btns">
+        <button class="btn ghost" onclick="goStep(1)">이전</button>
+        <button class="btn primary" onclick="goStep(3)">다음</button>
+      </div>
+    </section>
+
+    <!-- ══ STEP 3: 디자인 ══ -->
+    <section class="panel" id="panel-3">
+      <h2>디자인은 어떻게 할까요?</h2>
+
+      <div class="toggle-group">
+        <button class="toggle-btn active" id="modeBtn-custom" onclick="setDesignMode('custom')">직접 작성</button>
+        <button class="toggle-btn" id="modeBtn-preset" onclick="setDesignMode('preset')">견본 선택</button>
+      </div>
+
+      <div id="designCustom" class="design-mode">
+        <textarea id="designText" class="textarea" rows="4" placeholder="원하는 디자인 스타일을 자유롭게 적어주세요. 예: 파스텔톤 카드 UI에 큼직한 버튼을 쓰고 싶어요."></textarea>
+      </div>
+
+      <div id="designPreset" class="design-mode" hidden>
+        <div class="preset-grid" id="presetGrid"></div>
+      </div>
+
+      <p class="err" id="err-design" hidden>디자인 내용을 입력하거나 견본을 선택해주세요.</p>
+
+      <div class="nav-btns">
+        <button class="btn ghost" onclick="goStep(2)">이전</button>
+        <button class="btn primary" onclick="generatePrompt()">프롬프트 생성하기</button>
+      </div>
+    </section>
+
+    <!-- ══ STEP 4: 결과 ══ -->
+    <section class="panel" id="panel-4">
+      <h2>완성된 프롬프트</h2>
+      <p class="hint">아래 내용을 복사해서 Google AI Studio(Gemini)에 그대로 붙여넣으세요.</p>
+
+      <textarea id="resultText" class="result-textarea" readonly></textarea>
+
+      <div class="result-btns">
+        <button class="btn primary" id="copyBtn" onclick="copyResult()">복사하기</button>
+        <button class="btn ghost" onclick="resetAll()">다시 작성하기</button>
+      </div>
+      <p class="copied-msg" id="copiedMsg" hidden>✓ 클립보드에 복사되었습니다</p>
+    </section>
+
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

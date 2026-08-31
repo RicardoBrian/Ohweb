@@ -9,7 +9,7 @@ const app = document.getElementById('app');
 const publicBase = 'https://kakainfo.com';
 
 const CODE_RE = /^[\p{L}\p{N}_-]{2,32}$/u;
-const RESERVED = new Set(['api', 'admin', 'login', 'logout', 'favicon.ico', 'style.css', 'app.js', 'firebase-config.js', 'admin-auth.js', '평택연수']);
+const RESERVED = new Set(['api', 'admin', 'login', 'logout', 'favicon.ico', 'style.css', 'app.js', 'firebase-config.js', 'admin-auth.js', '평택연수', '프롬프트']);
 
 function escapeHtml(str) {
   return str.replace(/[&<>"']/g, (c) => ({
