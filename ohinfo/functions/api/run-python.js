@@ -86,6 +86,7 @@ async function handle(request) {
   const version = await resolvePythonVersion();
 
   let res;
+  const startedAt = Date.now();
   try {
     res = await withTimeout(fetch(PISTON_EXECUTE_URL, {
       method: 'POST',
@@ -100,18 +101,24 @@ async function handle(request) {
       }),
     }), 15000);
   } catch (e) {
-    return json({ error: '실행 서버에 연결할 수 없습니다: ' + e.message }, 502);
+    // fetch 자체가 실패한 경우 — DNS/TLS/네트워크 문제인지, 우리 타임아웃(15초)에
+    // 걸린 건지 구분되게 소요 시간과 에러 이름까지 그대로 노출한다.
+    return json({
+      error: '실행 서버에 연결할 수 없습니다.',
+      detail: `${e.name || 'Error'}: ${e.message} (${Date.now() - startedAt}ms 경과, python version=${version})`,
+    }, 502);
   }
 
   if (res.status === 429) return json({ error: '실행 요청이 몰려 있습니다. 잠시 후 다시 시도해주세요.' }, 429);
   if (!res.ok) {
     const t = await res.text().catch(() => '');
-    return json({ error: `실행 서버 오류 (HTTP ${res.status})`, detail: t.slice(0, 300) }, 502);
+    return json({ error: `실행 서버 오류 (HTTP ${res.status})`, detail: `version=${version} · ${t.slice(0, 300)}` }, 502);
   }
 
+  const rawText = await res.text();
   let data;
-  try { data = await res.json(); }
-  catch { return json({ error: '실행 서버 응답을 해석할 수 없습니다.' }, 502); }
+  try { data = JSON.parse(rawText); }
+  catch { return json({ error: '실행 서버 응답을 해석할 수 없습니다.', detail: rawText.slice(0, 300) }, 502); }
 
   const run = data?.run || {};
   return json({
