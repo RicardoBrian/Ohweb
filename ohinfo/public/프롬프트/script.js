@@ -60,6 +60,20 @@ function newFeature() {
   return { key: 'f' + featureSeq, name: '', desc: '', steps: [''] };
 }
 
+// 수정 프롬프트(웹앱 수정하기) 화면 전용 상태 — 원래 마법사의 state와는 별개.
+const reviseState = {
+  newFeatures: [],
+  existingNotes: {}, // 기존 기능 key -> 수정 요청 텍스트
+  designMode: 'custom',
+  selectedPreset: null,
+};
+
+let newFeatureSeq = 0;
+function newFeatureForRevise() {
+  newFeatureSeq++;
+  return { key: 'nf' + newFeatureSeq, name: '', desc: '', steps: [''] };
+}
+
 // ============================================================
 //  기능 목록 (동적 카드)
 // ============================================================
@@ -160,6 +174,130 @@ function updateStepField(key, idx, value) {
 }
 
 // ============================================================
+//  웹앱 수정하기 — 새로 추가할 기능 (기능 목록과 동일한 카드형 UI)
+// ============================================================
+
+function addNewFeature() {
+  reviseState.newFeatures.push(newFeatureForRevise());
+  renderNewFeatures();
+  saveDraft();
+}
+
+function removeNewFeature(key) {
+  reviseState.newFeatures = reviseState.newFeatures.filter((f) => f.key !== key);
+  renderNewFeatures();
+  saveDraft();
+}
+
+function moveNewFeature(key, dir) {
+  const i = reviseState.newFeatures.findIndex((f) => f.key === key);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= reviseState.newFeatures.length) return;
+  [reviseState.newFeatures[i], reviseState.newFeatures[j]] = [reviseState.newFeatures[j], reviseState.newFeatures[i]];
+  renderNewFeatures();
+  saveDraft();
+}
+
+function addNewFeatureStep(key) {
+  const f = reviseState.newFeatures.find((x) => x.key === key);
+  if (f) f.steps.push('');
+  renderNewFeatures();
+  saveDraft();
+}
+
+function removeNewFeatureStep(key, idx) {
+  const f = reviseState.newFeatures.find((x) => x.key === key);
+  if (f) f.steps.splice(idx, 1);
+  renderNewFeatures();
+  saveDraft();
+}
+
+function updateNewFeatureField(key, field, value) {
+  const f = reviseState.newFeatures.find((x) => x.key === key);
+  if (f) f[field] = value;
+  saveDraft();
+}
+function updateNewFeatureStepField(key, idx, value) {
+  const f = reviseState.newFeatures.find((x) => x.key === key);
+  if (f) f.steps[idx] = value;
+  saveDraft();
+}
+
+function renderNewFeatures() {
+  const el = document.getElementById('newFeatureList');
+  if (!reviseState.newFeatures.length) {
+    el.innerHTML = '<div class="empty-features">추가할 새 기능이 없다면 비워두고 넘어가도 됩니다.</div>';
+    return;
+  }
+
+  el.innerHTML = reviseState.newFeatures.map((f, i) => `
+    <div class="feature-card" data-key="${f.key}">
+      <div class="feature-card-head">
+        <span>새 기능 ${i + 1}</span>
+        <div class="feature-card-actions">
+          <button class="icon-btn" type="button" title="위로 이동" onclick="moveNewFeature('${f.key}', -1)" ${i === 0 ? 'disabled' : ''}>▲</button>
+          <button class="icon-btn" type="button" title="아래로 이동" onclick="moveNewFeature('${f.key}', 1)" ${i === reviseState.newFeatures.length - 1 ? 'disabled' : ''}>▼</button>
+          <button class="icon-btn" type="button" title="기능 삭제" onclick="removeNewFeature('${f.key}')">✕</button>
+        </div>
+      </div>
+      <div class="feature-row">
+        <label>기능 이름</label>
+        <input type="text" class="inp" placeholder="예: 초 단위 진동 알림" value="${esc(f.name)}"
+          oninput="updateNewFeatureField('${f.key}', 'name', this.value)">
+      </div>
+      <div class="feature-row">
+        <label>기능 소개 (1~2줄)</label>
+        <input type="text" class="inp" placeholder="예: 소리 대신 화면 전체가 깜빡이며 알려준다"
+          value="${esc(f.desc)}" oninput="updateNewFeatureField('${f.key}', 'desc', this.value)">
+      </div>
+      <div class="feature-row">
+        <label>작동 단계</label>
+        <div class="step-list">
+          ${f.steps.map((s, si) => `
+            <div class="step-row">
+              <span class="step-row-num">${si + 1}단계</span>
+              <input type="text" class="inp" placeholder="예: 시간이 끝나면 화면이 3번 깜빡인다"
+                value="${esc(s)}" oninput="updateNewFeatureStepField('${f.key}', ${si}, this.value)">
+              ${f.steps.length > 1 ? `<button class="icon-btn" type="button" title="단계 삭제" onclick="removeNewFeatureStep('${f.key}', ${si})">✕</button>` : ''}
+            </div>
+          `).join('')}
+        </div>
+        <button class="btn ghost sm" type="button" style="margin-top:8px;" onclick="addNewFeatureStep('${f.key}')">+ 단계 추가</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+//  웹앱 수정하기 — 기존 기능 수정 (읽기 전용 + 수정 요청 메모)
+// ============================================================
+
+function renderExistingFeatureNotes() {
+  const el = document.getElementById('existingFeatureNotes');
+  const feats = state.features.filter((f) => f.name.trim());
+  if (!feats.length) {
+    el.innerHTML = '<div class="empty-features">수정할 기존 기능이 없습니다.</div>';
+    return;
+  }
+  el.innerHTML = feats.map((f) => `
+    <div class="existing-feature-card">
+      <div class="existing-feature-locked">
+        <div class="existing-feature-name">${esc(f.name)}</div>
+        <div class="existing-feature-desc">${esc(f.desc || '(설명 없음)')}</div>
+      </div>
+      <label>이 기능을 이렇게 수정해주세요 (수정하지 않으려면 비워두세요)</label>
+      <textarea class="inp" rows="2" placeholder="예: 시작 버튼을 누르면 3초 카운트다운 후 시작하게 해주세요"
+        oninput="updateExistingNote('${f.key}', this.value)">${esc(reviseState.existingNotes[f.key] || '')}</textarea>
+    </div>
+  `).join('');
+}
+
+function updateExistingNote(key, value) {
+  reviseState.existingNotes[key] = value;
+  saveDraft();
+}
+
+// ============================================================
 //  디자인 (직접 작성 / 견본 선택)
 // ============================================================
 
@@ -186,6 +324,32 @@ function renderPresets() {
 function selectPreset(id) {
   state.selectedPreset = id;
   renderPresets();
+  saveDraft();
+}
+
+function setReviseDesignMode(mode) {
+  reviseState.designMode = mode;
+  document.getElementById('reviseModeBtn-custom').classList.toggle('active', mode === 'custom');
+  document.getElementById('reviseModeBtn-preset').classList.toggle('active', mode === 'preset');
+  document.getElementById('reviseDesignCustom').hidden = mode !== 'custom';
+  document.getElementById('reviseDesignPreset').hidden = mode !== 'preset';
+  saveDraft();
+}
+
+function renderRevisePresets() {
+  const el = document.getElementById('revisePresetGrid');
+  el.innerHTML = DESIGN_PRESETS.map((p) => `
+    <div class="preset-card${reviseState.selectedPreset === p.id ? ' selected' : ''}" onclick="selectRevisePreset('${p.id}')">
+      <div class="preset-swatch ${p.swatchClass}"></div>
+      <div class="preset-name">${p.name}</div>
+      <div class="preset-desc">${p.summary}</div>
+    </div>
+  `).join('');
+}
+
+function selectRevisePreset(id) {
+  reviseState.selectedPreset = id;
+  renderRevisePresets();
   saveDraft();
 }
 
@@ -299,6 +463,77 @@ function generatePrompt() {
 }
 
 // ============================================================
+//  웹앱 수정하기 — 화면 진입 / 수정 프롬프트 조립
+// ============================================================
+
+function openRevise() {
+  renderNewFeatures();
+  renderExistingFeatureNotes();
+  renderRevisePresets();
+  document.querySelectorAll('.panel').forEach((p) => p.classList.remove('active'));
+  document.getElementById('panel-revise').classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function generateRevisePrompt() {
+  const newFeats = reviseState.newFeatures.filter((f) => f.name.trim());
+  const notes = state.features
+    .filter((f) => f.name.trim() && (reviseState.existingNotes[f.key] || '').trim())
+    .map((f) => ({ f, note: reviseState.existingNotes[f.key].trim() }));
+  const bug = document.getElementById('reviseBugText').value.trim();
+  const designCustom = document.getElementById('reviseDesignText').value.trim();
+  const hasDesign = reviseState.designMode === 'custom' ? !!designCustom : !!reviseState.selectedPreset;
+
+  const hasAnything = newFeats.length > 0 || notes.length > 0 || !!bug || hasDesign;
+  document.getElementById('err-revise').hidden = hasAnything;
+  if (!hasAnything) return;
+
+  const lines = [];
+  lines.push('아래 요청대로 기존 웹앱을 수정해주세요. 언급하지 않은 기존 기능과 디자인은 그대로 유지해주세요.');
+  lines.push('');
+
+  if (newFeats.length) {
+    lines.push('다음 기능을 새로 추가해주세요:');
+    newFeats.forEach((f) => {
+      lines.push(`- ${f.name}: ${f.desc || '(설명 없음)'}`);
+      const steps = f.steps.map((s) => s.trim()).filter(Boolean);
+      steps.forEach((s, i) => lines.push(`  ${i + 1}. ${s}`));
+    });
+    lines.push('');
+  }
+
+  if (notes.length) {
+    lines.push('다음 기존 기능을 수정해주세요:');
+    notes.forEach(({ f, note }) => {
+      lines.push(`- ${f.name} (기존: ${f.desc || '설명 없음'}): ${note}`);
+    });
+    lines.push('');
+  }
+
+  if (bug) {
+    lines.push('다음 문제를 고쳐주세요:');
+    lines.push(bug);
+    lines.push('');
+  }
+
+  if (hasDesign) {
+    lines.push('디자인을 다음과 같이 바꿔주세요:');
+    if (reviseState.designMode === 'custom') {
+      lines.push(designCustom);
+    } else {
+      lines.push(DESIGN_PRESETS.find((p) => p.id === reviseState.selectedPreset).text);
+    }
+    lines.push('');
+  }
+
+  lines.push('수정된 전체 코드를 다시 한 번에, 생략 없이 작성해주세요. (빌드 도구 없이 순수 HTML/CSS/JS, 외부 데이터베이스 금지, 데이터 저장이 필요하면 localStorage 사용 등 기존 제약은 동일하게 적용해주세요.)');
+
+  document.getElementById('resultText').value = lines.join('\n');
+  showStep(4);
+  toast('수정 프롬프트가 생성되었습니다');
+}
+
+// ============================================================
 //  결과 화면: 복사 / 초기화
 // ============================================================
 
@@ -343,6 +578,15 @@ function resetAll() {
   document.getElementById('err-topic').hidden = true;
   document.getElementById('err-features').hidden = true;
   document.getElementById('err-design').hidden = true;
+
+  reviseState.newFeatures = [];
+  reviseState.existingNotes = {};
+  reviseState.selectedPreset = null;
+  document.getElementById('reviseBugText').value = '';
+  document.getElementById('reviseDesignText').value = '';
+  setReviseDesignMode('custom');
+  document.getElementById('err-revise').hidden = true;
+
   clearDraft();
   showStep(1);
 }
@@ -390,6 +634,14 @@ function saveDraft() {
       designMode: state.designMode,
       designText: document.getElementById('designText').value,
       selectedPreset: state.selectedPreset,
+      revise: {
+        newFeatures: reviseState.newFeatures.map((f) => ({ name: f.name, desc: f.desc, steps: f.steps })),
+        existingNotes: reviseState.existingNotes,
+        bugText: document.getElementById('reviseBugText').value,
+        designMode: reviseState.designMode,
+        designText: document.getElementById('reviseDesignText').value,
+        selectedPreset: reviseState.selectedPreset,
+      },
     };
     localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
   } catch { /* localStorage를 못 쓰는 환경이면 임시 저장은 그냥 건너뛴다 */ }
@@ -422,6 +674,23 @@ function loadDraft() {
   document.getElementById('designText').value = draft.designText || '';
   state.selectedPreset = draft.selectedPreset || null;
   setDesignMode(draft.designMode === 'preset' ? 'preset' : 'custom');
+
+  const r = draft.revise;
+  if (r) {
+    if (Array.isArray(r.newFeatures) && r.newFeatures.length) {
+      reviseState.newFeatures = r.newFeatures.map((f) => ({
+        key: 'nf' + (++newFeatureSeq),
+        name: f.name || '',
+        desc: f.desc || '',
+        steps: Array.isArray(f.steps) && f.steps.length ? f.steps : [''],
+      }));
+    }
+    reviseState.existingNotes = r.existingNotes && typeof r.existingNotes === 'object' ? r.existingNotes : {};
+    document.getElementById('reviseBugText').value = r.bugText || '';
+    document.getElementById('reviseDesignText').value = r.designText || '';
+    reviseState.selectedPreset = r.selectedPreset || null;
+    setReviseDesignMode(r.designMode === 'preset' ? 'preset' : 'custom');
+  }
 
   return true;
 }
