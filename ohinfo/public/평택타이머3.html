@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>포커스 링</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* ---- Design tokens: deliberate single dark "stage" look -----------------
+     This is a display meant to run on a projector or classroom monitor, like
+     a scoreboard or digital clock. It commits to one look on purpose so the
+     countdown reads the same regardless of the viewer's OS theme. */
+  :root{
+    --stage-bg-1:#0a0f1c;
+    --stage-bg-2:#0d1526;
+    --surface:#131d33;
+    --surface-hi:#1c2942;
+    --line:#243252;
+    --ink:#eef2f7;
+    --ink-dim:#8592ab;
+    --ink-faint:#5b6883;
+
+    --calm:#52e0c4;
+    --calm-dim:#1f4a44;
+    --warn:#ffb648;
+    --warn-dim:#4a3a1c;
+    --critical:#ff5468;
+    --critical-dim:#4a2028;
+
+    --phase:var(--calm);
+    --phase-dim:var(--calm-dim);
+
+    --font-display:'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
+    --font-ui:'Manrope', 'Segoe UI', system-ui, sans-serif;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    min-height:100vh;
+    background:
+      radial-gradient(70% 55% at 50% 38%, color-mix(in srgb, var(--phase) 16%, transparent), transparent 70%),
+      linear-gradient(180deg, var(--stage-bg-2), var(--stage-bg-1));
+    color:var(--ink);
+    font-family:var(--font-ui);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:32px 20px;
+    transition:background 900ms ease;
+    overflow-x:hidden;
+  }
+
+  .stage{
+    width:100%;
+    max-width:560px;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:28px;
+  }
+
+  header.top{
+    width:100%;
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:12px;
+  }
+  header.top h1{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:clamp(1.1rem, 2.4vw, 1.4rem);
+    letter-spacing:0.01em;
+    margin:0;
+    color:var(--ink);
+  }
+  .eyebrow{
+    display:block;
+    font-family:var(--font-ui);
+    font-weight:700;
+    font-size:0.68rem;
+    letter-spacing:0.16em;
+    text-transform:uppercase;
+    color:var(--ink-faint);
+    margin-bottom:4px;
+  }
+
+  .mute-btn{
+    appearance:none;
+    border:1px solid var(--line);
+    background:var(--surface);
+    color:var(--ink-dim);
+    width:40px;
+    height:40px;
+    border-radius:999px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    flex:none;
+    transition:background 160ms ease, color 160ms ease, border-color 160ms ease;
+  }
+  .mute-btn:hover{background:var(--surface-hi); color:var(--ink);}
+  .mute-btn:focus-visible{outline:2px solid var(--phase); outline-offset:2px;}
+  .mute-btn svg{width:18px; height:18px;}
+
+  /* ---- Ring ---- */
+  .ring-wrap{
+    position:relative;
+    width:min(72vw, 340px);
+    aspect-ratio:1/1;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .ring-wrap::before{
+    content:"";
+    position:absolute;
+    inset:-14%;
+    border-radius:50%;
+    background:radial-gradient(closest-side, color-mix(in srgb, var(--phase) 30%, transparent), transparent 72%);
+    filter:blur(2px);
+    transition:background 700ms ease;
+    z-index:0;
+  }
+  svg.ring{
+    position:relative;
+    z-index:1;
+    width:100%;
+    height:100%;
+    transform:rotate(-90deg);
+    overflow:visible;
+  }
+  .ring-track{
+    fill:none;
+    stroke:var(--surface-hi);
+    stroke-width:14;
+  }
+  .ring-progress{
+    fill:none;
+    stroke:var(--phase);
+    stroke-width:14;
+    stroke-linecap:round;
+    transition:stroke 500ms ease, filter 500ms ease;
+    filter:drop-shadow(0 0 10px color-mix(in srgb, var(--phase) 70%, transparent));
+  }
+
+  .readout{
+    position:absolute;
+    z-index:2;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:6px;
+    text-align:center;
+  }
+  .time{
+    font-family:var(--font-display);
+    font-weight:800;
+    font-size:clamp(2.6rem, 13vw, 4.4rem);
+    line-height:1;
+    letter-spacing:0.01em;
+    font-variant-numeric:tabular-nums;
+    color:var(--ink);
+    transition:color 400ms ease;
+  }
+  .status-label{
+    font-size:0.72rem;
+    font-weight:700;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--phase);
+    transition:color 500ms ease;
+    min-height:1em;
+  }
+
+  /* Critical pulse — screen-wide tension cue */
+  body.phase-critical{ animation:bg-pulse 1000ms ease-in-out infinite; }
+  @keyframes bg-pulse{
+    0%, 100%{ filter:brightness(1); }
+    50%{ filter:brightness(1.14); }
+  }
+  body.phase-critical .ring-wrap::before{ animation:glow-pulse 1000ms ease-in-out infinite; }
+  @keyframes glow-pulse{
+    0%, 100%{ opacity:1; transform:scale(1); }
+    50%{ opacity:0.7; transform:scale(1.06); }
+  }
+  body.phase-critical .time{ animation:num-pulse 1000ms ease-in-out infinite; }
+  @keyframes num-pulse{
+    0%, 100%{ transform:scale(1); }
+    50%{ transform:scale(1.05); }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    body.phase-critical,
+    body.phase-critical .ring-wrap::before,
+    body.phase-critical .time{ animation:none !important; }
+  }
+
+  /* ---- Controls ---- */
+  .presets{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    justify-content:center;
+  }
+  .preset-btn, .custom-apply{
+    appearance:none;
+    border:1px solid var(--line);
+    background:var(--surface);
+    color:var(--ink);
+    font-family:var(--font-ui);
+    font-weight:700;
+    font-size:0.92rem;
+    padding:10px 18px;
+    border-radius:999px;
+    cursor:pointer;
+    transition:background 160ms ease, border-color 160ms ease, transform 120ms ease;
+  }
+  .preset-btn:hover, .custom-apply:hover{ background:var(--surface-hi); border-color:var(--phase); }
+  .preset-btn:active, .custom-apply:active{ transform:scale(0.97); }
+  .preset-btn:focus-visible, .custom-apply:focus-visible{ outline:2px solid var(--phase); outline-offset:2px; }
+  .preset-btn[aria-pressed="true"]{
+    background:color-mix(in srgb, var(--phase) 22%, var(--surface));
+    border-color:var(--phase);
+    color:var(--ink);
+  }
+
+  .custom-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:999px;
+    padding:6px 6px 6px 16px;
+  }
+  .custom-row label{
+    font-size:0.8rem;
+    color:var(--ink-dim);
+    font-weight:600;
+    white-space:nowrap;
+  }
+  .custom-row input[type="number"]{
+    width:52px;
+    background:transparent;
+    border:none;
+    color:var(--ink);
+    font-family:var(--font-ui);
+    font-weight:700;
+    font-size:0.95rem;
+    font-variant-numeric:tabular-nums;
+    text-align:center;
+    -moz-appearance:textfield;
+  }
+  .custom-row input[type="number"]::-webkit-outer-spin-button,
+  .custom-row input[type="number"]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+  .custom-row input[type="number"]:focus-visible{ outline:2px solid var(--phase); outline-offset:2px; border-radius:6px; }
+  .custom-apply{ padding:8px 16px; font-size:0.85rem; }
+
+  .transport{
+    display:flex;
+    gap:12px;
+  }
+  .transport button{
+    appearance:none;
+    border:none;
+    font-family:var(--font-ui);
+    font-weight:800;
+    font-size:1rem;
+    padding:14px 30px;
+    border-radius:999px;
+    cursor:pointer;
+    transition:filter 140ms ease, transform 120ms ease, background 200ms ease;
+  }
+  .primary-btn{
+    background:var(--phase);
+    color:#0a0f1c;
+  }
+  .primary-btn:hover{ filter:brightness(1.08); }
+  .primary-btn:active{ transform:scale(0.97); }
+  .primary-btn:focus-visible{ outline:2px solid var(--ink); outline-offset:2px; }
+  .ghost-btn{
+    background:var(--surface);
+    color:var(--ink-dim);
+    border:1px solid var(--line);
+  }
+  .ghost-btn:hover{ background:var(--surface-hi); color:var(--ink); }
+  .ghost-btn:active{ transform:scale(0.97); }
+  .ghost-btn:focus-visible{ outline:2px solid var(--phase); outline-offset:2px; }
+
+  .hint{
+    font-size:0.78rem;
+    color:var(--ink-faint);
+    text-align:center;
+    max-width:38ch;
+    line-height:1.5;
+  }
+
+  @media (max-width: 380px){
+    .transport button{ padding:13px 22px; font-size:0.92rem; }
+    .preset-btn{ padding:9px 14px; font-size:0.85rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <header class="top">
+    <h1><span class="eyebrow">수업 집중 타이머</span>포커스 링</h1>
+    <button class="mute-btn" id="muteBtn" type="button" aria-pressed="false" aria-label="소리 끄기">
+      <svg id="muteIconOn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 6a9 9 0 0 1 0 12"/></svg>
+      <svg id="muteIconOff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+    </button>
+  </header>
+
+  <div class="ring-wrap">
+    <svg class="ring" viewBox="0 0 240 240">
+      <circle class="ring-track" cx="120" cy="120" r="106"></circle>
+      <circle class="ring-progress" id="ringProgress" cx="120" cy="120" r="106"
+              stroke-dasharray="666.03" stroke-dashoffset="0"></circle>
+    </svg>
+    <div class="readout">
+      <div class="time" id="timeDisplay">05:00</div>
+      <div class="status-label" id="statusLabel">준비됨</div>
+    </div>
+  </div>
+
+  <div class="presets" role="group" aria-label="빠른 시간 선택">
+    <button class="preset-btn" type="button" data-minutes="3">3분</button>
+    <button class="preset-btn" type="button" data-minutes="5" aria-pressed="true">5분</button>
+    <button class="preset-btn" type="button" data-minutes="10">10분</button>
+  </div>
+
+  <div class="custom-row">
+    <label for="customMinutes">직접 입력</label>
+    <input type="number" id="customMinutes" min="1" max="90" step="1" inputmode="numeric" aria-label="분">
+    <span style="color:var(--ink-faint); font-weight:700;">분</span>
+    <button class="custom-apply" id="customApply" type="button">설정</button>
+  </div>
+
+  <div class="transport">
+    <button class="primary-btn" id="startPauseBtn" type="button">시작</button>
+    <button class="ghost-btn" id="resetBtn" type="button">초기화</button>
+  </div>
+
+  <p class="hint">1분 남으면 링이 주황으로, 10초 남으면 빨강으로 바뀌며 초 단위 신호음이 울려요.</p>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var RADIUS = 106;
+  var CIRC = 2 * Math.PI * RADIUS;
+
+  var ringEl = document.getElementById('ringProgress');
+  var timeEl = document.getElementById('timeDisplay');
+  var statusEl = document.getElementById('statusLabel');
+  var startPauseBtn = document.getElementById('startPauseBtn');
+  var resetBtn = document.getElementById('resetBtn');
+  var muteBtn = document.getElementById('muteBtn');
+  var muteIconOn = document.getElementById('muteIconOn');
+  var muteIconOff = document.getElementById('muteIconOff');
+  var presetBtns = Array.prototype.slice.call(document.querySelectorAll('.preset-btn'));
+  var customMinutes = document.getElementById('customMinutes');
+  var customApply = document.getElementById('customApply');
+  var body = document.body;
+  var root = document.documentElement;
+
+  ringEl.setAttribute('stroke-dasharray', CIRC.toFixed(2));
+
+  var totalSeconds = 5 * 60;
+  var remainingMs = totalSeconds * 1000;
+  var endAt = null;          // performance.now() timestamp when timer should hit 0
+  var running = false;
+  var rafId = null;
+  var lastWholeSecond = null;
+  var currentPhase = 'calm';
+  var muted = false;
+
+  try {
+    var storedMute = localStorage.getItem('focusRingMuted');
+    if (storedMute === '1') { muted = true; }
+  } catch (e) { /* storage unavailable; ignore */ }
+
+  function setMuteUI(){
+    muteBtn.setAttribute('aria-pressed', muted ? 'true' : 'false');
+    muteBtn.setAttribute('aria-label', muted ? '소리 켜기' : '소리 끄기');
+    muteIconOn.style.display = muted ? 'none' : '';
+    muteIconOff.style.display = muted ? '' : 'none';
+  }
+  setMuteUI();
+
+  muteBtn.addEventListener('click', function(){
+    muted = !muted;
+    setMuteUI();
+    try { localStorage.setItem('focusRingMuted', muted ? '1' : '0'); } catch (e) {}
+  });
+
+  /* ---------------- Audio: self-contained beeps via WebAudio ---------------- */
+  var audioCtx = null;
+  function ensureAudio(){
+    if (!audioCtx) {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) { audioCtx = new Ctx(); }
+    }
+    if (audioCtx && audioCtx.state === 'suspended') { audioCtx.resume(); }
+    return audioCtx;
+  }
+
+  function beep(freq, durationMs, when, gainPeak){
+    if (muted) { return; }
+    var ctx = ensureAudio();
+    if (!ctx) { return; }
+    var startTime = ctx.currentTime + (when || 0);
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, startTime);
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(gainPeak || 0.18, startTime + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + durationMs / 1000);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(startTime);
+    osc.stop(startTime + durationMs / 1000 + 0.02);
+  }
+
+  function playTick(){ beep(880, 110); }
+  function playMinuteWarning(){ beep(660, 180, 0, 0.15); beep(660, 180, 0.22, 0.15); }
+  function playFinish(){
+    beep(523.25, 160, 0, 0.2);
+    beep(659.25, 160, 0.16, 0.2);
+    beep(783.99, 320, 0.32, 0.22);
+  }
+
+  /* ---------------- Phase / color state ---------------- */
+  function setPhase(phase){
+    if (phase === currentPhase) { return; }
+    currentPhase = phase;
+    var varName = phase === 'critical' ? '--critical' : (phase === 'warn' ? '--warn' : '--calm');
+    var dimName = phase === 'critical' ? '--critical-dim' : (phase === 'warn' ? '--warn-dim' : '--calm-dim');
+    root.style.setProperty('--phase', 'var(' + varName + ')');
+    root.style.setProperty('--phase-dim', 'var(' + dimName + ')');
+    body.classList.toggle('phase-critical', phase === 'critical');
+    statusEl.textContent = phase === 'critical' ? '거의 다 됐어요' : (phase === 'warn' ? '1분 남음' : (running ? '집중 시간' : '준비됨'));
+  }
+
+  /* ---------------- Rendering ---------------- */
+  function formatTime(totalSecs){
+    var m = Math.floor(totalSecs / 60);
+    var s = totalSecs % 60;
+    return (m < 10 ? '0' + m : m) + ':' + (s < 10 ? '0' + s : s);
+  }
+
+  function render(remainingSecsFloat){
+    var clamped = Math.max(0, remainingSecsFloat);
+    var wholeSecs = Math.ceil(clamped - 0.0001);
+    if (wholeSecs !== lastWholeSecond) {
+      lastWholeSecond = wholeSecs;
+      timeEl.textContent = formatTime(wholeSecs);
+
+      if (running) {
+        if (wholeSecs === 60 && totalSeconds > 60) { playMinuteWarning(); }
+        if (wholeSecs > 0 && wholeSecs <= 10) { playTick(); }
+        if (wholeSecs === 0) { playFinish(); }
+      }
+    }
+
+    var fraction = totalSeconds > 0 ? clamped / totalSeconds : 0;
+    var offset = CIRC * (1 - fraction);
+    ringEl.setAttribute('stroke-dashoffset', offset.toFixed(2));
+
+    var phase = 'calm';
+    if (clamped <= 10.0001) { phase = 'critical'; }
+    else if (clamped <= 60.0001 && totalSeconds > 10) { phase = 'warn'; }
+    setPhase(phase);
+  }
+
+  /* ---------------- Timer loop ---------------- */
+  function tick(){
+    if (!running) { return; }
+    var now = performance.now();
+    var remainingSecs = (endAt - now) / 1000;
+    if (remainingSecs <= 0) {
+      render(0);
+      stop(true);
+      return;
+    }
+    render(remainingSecs);
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function start(){
+    if (running) { return; }
+    if (remainingMs <= 0) { return; }
+    ensureAudio();
+    running = true;
+    endAt = performance.now() + remainingMs;
+    startPauseBtn.textContent = '일시정지';
+    statusEl.textContent = currentPhase === 'critical' ? '거의 다 됐어요' : (currentPhase === 'warn' ? '1분 남음' : '집중 시간');
+    rafId = requestAnimationFrame(tick);
+  }
+
+  function pause(){
+    if (!running) { return; }
+    running = false;
+    remainingMs = Math.max(0, endAt - performance.now());
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    startPauseBtn.textContent = '계속';
+    statusEl.textContent = '일시정지됨';
+  }
+
+  function stop(finished){
+    running = false;
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    startPauseBtn.textContent = '시작';
+    if (finished) {
+      statusEl.textContent = '종료!';
+    }
+  }
+
+  function setDuration(minutes){
+    stop(false);
+    totalSeconds = Math.max(1, Math.round(minutes * 60));
+    remainingMs = totalSeconds * 1000;
+    lastWholeSecond = null;
+    setPhase('calm');
+    statusEl.textContent = '준비됨';
+    render(totalSeconds);
+  }
+
+  function selectPreset(minutes, btn){
+    presetBtns.forEach(function(b){ b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'); });
+    setDuration(minutes);
+  }
+
+  presetBtns.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      selectPreset(parseFloat(btn.getAttribute('data-minutes')), btn);
+    });
+  });
+
+  customApply.addEventListener('click', function(){
+    var val = parseFloat(customMinutes.value);
+    if (!val || val <= 0) { return; }
+    val = Math.min(90, val);
+    presetBtns.forEach(function(b){ b.setAttribute('aria-pressed', 'false'); });
+    setDuration(val);
+  });
+
+  customMinutes.addEventListener('keydown', function(e){
+    if (e.key === 'Enter') { customApply.click(); }
+  });
+
+  startPauseBtn.addEventListener('click', function(){
+    if (running) { pause(); } else { start(); }
+  });
+
+  resetBtn.addEventListener('click', function(){
+    setDuration(totalSeconds / 60);
+  });
+
+  /* Initial paint */
+  render(totalSeconds);
+})();
+</script>
+</body>
+</html>
