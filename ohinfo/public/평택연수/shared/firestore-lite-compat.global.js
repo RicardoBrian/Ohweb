@@ -176,10 +176,21 @@
     delete: () => ({ __deleteFieldSentinel: true }),
   };
 
+  const fakeUser = { uid: 'demo-' + ns };
+  function authFn() {
+    return {
+      currentUser: fakeUser,
+      signInAnonymously: function () { return Promise.resolve({ user: fakeUser }); },
+      onAuthStateChanged: function (cb) { cb(fakeUser); return function unsubscribe() {}; },
+      signOut: function () { return Promise.resolve(); },
+    };
+  }
+
   window.firebase = {
     apps: [],
     initializeApp: function () { window.firebase.apps.push({}); },
     firestore: firestoreFn,
+    auth: authFn,
   };
 
   window.FSLite = {

@@ -1,0 +1,1733 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>샘플중학교 봉사활동 도우미 관리페이지 (견본)</title>
+  
+  <!-- 파비콘 지정 -->
+  <link rel="icon" href="../shared/volunteer-logo.svg" type="image/svg+xml">
+  <link rel="shortcut icon" href="../shared/volunteer-logo.svg" type="image/svg+xml">
+  
+  <!-- IBM Plex Sans KR 구글 폰트 적용 (300, 400 가중치 확보하여 깨짐 제거 및 가독성 완성) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- CDNs: React, Tailwind, PapaParse, Firebase -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  
+  <!-- Firebase SDKs 자리를 localStorage 견본 백엔드로 대체 (서버 전송 없음) -->
+  <script src="../shared/firestore-lite-compat.global.js" data-ns="gwvs-demo"></script>
+  <script>
+  window.FSLite.seedIfEmpty(function (s) {
+    var studentsPath = 'artifacts/volunteer-portal-gwvs/public/data/students';
+    [
+      { id: 'stu1', grade: '2', class: '3', number: '5', neisName: '김하늘', name: '김하늘', helperName: '급식 도우미', hours: 8, originalHours: 8, activityContent: '', activityStartDate: '', activityEndDate: '' },
+      { id: 'stu2', grade: '2', class: '3', number: '11', neisName: '이도윤', name: '이도윤', helperName: '분리수거 도우미', hours: 5, originalHours: 5, activityContent: '', activityStartDate: '', activityEndDate: '' },
+      { id: 'stu3', grade: '1', class: '5', number: '2', neisName: '박서준', name: '박서준', helperName: '도서관 도우미', hours: 3, originalHours: 3, activityContent: '', activityStartDate: '', activityEndDate: '' },
+    ].forEach(function (stu) { s.put(studentsPath, stu.id, stu); });
+  });
+  </script>
+
+  <!-- Tailwind 커스텀 토큰 설정 -->
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"IBM Plex Sans KR"', 'sans-serif'],
+          },
+          colors: {
+            accent: {
+              DEFAULT: 'var(--accent)',
+              hover: 'var(--accent-hover)',
+              light: 'var(--accent-light)',
+            },
+            glass: {
+              bg: 'var(--glass-bg)',
+              border: 'var(--glass-border)',
+              edge: 'var(--glass-edge)',
+            },
+            text: {
+              primary: 'var(--text-primary)',
+              secondary: 'var(--text-secondary)',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Liquid Glass 프리미엄 테마 스타일링 및 폰트 개선 -->
+  <style>
+    :root {
+      --font-sans: 'IBM Plex Sans KR', sans-serif;
+
+      /* Light Mode — Liquid Glass vibrancy */
+      --bg-gradient:
+        radial-gradient(at 18% 18%, #dce4ff 0%, transparent 52%),
+        radial-gradient(at 82% 12%, #ffd6ec 0%, transparent 46%),
+        radial-gradient(at 65% 88%, #d4f0ff 0%, transparent 52%),
+        radial-gradient(at 8%  92%, #e5d8ff 0%, transparent 44%),
+        #eceef6;
+      --glass-bg: rgba(255, 255, 255, 0.78);
+      --glass-border: rgba(255, 255, 255, 0.7);
+      --glass-edge: rgba(255, 255, 255, 0.98);
+      --glass-shadow: 0 10px 32px rgba(30, 50, 120, 0.13);
+      --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 0.5px rgba(255, 255, 255, 0.5);
+      --text-primary: #111318;
+      --text-secondary: #4a505c;
+      --accent: #0071e3;
+      --accent-hover: #0a84ff;
+      --accent-light: rgba(0, 113, 227, 0.12);
+      --accent-grad: linear-gradient(180deg, #3a9bff 0%, #0071e3 100%);
+      --danger: #ff3b30;
+      --danger-light: rgba(255, 59, 48, 0.12);
+      --success: #34c759;
+      --success-light: rgba(52, 199, 89, 0.16);
+      --blur: 22px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-gradient:
+          radial-gradient(at 18% 18%, #1b2444 0%, transparent 55%),
+          radial-gradient(at 82% 12%, #2c1a44 0%, transparent 48%),
+          radial-gradient(at 65% 90%, #0e2438 0%, transparent 52%),
+          radial-gradient(at 8%  92%, #1a1530 0%, transparent 46%),
+          #07080d;
+        --glass-bg: rgba(36, 38, 52, 0.72);
+        --glass-border: rgba(255, 255, 255, 0.16);
+        --glass-edge: rgba(255, 255, 255, 0.18);
+        --glass-shadow: 0 10px 32px rgba(0, 0, 0, 0.55);
+        --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 0 0 0.5px rgba(255, 255, 255, 0.08);
+        --text-primary: #f0f2f8;
+        --text-secondary: #9ba3b5;
+        --accent: #0a84ff;
+        --accent-hover: #409cff;
+        --accent-light: rgba(10, 132, 255, 0.18);
+        --accent-grad: linear-gradient(180deg, #2b95ff 0%, #0a84ff 100%);
+        --danger: #ff453a;
+        --danger-light: rgba(255, 69, 58, 0.18);
+        --success: #30d158;
+        --success-light: rgba(48, 209, 88, 0.2);
+      }
+    }
+
+    body {
+      background: var(--bg-gradient);
+      min-height: 100vh;
+      font-family: var(--font-sans);
+      color: var(--text-primary);
+      overflow-x: hidden;
+      font-size: 17px; /* 전반적인 폰트 크기 상향 */
+      line-height: 1.6;
+    }
+
+    .glass-card {
+      background: var(--glass-bg);
+      backdrop-filter: saturate(180%) blur(var(--blur));
+      -webkit-backdrop-filter: saturate(180%) blur(var(--blur));
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--glass-highlight), var(--glass-shadow);
+    }
+
+    /* .dark 클래스 기반 다크모드 (토글 지원) */
+    html.dark {
+      --bg-gradient:
+        radial-gradient(at 18% 18%, #1b2444 0%, transparent 55%),
+        radial-gradient(at 82% 12%, #2c1a44 0%, transparent 48%),
+        radial-gradient(at 65% 90%, #0e2438 0%, transparent 52%),
+        radial-gradient(at 8%  92%, #1a1530 0%, transparent 46%),
+        #07080d;
+      --glass-bg: rgba(36, 38, 52, 0.72);
+      --glass-border: rgba(255, 255, 255, 0.16);
+      --glass-edge: rgba(255, 255, 255, 0.18);
+      --glass-shadow: 0 10px 32px rgba(0, 0, 0, 0.55);
+      --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.18), inset 0 0 0 0.5px rgba(255, 255, 255, 0.08);
+      --text-primary: #f0f2f8;
+      --text-secondary: #9ba3b5;
+      --accent: #0a84ff;
+      --accent-hover: #409cff;
+      --accent-light: rgba(10, 132, 255, 0.18);
+      --accent-grad: linear-gradient(180deg, #2b95ff 0%, #0a84ff 100%);
+      --danger: #ff453a;
+      --danger-light: rgba(255, 69, 58, 0.18);
+      --success: #30d158;
+      --success-light: rgba(48, 209, 88, 0.2);
+    }
+
+    .inp {
+      background: rgba(255, 255, 255, 0.55);
+      border: 1px solid rgba(0, 0, 0, 0.12);
+      color: var(--text-primary);
+      transition: border-color .18s, box-shadow .18s;
+    }
+    html.dark .inp {
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+    }
+    @media (prefers-color-scheme: dark) {
+      .inp {
+        background: rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+      }
+    }
+    .inp:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px var(--accent-light);
+      border-color: var(--accent);
+    }
+
+    /* Glass select */
+    .glass-select {
+      background: var(--glass-bg);
+      backdrop-filter: saturate(180%) blur(var(--blur));
+      -webkit-backdrop-filter: saturate(180%) blur(var(--blur));
+      border: 1px solid var(--glass-border);
+      color: var(--text-primary);
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238a8f99' d='M6 8L1.5 3.5l1-1L6 6l3.5-3.5 1 1z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 36px;
+      cursor: pointer;
+    }
+    .glass-select:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px var(--accent-light);
+      border-color: var(--accent);
+    }
+
+    /* Dark toggle pill */
+    .dark-toggle {
+      width: 44px; height: 26px; border-radius: 999px;
+      background: var(--glass-bg); border: 1px solid var(--glass-border);
+      cursor: pointer; position: relative;
+      transition: background .26s; box-shadow: var(--glass-highlight);
+      flex-shrink: 0;
+    }
+    html.dark .dark-toggle { background: var(--accent); border-color: transparent; }
+    .dark-toggle::after {
+      content: ''; position: absolute; top: 2px; left: 2px;
+      width: 20px; height: 20px; border-radius: 50%;
+      background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3);
+      transition: transform .26s;
+    }
+    html.dark .dark-toggle::after { transform: translateX(18px); }
+
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(134, 134, 139, 0.3);
+      border-radius: 999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(134, 134, 139, 0.5);
+    }
+  </style>
+</head>
+<body class="antialiased font-light">
+
+  <div id="root"></div>
+
+  <!-- 비즈니스 로직 및 뷰 컴포넌트 -->
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+
+    // 샘플중학교 Firebase 설정 정보 연동
+    const firebaseConfig = {
+      apiKey: "AIzaSyC0M-QpErLS_haeexoymRiZ8l0tdC_SRgg",
+      authDomain: "gwvs-77114.firebaseapp.com",
+      projectId: "gwvs-77114",
+      storageBucket: "gwvs-77114.firebasestorage.app",
+      messagingSenderId: "1044148704527",
+      appId: "1:1044148704527:web:e16e00ebb440a4b70e9a7a"
+    };
+
+    const isFirebaseActive = !!firebaseConfig.projectId;
+    let db = null;
+    let auth = null;
+
+    if (isFirebaseActive) {
+      try {
+        if (!firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+        }
+        db = firebase.firestore();
+        auth = firebase.auth();
+      } catch (err) {
+        console.error("Firebase 초기화 에러:", err);
+      }
+    }
+
+    // 보안이 강화된 Firestore Strict Paths 가이드 적용 (RULE 1)
+    const appId = "volunteer-portal-gwvs";
+    const studentsColPath = `artifacts/${appId}/public/data/students`;
+    const logsColPath = `artifacts/${appId}/public/data/logs`;
+
+    const DEFAULT_STUDENTS = [];
+
+    function App() {
+      const [isAuthenticated, setIsAuthenticated] = useState(true); // 견본: 로그인 게이트 생략
+      const [isAdmin, setIsAdmin] = useState(true); // 견본: 관리자 승인 게이트 생략
+      const [password, setPassword] = useState("");
+      const [passwordError, setPasswordError] = useState("");
+      
+      const [isAdminGateOpen, setIsAdminGateOpen] = useState(false);
+      const [adminPasswordInput, setAdminPasswordInput] = useState("");
+      const [adminPasswordError, setAdminPasswordError] = useState("");
+
+      const [students, setStudents] = useState([]);
+      const [searchQuery, setSearchQuery] = useState("");
+      
+      const [selectedGradeClass, setSelectedGradeClass] = useState("all");
+      const [selectedHelper, setSelectedHelper] = useState("all");
+      
+      const [editLogs, setEditLogs] = useState([]);
+      const [selectedLogs, setSelectedLogs] = useState({});
+
+      const [newStudent, setNewStudent] = useState({
+        grade: "", class: "", number: "", neisName: "", name: "", helperName: "급식 도우미", hours: 5, activityContent: "", activityStartDate: "", activityEndDate: ""
+      });
+
+      const [isModalOpen, setIsModalOpen] = useState(false);
+      const [editingStudent, setEditingStudent] = useState(null);
+      const [editHours, setEditHours] = useState(0);
+      const [editReason, setEditReason] = useState("");
+      const [editGrade, setEditGrade] = useState("");
+      const [editClass, setEditClass] = useState("");
+      const [editNumber, setEditNumber] = useState("");
+      const [editName, setEditName] = useState("");
+      const [editNeisName, setEditNeisName] = useState("");
+      const [editActivityContent, setEditActivityContent] = useState("");
+      const [editActivityStartDate, setEditActivityStartDate] = useState("");
+      const [editActivityEndDate, setEditActivityEndDate] = useState("");
+      const [feedbackMsg, setFeedbackMsg] = useState("");
+
+      const [alertToast, setAlertToast] = useState(null);
+      const [liveTime, setLiveTime] = useState("");
+      const [firebaseError, setFirebaseError] = useState("");
+      const [isDark, setIsDark] = useState(() =>
+        window.matchMedia('(prefers-color-scheme: dark)').matches
+      );
+
+      useEffect(() => {
+        document.documentElement.classList.toggle('dark', isDark);
+      }, [isDark]);
+
+      // 실시간 클라우드 연동 리스너 (경로 보정 및 초기화 레이스 컨디션 차단)
+      useEffect(() => {
+        const isAuth = sessionStorage.getItem("portal_auth");
+        if (isAuth === "true") {
+          setIsAuthenticated(true);
+        }
+        
+        const isAdminSession = sessionStorage.getItem("portal_admin_auth");
+        if (isAdminSession === "true") {
+          setIsAdmin(true);
+        }
+
+        let unsubscribeStudents = null;
+        let unsubscribeLogs = null;
+
+        if (isFirebaseActive && db) {
+          auth.signInAnonymously().then(() => {
+            setFirebaseError("");
+
+            db.collection(studentsColPath).get().then((snapshot) => {
+              if (snapshot.empty) {
+                const batch = db.batch();
+                DEFAULT_STUDENTS.forEach((s) => {
+                  batch.set(db.collection(studentsColPath).doc(s.id), s);
+                });
+                batch.commit();
+              }
+            }).catch(err => console.error("Firestore 초기 명단 검사 에러:", err));
+
+            unsubscribeStudents = db.collection(studentsColPath).onSnapshot(
+              (snapshot) => {
+                if (!snapshot.empty) {
+                  const items = snapshot.docs.map(doc => doc.data());
+                  items.sort((a, b) => {
+                    if (a.grade !== b.grade) return a.grade - b.grade;
+                    if (a.class !== b.class) return a.class - b.class;
+                    return a.number - b.number;
+                  });
+                  setStudents(items);
+                } else {
+                  setStudents([]);
+                }
+              },
+              (err) => {
+                console.error("학생 명단 실시간 수신 실패:", err);
+                loadFromLocalStorage();
+              }
+            );
+
+            unsubscribeLogs = db.collection(logsColPath).onSnapshot(
+              (snapshot) => {
+                const logsList = snapshot.docs.map(doc => doc.data());
+                logsList.sort((a, b) => {
+                  const idA = a.id ? parseInt(a.id.split('_')[1]) : 0;
+                  const idB = b.id ? parseInt(b.id.split('_')[1]) : 0;
+                  return idB - idA;
+                });
+                setEditLogs(logsList);
+              },
+              (err) => console.error("로그 수신 실패:", err)
+            );
+          }).catch(err => {
+            console.error("Firebase 로그인 실패, 로컬 모드 전환:", err);
+            if (err.code === "auth/configuration-not-found") {
+              setFirebaseError("Firebase 익명 로그인이 비활성화되어 있습니다. [Authentication → Sign-in method]에서 '익명'을 활성화해 주세요. 현재 로컬 저장소 모드로 작동 중입니다.");
+            } else {
+              setFirebaseError(`실시간 연결 오류: ${err.message}`);
+            }
+            loadFromLocalStorage();
+          });
+        } else {
+          loadFromLocalStorage();
+        }
+
+        function loadFromLocalStorage() {
+          const savedData = localStorage.getItem("helper_students_data_v4");
+          if (savedData) {
+            try {
+              setStudents(JSON.parse(savedData));
+            } catch(e) {
+              setStudents(DEFAULT_STUDENTS);
+            }
+          } else {
+            setStudents(DEFAULT_STUDENTS);
+          }
+
+          const savedLogs = localStorage.getItem("helper_students_logs_v4");
+          if (savedLogs) {
+            try {
+              setEditLogs(JSON.parse(savedLogs));
+            } catch(e) {
+              setEditLogs([]);
+            }
+          }
+        }
+
+        const updateClock = () => {
+          const now = new Date();
+          setLiveTime(now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+        };
+        updateClock();
+        const interval = setInterval(updateClock, 1000);
+        return () => {
+          clearInterval(interval);
+          if (unsubscribeStudents) unsubscribeStudents();
+          if (unsubscribeLogs) unsubscribeLogs();
+        };
+      }, []);
+
+      const triggerToast = (msg, type = "success") => {
+        setAlertToast({ msg, type });
+        setTimeout(() => setAlertToast(null), 3000);
+      };
+
+      const handleLoginSubmit = (e) => {
+        e.preventDefault();
+        if (password === "demo") {
+          setIsAuthenticated(true);
+          sessionStorage.setItem("portal_auth", "true");
+          triggerToast("접속되었습니다.", "success");
+        } else {
+          setPasswordError("비밀번호가 올바르지 않습니다. 다시 입력하세요.");
+          triggerToast("접속 실패", "danger");
+        }
+      };
+
+      const handleAdminVerify = (e) => {
+        e.preventDefault();
+        if (adminPasswordInput === "demo") {
+          setIsAdmin(true);
+          setIsAdminGateOpen(false);
+          setAdminPasswordInput("");
+          setAdminPasswordError("");
+          sessionStorage.setItem("portal_admin_auth", "true");
+          triggerToast("관리자 모드가 활성화되었습니다.", "success");
+        } else {
+          setAdminPasswordError("관리자 승인 비밀번호가 일치하지 않습니다.");
+          triggerToast("관리자 인증 실패", "danger");
+        }
+      };
+
+      // 원격 파이어베이스 데이터를 원자적(Atomic)으로 완전히 덮어쓰는 구조로 리팩토링 완료
+      const updateStudentsState = async (newStudents) => {
+        setStudents(newStudents);
+        if (isFirebaseActive && db && !firebaseError) {
+          try {
+            // 1. 기존 파이어베이스 상의 명단을 완전히 삭제하기 위해 먼저 전체 문서를 스냅샷으로 조회
+            const snapshot = await db.collection(studentsColPath).get();
+            const batch = db.batch();
+            
+            // 2. 기존 도우미 명단 문서 삭제 예약 등록
+            snapshot.docs.forEach(doc => {
+              batch.delete(doc.ref);
+            });
+            
+            // 3. 업로드된 새 CSV 명단(또는 가공된 상태의 명단) 등록 예약
+            newStudents.forEach(s => {
+              const docRef = db.collection(studentsColPath).doc(s.id);
+              batch.set(docRef, s);
+            });
+            
+            // 4. 단일 배치 커밋으로 삭제와 신규 등록을 트랜잭션 단위로 한 번에 처리 (유실 및 레이스 컨디션 제로화)
+            await batch.commit();
+          } catch (err) {
+            console.error("Firestore 동기화 연동 에러:", err);
+            triggerToast("원격 동기화 중 오류가 발생했습니다.", "danger");
+          }
+        } else {
+          localStorage.setItem("helper_students_data_v4", JSON.stringify(newStudents));
+        }
+      };
+
+      const saveLog = async (studentName, originalHours, newHours, reason, operator = "담임 교사 및 지도 교사") => {
+        const newLog = {
+          id: `log_${Date.now()}`,
+          timestamp: new Date().toLocaleString('ko-KR'),
+          studentName,
+          originalHours,
+          newHours,
+          reason,
+          operator
+        };
+        const updatedLogs = [newLog, ...editLogs];
+        setEditLogs(updatedLogs);
+
+        if (isFirebaseActive && db && !firebaseError) {
+          await db.collection(logsColPath).doc(newLog.id).set(newLog);
+        } else {
+          localStorage.setItem("helper_students_logs_v4", JSON.stringify(updatedLogs));
+        }
+      };
+
+      const handleClearSelectedLogs = async () => {
+        const checkedIds = Object.keys(selectedLogs).filter(id => selectedLogs[id]);
+        if (checkedIds.length === 0) {
+          triggerToast("선택된 이력 로그 항목이 없습니다.", "danger");
+          return;
+        }
+
+        if (window.confirm(`선택한 ${checkedIds.length}건의 시간 수정 이력을 확인 완료하고 완전히 삭제하시겠습니까?`)) {
+          const remainingLogs = editLogs.filter(log => !selectedLogs[log.id]);
+          setEditLogs(remainingLogs);
+          setSelectedLogs({});
+
+          if (isFirebaseActive && db && !firebaseError) {
+            const batch = db.batch();
+            checkedIds.forEach(id => {
+              const docRef = db.collection(logsColPath).doc(id);
+              batch.delete(docRef);
+            });
+            await batch.commit();
+          } else {
+            localStorage.setItem("helper_students_logs_v4", JSON.stringify(remainingLogs));
+          }
+          triggerToast("선택된 변경 이력이 정상적으로 삭제 처리되었습니다.");
+        }
+      };
+
+      const handleToggleLogCheck = (id) => {
+        setSelectedLogs(prev => ({
+          ...prev,
+          [id]: !prev[id]
+        }));
+      };
+
+      const handleAllLogsCheck = (checked) => {
+        const nextLogsState = {};
+        if (checked) {
+          editLogs.forEach(log => {
+            nextLogsState[log.id] = true;
+          });
+        }
+        setSelectedLogs(nextLogsState);
+      };
+
+      const handleLogout = () => {
+        setIsAuthenticated(false);
+        setIsAdmin(false);
+        sessionStorage.removeItem("portal_auth");
+        sessionStorage.removeItem("portal_admin_auth");
+        setPassword("");
+        setPasswordError("");
+        triggerToast("안전하게 접속 종료되었습니다.");
+      };
+
+      const handleExitAdminMode = () => {
+        setIsAdmin(false);
+        sessionStorage.removeItem("portal_admin_auth");
+        triggerToast("일반 사용자 권한으로 전환되었습니다.");
+      };
+
+      const handleResetData = async () => {
+        if (window.confirm("주의! 수정된 모든 내용을 지우고 원래 배정 명단으로 전체 초기화하시겠습니까?")) {
+          setSelectedLogs({});
+          if (isFirebaseActive && db && !firebaseError) {
+            const studentSnaps = await db.collection(studentsColPath).get();
+            const logSnaps = await db.collection(logsColPath).get();
+            
+            const batch = db.batch();
+            studentSnaps.docs.forEach(doc => batch.delete(doc.ref));
+            logSnaps.docs.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+
+            const nextBatch = db.batch();
+            DEFAULT_STUDENTS.forEach(s => {
+              const ref = db.collection(studentsColPath).doc(s.id);
+              nextBatch.set(ref, s);
+            });
+            await nextBatch.commit();
+          } else {
+            updateStudentsState(DEFAULT_STUDENTS);
+            setEditLogs([]);
+            localStorage.removeItem("helper_students_logs_v4");
+          }
+          triggerToast("초기 명단으로 복원되었습니다.", "success");
+        }
+      };
+
+      const handleCsvImport = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        Papa.parse(file, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            const data = results.data;
+            if (data.length === 0) {
+              triggerToast("데이터가 없는 CSV 파일입니다.", "danger");
+              return;
+            }
+
+            try {
+              const formatted = data.map((row, idx) => {
+                const getVal = (candidates) => {
+                  const match = Object.keys(row).find(k => candidates.some(c => k.trim().replace(/\s/g, '').includes(c)));
+                  return match ? row[match].trim() : "";
+                };
+
+                const parsedGrade = parseInt(getVal(["학년", "grade"])) || 1;
+                const parsedClass = parseInt(getVal(["반", "class"])) || 1;
+                const parsedNum = parseInt(getVal(["번호", "number", "no"])) || 1;
+                const parsedHours = parseInt(getVal(["봉사시간", "시간", "hours"])) || 5;
+
+                return {
+                  id: `csv_${idx}_${Date.now()}`,
+                  grade: parsedGrade,
+                  class: parsedClass,
+                  number: parsedNum,
+                  neisName: getVal(["나이스성명", "영문성명", "neis"]),
+                  name: getVal(["한글이름", "이름", "name"]),
+                  helperName: getVal(["도우미명", "도우미역할", "도우미", "role"]) || "일반 도우미",
+                  activityContent: getVal(["활동내용", "활동", "activity"]) || "",
+                  activityStartDate: getVal(["활동시작일", "시작일", "startDate"]) || "",
+                  activityEndDate: getVal(["활동종료일", "종료일", "endDate"]) || "",
+                  hours: parsedHours,
+                  originalHours: parsedHours,
+                  reason: getVal(["봉사시간변경사유", "변경사유", "사유", "reason"]) || ""
+                };
+              });
+
+              updateStudentsState(formatted);
+              triggerToast(`성공적으로 ${formatted.length}명의 도우미 정보를 업로드 연동했습니다.`, "success");
+            } catch (err) {
+              console.error(err);
+              triggerToast("CSV 형식이 올바르지 않습니다.", "danger");
+            }
+          },
+          error: (err) => {
+            triggerToast("파일 데이터 로드 실패", "danger");
+          }
+        });
+      };
+
+      const handleCsvExport = () => {
+        if (students.length === 0) {
+          triggerToast("내보낼 데이터가 없습니다.", "danger");
+          return;
+        }
+
+        const csvHeaders = ["학년", "반", "번호", "나이스 성명", "한글 이름", "인정시간", "도우미명", "활동내용", "활동시작일", "활동종료일", "봉사시간 변경 사유"];
+        const rows = students.map(s => [
+          s.grade,
+          s.class,
+          s.number,
+          s.neisName,
+          s.name,
+          s.hours,
+          s.helperName,
+          s.activityContent || "",
+          s.activityStartDate || "",
+          s.activityEndDate || "",
+          s.reason || ""
+        ]);
+
+        const csvContent = [csvHeaders, ...rows].map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(",")).join("\n");
+        const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `도우미_봉사조정명세_${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        triggerToast("CSV 파일 다운로드 시작.");
+      };
+
+      const handleAddStudent = (e) => {
+        e.preventDefault();
+        if (!newStudent.grade || !newStudent.class || !newStudent.number || !newStudent.name) {
+          triggerToast("학생의 학적 기본 사항(학년/반/번호/이름)을 빠짐없이 등록하세요.", "danger");
+          return;
+        }
+
+        const added = {
+          id: `manual_${Date.now()}`,
+          grade: Number(newStudent.grade),
+          class: Number(newStudent.class),
+          number: Number(newStudent.number),
+          neisName: newStudent.neisName || newStudent.name,
+          name: newStudent.name,
+          helperName: newStudent.helperName,
+          activityContent: newStudent.activityContent || "",
+          activityStartDate: newStudent.activityStartDate || "",
+          activityEndDate: newStudent.activityEndDate || "",
+          hours: Number(newStudent.hours),
+          originalHours: Number(newStudent.hours),
+          reason: ""
+        };
+
+        const updated = [...students, added];
+        updateStudentsState(updated);
+        setNewStudent({
+          grade: "", class: "", number: "", neisName: "", name: "", helperName: "급식 도우미", hours: 5, activityContent: "", activityStartDate: "", activityEndDate: ""
+        });
+        triggerToast(`${added.name} 학생 도우미 명단에 추가 완료!`);
+      };
+
+      const handleDeleteStudent = (id, name) => {
+        if (window.confirm(`${name} 도우미를 관리 대상에서 영구적으로 제외 처리하겠습니까?`)) {
+          if (isFirebaseActive && db && !firebaseError) {
+            db.collection(studentsColPath).doc(id).delete().then(() => {
+              triggerToast(`${name} 학생이 명단에서 영구 제외되었습니다.`, "danger");
+            }).catch(err => {
+              console.error("삭제 실패:", err);
+            });
+          } else {
+            const updated = students.filter(s => s.id !== id);
+            updateStudentsState(updated);
+            triggerToast(`${name} 학생이 명단에서 영구 제외되었습니다.`, "danger");
+          }
+        }
+      };
+
+      const uniqueClasses = useMemo(() => {
+        const classes = students.map(s => `${s.grade}학년 ${s.class}반`);
+        return ["all", ...new Set(classes)].sort((a, b) => {
+          if (a === "all") return -1;
+          if (b === "all") return 1;
+          return a.localeCompare(b, 'ko', { numeric: true });
+        });
+      }, [students]);
+
+      const uniqueHelpers = useMemo(() => {
+        const helpers = students.map(s => s.helperName).filter(Boolean);
+        return ["all", ...new Set(helpers)];
+      }, [students]);
+
+      const filteredStudents = useMemo(() => {
+        return students.filter(s => {
+          if (selectedGradeClass !== "all") {
+            const classStr = `${s.grade}학년 ${s.class}반`;
+            if (classStr !== selectedGradeClass) return false;
+          }
+          if (selectedHelper !== "all") {
+            if (s.helperName !== selectedHelper) return false;
+          }
+          if (searchQuery.trim() !== "") {
+            const query = searchQuery.toLowerCase();
+            const matchName = s.name.toLowerCase().includes(query);
+            const matchNeis = s.neisName.toLowerCase().includes(query);
+            const matchHelper = s.helperName.toLowerCase().includes(query);
+            if (!matchName && !matchNeis && !matchHelper) return false;
+          }
+          return true;
+        });
+      }, [students, selectedGradeClass, selectedHelper, searchQuery]);
+
+      const stats = useMemo(() => {
+        const total = students.length;
+        const edited = students.filter(s => s.hours !== s.originalHours || s.reason).length;
+        return { total, edited };
+      }, [students]);
+
+      const openEditModal = (student) => {
+        setEditingStudent(student);
+        setEditGrade(String(student.grade));
+        setEditClass(String(student.class));
+        setEditNumber(String(student.number));
+        setEditName(student.name);
+        setEditNeisName(student.neisName || "");
+        setEditActivityContent(student.activityContent || "");
+        setEditActivityStartDate(student.activityStartDate || "");
+        setEditActivityEndDate(student.activityEndDate || "");
+        setEditHours(student.hours);
+        setEditReason(student.reason || "");
+        setIsModalOpen(true);
+      };
+
+      const handleSaveEdit = () => {
+        if (!editingStudent) return;
+        if (!editName.trim()) { setFeedbackMsg("이름을 입력해야 합니다."); return; }
+        if (editHours !== editingStudent.hours && !editReason.trim()) {
+          setFeedbackMsg("시간을 변경할 경우 특이사항을 입력해야 합니다.");
+          return;
+        }
+
+        const operatorRole = isAdmin ? "관리자" : "담임 교사 및 지도 교사";
+        const patch = {
+          grade: Number(editGrade) || editingStudent.grade,
+          class: Number(editClass) || editingStudent.class,
+          number: Number(editNumber) || editingStudent.number,
+          name: editName.trim(),
+          neisName: editNeisName.trim(),
+          activityContent: editActivityContent.trim(),
+          activityStartDate: editActivityStartDate,
+          activityEndDate: editActivityEndDate,
+          hours: Number(editHours),
+          reason: editReason
+        };
+
+        const closeModal = () => {
+          setIsModalOpen(false);
+          setEditingStudent(null);
+          setFeedbackMsg("");
+          triggerToast(`${patch.name} 학생의 정보가 저장되었습니다.`);
+        };
+
+        if (isFirebaseActive && db && !firebaseError) {
+          db.collection(studentsColPath).doc(editingStudent.id).update(patch).then(() => {
+            saveLog(editingStudent.name, editingStudent.hours, patch.hours, editReason, operatorRole);
+            closeModal();
+          }).catch(err => { console.error("수정 실패:", err); });
+        } else {
+          updateStudentsState(students.map(s => s.id === editingStudent.id ? { ...s, ...patch } : s));
+          saveLog(editingStudent.name, editingStudent.hours, patch.hours, editReason, operatorRole);
+          closeModal();
+        }
+      };
+
+      const adjustHoursQuickly = (id, delta) => {
+        const target = students.find(s => s.id === id);
+        if (!target) return;
+
+        const nextHours = Math.max(0, target.hours + delta);
+        let autoReason = target.reason;
+
+        if (nextHours !== target.originalHours && !target.reason) {
+          autoReason = "시간 수동 조정";
+        }
+
+        const operatorRole = isAdmin ? "관리자" : "담임 교사 및 지도 교사";
+
+        if (isFirebaseActive && db && !firebaseError) {
+          db.collection(studentsColPath).doc(id).update({
+            hours: nextHours,
+            reason: autoReason
+          }).then(() => {
+            saveLog(
+              target.name, 
+              target.hours, 
+              nextHours, 
+              autoReason || "퀵 조정 기능을 이용함", 
+              operatorRole
+            );
+            triggerToast("인정 시간을 신속하게 조정했습니다.");
+          });
+        } else {
+          const updated = students.map(s => {
+            if (s.id === id) {
+              return { ...s, hours: nextHours, reason: autoReason };
+            }
+            return s;
+          });
+          updateStudentsState(updated);
+          saveLog(
+            target.name, 
+            target.hours, 
+            nextHours, 
+            autoReason || "퀵 조정 기능을 이용함", 
+            operatorRole
+          );
+          triggerToast("인정 시간을 신속하게 조정했습니다.");
+        }
+      };
+
+      return (
+        <div className="min-h-screen pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto pt-6 text-text-primary">
+          
+          {/* Toast 알림 레이어 */}
+          {alertToast && (
+            <div className="fixed bottom-7 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-5 py-3 rounded-full shadow-2xl backdrop-blur-md text-white font-medium text-sm" style={{background:'rgba(28,28,30,0.82)'}}>
+              <span>{alertToast.msg}</span>
+            </div>
+          )}
+
+          {/* ----------------- [1. 샘플중학교 전용 로그인 게이트 (견본에서는 생략됨)] ----------------- */}
+          {!isAuthenticated ? (
+            <div className="flex flex-col items-center justify-center min-h-[85vh] py-12">
+              <div className="glass-card w-full max-w-md p-8 sm:p-10 rounded-3xl relative overflow-hidden border border-white/35">
+                <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-white/50 to-transparent"></div>
+                
+                <div className="text-center mb-8">
+                  <div className="inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-white/40 dark:bg-black/25 mb-4 border border-white/25 overflow-hidden">
+                    <img 
+                      src="../shared/volunteer-logo.svg" 
+                      alt="샘플중학교" 
+                      onError={(e) => { 
+                        e.target.onerror = null;
+                        e.target.src = "https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=150"; 
+                      }} 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <h1 className="text-xl sm:text-2xl font-light tracking-tight mb-2 text-text-primary leading-snug">
+                    샘플중학교 <br/>봉사활동 도우미 관리페이지
+                  </h1>
+                </div>
+
+                <form onSubmit={handleLoginSubmit} className="space-y-6">
+                  <div>
+                    <label className="block text-sm font-normal text-text-secondary mb-2">비밀번호</label>
+                    <input 
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="비밀번호 입력"
+                      className="inp w-full px-4 py-3.5 rounded-xl text-text-primary placeholder:text-text-secondary/40 text-center text-lg font-mono tracking-widest font-normal"
+                      required
+                      autoFocus
+                    />
+                    {passwordError && (
+                      <p className="mt-2 text-xs text-red-600">{passwordError}</p>
+                    )}
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="w-full py-4 px-6 rounded-full text-white font-semibold text-base transition-all shadow-lg shadow-accent/25 hover:brightness-110 flex items-center justify-center hover:-translate-y-0.5 active:translate-y-0 active:scale-[.97]"
+                    style={{background:'var(--accent-grad)'}}
+                  >
+                    접속
+                  </button>
+                </form>
+
+                <div className="mt-8 text-center border-t border-white/10 pt-5">
+                  <span className="text-xs text-text-secondary font-normal">
+                    비밀번호는 담당자에게 문의하십시오.
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            
+            // ----------------- [2. 대시보드 메인 인터페이스] -----------------
+            <div className="space-y-6">
+              
+              {/* 상단 헤더 */}
+              <header className="glass-card p-5 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <img
+                    src="../shared/volunteer-logo.svg"
+                    alt="샘플중 로고"
+                    onError={(e) => { e.target.onerror = null; e.target.src = "https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=150"; }}
+                    className="w-10 h-10 object-cover rounded-xl"
+                  />
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className={`inline-block w-2 h-2 rounded-full ${firebaseError ? 'bg-amber-500' : 'bg-emerald-500'} animate-pulse`}></span>
+                      <span className="text-[11px] font-medium text-text-secondary uppercase tracking-widest">
+                        {isAdmin ? "관리자 모드" : firebaseError ? "오프라인" : "실시간 연결됨"}
+                      </span>
+                    </div>
+                    <h1 className="text-base sm:text-lg font-medium tracking-tight">샘플중학교 봉사활동 도우미 관리페이지</h1>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <div className="px-3 py-1.5 bg-white/20 dark:bg-black/20 border border-white/30 dark:border-white/10 rounded-full text-xs font-mono text-text-secondary flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-accent"></span>
+                    <span>{liveTime || "00:00:00"}</span>
+                  </div>
+
+                  {!isAdmin ? (
+                    <button
+                      onClick={() => setIsAdminGateOpen(true)}
+                      className="px-3.5 py-2 bg-white/20 hover:bg-white/35 border border-white/30 dark:border-white/10 text-text-primary rounded-full text-xs font-medium flex items-center gap-1.5 transition-all"
+                    >
+                      관리자
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleExitAdminMode}
+                      className="px-3.5 py-2 bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/35 text-amber-700 dark:text-amber-400 rounded-full text-xs font-medium transition-all"
+                    >
+                      일반 모드로 전환
+                    </button>
+                  )}
+
+                  <button
+                    onClick={handleLogout}
+                    className="px-3.5 py-2 rounded-full bg-red-600/10 hover:bg-red-600 text-red-600 hover:text-white border border-red-600/20 text-xs font-medium transition-all"
+                  >
+                    로그아웃
+                  </button>
+
+                  <div className="dark-toggle" onClick={() => setIsDark(d => !d)} title="다크모드 전환"></div>
+                </div>
+              </header>
+
+              {/* 파이어베이스 설정 누락 경고 배너 */}
+              {firebaseError && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-5 text-sm text-amber-900 dark:text-amber-300 font-normal">
+                  <h4 className="font-semibold text-sm mb-1">클라우드 연동 중단</h4>
+                  <p className="leading-relaxed text-xs font-light">{firebaseError}</p>
+                </div>
+              )}
+
+              {/* 통계 요약 카드 세션 */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="glass-card p-6 rounded-2xl flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-semibold text-text-secondary block mb-1">등록 도우미 인원</span>
+                    <span className="text-2xl sm:text-3xl font-black text-text-primary">{stats.total}명</span>
+                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-accent-light flex items-center justify-center">
+                    <svg width="22" height="22" fill="none" stroke="var(--accent)" strokeWidth="1.8" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0-3-3.85"/></svg>
+                  </div>
+                </div>
+
+                <div className="glass-card p-6 rounded-2xl flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-semibold text-text-secondary block mb-1">권한 등급</span>
+                    <span className="text-base sm:text-lg font-bold text-text-primary">
+                      {isAdmin ? "관리자" : "교사"}
+                    </span>
+                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                    <svg width="20" height="20" fill="none" stroke="#34c759" strokeWidth="1.8" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* ----------------- [4. 관리자 전용 제어반] ----------------- */}
+              {isAdmin && (
+                <div className="glass-card p-6 rounded-3xl space-y-6 border-t-4 border-t-accent shadow-lg animate-in fade-in slide-in-from-top-4 duration-200">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <h2 className="text-base sm:text-lg font-semibold text-text-primary">관리자 콘솔</h2>
+                      <p className="text-xs text-text-secondary font-normal mt-1">
+                        도우미 명단 추가·삭제, CSV 가져오기·내보내기를 관리합니다.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleResetData}
+                        className="px-4 py-2 bg-red-600/10 hover:bg-red-600 text-red-600 hover:text-white rounded-full text-xs font-semibold transition-all border border-red-600/20"
+                      >
+                        초기화
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 도우미 추가 및 CSV 관리 */}
+                  <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    {/* 도우미 추가 폼 */}
+                    <form onSubmit={handleAddStudent} className="lg:col-span-7 bg-white/10 dark:bg-black/15 p-5 rounded-2xl border border-white/20 dark:border-white/5 space-y-4">
+                      <h3 className="text-xs sm:text-sm font-semibold text-text-primary uppercase tracking-wider">도우미 추가</h3>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-normal text-text-secondary mb-1">학년</label>
+                          <input 
+                            type="number"
+                            placeholder="학년 입력"
+                            value={newStudent.grade}
+                            onChange={(e) => setNewStudent({...newStudent, grade: e.target.value})}
+                            className="inp w-full px-3 py-2 text-xs sm:text-sm rounded-lg text-text-primary font-normal"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-normal text-text-secondary mb-1">반</label>
+                          <input 
+                            type="number"
+                            placeholder="반 입력"
+                            value={newStudent.class}
+                            onChange={(e) => setNewStudent({...newStudent, class: e.target.value})}
+                            className="inp w-full px-3 py-2 text-xs sm:text-sm rounded-lg text-text-primary font-normal"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-normal text-text-secondary mb-1">번호</label>
+                          <input 
+                            type="number"
+                            placeholder="번호 입력"
+                            value={newStudent.number}
+                            onChange={(e) => setNewStudent({...newStudent, number: e.target.value})}
+                            className="inp w-full px-3 py-2 text-xs sm:text-sm rounded-lg text-text-primary font-normal"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-normal text-text-secondary mb-1">한글 이름</label>
+                          <input 
+                            type="text"
+                            placeholder="한글 성명"
+                            value={newStudent.name}
+                            onChange={(e) => setNewStudent({...newStudent, name: e.target.value})}
+                            className="inp w-full px-3 py-2 text-xs sm:text-sm rounded-lg text-text-primary font-normal"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-normal text-text-secondary mb-1">나이스 영문 성명</label>
+                          <input 
+                            type="text"
+                            placeholder="영문 이름"
+                            value={newStudent.neisName}
+                            onChange={(e) => setNewStudent({...newStudent, neisName: e.target.value})}
+                            className="inp w-full px-3 py-2 text-xs sm:text-sm rounded-lg text-text-primary font-mono font-normal"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[11px] font-normal text-text-secondary mb-1">봉사 인정 시간</label>
+                          <input 
+                            type="number"
+                            placeholder="기본 봉사 시간"
+                            value={newStudent.hours}
+                            onChange={(e) => setNewStudent({...newStudent, hours: e.target.value})}
+                            className="inp w-full px-3 py-2 text-xs sm:text-sm rounded-lg text-text-primary font-normal"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2.5">
+                        <div className="flex-1">
+                          <label className="block text-[11px] font-normal text-text-secondary mb-1">도우미 역할 지정</label>
+                          <select
+                            value={newStudent.helperName}
+                            onChange={(e) => setNewStudent({...newStudent, helperName: e.target.value})}
+                            className="inp w-full px-3 py-2 text-xs sm:text-sm rounded-lg text-text-primary font-normal"
+                          >
+                            <option value="급식 도우미">급식 도우미</option>
+                            <option value="학급 분리수거도우미">학급 분리수거도우미</option>
+                            <option value="특별실 분리수거 도우미">특별실 분리수거 도우미</option>
+                            <option value="분리수거장 도우미">분리수거장 도우미</option>
+                            <option value="기자재 관리도우미">기자재 관리도우미</option>
+                          </select>
+                        </div>
+                        <div className="flex-[2]">
+                          <label className="block text-[11px] font-normal text-text-secondary mb-1">활동 내용</label>
+                          <input
+                            type="text"
+                            placeholder="예: 매일 점심 급식 배식 보조"
+                            value={newStudent.activityContent}
+                            onChange={(e) => setNewStudent({...newStudent, activityContent: e.target.value})}
+                            className="inp w-full px-3 py-2 text-xs sm:text-sm rounded-lg text-text-primary font-normal"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <label className="block text-[11px] font-normal text-text-secondary mb-1">활동 시작일</label>
+                          <input
+                            type="date"
+                            value={newStudent.activityStartDate}
+                            onChange={(e) => setNewStudent({...newStudent, activityStartDate: e.target.value})}
+                            className="inp w-full px-3 py-2 text-xs sm:text-sm rounded-lg text-text-primary font-normal"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <label className="block text-[11px] font-normal text-text-secondary mb-1">활동 종료일</label>
+                          <input
+                            type="date"
+                            value={newStudent.activityEndDate}
+                            onChange={(e) => setNewStudent({...newStudent, activityEndDate: e.target.value})}
+                            className="inp w-full px-3 py-2 text-xs sm:text-sm rounded-lg text-text-primary font-normal"
+                          />
+                        </div>
+                        <button
+                          type="submit"
+                          className="self-end px-5 py-2 text-white text-xs sm:text-sm font-semibold rounded-full transition-all hover:brightness-110 h-[38px]" style={{background:'var(--accent-grad)'}}
+                        >
+                          명단 반영 추가
+                        </button>
+                      </div>
+                    </form>
+
+                    {/* CSV 도구 및 파일 파서 */}
+                    <div className="lg:col-span-5 bg-white/10 dark:bg-black/15 p-5 rounded-2xl border border-white/20 dark:border-white/5 flex flex-col justify-between space-y-4">
+                      <div>
+                        <h3 className="text-xs sm:text-sm font-normal text-text-primary uppercase tracking-wider mb-2">CSV 명단 가져오기 / 내보내기</h3>
+                        <p className="text-xs sm:text-sm text-text-secondary font-normal leading-relaxed">
+                          봉사활동 도우미 시트 CSV 데이터를 로드하거나, 현재까지 수정된 전체 기록 사유 데이터를 NEIS 등록 규격의 엑셀 CSV로 출력 저장할 수 있습니다.
+                        </p>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {/* 업로드 */}
+                        <div className="relative border border-dashed border-accent/40 dark:border-white/20 hover:border-accent bg-white/20 rounded-xl p-3 text-center cursor-pointer transition-all">
+                          <input 
+                            type="file" 
+                            accept=".csv"
+                            onChange={handleCsvImport}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          />
+                          <span className="text-xs sm:text-sm text-text-primary font-bold">CSV 파일 업로드</span>
+                        </div>
+                        
+                        {/* 백업출력 */}
+                        <button 
+                          onClick={handleCsvExport}
+                          className="w-full py-2.5 bg-accent/15 hover:bg-accent/25 text-accent text-xs sm:text-sm font-semibold rounded-full transition-all border border-accent/30 flex items-center justify-center"
+                        >
+                          CSV로 내보내기
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 세부 변경 이력 로그 뷰 */}
+                  <div className="bg-white/10 dark:bg-black/15 p-5 rounded-2xl border border-white/20 dark:border-white/5">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-xs sm:text-sm font-semibold text-text-primary uppercase tracking-wider">변경 이력</h3>
+                        <span className="px-2 py-0.5 text-[10px] font-semibold bg-amber-500/20 text-amber-600 rounded-full">{editLogs.length}건</span>
+                      </div>
+                      
+                      {editLogs.length > 0 && (
+                        <button 
+                          onClick={handleClearSelectedLogs}
+                          className="px-3 py-1.5 bg-red-600/10 hover:bg-red-600 hover:text-white text-red-600 text-xs font-semibold rounded-full transition-all border border-red-600/20"
+                        >
+                          선택 삭제
+                        </button>
+                      )}
+                    </div>
+
+                    {editLogs.length === 0 ? (
+                      <p className="text-xs sm:text-sm text-text-secondary font-semibold italic">현재 변경 내역이 비어 있습니다.</p>
+                    ) : (
+                      <div className="max-h-48 overflow-y-auto space-y-2 text-xs sm:text-sm">
+                        <div className="flex items-center gap-2 px-2.5 py-1 text-text-secondary font-normal border-b border-white/10">
+                          <input 
+                            type="checkbox"
+                            className="rounded accent-accent scale-110 cursor-pointer"
+                            onChange={(e) => handleAllLogsCheck(e.target.checked)}
+                          />
+                          <span>전체 선택</span>
+                        </div>
+                        {editLogs.map(log => (
+                          <div key={log.id} className="p-2.5 bg-white/20 dark:bg-black/25 rounded-lg border border-white/15 dark:border-white/5 flex items-start gap-3">
+                            <input 
+                              type="checkbox"
+                              checked={!!selectedLogs[log.id]}
+                              onChange={() => handleToggleLogCheck(log.id)}
+                              className="mt-1 rounded accent-accent scale-110 cursor-pointer"
+                            />
+                            <div className="flex-1 flex flex-col sm:flex-row justify-between gap-1.5">
+                              <div>
+                                <span className="text-text-secondary font-mono mr-2">[{log.timestamp}]</span>
+                                <strong className="text-text-primary font-normal">{log.studentName}</strong> {log.originalHours}h → <span className="text-accent font-normal">{log.newHours}h</span>
+                                <p className="text-xs text-text-secondary mt-1 font-normal leading-relaxed">
+                                  사유: {log.reason}
+                                </p>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <span className="px-2 py-0.5 rounded-full bg-white/30 text-[10px] font-bold text-text-secondary">{log.operator}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ----------------- [3. 2단 그리드 레이아웃 (PC 최적화: 좌 필터, 우 목록)] ----------------- */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                {/* 3-A. 좌측 필터 패널 (lg 해상도에서 4칸 차지) */}
+                <div className="lg:col-span-4 space-y-5 lg:sticky lg:top-6">
+                  <div className="glass-card p-6 rounded-3xl space-y-5">
+                    {/* 실시간 텍스트 검색 */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs text-text-secondary tracking-wide">
+                        이름 또는 역할 검색
+                      </label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="이름, 영문명, 역할 검색..."
+                          className="inp w-full px-4 pr-10 py-3 rounded-2xl text-text-primary text-sm font-normal placeholder:text-text-secondary/50"
+                        />
+                        {searchQuery && (
+                          <button
+                            onClick={() => setSearchQuery("")}
+                            className="absolute inset-y-0 right-4 flex items-center text-text-secondary hover:text-text-primary text-xs font-bold"
+                          >
+                            ×
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 학급별 드롭다운 필터 */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs text-text-secondary tracking-wide">학급</label>
+                      <select
+                        value={selectedGradeClass}
+                        onChange={(e) => {
+                          setSelectedGradeClass(e.target.value);
+                          setSelectedHelper("all");
+                        }}
+                        className="glass-select inp w-full px-3.5 py-3 rounded-2xl text-sm font-normal"
+                      >
+                        <option value="all">전체 학급 조회</option>
+                        {uniqueClasses.filter(c => c !== "all").map(c => {
+                          const count = students.filter(s => `${s.grade}학년 ${s.class}반` === c).length;
+                          return (
+                            <option key={c} value={c}>
+                              {c} ({count}명 배정)
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+
+                    {/* 도우미 역할명별 드롭다운 필터 */}
+                    <div className="space-y-1.5 border-t border-gray-200 dark:border-gray-800 pt-4">
+                      <label className="block text-xs text-text-secondary tracking-wide">역할</label>
+                      <select
+                        value={selectedHelper}
+                        onChange={(e) => {
+                          setSelectedHelper(e.target.value);
+                          setSelectedGradeClass("all");
+                        }}
+                        className="glass-select inp w-full px-3.5 py-3 rounded-2xl text-sm font-normal"
+                      >
+                        <option value="all">전체 도우미 역할 조회</option>
+                        {uniqueHelpers.filter(h => h !== "all").map(h => {
+                          const count = students.filter(s => s.helperName === h).length;
+                          return (
+                            <option key={h} value={h}>
+                              {h} ({count}명 배정)
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+
+                    <p className="text-xs text-text-secondary font-normal leading-relaxed bg-white/20 dark:bg-black/20 p-3 rounded-2xl">
+                      학급 필터와 역할 필터는 동시에 선택할 수 없습니다. 검색어는 두 필터와 함께 사용 가능합니다.
+                    </p>
+                  </div>
+                </div>
+
+                {/* 3-B. 우측 도우미 목록 패널 (lg 해상도에서 8칸 차지) */}
+                <div className="lg:col-span-8">
+                  <div className="glass-card rounded-3xl overflow-hidden shadow-sm">
+                    <div className="px-6 py-5 border-b border-white/25 flex items-center justify-between bg-white/10">
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-sm sm:text-base font-bold text-text-primary">도우미 배정 현황 및 시간 변경</h2>
+                        <span className="px-2.5 py-0.5 rounded-full bg-accent-light text-accent text-xs font-bold border border-accent/20">
+                          {filteredStudents.length}명 조회됨
+                        </span>
+                      </div>
+                      
+                      <span className="text-xs text-text-secondary">
+                        편집 버튼에서 시간 조정 및 사유 작성
+                      </span>
+                    </div>
+
+                    {filteredStudents.length === 0 ? (
+                      <div className="py-24 text-center">
+                        <p className="text-sm sm:text-base font-normal text-text-primary">선택 조건에 적합한 도우미 학생 명단이 없습니다.</p>
+                        <p className="text-xs sm:text-sm text-text-secondary font-normal mt-1">좌측 필터 패널에서 다른 학급이나 도우미 역할을 지정해 주십시오.</p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse table-fixed">
+                          <colgroup>
+                            <col style={{width:'22%'}} />
+                            <col style={{width:'30%'}} />
+                            <col style={{width:'20%'}} />
+                            <col style={{width:'12%'}} />
+                            <col style={{width:'16%'}} />
+                          </colgroup>
+                          <thead>
+                            <tr className="bg-white/10 text-xs text-text-secondary border-b border-white/25">
+                              <th className="py-2 px-2 font-medium">학생</th>
+                              <th className="py-2 px-2 font-medium">역할 및 활동내용</th>
+                              <th className="py-2 px-2 font-medium">활동 기간</th>
+                              <th className="py-2 px-2 text-center font-medium">인정 시간</th>
+                              <th className="py-2 px-2 text-center font-medium"></th>
+                            </tr>
+                          </thead>
+                          <tbody className="text-sm">
+                            {filteredStudents.map((student, idx) => {
+                              const isEdited = student.hours !== student.originalHours;
+                              const hasReason = student.reason && student.reason.trim();
+                              const isOdd = idx % 2 === 1;
+
+                              return (
+                                <tr
+                                  key={student.id}
+                                  className={`transition-colors border-b border-white/10 hover:bg-white/10
+                                    ${isEdited ? 'bg-amber-500/[0.07]' : isOdd ? 'bg-black/[0.03] dark:bg-white/[0.03]' : ''}`}
+                                >
+                                  {/* 학생 정보 */}
+                                  <td className="py-3 px-2 whitespace-nowrap">
+                                    <div className="flex flex-col gap-px">
+                                      <span className="text-[11px] text-text-secondary tabular-nums leading-tight">
+                                        {student.grade}학년 {student.class}반 {student.number}번
+                                      </span>
+                                      <span className="text-base font-semibold text-text-primary leading-snug">{student.name}</span>
+                                      {student.neisName && (
+                                        <span className="text-[11px] text-text-secondary font-mono leading-tight">{student.neisName}</span>
+                                      )}
+                                    </div>
+                                  </td>
+
+                                  {/* 역할 및 활동내용 */}
+                                  <td className="py-3 px-2">
+                                    <div className="flex flex-col gap-1">
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-accent-light text-accent text-xs border border-accent/20 whitespace-nowrap w-fit">
+                                        {student.helperName}
+                                      </span>
+                                      {student.activityContent && (
+                                        <span className="text-xs text-text-secondary leading-snug">{student.activityContent}</span>
+                                      )}
+                                    </div>
+                                  </td>
+
+                                  {/* 활동 기간 */}
+                                  <td className="py-3 px-2">
+                                    {(student.activityStartDate || student.activityEndDate) ? (
+                                      <div className="flex flex-col gap-px">
+                                        <span className="text-xs text-text-secondary leading-tight">
+                                          {student.activityStartDate || "??"} ~
+                                        </span>
+                                        <span className="text-xs text-text-secondary leading-tight">
+                                          {student.activityEndDate || "??"}
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <span className="text-xs text-text-secondary/40 italic">—</span>
+                                    )}
+                                  </td>
+
+                                  {/* 인정 시간 */}
+                                  <td className="py-3 px-2 whitespace-nowrap text-center">
+                                    {isEdited ? (
+                                      <div className="flex flex-col items-center leading-tight">
+                                        <span className="text-[10px] text-text-secondary line-through">{student.originalHours}시간</span>
+                                        <span className="text-sm text-amber-600 dark:text-amber-400">{student.hours}시간</span>
+                                      </div>
+                                    ) : (
+                                      <span className="text-sm text-text-primary">{student.hours}시간</span>
+                                    )}
+                                  </td>
+
+                                  {/* 상세보기 버튼 */}
+                                  <td className="py-3 px-2 text-center whitespace-nowrap">
+                                    <div className="flex items-center justify-center gap-1">
+                                      <button
+                                        onClick={() => openEditModal(student)}
+                                        className="px-2.5 py-1.5 rounded-full text-white text-xs hover:brightness-110 transition-all"
+                                        style={{background:'var(--accent-grad)'}}
+                                      >상세보기</button>
+                                      {isAdmin && (
+                                        <button
+                                          onClick={() => handleDeleteStudent(student.id, student.name)}
+                                          className="px-2 py-1.5 text-red-600 hover:bg-red-600/15 rounded-full transition-all text-xs border border-red-600/20"
+                                        >제외</button>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    
+                    <div className="bg-white/10 dark:bg-black/15 px-6 py-4.5 border-t border-white/20 dark:border-white/5 text-xs sm:text-sm text-text-secondary flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-normal">
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-accent"></span>
+                        수정 사항은 실시간으로 저장됩니다.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+          )}
+
+          {/* ----------------- [관리자 게이트 인증 모달] ----------------- */}
+          {isAdminGateOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+              <div className="glass-card w-full max-w-sm p-6 sm:p-8 rounded-3xl shadow-2xl relative overflow-hidden border border-white/20">
+                <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
+                
+                <div className="text-center mb-6">
+                  <h3 className="text-lg font-bold text-text-primary">관리자 인증</h3>
+                  <p className="text-xs text-text-secondary font-normal mt-1">관리자 암호를 입력하세요.</p>
+                </div>
+
+                <form onSubmit={handleAdminVerify} className="space-y-4">
+                  <input
+                    type="password"
+                    value={adminPasswordInput}
+                    onChange={(e) => setAdminPasswordInput(e.target.value)}
+                    placeholder="암호 입력"
+                    className="inp w-full px-4 py-3 bg-white/20 dark:bg-black/35 text-center text-lg font-mono tracking-widest text-text-primary rounded-2xl border border-white/20"
+                    required
+                    autoFocus
+                  />
+                  {adminPasswordError && (
+                    <p className="text-xs text-red-600 text-center">{adminPasswordError}</p>
+                  )}
+
+                  <div className="flex gap-2.5 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => { setIsAdminGateOpen(false); setAdminPasswordInput(""); setAdminPasswordError(""); }}
+                      className="flex-1 py-2.5 bg-white/20 hover:bg-white/30 text-text-primary text-xs sm:text-sm font-semibold rounded-full transition-all border border-white/10"
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 py-2.5 text-white text-xs sm:text-sm font-semibold rounded-full transition-all hover:brightness-110"
+                      style={{background:'var(--accent-grad)'}}
+                    >
+                      확인
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* ----------------- [봉사 상세 조절 및 사유 기재 모달] ----------------- */}
+          {isModalOpen && editingStudent && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md">
+              <div className="glass-card w-full max-w-lg p-6 sm:p-8 rounded-3xl shadow-2xl relative overflow-hidden border border-white/20">
+                
+                <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-white/30 to-transparent"></div>
+
+                <div className="flex justify-between items-start mb-5">
+                  <div>
+                    <h3 className="text-base sm:text-lg font-semibold text-text-primary">상세 정보</h3>
+                    <p className="text-xs text-text-secondary mt-0.5">{editingStudent.helperName} · 기존 {editingStudent.originalHours}시간</p>
+                  </div>
+                  <button
+                    onClick={() => { setIsModalOpen(false); setEditingStudent(null); setFeedbackMsg(""); }}
+                    className="w-7 h-7 rounded-full hover:bg-white/20 text-text-secondary hover:text-text-primary text-base flex items-center justify-center transition-all"
+                  >×</button>
+                </div>
+
+                <div className="space-y-4">
+                  {/* 학년·반·번호 */}
+                  <div>
+                    <label className="block text-xs text-text-secondary mb-2">학급 정보</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="relative">
+                        <input
+                          type="number" min="1" max="3"
+                          value={editGrade}
+                          onChange={(e) => setEditGrade(e.target.value)}
+                          className="inp w-full px-3 py-2.5 rounded-xl text-text-primary text-sm text-center outline-none"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-text-secondary pointer-events-none">학년</span>
+                      </div>
+                      <div className="relative">
+                        <input
+                          type="number" min="1"
+                          value={editClass}
+                          onChange={(e) => setEditClass(e.target.value)}
+                          className="inp w-full px-3 py-2.5 rounded-xl text-text-primary text-sm text-center outline-none"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-text-secondary pointer-events-none">반</span>
+                      </div>
+                      <div className="relative">
+                        <input
+                          type="number" min="1"
+                          value={editNumber}
+                          onChange={(e) => setEditNumber(e.target.value)}
+                          className="inp w-full px-3 py-2.5 rounded-xl text-text-primary text-sm text-center outline-none"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-text-secondary pointer-events-none">번</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 한글이름·나이스이름 */}
+                  <div>
+                    <label className="block text-xs text-text-secondary mb-2">이름</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          placeholder="한글 이름"
+                          className="inp w-full px-3 py-2.5 rounded-xl text-text-primary text-sm outline-none"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-text-secondary pointer-events-none">한글</span>
+                      </div>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={editNeisName}
+                          onChange={(e) => setEditNeisName(e.target.value)}
+                          placeholder="나이스 성명"
+                          className="inp w-full px-3 py-2.5 rounded-xl text-text-primary text-sm font-mono outline-none"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-text-secondary pointer-events-none">나이스</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 활동 내용 */}
+                  <div>
+                    <label className="block text-xs text-text-secondary mb-2">활동 내용</label>
+                    <input
+                      type="text"
+                      value={editActivityContent}
+                      onChange={(e) => setEditActivityContent(e.target.value)}
+                      placeholder="예: 매일 점심 급식 배식 보조"
+                      className="inp w-full px-4 py-2.5 rounded-xl text-text-primary text-sm outline-none"
+                    />
+                  </div>
+
+                  {/* 활동 기간 */}
+                  <div>
+                    <label className="block text-xs text-text-secondary mb-2">활동 기간</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="relative">
+                        <input
+                          type="date"
+                          value={editActivityStartDate}
+                          onChange={(e) => setEditActivityStartDate(e.target.value)}
+                          className="inp w-full px-3 py-2.5 rounded-xl text-text-primary text-sm outline-none"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-text-secondary pointer-events-none">시작</span>
+                      </div>
+                      <div className="relative">
+                        <input
+                          type="date"
+                          value={editActivityEndDate}
+                          onChange={(e) => setEditActivityEndDate(e.target.value)}
+                          className="inp w-full px-3 py-2.5 rounded-xl text-text-primary text-sm outline-none"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-text-secondary pointer-events-none">종료</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 인정시간 */}
+                  <div>
+                    <label className="block text-xs text-text-secondary mb-2">인정 시간</label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="range" min="0" max="20"
+                        value={editHours}
+                        onChange={(e) => setEditHours(Number(e.target.value))}
+                        className="w-full h-2 bg-white/30 dark:bg-black/40 rounded-lg appearance-none cursor-pointer accent-accent"
+                      />
+                      <div className="inp flex items-center rounded-xl px-3 py-1.5 shrink-0">
+                        <input
+                          type="number"
+                          value={editHours}
+                          onChange={(e) => setEditHours(Math.max(0, Number(e.target.value)))}
+                          className="w-12 bg-transparent text-center text-sm text-text-primary outline-none focus:ring-0"
+                        />
+                        <span className="text-xs text-text-secondary">시간</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 사유 */}
+                  <div>
+                    <label className="block text-xs text-text-secondary mb-2">특이사항 <span className="text-text-secondary/60">(시간 변경 시 필수)</span></label>
+                    <textarea
+                      rows="3"
+                      value={editReason}
+                      onChange={(e) => setEditReason(e.target.value)}
+                      placeholder="예시) 활동 불성실로 인한 시간 단축 등"
+                      className="inp w-full px-4 py-3 rounded-xl text-text-primary text-sm placeholder:text-text-secondary/50 leading-relaxed outline-none"
+                    ></textarea>
+                    {feedbackMsg && (
+                      <p className="text-xs text-red-600 mt-2">{feedbackMsg}</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="mt-6 flex items-center justify-end gap-2.5">
+                  <button
+                    onClick={() => { setIsModalOpen(false); setEditingStudent(null); setFeedbackMsg(""); }}
+                    className="px-4 py-2.5 bg-white/20 hover:bg-white/30 text-text-primary text-xs sm:text-sm font-semibold rounded-full transition-all border border-white/10"
+                  >
+                    취소
+                  </button>
+                  <button
+                    onClick={handleSaveEdit}
+                    className="px-5 py-2.5 text-white text-xs sm:text-sm font-semibold rounded-full transition-all hover:brightness-110 shadow-md shadow-accent/20"
+                    style={{background:'var(--accent-grad)'}}
+                  >
+                    저장
+                  </button>
+                </div>
+
+              </div>
+            </div>
+          )}
+
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
