@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>수업 집중 타이머</title>
+
+<style>
+  :root {
+    --bg: #f4f7fb;
+    --panel: #ffffff;
+    --text: #1f2937;
+    --subtext: #6b7280;
+    --accent: #2563eb;
+    --track: #e5e7eb;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    color: var(--text);
+    font-family:
+      "Noto Sans KR", "Apple SD Gothic Neo",
+      Arial, sans-serif;
+    transition: background 0.5s ease, color 0.5s ease;
+  }
+
+  .app {
+    width: min(92vw, 520px);
+    padding: 38px 28px;
+    text-align: center;
+    background: var(--panel);
+    border-radius: 28px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
+    transition: transform 0.3s ease, background 0.5s ease;
+  }
+
+  h1 {
+    margin: 0 0 8px;
+    font-size: 1.8rem;
+  }
+
+  .status {
+    color: var(--subtext);
+    margin-bottom: 26px;
+  }
+
+  .timer-wrap {
+    position: relative;
+    width: min(72vw, 320px);
+    aspect-ratio: 1;
+    margin: 0 auto 28px;
+  }
+
+  svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+  }
+
+  .track,
+  .progress {
+    fill: none;
+    stroke-width: 12;
+  }
+
+  .track {
+    stroke: var(--track);
+  }
+
+  .progress {
+    stroke: var(--accent);
+    stroke-linecap: round;
+    transition: stroke 0.4s ease;
+  }
+
+  .time {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: clamp(3rem, 10vw, 5rem);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .quick-buttons,
+  .controls {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  button {
+    border: 0;
+    cursor: pointer;
+    padding: 12px 18px;
+    border-radius: 14px;
+    font-size: 1rem;
+    font-weight: 700;
+    transition: transform 0.15s ease, opacity 0.2s ease;
+  }
+
+  button:hover {
+    transform: translateY(-2px);
+  }
+
+  button:active {
+    transform: translateY(0);
+  }
+
+  .quick {
+    background: #e8eefc;
+    color: #1d4ed8;
+  }
+
+  .start {
+    background: var(--accent);
+    color: white;
+    min-width: 130px;
+  }
+
+  .reset {
+    background: #e5e7eb;
+    color: #374151;
+  }
+
+  /* 1분 남았을 때 */
+  body.warning {
+    --bg: #fff7ed;
+    --panel: #fffaf5;
+    --accent: #f97316;
+    --track: #fed7aa;
+  }
+
+  /* 마지막 10초 */
+  body.danger {
+    --bg: #fff1f2;
+    --panel: #fff8f8;
+    --accent: #dc2626;
+    --track: #fecdd3;
+    animation: tension 1s infinite;
+  }
+
+  body.danger .app {
+    animation: pulse 0.7s infinite alternate;
+  }
+
+  @keyframes tension {
+    50% {
+      background: #fee2e2;
+    }
+  }
+
+  @keyframes pulse {
+    to {
+      transform: scale(1.015);
+    }
+  }
+
+  /* 종료 */
+  body.finished {
+    --bg: #ecfdf5;
+    --panel: #f7fffb;
+    --accent: #16a34a;
+  }
+
+  .hint {
+    margin-top: 18px;
+    color: var(--subtext);
+    font-size: 0.85rem;
+  }
+</style>
+</head>
+
+<body>
+  <main class="app">
+    <h1>🎯 수업 집중 타이머</h1>
+    <div class="status" id="status">시간을 선택하세요</div>
+
+    <div class="timer-wrap">
+      <svg viewBox="0 0 220 220" aria-label="남은 시간">
+        <circle class="track" cx="110" cy="110" r="96"></circle>
+        <circle
+          class="progress"
+          id="progress"
+          cx="110"
+          cy="110"
+          r="96"
+        ></circle>
+      </svg>
+
+      <div class="time" id="time">03:00</div>
+    </div>
+
+    <div class="quick-buttons">
+      <button class="quick" data-minutes="3">3분</button>
+      <button class="quick" data-minutes="5">5분</button>
+      <button class="quick" data-minutes="10">10분</button>
+    </div>
+
+    <br>
+
+    <div class="controls">
+      <button class="start" id="startBtn">시작</button>
+      <button class="reset" id="resetBtn">초기화</button>
+    </div>
+
+    <div class="hint">
+      1분 전부터 주황색 · 종료 10초 전부터 긴장 모드
+    </div>
+  </main>
+
+<script>
+  const timeEl = document.getElementById("time");
+  const progressEl = document.getElementById("progress");
+  const statusEl = document.getElementById("status");
+  const startBtn = document.getElementById("startBtn");
+  const resetBtn = document.getElementById("resetBtn");
+  const quickButtons = document.querySelectorAll(".quick");
+
+  const radius = 96;
+  const circumference = 2 * Math.PI * radius;
+
+  progressEl.style.strokeDasharray = circumference;
+  progressEl.style.strokeDashoffset = 0;
+
+  let selectedSeconds = 180;
+  let remainingSeconds = selectedSeconds;
+  let timer = null;
+  let isRunning = false;
+  let audioContext = null;
+
+  function formatTime(seconds) {
+    const min = Math.floor(seconds / 60);
+    const sec = seconds % 60;
+
+    return (
+      String(min).padStart(2, "0") +
+      ":" +
+      String(sec).padStart(2, "0")
+    );
+  }
+
+  function updateDisplay() {
+    timeEl.textContent = formatTime(remainingSeconds);
+
+    const progress =
+      selectedSeconds > 0
+        ? remainingSeconds / selectedSeconds
+        : 0;
+
+    progressEl.style.strokeDashoffset =
+      circumference * (1 - progress);
+
+    document.body.classList.remove(
+      "warning",
+      "danger",
+      "finished"
+    );
+
+    if (remainingSeconds <= 10 && remainingSeconds > 0) {
+      document.body.classList.add("danger");
+      statusEl.textContent = "⚠️ 마지막 10초! 집중!";
+    } else if (
+      remainingSeconds <= 60 &&
+      remainingSeconds > 10
+    ) {
+      document.body.classList.add("warning");
+      statusEl.textContent = "⏳ 1분 남았습니다";
+    } else if (remainingSeconds > 60) {
+      statusEl.textContent = "집중하는 중...";
+    }
+  }
+
+  function beep(frequency = 880, duration = 0.12) {
+    try {
+      if (!audioContext) {
+        audioContext =
+          new (window.AudioContext ||
+               window.webkitAudioContext)();
+      }
+
+      const oscillator =
+        audioContext.createOscillator();
+      const gain =
+        audioContext.createGain();
+
+      oscillator.type = "sine";
+      oscillator.frequency.value = frequency;
+
+      gain.gain.setValueAtTime(
+        0.0001,
+        audioContext.currentTime
+      );
+
+      gain.gain.exponentialRampToValueAtTime(
+        0.2,
+        audioContext.currentTime + 0.01
+      );
+
+      gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        audioContext.currentTime + duration
+      );
+
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+
+      oscillator.start();
+      oscillator.stop(
+        audioContext.currentTime + duration
+      );
+    } catch (error) {
+      console.log("오디오를 재생할 수 없습니다.");
+    }
+  }
+
+  function finishTimer() {
+    clearInterval(timer);
+    timer = null;
+    isRunning = false;
+
+    remainingSeconds = 0;
+    updateDisplay();
+
+    document.body.classList.add("finished");
+    document.body.classList.remove("warning", "danger");
+
+    statusEl.textContent = "🎉 집중 시간 종료!";
+    startBtn.textContent = "다시 시작";
+
+    // 종료 알림음
+    beep(660, 0.2);
+
+    setTimeout(() => beep(880, 0.2), 250);
+    setTimeout(() => beep(1100, 0.35), 500);
+  }
+
+  function startTimer() {
+    if (isRunning) {
+      clearInterval(timer);
+      timer = null;
+      isRunning = false;
+
+      startBtn.textContent = "계속";
+      statusEl.textContent = "일시정지";
+      return;
+    }
+
+    if (remainingSeconds <= 0) {
+      remainingSeconds = selectedSeconds;
+    }
+
+    if (!audioContext) {
+      audioContext =
+        new (window.AudioContext ||
+         window.webkitAudioContext)();
+    }
+
+    if (audioContext.state === "suspended") {
+      audioContext.resume();
+    }
+
+    isRunning = true;
+    startBtn.textContent = "일시정지";
+
+    updateDisplay();
+
+    timer = setInterval(() => {
+      remainingSeconds--;
+
+      // 마지막 10초 카운트다운 비프음
+      if (remainingSeconds <= 10 &&
+          remainingSeconds > 0) {
+        beep(1000, 0.08);
+      }
+
+      updateDisplay();
+
+      if (remainingSeconds <= 0) {
+        finishTimer();
+      }
+    }, 1000);
+  }
+
+  function resetTimer() {
+    clearInterval(timer);
+    timer = null;
+    isRunning = false;
+
+    remainingSeconds = selectedSeconds;
+
+    document.body.classList.remove(
+      "warning",
+      "danger",
+      "finished"
+    );
+
+    startBtn.textContent = "시작";
+    statusEl.textContent = "시간을 선택하세요";
+
+    updateDisplay();
+  }
+
+  quickButtons.forEach(button => {
+    button.addEventListener("click", () => {
+      const minutes =
+        Number(button.dataset.minutes);
+
+      clearInterval(timer);
+      timer = null;
+      isRunning = false;
+
+      selectedSeconds = minutes * 60;
+      remainingSeconds = selectedSeconds;
+
+      startBtn.textContent = "시작";
+      statusEl.textContent =
+        `${minutes}분 집중 준비 완료`;
+
+      document.body.classList.remove(
+        "warning",
+        "danger",
+        "finished"
+      );
+
+      updateDisplay();
+    });
+  });
+
+  startBtn.addEventListener(
+    "click",
+    startTimer
+  );
+
+  resetBtn.addEventListener(
+    "click",
+    resetTimer
+  );
+
+  updateDisplay();
+</script>
+</body>
+</html>
