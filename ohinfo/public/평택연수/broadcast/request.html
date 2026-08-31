@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=0">
+  <title>신청곡 신청 — 샘플중학교 방송부 (견본)</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="../shared/firestore-lite-compat.global.js" data-ns="gwbs-demo"></script>
+  <script>
+  window.FSLite.seedIfEmpty(function (s) {
+    var now = Date.now();
+    s.put('broadcasts', '2026-09-01', { date: '9월 1일 (화)', dateValue: '2026-09-01', tasks: [
+      { id: 't1', period: '아침방송', p3: '김하늘', p2: '이도윤, 박서준', p1: '최유나, 정민재', rawVideoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', notice: '' }
+    ] });
+    s.put('broadcasts', '2026-09-08', { date: '9월 8일 (화)', dateValue: '2026-09-08', tasks: [
+      { id: 't2', period: '아침방송', p3: '이도윤', p2: '최유나', p1: '김하늘, 정민재', rawVideoUrl: '', notice: '견본 데이터입니다' }
+    ] });
+    s.put('songs', 'sg1', { grade: '2학년', classInfo: '3반', name: '김하늘', song: '좋은 날', artist: '아이유', isDone: false, createdAt: { __ts: now - 3600000 } });
+    s.put('songs', 'sg2', { grade: '1학년', classInfo: '5반', name: '이도윤', song: 'Dynamite', artist: 'BTS', isDone: true, createdAt: { __ts: now - 7200000 } });
+    s.put('manuals', 'm1', { mainTitle: '아침방송 진행 순서', mainDesc: '방송 시작 전 확인할 것들', subItems: [
+      { subTitle: '방송 시작 전', steps: ['방송실 열쇠 수령', '마이크·스피커 전원 확인', '재생목록 점검'] },
+      { subTitle: '방송 중', steps: ['시간 엄수(8:20 시작)', '신청곡 순서대로 재생'] }
+    ], createdAt: { __ts: now - 86400000 } });
+  });
+  </script>
+  <style>
+    :root {
+      --bg: #f0f2f8;
+      --surface: rgba(255,255,255,0.62);
+      --glass: rgba(255,255,255,0.55);
+      --blur: saturate(180%) blur(22px);
+      --text: #0d0f1a;
+      --text-2: #3b3f5c;
+      --text-3: #7a7f9a;
+      --accent: #0071e3;
+      --border: rgba(80,90,160,0.13);
+      --r: 16px;
+      --r-pill: 100px;
+    }
+    body.dark {
+      --bg: #0d0f1a;
+      --surface: rgba(28,32,56,0.72);
+      --glass: rgba(28,32,56,0.60);
+      --text: #f0f2f8;
+      --text-2: #b0b4cc;
+      --text-3: #6e7290;
+      --border: rgba(150,160,220,0.13);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'IBM Plex Sans KR', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 16px 60px;
+      transition: background 0.3s, color 0.3s;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at 20% 20%, rgba(0,113,227,0.12) 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 80%, rgba(124,58,237,0.10) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+    nav {
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 0 12px;
+      position: relative;
+      z-index: 1;
+    }
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      color: var(--text);
+    }
+    .nav-logo img { height: 32px; width: auto; border-radius: 6px; }
+    .nav-logo span { font-weight: 600; font-size: 0.95rem; }
+    .dark-toggle {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: var(--r-pill);
+      padding: 6px 14px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: var(--text-2);
+      font-family: inherit;
+    }
+    .card {
+      background: var(--surface);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 28px 24px;
+      width: 100%;
+      max-width: 600px;
+      position: relative;
+      z-index: 1;
+    }
+    h1 { font-size: 1.4rem; font-weight: 700; margin-bottom: 6px; }
+    .subtitle { font-size: 0.9rem; color: var(--text-3); margin-bottom: 24px; }
+    .form-group { margin-bottom: 16px; }
+    label { display: block; font-size: 0.82rem; color: var(--text-2); font-weight: 500; margin-bottom: 6px; }
+    .inp {
+      width: 100%;
+      background: rgba(255,255,255,0.5);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 0.95rem;
+      color: var(--text);
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    body.dark .inp { background: rgba(255,255,255,0.07); }
+    .inp:focus { border-color: var(--accent); }
+    .inp-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .btn-submit {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      margin-top: 8px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--r-pill);
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn-submit:active { transform: scale(0.98); }
+    .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; }
+    .success-box { display: none; text-align: center; padding: 16px 0 8px; }
+    .success-box .s-icon { font-size: 3rem; margin-bottom: 12px; }
+    .success-box h2 { margin-bottom: 8px; }
+    .success-box p { color: var(--text-3); font-size: 0.9rem; margin-bottom: 20px; }
+    .btn-again {
+      display: inline-block;
+      padding: 10px 24px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--r-pill);
+      font-family: inherit;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .back-link { display: inline-block; margin-top: 14px; color: var(--accent); font-size: 0.85rem; text-decoration: none; }
+    #toast-container { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none; }
+    .toast { background: var(--surface); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border); border-radius: var(--r-pill); padding: 10px 18px; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; pointer-events: auto; animation: toastIn 0.2s ease; white-space: nowrap; }
+    .toast.out { animation: toastOut 0.2s ease forwards; }
+    @keyframes toastIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes toastOut { to { opacity:0; transform:translateY(8px); } }
+  </style>
+</head>
+<body>
+<div id="toast-container"></div>
+
+<nav>
+  <a class="nav-logo" href="index.html">
+    <img src="../shared/broadcast-logo.svg" alt="로고">
+    <span>샘플중학교 방송부</span>
+  </a>
+  <button class="dark-toggle" onclick="toggleDark()" id="dark-btn">🌙 다크</button>
+</nav>
+
+<div class="card">
+  <div id="form-area">
+    <h1>🎵 신청곡 신청</h1>
+    <p class="subtitle">방송부에서 틀어줄 곡을 신청해 보세요!</p>
+
+    <div class="inp-row">
+      <div class="form-group">
+        <label for="f-grade">학년</label>
+        <select class="inp" id="f-grade">
+          <option value="">선택하세요</option>
+          <option value="1">1학년</option>
+          <option value="2">2학년</option>
+          <option value="3">3학년</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="f-class">반</label>
+        <input class="inp" type="text" id="f-class" placeholder="예: 2반" maxlength="10">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="f-name">이름</label>
+      <input class="inp" type="text" id="f-name" placeholder="홍길동" maxlength="20">
+    </div>
+
+    <div class="form-group">
+      <label for="f-song">신청곡명</label>
+      <input class="inp" type="text" id="f-song" placeholder="곡 제목을 입력하세요" maxlength="100">
+    </div>
+
+    <div class="form-group">
+      <label for="f-artist">가수 이름</label>
+      <input class="inp" type="text" id="f-artist" placeholder="가수 / 아이돌 이름" maxlength="60">
+    </div>
+
+    <button class="btn-submit" id="submit-btn" onclick="submitRequest()">신청하기</button>
+  </div>
+
+  <div class="success-box" id="success-area">
+    <div class="s-icon">🎶</div>
+    <h2>신청 완료!</h2>
+    <p>방송부에서 확인 후 방송에 사용될 예정입니다.</p>
+    <button class="btn-again" onclick="resetForm()">다시 신청하기</button>
+    <br>
+    <a href="index.html" class="back-link">← 메인으로 돌아가기</a>
+  </div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBni9HsSfoY_e9oQkW5HDAwypaEXMXQAOo",
+  authDomain: "gwbs-3ec22.firebaseapp.com",
+  projectId: "gwbs-3ec22",
+  storageBucket: "gwbs-3ec22.firebasestorage.app",
+  messagingSenderId: "589081885767",
+  appId: "1:589081885767:web:c44ad52ac51f5773ec0562"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+const DARK_KEY = 'gwbs_dark';
+if (localStorage.getItem(DARK_KEY) === '1') { document.body.classList.add('dark'); document.getElementById('dark-btn').textContent = '☀️ 라이트'; }
+
+function toggleDark() {
+  const on = document.body.classList.toggle('dark');
+  localStorage.setItem(DARK_KEY, on ? '1' : '0');
+  document.getElementById('dark-btn').textContent = on ? '☀️ 라이트' : '🌙 다크';
+}
+
+function showToast(msg, type='info') {
+  const icons = {info:'ℹ️', success:'✅', error:'❌', warn:'⚠️'};
+  const c = document.getElementById('toast-container');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.innerHTML = `<span>${icons[type]||icons.info}</span><span>${msg}</span>`;
+  c.appendChild(el);
+  const t = setTimeout(() => dismiss(el), 3500);
+  el.addEventListener('click', () => { clearTimeout(t); dismiss(el); });
+}
+function dismiss(el) {
+  el.classList.add('out');
+  el.addEventListener('animationend', () => el.remove(), { once: true });
+}
+
+async function submitRequest() {
+  const grade = document.getElementById('f-grade').value.trim();
+  const cls = document.getElementById('f-class').value.trim();
+  const name = document.getElementById('f-name').value.trim();
+  const song = document.getElementById('f-song').value.trim();
+  const artist = document.getElementById('f-artist').value.trim();
+
+  if (!grade) { showToast('학년을 선택해 주세요.', 'warn'); return; }
+  if (!cls) { showToast('반을 입력해 주세요.', 'warn'); return; }
+  if (!name) { showToast('이름을 입력해 주세요.', 'warn'); return; }
+  if (!song) { showToast('신청곡명을 입력해 주세요.', 'warn'); return; }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = '신청 중...';
+
+  try {
+    await db.collection('songs').add({
+      grade,
+      classInfo: cls,
+      name,
+      song,
+      artist,
+      isDone: false,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    document.getElementById('form-area').style.display = 'none';
+    document.getElementById('success-area').style.display = 'block';
+  } catch(e) {
+    showToast('신청 실패: ' + e.message, 'error');
+    btn.disabled = false;
+    btn.textContent = '신청하기';
+  }
+}
+
+function resetForm() {
+  ['f-grade','f-class','f-name','f-song','f-artist'].forEach(id => {
+    const el = document.getElementById(id);
+    el.value = '';
+  });
+  document.getElementById('form-area').style.display = 'block';
+  document.getElementById('success-area').style.display = 'none';
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = false;
+  btn.textContent = '신청하기';
+}
+</script>
+</body>
+</html>

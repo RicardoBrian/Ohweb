@@ -1,0 +1,2919 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OHweb 관리자 대시보드 (견본)</title>
+  <link rel="icon" type="image/svg+xml" href="../shared/icon.svg">
+  <link rel="apple-touch-icon" href="../shared/apple-touch-icon.png">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="../shared/theme.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); line-height: 1.6; }
+    .hidden { display: none !important; }
+
+    /* 네비 */
+    .nav {
+      position: sticky; top: 0; z-index: 200;
+      background: var(--glass-nav);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 1px 0 rgba(255,255,255,0.35), var(--shadow);
+      padding: 0 20px; height: var(--nav-h);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .nav-brand {
+      font-size: 1.1rem; font-weight: 900; letter-spacing: -0.02em;
+      background: linear-gradient(135deg, var(--accent), #7c4dff);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; white-space: nowrap; flex-shrink: 0;
+    }
+    .nav-right {
+      display: flex; align-items: center; gap: 6px;
+      overflow-x: auto; margin-left: auto;
+      scrollbar-width: none; -ms-overflow-style: none;
+    }
+    .nav-right::-webkit-scrollbar { display: none; }
+    .nav-tab {
+      font-family: inherit; font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; border-radius: 50px;
+      padding: 7px 14px; border: 1px solid transparent;
+      background: transparent; color: var(--sub);
+      transition: all 0.2s; white-space: nowrap; flex-shrink: 0;
+    }
+    .nav-tab:hover { background: var(--glass); color: var(--text); border-color: var(--border-card); }
+    .nav-tab.active {
+      background: rgba(42,92,230,0.82); border-color: rgba(100,140,255,0.5); color: #fff;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 4px 20px rgba(42,92,230,0.35);
+    }
+    @media (max-width: 600px) {
+      .nav-tab { padding: 6px 10px; font-size: 0.78rem; }
+    }
+
+    /* 와플 버튼 */
+    .waffle-btn {
+      width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border-card);
+      background: var(--glass); color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center;
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight); transition: background 0.2s; flex-shrink: 0;
+    }
+    .waffle-btn:hover { background: var(--glass-strong); }
+
+    /* 앱 선택 모달 — 화면 중앙, 불투명, 최상단 */
+    .app-modal {
+      display: none;
+      position: fixed; inset: 0; z-index: 10000;
+      background: rgba(20,22,40,0.45);
+      align-items: center; justify-content: center;
+    }
+    .app-modal.open { display: flex; }
+    .app-modal-card {
+      background: #ffffff; border-radius: 22px; padding: 24px;
+      width: min(460px, 92vw); box-shadow: 0 24px 70px rgba(0,0,0,0.3);
+    }
+    body.dark .app-modal-card { background: #1a1d2e; }
+    .app-modal-head {
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 1.05rem; font-weight: 900; color: var(--text); margin-bottom: 18px;
+    }
+    .app-modal-x { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--sub); line-height: 1; }
+    .app-modal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .app-modal-item {
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      padding: 20px 8px; border-radius: 16px; cursor: pointer;
+      background: #f4f5fa; border: 1px solid var(--border-card);
+      font-family: inherit; font-size: 0.85rem; font-weight: 700; color: var(--text);
+      transition: background 0.15s, transform 0.1s;
+    }
+    body.dark .app-modal-item { background: rgba(255,255,255,0.06); }
+    .app-modal-item.active { background: var(--accent-light); border-color: rgba(42,92,230,0.4); }
+    .app-modal-item:hover { background: #e8eaf3; transform: translateY(-2px); }
+    body.dark .app-modal-item:hover { background: rgba(255,255,255,0.12); }
+    .app-modal-icon { font-size: 2rem; line-height: 1; }
+
+    .dark-toggle {
+      width: 42px; height: 24px; border-radius: 50px;
+      background: var(--glass); border: 1px solid var(--border);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight); cursor: pointer; position: relative; transition: 0.3s; flex-shrink: 0;
+    }
+    body.dark .dark-toggle { background: rgba(42,92,230,0.6); border-color: rgba(100,140,255,0.4); }
+    .dark-toggle::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.2); transition: transform 0.3s;
+    }
+    body.dark .dark-toggle::after { transform: translateX(18px); }
+
+    /* 콘텐츠 */
+    .wrap { max-width: 960px; margin: 0 auto; padding: 32px 24px 80px; }
+    @media (max-width: 768px) { .wrap { padding: 24px 18px 80px; } }
+    @media (max-width: 600px) { .wrap { padding: 16px 14px 80px; } }
+
+    /* 섹션 */
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* 카드 */
+    .card {
+      background: var(--glass-strong);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 28px;
+      margin-bottom: 20px;
+      box-shadow: var(--highlight), var(--shadow);
+    }
+    @media (max-width: 600px) { .card { padding: 18px 16px; border-radius: 16px; } }
+    .card h2 {
+      font-size: 1.05rem; font-weight: 800;
+      margin-bottom: 20px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .card h2 .icon { font-size: 1.1rem; }
+
+    /* 인풋 */
+    .inp {
+      width: 100%; padding: 11px 14px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border-card);
+      background: var(--glass); color: var(--text);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight);
+      font-family: inherit; font-size: 0.95rem; outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .inp::placeholder { color: var(--sub); }
+    .inp:focus { border-color: rgba(42,92,230,0.55); box-shadow: var(--highlight), 0 0 0 3px rgba(42,92,230,0.15); }
+    textarea.inp { resize: vertical; min-height: 80px; line-height: 1.65; }
+    select.inp {
+      cursor: pointer; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;
+    }
+    .field { margin-bottom: 12px; }
+    .field label { display: block; font-size: 0.72rem; font-weight: 700; color: var(--sub); margin-bottom: 5px; letter-spacing: 0.05em; text-transform: uppercase; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 500px) { .field-row { grid-template-columns: 1fr; } }
+
+    /* 버튼 */
+    .btn {
+      font-family: inherit; font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; border-radius: 50px;
+      padding: 8px 20px; border: 1px solid var(--border);
+      background: var(--glass); color: var(--text);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight), var(--shadow);
+      transition: background 0.2s, transform 0.15s;
+      white-space: nowrap;
+    }
+    .btn:hover { background: var(--glass-strong); }
+    .btn:active { transform: scale(0.96); }
+    .btn.accent {
+      background: #1d1d1f; border-color: transparent; color: #fff;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), var(--shadow-md);
+    }
+    body.dark .btn.accent { background: #f5f5f7; color: #1d1d1f; }
+    .btn.accent:hover { opacity: 0.88; }
+    .btn.danger { color: #ef4444; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.08); box-shadow: none; }
+    .btn.ghost { border-color: transparent; background: transparent; box-shadow: none; }
+    .btn.ghost:hover { background: var(--glass); }
+    .btn.sm { padding: 5px 14px; font-size: 0.78rem; }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; }
+
+    /* ICON ACTION — 텍스트 없이 아이콘만, 색은 위험 액션에만 예외 */
+    .icon-action {
+      width: 32px; height: 32px; border-radius: 50%; border: none; background: none; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; color: var(--sub); flex-shrink: 0;
+      transition: background 0.15s, color 0.15s;
+    }
+    .icon-action:hover { background: var(--glass); color: var(--text); }
+    .icon-action.danger { color: #ef4444; }
+    .icon-action.danger:hover { background: rgba(239,68,68,0.1); color: #ef4444; }
+
+    /* 리스트 아이템 */
+    .list-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 16px;
+      background: var(--glass);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-card);
+      border-radius: var(--radius-sm);
+      margin-bottom: 8px;
+      flex-wrap: wrap; gap: 8px;
+      transition: box-shadow 0.2s;
+    }
+    .list-item:hover { box-shadow: var(--highlight), var(--shadow); }
+    .list-item-info { display: flex; flex-direction: column; gap: 2px; }
+    .list-item-name { font-weight: 700; font-size: 0.95rem; }
+    .list-item-sub { font-size: 0.78rem; color: var(--sub); }
+    .list-item-actions { display: flex; gap: 8px; align-items: center; }
+
+    /* 배지 */
+    .badge {
+      display: inline-block; border-radius: 50px;
+      padding: 3px 10px; font-size: 0.72rem; font-weight: 700;
+      border: 1px solid;
+    }
+    .badge.on { color: var(--accent); background: var(--accent-light); border-color: rgba(42,92,230,0.3); }
+    .badge.off { color: #ef4444; background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.25); }
+
+    /* 토글 스위치 */
+    .toggle-wrap { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .toggle-wrap span { font-size: 0.88rem; font-weight: 600; min-width: 60px; }
+    .toggle {
+      position: relative; width: 44px; height: 24px;
+      cursor: pointer; flex-shrink: 0;
+    }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-track {
+      position: absolute; inset: 0;
+      background: var(--border-card); border-radius: 50px;
+      transition: 0.3s; border: 1px solid var(--border-card);
+    }
+    .toggle input:checked + .toggle-track { background: rgba(42,92,230,0.8); border-color: rgba(42,92,230,0.5); }
+    .toggle-track::after {
+      content: ''; position: absolute; top: 2px; left: 2px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+      transition: transform 0.3s;
+    }
+    .toggle input:checked + .toggle-track::after { transform: translateX(20px); }
+
+    /* 체크박스 그리드 */
+    .checkbox-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+      gap: 8px; padding: 14px;
+      background: var(--glass); border: 1px solid var(--border-card);
+      border-radius: var(--radius-sm); margin-bottom: 12px;
+    }
+    .checkbox-grid label {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 0.88rem; font-weight: 600; cursor: pointer;
+    }
+    .checkbox-grid hr { grid-column: 1 / -1; border: none; border-top: 1px solid var(--border-card); }
+
+    /* CSV 업로드 */
+    .upload-zone {
+      border: 1.5px dashed var(--border-card);
+      border-radius: var(--radius-sm);
+      padding: 24px; text-align: center;
+      cursor: pointer; color: var(--sub); font-size: 0.88rem;
+      transition: 0.2s; background: var(--glass);
+    }
+    .upload-zone:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+    .upload-zone .upload-icon { font-size: 2rem; margin-bottom: 8px; }
+    .upload-zone p { font-weight: 600; margin-bottom: 4px; }
+    .upload-zone small { font-size: 0.75rem; opacity: 0.7; }
+
+    /* 앱 토글 그리드 */
+    .app-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 10px; margin-top: 12px;
+    }
+    @media (max-width: 480px) { .app-grid { grid-template-columns: repeat(2, 1fr); } }
+    .app-card {
+      background: var(--glass);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-card);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .app-card-name { font-weight: 700; font-size: 0.88rem; }
+    .app-card-id { font-size: 0.72rem; color: var(--sub); font-weight: 600; letter-spacing: 0.04em; }
+
+    /* 선택 컨트롤 */
+    .select-controls {
+      display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; align-items: center;
+    }
+    .select-controls label { font-size: 0.82rem; font-weight: 700; color: var(--sub); }
+    .select-controls select.inp { width: auto; min-width: 100px; }
+
+    /* 표 */
+    .table-wrap { overflow-x: auto; border-radius: var(--radius-sm); border: 1px solid var(--border-card); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    th { background: var(--glass); padding: 10px 14px; font-weight: 700; text-align: left; font-size: 0.78rem; color: var(--sub); letter-spacing: 0.04em; text-transform: uppercase; border-bottom: 1px solid var(--border-card); white-space: nowrap; }
+    td { padding: 10px 14px; border-bottom: 1px solid var(--border-card); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--glass); }
+
+    /* 로딩 */
+    #loadingOverlay {
+      position: fixed; inset: 0; z-index: 9000;
+      display: none; justify-content: center; align-items: center;
+      background: rgba(190,205,255,0.3);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    }
+    body.dark #loadingOverlay { background: rgba(0,0,0,0.5); }
+    .spinner {
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 3px solid var(--border); border-top-color: var(--accent);
+      animation: spin 0.75s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* 알림 토스트 */
+    .toast {
+      position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border); border-radius: 50px;
+      padding: 12px 24px; font-size: 0.88rem; font-weight: 700;
+      box-shadow: var(--highlight), var(--shadow-md);
+      z-index: 9999; transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+      white-space: nowrap;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+    .toast.success { color: #22c55e; }
+    .toast.error { color: #ef4444; }
+
+    /* 섹션 제목 */
+    .section-header { margin-bottom: 20px; }
+    .section-header h1 { font-size: 1.6rem; font-weight: 900; letter-spacing: -0.02em; }
+    .section-header p { font-size: 0.88rem; color: var(--sub); margin-top: 4px; }
+    @media (max-width: 600px) { .section-header h1 { font-size: 1.25rem; } .section-header { margin-bottom: 14px; } }
+
+    /* 통계 카드 */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    @media (max-width: 480px) { .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; } }
+    .stat-card {
+      background: var(--glass-strong);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px 18px;
+      box-shadow: var(--highlight), var(--shadow);
+    }
+    .stat-card .stat-num { font-size: 1.8rem; font-weight: 900; color: var(--accent); line-height: 1; }
+    .stat-card .stat-label { font-size: 0.75rem; font-weight: 700; color: var(--sub); margin-top: 4px; letter-spacing: 0.04em; text-transform: uppercase; }
+
+    /* 구분선 */
+    .divider { border: none; border-top: 1px solid var(--border-card); margin: 20px 0; }
+
+    /* 빈 상태 */
+    .empty-state { text-align: center; padding: 40px 0; color: var(--sub); font-size: 0.9rem; }
+    .empty-state .empty-icon { font-size: 2.5rem; margin-bottom: 10px; }
+
+    /* 확인 모달 */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 8000;
+      display: none; justify-content: center; align-items: center;
+      background: rgba(0,0,0,0.45); backdrop-filter: blur(8px);
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-box {
+      background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border); border-radius: 22px;
+      padding: 32px; max-width: 380px; width: 90%;
+      box-shadow: var(--highlight), var(--shadow-md);
+    }
+    .modal-box h3 { font-size: 1rem; font-weight: 800; margin-bottom: 10px; }
+    .modal-box p { font-size: 0.88rem; color: var(--sub); line-height: 1.65; margin-bottom: 22px; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+  </style>
+</head>
+<body>
+
+<div id="loadingOverlay"><div class="spinner"></div></div>
+<div class="toast" id="toast"></div>
+
+<!-- 확인 모달 -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="modal-box">
+    <h3 id="confirmTitle">확인</h3>
+    <p id="confirmMsg"></p>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="confirmCancel()">취소</button>
+      <button class="btn danger" onclick="confirmOk()">삭제</button>
+    </div>
+  </div>
+</div>
+
+<!-- 학생 정보 수정 모달 -->
+<div class="modal-overlay" id="studentEditModal">
+  <div class="modal-box">
+    <h3>학생 정보 수정</h3>
+    <div id="seInfo" style="font-size:0.82rem;color:var(--sub);margin-bottom:14px;"></div>
+    <input type="hidden" id="seId">
+    <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">이름</label>
+    <input class="inp" id="seName" type="text" placeholder="이름" style="width:100%;margin-bottom:12px;">
+    <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">비밀번호</label>
+    <input class="inp" id="sePw" type="text" placeholder="비밀번호 (비우면 미설정 = 로그인 불가)" style="width:100%;margin-bottom:6px;">
+    <div style="font-size:0.76rem;color:var(--sub);margin-bottom:14px;">비밀번호를 설정하면 학생이 로그인할 수 있어요. 비우면 로그인 불가(미등록) 상태가 됩니다.</div>
+    <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:18px;">
+      <input type="checkbox" id="seMaster" style="width:16px;height:16px;accent-color:var(--accent);">
+      <span style="font-size:0.85rem;font-weight:700;">마스터 계정 <span style="font-weight:400;color:var(--sub);">— 로그인 시 모든 시험지·패들릿 접근 가능</span></span>
+    </label>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="closeStudentEdit()">취소</button>
+      <button class="btn accent" onclick="saveStudentEdit()">저장</button>
+    </div>
+  </div>
+</div>
+
+<svg width="0" height="0" style="position:absolute;">
+  <defs>
+    <symbol id="ic-school" viewBox="0 0 24 24"><path d="M12 4 3 8.5 12 13l9-4.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 10.8V16c0 1.2 2.2 3 5 3s5-1.8 5-3v-5.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><line x1="20" y1="8.5" x2="20" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-people" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="17" cy="9" r="2.4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M14.8 19c.2-2.3 1.9-4 3.9-4.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="ic-board" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><line x1="7" y1="12.5" x2="12" y2="12.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="9" y1="16" x2="6" y2="20.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="15" y1="16" x2="18" y2="20.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="ic-clipboard" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="9" y="3.3" width="6" height="3.2" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"/><line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="8" y1="16" x2="14" y2="16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="ic-doc" viewBox="0 0 24 24"><path d="M7 3.5h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><line x1="8.5" y1="13" x2="15.5" y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="8.5" y1="16.5" x2="13" y2="16.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="ic-chat" viewBox="0 0 24 24"><path d="M4 5.5h16a1 1 0 0 1 1 1V16a1 1 0 0 1-1 1H9l-4.5 4V17H4a1 1 0 0 1-1-1V6.5a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="4" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="4" y="13" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="13" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+    <symbol id="ic-link" viewBox="0 0 24 24"><circle cx="7" cy="12" r="3.4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="17" cy="12" r="3.4" fill="none" stroke="currentColor" stroke-width="1.8"/><line x1="10" y1="12" x2="14" y2="12" stroke="currentColor" stroke-width="1.8"/></symbol>
+    <symbol id="ic-download" viewBox="0 0 24 24"><line x1="12" y1="4" x2="12" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="7,10 12,15 17,10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><line x1="5" y1="19" x2="19" y2="19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-chart" viewBox="0 0 24 24"><line x1="6" y1="19" x2="6" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="19" x2="12" y2="7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="18" y1="19" x2="18" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="ic-lock" viewBox="0 0 24 24"><rect x="5.5" y="11" width="13" height="9.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="15.3" r="1.3" fill="currentColor"/></symbol>
+    <symbol id="ic-unlock" viewBox="0 0 24 24"><rect x="5.5" y="11" width="13" height="9.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8.5 11V8a3.5 3.5 0 0 1 6.7-2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="15.3" r="1.3" fill="currentColor"/></symbol>
+    <symbol id="ic-trash" viewBox="0 0 24 24"><line x1="5" y1="7" x2="19" y2="7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8 7V5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M7 7l1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><line x1="10" y1="11" x2="10" y2="17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="14" y1="11" x2="14" y2="17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="ic-refresh" viewBox="0 0 24 24"><path d="M5 12a7 7 0 0 1 12-4.9M19 12a7 7 0 0 1-12 4.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="17,3 17,7.5 12.5,7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><polyline points="7,21 7,16.5 11.5,16.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-edit" viewBox="0 0 24 24"><path d="M15.5 5.5 18.5 8.5 8 19 4.5 19.5 5 16Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><line x1="13.7" y1="7.3" x2="16.7" y2="10.3" stroke="currentColor" stroke-width="1.7"/></symbol>
+    <symbol id="ic-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="ic-folder" viewBox="0 0 24 24"><path d="M4 6.5a1 1 0 0 1 1-1h4.5l2 2H19a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="12" cy="12" r="0.9" fill="currentColor"/></symbol>
+    <symbol id="ic-archive" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="5" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="5.2" y="9" width="13.6" height="11" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.8"/><line x1="10" y1="13" x2="14" y2="13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="ic-timer" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" fill="none" stroke="currentColor" stroke-width="1.8"/><line x1="12" y1="13" x2="12" y2="8.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="12" y1="13" x2="15" y2="14.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="9.5" y1="2.5" x2="14.5" y2="2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-notice" viewBox="0 0 24 24"><path d="M4 9v6h3l6 4V5L7 9Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M17.5 9.5a4 4 0 0 1 0 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="ic-close" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7"/><ellipse cx="12" cy="12" rx="3.6" ry="8.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="3.5" y1="12" x2="20.5" y2="12" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="ic-download" viewBox="0 0 24 24"><line x1="12" y1="4" x2="12" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="7,10 12,15 17,10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><line x1="5" y1="19" x2="19" y2="19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-help" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.4 2.3c-.8.3-.9 1-.9 1.7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="16.6" r="1" fill="currentColor"/></symbol>
+    <symbol id="ic-device" viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="2.2" fill="none" stroke="currentColor" stroke-width="1.7"/><line x1="10.5" y1="18" x2="13.5" y2="18" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="ic-alert" viewBox="0 0 24 24"><path d="M12 3.5 21 19.5H3Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><line x1="12" y1="9.5" x2="12" y2="14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></symbol>
+    <symbol id="ic-check" viewBox="0 0 24 24"><polyline points="5,13 9.5,17.5 19,6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-wallet" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 9h14a3 3 0 0 1 3 3v0" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="16.5" cy="13" r="1.3" fill="currentColor"/></symbol>
+  </defs>
+</svg>
+
+<!-- 네비 -->
+<nav class="nav">
+  <div class="nav-brand"><img src="../shared/logo.png" alt="OHweb" style="height:32px;width:auto;display:block;"> <span style="font-size:0.7rem;font-weight:700;color:var(--sub);margin-left:6px;">견본</span></div>
+  <div class="nav-right">
+    <button class="waffle-btn" id="waffleBtn" title="메뉴" onclick="openAppModal()">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="0" y="0" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="6.5" y="0" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="13" y="0" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="0" y="6.5" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="6.5" y="6.5" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="13" y="6.5" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="0" y="13" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="6.5" y="13" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="13" y="13" width="5" height="5" rx="1.2" fill="currentColor"/></svg>
+    </button>
+    <button class="dark-toggle" id="darkToggleBtn" title="다크모드"></button>
+  </div>
+</nav>
+
+<!-- 메뉴 모달 (와플) -->
+<div class="app-modal" id="appModal" onclick="if(event.target===this)closeAppModal()">
+  <div class="app-modal-card">
+    <div class="app-modal-head">
+      <span>메뉴</span>
+      <button class="app-modal-x" onclick="closeAppModal()"><svg width="14" height="14"><use href="#ic-close"/></svg></button>
+    </div>
+    <div class="app-modal-grid">
+      <button class="app-modal-item" onclick="goApp('schools')"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-school"/></svg></span><span>학교</span></button>
+      <button class="app-modal-item" onclick="goApp('students')"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-people"/></svg></span><span>학생</span></button>
+      <button class="app-modal-item" onclick="goApp('paddlet')"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-board"/></svg></span><span>정보 게시판</span></button>
+      <button class="app-modal-item" onclick="goApp('exam')"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-clipboard"/></svg></span><span>시험</span></button>
+      <button class="app-modal-item" onclick="goApp('forms')"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-doc"/></svg></span><span>설문지</span></button>
+      <button class="app-modal-item" onclick="goApp('messages')"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-chat"/></svg></span><span>학생 질문</span></button>
+      <button class="app-modal-item" onclick="location.href='../timer/'"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-timer"/></svg></span><span>타이머</span></button>
+      <button class="app-modal-item" onclick="goApp('notice')"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-notice"/></svg></span><span>공지 메모</span></button>
+      <button class="app-modal-item" onclick="goApp('settle')"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-wallet"/></svg></span><span>정산 관리</span></button>
+      <button class="app-modal-item" onclick="goApp('apps')"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-grid"/></svg></span><span>앱 설정</span></button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- 학교 관리 섹션 -->
+  <div class="section" id="section-schools">
+    <div class="section-header">
+      <h1>학교 관리</h1>
+    </div>
+
+    <div class="stats-grid" id="schoolStats">
+      <div class="stat-card"><div class="stat-num" id="statSchoolCount">-</div><div class="stat-label">등록 학교</div></div>
+      <div class="stat-card"><div class="stat-num" id="statStudentCount">-</div><div class="stat-label">전체 학생</div></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon"><svg width="18" height="18"><use href="#ic-plus"/></svg></span> 학교 추가</h2>
+      <div class="field-row">
+        <div class="field">
+          <label>학교 이름</label>
+          <input class="inp" id="schoolName" placeholder="예: 관산중학교">
+        </div>
+        <div class="field">
+          <label>학교 코드 (선택)</label>
+          <input class="inp" id="schoolCode" placeholder="예: gwansan">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn accent" onclick="addSchool()">학교 추가</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon"><svg width="18" height="18"><use href="#ic-school"/></svg></span> 학교 목록</h2>
+      <div id="schoolList"><div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-school"/></svg></div>등록된 학교가 없습니다.</div></div>
+    </div>
+  </div>
+
+  <!-- 학생 관리 섹션 -->
+  <div class="section active" id="section-students">
+    <div class="section-header">
+      <h1>학생 명단</h1>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon"><svg width="18" height="18"><use href="#ic-folder"/></svg></span> CSV 업로드</h2>
+
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('csvFile').click()">
+        <div class="upload-icon"><svg width="34" height="34"><use href="#ic-doc"/></svg></div>
+        <p>CSV 파일을 클릭하여 업로드</p>
+        <small>열 순서: 학교, 학년, 반, 번호, 이름 (첫 행은 헤더로 자동 처리)</small>
+      </div>
+      <input type="file" id="csvFile" accept=".csv" class="hidden" onchange="handleCSV(this)">
+
+      <div id="csvPreview" class="hidden" style="margin-top: 14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <span style="font-size:0.88rem; font-weight:700;" id="csvPreviewInfo"></span>
+          <div style="display:flex; gap:8px;">
+            <button class="btn ghost sm" onclick="cancelCSV()">취소</button>
+            <button class="btn accent sm" onclick="uploadCSV()">업로드 확인</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>학교</th><th>학년</th><th>반</th><th>번호</th><th>이름</th></tr></thead>
+            <tbody id="csvTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon"><svg width="18" height="18"><use href="#ic-plus"/></svg></span> 학생 개별 추가</h2>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+        <div style="grid-column:1/-1;">
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">학교</label>
+          <input class="inp" id="addSchoolName" type="text" list="addSchoolOptions" placeholder="학교 이름 입력" style="width:100%;" autocomplete="off" oninput="populateAddDatalists()">
+          <datalist id="addSchoolOptions"></datalist>
+        </div>
+        <div>
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">이름</label>
+          <input class="inp" id="addName" type="text" placeholder="이름" style="width:100%;">
+        </div>
+        <div>
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">학년</label>
+          <input class="inp" id="addGrade" type="text" list="addGradeOptions" placeholder="예: 1 (선택 또는 입력)" style="width:100%;" autocomplete="off">
+          <datalist id="addGradeOptions"></datalist>
+        </div>
+        <div>
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">반</label>
+          <input class="inp" id="addClass" type="text" list="addClassOptions" placeholder="예: 3 (선택 또는 입력)" style="width:100%;" autocomplete="off">
+          <datalist id="addClassOptions"></datalist>
+        </div>
+        <div>
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">번호</label>
+          <input class="inp" id="addNumber" type="number" min="1" placeholder="번호" style="width:100%;">
+        </div>
+      </div>
+      <button class="btn accent sm" onclick="addStudent()">추가</button>
+      <div id="addStudentErr" style="font-size:0.82rem;color:#ef4444;margin-top:8px;"></div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon"><svg width="18" height="18"><use href="#ic-people"/></svg></span> 학생 목록</h2>
+      <div class="select-controls">
+        <label>학교</label>
+        <select class="inp" id="filterSchool" onchange="onFilterSchoolChange()" style="width:140px;"><option value="">전체</option></select>
+        <label>학년</label>
+        <select class="inp" id="filterGrade" onchange="onFilterGradeChange()" style="width:100px;"><option value="">전체</option></select>
+        <label>반</label>
+        <select class="inp" id="filterClass" onchange="loadStudents()" style="width:90px;"><option value="">전체</option></select>
+      </div>
+      <div id="studentList"><div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-people"/></svg></div>학생이 없습니다.</div></div>
+    </div>
+  </div>
+
+  <!-- 앱 설정 섹션 -->
+  <div class="section" id="section-apps">
+    <div class="section-header">
+      <h1>앱 공개 설정</h1>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon"><svg width="18" height="18"><use href="#ic-target"/></svg></span> 학급 선택</h2>
+      <div class="select-controls">
+        <label>학교</label>
+        <select class="inp" id="appSchool" onchange="loadAppSettings()"><option value="">학교 선택</option></select>
+        <label>학년</label>
+        <select class="inp" id="appGrade" onchange="loadAppSettings()">
+          <option value="">전체</option>
+          <option value="1">1학년</option><option value="2">2학년</option><option value="3">3학년</option>
+        </select>
+        <label>반</label>
+        <select class="inp" id="appClass" onchange="loadAppSettings()">
+          <option value="">전체</option>
+          <option value="1">1반</option><option value="2">2반</option><option value="3">3반</option><option value="4">4반</option><option value="5">5반</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="appSettingsArea">
+      <div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-device"/></svg></div>학교와 학급을 선택하세요.</div>
+    </div>
+
+  </div>
+
+  <!-- 패들릿 관리 섹션 -->
+  <div class="section" id="section-paddlet">
+    <div class="section-header">
+      <h1>정보 게시판 관리</h1>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon"><svg width="18" height="18"><use href="#ic-plus"/></svg></span> 수업 추가 / 수정</h2>
+      <input type="hidden" id="adm_docId">
+      <div id="adm_edit_info" style="display:none;padding:8px 12px;background:var(--accent-light);border-radius:8px;font-size:0.82rem;font-weight:700;color:var(--accent);margin-bottom:12px;"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+        <div style="grid-column:1/-1;">
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">수업명</label>
+          <input class="inp" id="adm_name" placeholder="수업명" style="width:100%;">
+        </div>
+        <div style="grid-column:1/-1;">
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">설명</label>
+          <textarea class="inp" id="adm_desc" rows="2" placeholder="수업 설명" style="width:100%;resize:vertical;"></textarea>
+        </div>
+        <div style="grid-column:1/-1;">
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">선생님 안내 (게시판 상단 고정)</label>
+          <textarea class="inp" id="adm_ex" rows="2" placeholder="선생님 안내 메시지" style="width:100%;resize:vertical;"></textarea>
+        </div>
+        <div style="grid-column:1/-1;">
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">공지 팝업 (입장 시 표시)</label>
+          <textarea class="inp" id="adm_popup" rows="2" placeholder="비워두면 미표시" style="width:100%;resize:vertical;"></textarea>
+        </div>
+      </div>
+      <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:6px;">배정할 학급</label>
+      <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr auto;gap:8px;margin-bottom:10px;align-items:end;">
+        <select class="inp" id="adm_school" onchange="onAdmSchoolChange()"><option value="">학교 선택</option></select>
+        <select class="inp" id="adm_grade" onchange="onAdmGradeChange()"><option value="">학년</option></select>
+        <select class="inp" id="adm_class"><option value="">반</option></select>
+        <button class="btn sm" onclick="addPendingClass()">＋ 담기</button>
+      </div>
+      <div id="adm_pending" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px;"></div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn accent sm" onclick="saveAdminClass()">저장</button>
+        <button id="adm_cancel_btn" class="btn ghost sm hidden" onclick="resetAdminForm()">취소</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2><span class="icon"><svg width="18" height="18"><use href="#ic-clipboard"/></svg></span> 수업 목록</h2>
+      <div id="adminList"><div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-board"/></svg></div>등록된 수업이 없습니다.</div></div>
+    </div>
+
+  </div>
+
+  <!-- 시험 관리 섹션 -->
+  <div class="section" id="section-exam">
+    <div class="section-header">
+      <h1>시험 관리</h1>
+    </div>
+
+    <!-- 시험 탭 -->
+    <div style="display:flex;gap:8px;margin-bottom:20px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;">
+      <button class="btn accent sm" id="examSubTab-list" onclick="showExamTab('list')" style="white-space:nowrap;flex-shrink:0;">시험 목록</button>
+      <button class="btn ghost sm" id="examSubTab-questions" onclick="showExamTab('questions')" style="white-space:nowrap;flex-shrink:0;">문제 관리</button>
+      <button class="btn ghost sm" id="examSubTab-assign" onclick="showExamTab('assign')" style="white-space:nowrap;flex-shrink:0;">배정 관리</button>
+      <button class="btn ghost sm" id="examSubTab-results" onclick="showExamTab('results')" style="white-space:nowrap;flex-shrink:0;">결과 조회</button>
+      <button class="btn ghost sm" id="examSubTab-legacy" onclick="showExamTab('legacy')" style="white-space:nowrap;flex-shrink:0;">레거시 가져오기</button>
+    </div>
+
+    <!-- 시험 목록 탭 -->
+    <div id="examTab-list">
+      <div class="card">
+        <h2><span class="icon"><svg width="18" height="18"><use href="#ic-plus"/></svg></span> 시험 추가</h2>
+        <input type="hidden" id="exam_docId">
+        <div style="margin-bottom:12px;">
+          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">시험 제목</label>
+          <input class="inp" id="exam_title" placeholder="예: 1학기 기말고사">
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">설명 (선택)</label>
+          <textarea class="inp" id="exam_desc" rows="2" placeholder="시험 설명" style="resize:vertical;"></textarea>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn accent sm" onclick="saveExam()">저장</button>
+          <button id="exam_cancel_btn" class="btn ghost sm hidden" onclick="resetExamForm()">취소</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2><span class="icon"><svg width="18" height="18"><use href="#ic-clipboard"/></svg></span> 시험 목록</h2>
+        <div id="examList"><div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-clipboard"/></svg></div>등록된 시험이 없습니다.</div></div>
+      </div>
+    </div>
+
+    <!-- 문제 관리 탭 -->
+    <div id="examTab-questions" class="hidden">
+      <div class="card">
+        <h2><span class="icon"><svg width="18" height="18"><use href="#ic-doc"/></svg></span> 문제 추가 / 수정</h2>
+        <input type="hidden" id="q_docId">
+        <div style="margin-bottom:12px;">
+          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">대상 시험</label>
+          <select class="inp" id="q_examId" style="width:100%;" onchange="loadQList()">
+            <option value="">시험을 선택하세요</option>
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">문제 유형</label>
+            <select class="inp" id="q_type" onchange="toggleQTypeFields()">
+              <option value="mc">객관식 (MC)</option>
+              <option value="sa">단답형 (SA)</option>
+              <option value="code">코딩 (Code)</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">배점</label>
+            <input class="inp" id="q_points" type="number" min="1" value="10" placeholder="10">
+          </div>
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">문제 제목</label>
+          <textarea class="inp" id="q_title" rows="2" placeholder="문제 제목" style="resize:vertical;"></textarea>
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">문제 내용</label>
+          <textarea class="inp" id="q_content" rows="3" placeholder="문제 본문 (선택)" style="resize:vertical;"></textarea>
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">이미지 URL (선택)</label>
+          <input class="inp" id="q_imageUrl" placeholder="https://...">
+        </div>
+
+        <!-- 객관식 필드 -->
+        <div id="qf_mc">
+          <div style="margin-bottom:12px;">
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">선택지 (한 줄에 하나씩)</label>
+            <textarea class="inp" id="q_options" rows="5" placeholder="1번 선택지&#10;2번 선택지&#10;3번 선택지&#10;4번 선택지" style="resize:vertical;" oninput="updateMcAnswerSelect()"></textarea>
+          </div>
+          <div style="margin-bottom:12px;">
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">정답</label>
+            <select class="inp" id="q_answer_mc" style="width:100%;"><option value="0">선택지를 먼저 입력하세요</option></select>
+          </div>
+        </div>
+
+        <!-- 단답형 필드 -->
+        <div id="qf_sa" class="hidden">
+          <div style="margin-bottom:12px;">
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">정답 <span style="font-weight:400;color:var(--sub);font-size:0.75rem;">(대소문자 구분 없이 비교)</span></label>
+            <textarea class="inp" id="q_answer_sa" rows="2" placeholder="정답 텍스트" style="resize:vertical;"></textarea>
+          </div>
+        </div>
+
+        <!-- 코딩 필드 -->
+        <div id="qf_code" class="hidden">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+            <div>
+              <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">입력 형식 설명</label>
+              <input class="inp" id="q_inDesc" placeholder="예: 정수 n 입력">
+            </div>
+            <div>
+              <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">출력 형식 설명</label>
+              <input class="inp" id="q_outDesc" placeholder="예: 결과 출력">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+            <div>
+              <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">예시 입력</label>
+              <textarea class="inp" id="q_inEx" rows="3" style="resize:vertical;font-family:monospace;"></textarea>
+            </div>
+            <div>
+              <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">예시 출력</label>
+              <textarea class="inp" id="q_outEx" rows="3" style="resize:vertical;font-family:monospace;"></textarea>
+            </div>
+          </div>
+          <div style="margin-bottom:12px;">
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">기본 코드 (boilerplate)</label>
+            <textarea class="inp" id="q_boilerplate" rows="4" style="resize:vertical;font-family:monospace;"></textarea>
+          </div>
+          <div style="margin-bottom:12px;">
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:8px;">테스트케이스</label>
+            <div id="q_tcList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px;"></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+              <div>
+                <label style="font-size:0.75rem;color:var(--sub);display:block;margin-bottom:2px;">입력</label>
+                <textarea class="inp" id="q_tcInput" placeholder="입력값 (없으면 빈칸)&#10;줄바꿈 그대로 입력" rows="3" style="font-family:monospace;font-size:0.85rem;resize:vertical;"></textarea>
+              </div>
+              <div>
+                <label style="font-size:0.75rem;color:var(--sub);display:block;margin-bottom:2px;">예상 출력</label>
+                <textarea class="inp" id="q_tcExpected" placeholder="예상 출력&#10;줄바꿈 그대로 입력" rows="3" style="font-family:monospace;font-size:0.85rem;resize:vertical;"></textarea>
+              </div>
+            </div>
+            <button class="btn accent sm" type="button" onclick="addTestCase()">+ 추가</button>
+          </div>
+        </div>
+
+        <div style="margin-bottom:12px;">
+          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">순서 (낮을수록 먼저)</label>
+          <input class="inp" id="q_order" type="number" value="1" style="width:100px;">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn accent sm" onclick="saveQuestion()">저장</button>
+          <button id="q_cancel_btn" class="btn ghost sm hidden" onclick="resetQForm()">취소</button>
+        </div>
+      </div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <h2 style="margin:0;"><span class="icon"><svg width="18" height="18"><use href="#ic-doc"/></svg></span> 문제 목록</h2>
+          <button class="icon-action" title="번역 보완" onclick="fixMissingTranslations()"><svg width="17" height="17"><use href="#ic-globe"/></svg></button>
+        </div>
+        <div style="margin-bottom:12px;">
+          <select class="inp" id="qlist_examId" style="width:100%;" onchange="loadQList()">
+            <option value="">시험을 선택하세요</option>
+          </select>
+        </div>
+        <div id="qList"><div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-help"/></svg></div>문제를 선택하세요.</div></div>
+      </div>
+    </div>
+
+    <!-- 배정 관리 탭 -->
+    <div id="examTab-assign" class="hidden">
+      <div class="card">
+        <h2><span class="icon"><svg width="18" height="18"><use href="#ic-target"/></svg></span> 배정 추가</h2>
+        <input type="hidden" id="as_docId">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">시험</label>
+            <select class="inp" id="as_examId">
+              <option value="">시험 선택</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">시험 코드 (학생 입력)</label>
+            <input class="inp" id="as_code" placeholder="예: A1B2C3" style="text-transform:uppercase;letter-spacing:0.1em;font-weight:700;" oninput="this.value=this.value.toUpperCase()">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">학교</label>
+            <select class="inp" id="as_schoolName">
+              <option value="">전체 학교</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">학년</label>
+            <select class="inp" id="as_grade" onchange="onAsGradeChange()">
+              <option value="">전체 학년</option>
+              <option value="1">1학년</option>
+              <option value="2">2학년</option>
+              <option value="3">3학년</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">반</label>
+            <select class="inp" id="as_class">
+              <option value="">전체 반</option>
+              <option value="1">1반</option>
+              <option value="2">2반</option>
+              <option value="3">3반</option>
+              <option value="4">4반</option>
+              <option value="5">5반</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">제한시간 (분, 0=무제한)</label>
+            <input class="inp" id="as_duration" type="number" min="0" value="45" placeholder="45">
+          </div>
+        </div>
+        <div style="margin-bottom:12px;">
+          <button class="btn ghost sm" onclick="addPendingAssign()">＋ 담기</button>
+          <div id="as_pending" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;">
+            <span style="font-size:0.8rem;color:var(--sub);">담은 배정이 없습니다. 학교·학년·반 선택 후 [＋ 담기] (학년·반은 "전체" 가능)</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn accent sm" onclick="saveAssignment()">저장</button>
+          <button id="as_cancel_btn" class="btn ghost sm hidden" onclick="resetAsForm()">취소</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2><span class="icon"><svg width="18" height="18"><use href="#ic-clipboard"/></svg></span> 배정 목록</h2>
+        <div id="assignList"><div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-target"/></svg></div>등록된 배정이 없습니다.</div></div>
+      </div>
+    </div>
+
+    <!-- 결과 조회 탭 -->
+    <div id="examTab-results" class="hidden">
+      <div class="card">
+        <h2><span class="icon"><svg width="18" height="18"><use href="#ic-chart"/></svg></span> 결과 조회</h2>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">배정 선택</label>
+            <select class="inp" id="res_asId" onchange="loadResults()">
+              <option value="">배정을 선택하세요</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:flex-end;gap:8px;">
+            <button class="icon-action" title="CSV 내보내기" onclick="exportResults()"><svg width="17" height="17"><use href="#ic-download"/></svg></button>
+            <button class="btn accent sm" onclick="exportResultsPDF()"><svg width="13" height="13" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-doc"/></svg>PDF 내보내기</button>
+          </div>
+        </div>
+        <div id="resultTable"><div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-chart"/></svg></div>배정을 선택하세요.</div></div>
+      </div>
+    </div>
+
+    <!-- 레거시 가져오기 탭 -->
+    <div id="examTab-legacy" class="hidden">
+      <div class="card">
+        <h2><span class="icon"><svg width="18" height="18"><use href="#ic-archive"/></svg></span> 레거시 시스템 데이터 가져오기</h2>
+        <p style="font-size:0.82rem;color:var(--sub);margin-bottom:14px;">이전 구글시트 시스템의 Exams·Questions·Results 탭 내용을 각각 복사해서 붙여넣으세요 (헤더 행 포함해도 됩니다). 탭 또는 콤마 구분 모두 인식합니다.</p>
+        <div style="display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:12px;">
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">Exams 탭 (시험ID, 시험제목, 생성일)</label>
+            <textarea class="inp" id="lg_exams" rows="4" style="font-family:monospace;font-size:0.8rem;resize:vertical;" placeholder="시험ID	시험제목	생성일"></textarea>
+          </div>
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">Questions 탭 (시험ID, 유형, 배점, 문항제목, 문항_KR/EN/CH/RU, 보기_KR/EN/CH/RU, 정답, 이미지URL, 번역여부, 테스트케이스)</label>
+            <textarea class="inp" id="lg_questions" rows="4" style="font-family:monospace;font-size:0.8rem;resize:vertical;" placeholder="시험ID	유형	배점	문항제목	..."></textarea>
+          </div>
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">Results 탭 (타임스탬프, 시험ID, 학번, 이름, 선택언어, 문항ID, 학생답안_원본, 학생답안_KR, 점수, 피드백)</label>
+            <textarea class="inp" id="lg_results" rows="4" style="font-family:monospace;font-size:0.8rem;resize:vertical;" placeholder="타임스탬프	시험ID	학번	이름	..."></textarea>
+          </div>
+        </div>
+        <button class="btn ghost sm" onclick="previewLegacy()">미리보기</button>
+        <div id="lg_preview" class="hidden" style="margin-top:16px;">
+          <div id="lg_summary" style="font-size:0.85rem;margin-bottom:12px;"></div>
+          <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:14px;flex-wrap:wrap;">
+            <div>
+              <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">가져올 시험</label>
+              <select class="inp" id="lg_examSelect" style="min-width:280px;"></select>
+            </div>
+            <button class="btn accent sm" onclick="runLegacyImport(false)">선택한 시험만 가져오기 (테스트)</button>
+            <button class="btn danger sm" onclick="runLegacyImport(true)">전체 시험 한번에 가져오기</button>
+          </div>
+          <div style="font-size:0.76rem;color:var(--sub);">같은 시험을 다시 가져오면 이전에 가져온 내용은 지우고 새로 씁니다 (재실행 안전).</div>
+        </div>
+        <div id="lg_log" style="margin-top:14px;font-size:0.82rem;white-space:pre-wrap;"></div>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- 네비게이션 (firebase와 무관한 순수 UI 로직 — 일반 스크립트라 onclick 전역 동작) -->
+<script>
+  var currentSection = 'schools';
+  function showSection(name) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    var sec = document.getElementById('section-' + name);
+    if (sec) sec.classList.add('active');
+    currentSection = name;
+    // firebase 데이터 로딩 훅 (모듈에서 등록, 없으면 그냥 무시)
+    if (typeof window.onSectionShow === 'function') window.onSectionShow(name);
+  }
+  function openAppModal() {
+    // 현재 섹션 표시
+    document.querySelectorAll('.app-modal-item').forEach(b => b.classList.remove('active'));
+    document.getElementById('appModal').classList.add('open');
+  }
+  function closeAppModal() { document.getElementById('appModal').classList.remove('open'); }
+  function goApp(name) {
+    closeAppModal();
+    if (name === 'forms' || name === 'messages' || name === 'notice' || name === 'settle') {
+      alert('이 견본에는 포함되지 않은 기능입니다.');
+      return;
+    }
+    showSection(name);
+  }
+</script>
+
+<script type="module">
+  import {
+    getFirestoreLite as getFirestore,
+    collection, addDoc, getDocs, deleteDoc, doc,
+    query, where, orderBy, setDoc, getDoc, serverTimestamp, writeBatch, updateDoc,
+    seedIfEmpty,
+  } from '../shared/firestore-lite.js';
+
+  const db = getFirestore('ohweb-admin-demo');
+
+  // 견본용 초기 데이터 — 처음 열었을 때만 채워진다(이미 손댄 적 있으면 그대로 둔다).
+  seedIfEmpty('ohweb-admin-demo', (s) => {
+    const now = Date.now();
+    s.put('schools', 'sch1', { name: '평택연수 견본중학교', code: 'DEMO', createdAt: { __ts: now - 5 * 86400000 } });
+    s.put('classes', 'cls1', { name: '1반', schoolName: '평택연수 견본중학교', grade: '1학년', group: '1', desc: '', ex: '', popup: '', status: 'ON', createdAt: { __ts: now - 4 * 86400000 } });
+    ['김민준', '이서연', '박도윤', '최지우'].forEach((name, i) => {
+      s.put('students', 'stu' + i, { name, schoolName: '평택연수 견본중학교', grade: '1학년', class: '1', number: i + 1, registered: i % 2 === 0, password: null, createdAt: { __ts: now - (4 - i) * 86400000 } });
+    });
+  });
+
+  // 앱 목록 정의
+  const APPS = [
+    { id: 'ohdlet', name: '정보 게시판', icon: 'ic-board' },
+    { id: 'submit', name: '과제제출', icon: 'ic-doc' },
+    { id: 'exam',   name: '시험',    icon: 'ic-clipboard' },
+    { id: 'form',   name: '설문지 만들기', icon: 'ic-chart' },
+  ];
+
+  let schools = [];
+  let csvData = [];
+  let confirmCallback = null;
+  let _appStudents = [];   // 앱설정용 학생 캐시
+
+  // 학년/반 정규화 + appSettings 키 (home.html과 동일 규칙)
+  const nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
+  const appKey = (school, grade, cls) => `${String(school||'').replace(/\//g,'_')}__g${nv(grade)}__c${nv(cls)}`;
+
+  // ── 유틸 ──
+  function showLoading(v) { document.getElementById('loadingOverlay').style.display = v ? 'flex' : 'none'; }
+
+  // ── 번역 (Netlify Function 경유) ──
+  async function translateTexts(texts, targetLang) {
+    const res = await fetch('/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texts, targetLang, sourceLang: 'ko' })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error || !data.translations) throw new Error(data.error || `HTTP ${res.status}`);
+    return data.translations.map(t => t.text);
+  }
+  // name/desc/ex 를 zh/ru/en 으로 번역해 {nameZh,nameRu,nameEn,descZh,...,exZh,...} 반환
+  // (언어별로 개별 실패해도 나머지는 살린다 — 실패한 언어만 빈 값)
+  async function translateClassFields(name, desc, ex) {
+    const out = { nameZh:'', nameRu:'', nameEn:'', descZh:'', descRu:'', descEn:'', exZh:'', exRu:'', exEn:'' };
+    if (!name && !desc && !ex) return out;
+    const langs = [['zh-cn','Zh'], ['ru','Ru'], ['en','En']];
+    const settled = await Promise.allSettled(langs.map(([code]) => translateTexts([name || '', desc || '', ex || ''], code)));
+    langs.forEach(([, sfx], i) => {
+      if (settled[i].status === 'fulfilled') {
+        const [n, d, e] = settled[i].value;
+        out['name'+sfx] = n || ''; out['desc'+sfx] = d || ''; out['ex'+sfx] = e || '';
+      } else {
+        console.error('translateClassFields:', sfx, settled[i].reason);
+      }
+    });
+    return out;
+  }
+
+  function toast(msg, type = '') {
+    const el = document.getElementById('toast');
+    el.className = `toast ${type}`;
+    el.innerText = msg;
+    el.classList.add('show');
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove('show'), 2800);
+  }
+
+  function confirmDialog(title, msg, cb) {
+    document.getElementById('confirmTitle').innerText = title;
+    document.getElementById('confirmMsg').innerText = msg;
+    confirmCallback = cb;
+    document.getElementById('confirmModal').classList.add('show');
+  }
+
+  window.confirmOk = () => { document.getElementById('confirmModal').classList.remove('show'); if (confirmCallback) confirmCallback(); };
+  window.confirmCancel = () => { document.getElementById('confirmModal').classList.remove('show'); };
+
+  // ── 섹션 진입 시 firebase 데이터 로딩 (네비 자체는 위 일반 스크립트가 담당) ──
+  window.onSectionShow = (name) => {
+    if (name === 'students') window.loadStudents();
+    if (name === 'paddlet') { window.loadAdminList(); buildPaddletDropdowns(); }
+    if (name === 'exam') initExamSection();
+    if (name === 'apps') { window.loadAppStudents(); }
+  };
+
+
+  // ── 다크모드 초기화 / 토글 ──
+  if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
+  document.getElementById('darkToggleBtn').addEventListener('click', () => {
+    document.body.classList.toggle('dark');
+    localStorage.setItem('dark', document.body.classList.contains('dark') ? '1' : '0');
+  });
+
+  // 첫 화면(학교 관리)은 onSectionShow가 다루지 않으므로 여기서 한 번 불러온다.
+  loadSchools();
+
+  // ── 학교 관리 ──
+  async function loadSchools() {
+    const snap = await getDocs(query(collection(db, 'schools'), orderBy('createdAt', 'desc')));
+    schools = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // 학생 수 집계
+    const studSnap = await getDocs(collection(db, 'students'));
+    const totalStudents = studSnap.size;
+
+    document.getElementById('statSchoolCount').innerText = schools.length;
+    document.getElementById('statStudentCount').innerText = totalStudents;
+
+    renderSchoolList();
+    populateSchoolSelects();
+  }
+
+  function renderSchoolList() {
+    const el = document.getElementById('schoolList');
+    if (!schools.length) {
+      el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-school"/></svg></div>등록된 학교가 없습니다.</div>';
+      return;
+    }
+    el.innerHTML = schools.map(s => `
+      <div class="list-item">
+        <div class="list-item-info">
+          <div class="list-item-name"><svg width="15" height="15" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-school"/></svg>${s.name}</div>
+          <div class="list-item-sub">ID: ${s.id}${s.code ? ' · 코드: ' + s.code : ''}</div>
+        </div>
+        <div class="list-item-actions">
+          <button class="icon-action danger" title="삭제" onclick="deleteSchool('${s.id}', '${s.name}')"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function populateSchoolSelects() {
+    const opts = schools.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+    const addSchoolEl = document.getElementById('addSchool');
+    if (addSchoolEl) addSchoolEl.innerHTML = '<option value="">학교 선택</option>' + opts;
+    const addSchoolOptionsEl = document.getElementById('addSchoolOptions');
+    if (addSchoolOptionsEl) addSchoolOptionsEl.innerHTML = schools.map(s => `<option value="${s.name}">`).join('');
+  }
+
+  window.addSchool = async () => {
+    const name = document.getElementById('schoolName').value.trim();
+    const code = document.getElementById('schoolCode').value.trim();
+    if (!name) { toast('학교 이름을 입력하세요.', 'error'); return; }
+    showLoading(true);
+    try {
+      await addDoc(collection(db, 'schools'), { name, code, createdAt: serverTimestamp() });
+      document.getElementById('schoolName').value = '';
+      document.getElementById('schoolCode').value = '';
+      toast('학교가 추가되었습니다.', 'success');
+      await loadSchools();
+    } catch (e) {
+      toast('오류: ' + e.message, 'error');
+    }
+    showLoading(false);
+  };
+
+  window.deleteSchool = (id, name) => {
+    confirmDialog('학교 삭제', `"${name}"을(를) 삭제하시겠습니까? 관련 학생 데이터는 유지됩니다.`, async () => {
+      showLoading(true);
+      try {
+        await deleteDoc(doc(db, 'schools', id));
+        toast('삭제되었습니다.', 'success');
+        await loadSchools();
+      } catch (e) {
+        toast('오류: ' + e.message, 'error');
+      }
+      showLoading(false);
+    });
+  };
+
+  // ── CSV 업로드 ──
+  function parseCSVText(text) {
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    const start = /학교|학년|번호|이름/i.test(lines[0]) ? 1 : 0;
+    return lines.slice(start).map(line => {
+      const cols = line.split(',').map(c => c.trim().replace(/^"|"$/g, ''));
+      return { schoolName: cols[0]||'', grade: cols[1]||'', class: cols[2]||'', number: cols[3]||'', name: cols[4]||'' };
+    }).filter(r => r.name);
+  }
+
+  function renderCSVPreview() {
+    document.getElementById('csvPreviewInfo').innerText = `${csvData.length}명 미리보기`;
+    document.getElementById('csvTable').innerHTML = csvData.slice(0, 20).map(r =>
+      `<tr><td>${r.schoolName}</td><td>${r.grade}</td><td>${r.class}</td><td>${r.number}</td><td>${r.name}</td></tr>`
+    ).join('') + (csvData.length > 20 ? `<tr><td colspan="5" style="text-align:center;color:var(--sub);font-size:0.8rem;">... 외 ${csvData.length - 20}명</td></tr>` : '');
+    document.getElementById('csvPreview').classList.remove('hidden');
+  }
+
+  function isGarbled(text) {
+    // EUC-KR로 읽으면 한글이 깨져 UTF-8 대체문자(U+FFFD)나 'ï¿½' 패턴이 나옴
+    return /�|ï¿½/.test(text) || (text.includes('ê°') || text.includes('ë'));
+  }
+
+  window.handleCSV = (input) => {
+    const file = input.files[0];
+    if (!file) return;
+
+    // 1차: UTF-8로 시도
+    const readerUTF = new FileReader();
+    readerUTF.onload = (e) => {
+      const textUTF = e.target.result;
+      if (!isGarbled(textUTF)) {
+        csvData = parseCSVText(textUTF);
+        renderCSVPreview();
+      } else {
+        // 2차: EUC-KR로 재시도
+        const readerEUC = new FileReader();
+        readerEUC.onload = (e2) => {
+          csvData = parseCSVText(e2.target.result);
+          renderCSVPreview();
+        };
+        readerEUC.readAsText(file, 'EUC-KR');
+      }
+    };
+    readerUTF.readAsText(file, 'UTF-8');
+  };
+
+  window.cancelCSV = () => {
+    csvData = [];
+    document.getElementById('csvPreview').classList.add('hidden');
+    document.getElementById('csvFile').value = '';
+  };
+
+  window.uploadCSV = async () => {
+    if (!csvData.length) return;
+    showLoading(true);
+    try {
+      const batch = writeBatch(db);
+      csvData.forEach(r => {
+        const ref = doc(collection(db, 'students'));
+        batch.set(ref, {
+          name: r.name, schoolName: r.schoolName||'', grade: r.grade, class: r.class, number: r.number,
+          registered: false, password: null,
+          createdAt: serverTimestamp()
+        });
+      });
+      await batch.commit();
+      toast(`${csvData.length}명 업로드 완료!`, 'success');
+      cancelCSV();
+      await loadStudents();
+    } catch (e) {
+      toast('오류: ' + e.message, 'error');
+    }
+    showLoading(false);
+  };
+
+  // ── 학생 목록 ──
+  // 학생 캐시 (필터·드롭다운은 이 데이터에서 파생)
+  let allStudents = [];
+
+  // 입력된 데이터에서 distinct 값 추출 (숫자 우선 정렬)
+  function distinctSorted(vals) {
+    return [...new Set(vals.map(v => String(v||'').trim()).filter(Boolean))].sort((a,b) => {
+      const na = parseInt(a,10), nb = parseInt(b,10);
+      if (!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
+      return a.localeCompare(b, 'ko');
+    });
+  }
+  function setSelectOptions(sel, values) {
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">전체</option>' +
+      values.map(v => `<option value="${v.replace(/"/g,'&quot;')}">${v}</option>`).join('');
+    sel.value = values.includes(cur) ? cur : '';
+  }
+
+  window.loadStudents = async () => {
+    const snap = await getDocs(collection(db, 'students'));
+    allStudents = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    buildStudentFilters();
+    window.populateAddDatalists();
+    renderStudents();
+  };
+
+  function buildStudentFilters() {
+    setSelectOptions(document.getElementById('filterSchool'), distinctSorted(allStudents.map(s => s.schoolName)));
+    repopulateFilterGrade();
+    repopulateFilterClass();
+  }
+  function repopulateFilterGrade() {
+    const school = document.getElementById('filterSchool').value;
+    const grades = distinctSorted(
+      allStudents.filter(s => !school || (s.schoolName||'').trim() === school).map(s => nv(s.grade))
+    );
+    setSelectOptions(document.getElementById('filterGrade'), grades);
+  }
+  function repopulateFilterClass() {
+    const school = document.getElementById('filterSchool').value;
+    const grade  = document.getElementById('filterGrade').value;
+    const classes = distinctSorted(
+      allStudents
+        .filter(s => (!school || (s.schoolName||'').trim() === school) && (!grade || nv(s.grade) === grade))
+        .map(s => nv(s.class))
+    );
+    setSelectOptions(document.getElementById('filterClass'), classes);
+  }
+  window.onFilterSchoolChange = () => { repopulateFilterGrade(); repopulateFilterClass(); renderStudents(); };
+  window.onFilterGradeChange  = () => { repopulateFilterClass(); renderStudents(); };
+
+  // 개별 추가 폼: 선택한 학교의 기존 학년/반을 추천(datalist), 새 값 입력도 허용
+  window.populateAddDatalists = () => {
+    const school = document.getElementById('addSchoolName').value.trim();
+    const inScope = allStudents.filter(s => !school || (s.schoolName||'').trim() === school);
+    const grades  = distinctSorted(inScope.map(s => nv(s.grade)));
+    const classes = distinctSorted(inScope.map(s => nv(s.class)));
+    document.getElementById('addGradeOptions').innerHTML = grades.map(g => `<option value="${g.replace(/"/g,'&quot;')}">`).join('');
+    document.getElementById('addClassOptions').innerHTML = classes.map(c => `<option value="${c.replace(/"/g,'&quot;')}">`).join('');
+  };
+
+  function renderStudents() {
+    const school = document.getElementById('filterSchool').value;
+    const grade  = document.getElementById('filterGrade').value;
+    const cls    = document.getElementById('filterClass').value;
+
+    let students = allStudents.slice();
+    if (school) students = students.filter(s => (s.schoolName||'').trim() === school);
+    if (grade)  students = students.filter(s => nv(s.grade) === grade);
+    if (cls)    students = students.filter(s => nv(s.class) === cls);
+
+    students.sort((a,b) => {
+      const g = (parseInt(nv(a.grade))||0) - (parseInt(nv(b.grade))||0);
+      if (g !== 0) return g;
+      const c = (parseInt(nv(a.class))||0) - (parseInt(nv(b.class))||0);
+      if (c !== 0) return c;
+      return (parseInt(a.number)||0) - (parseInt(b.number)||0);
+    });
+
+    const el = document.getElementById('studentList');
+    if (!students.length) {
+      el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-people"/></svg></div>해당 조건의 학생이 없습니다.</div>';
+      return;
+    }
+    el.innerHTML = `
+      <div style="margin-bottom:10px; font-size:0.82rem; color:var(--sub); font-weight:700;">${students.length}명</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>학교</th><th>학년</th><th>반</th><th>번호</th><th>이름</th><th>상태</th><th></th></tr></thead>
+          <tbody>
+            ${students.map(s => `
+              <tr>
+                <td>${s.schoolName||''}</td>
+                <td>${s.grade||''}</td>
+                <td>${s.class||''}</td>
+                <td>${s.number||''}</td>
+                <td style="font-weight:700;">${s.name||''}</td>
+                <td>${s.registered
+                  ? '<span style="font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(34,197,94,0.15);color:#16a34a;">등록</span>'
+                  : '<span style="font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(120,120,120,0.12);color:var(--sub);">미등록</span>'}</td>
+                <td style="white-space:nowrap;">
+                  <button class="icon-action" title="수정" onclick="editStudent('${s.id}')"><svg width="16" height="16"><use href="#ic-edit"/></svg></button>
+                  <button class="icon-action danger" title="삭제" onclick="deleteStudent('${s.id}','${(s.name||'').replace(/'/g,"\\'")}')"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  // ── 학생 이름·비밀번호 수정 ──
+  window.editStudent = (id) => {
+    const s = allStudents.find(x => x.id === id);
+    if (!s) return;
+    document.getElementById('seId').value = id;
+    document.getElementById('seInfo').innerText = `${s.schoolName||''} ${nv(s.grade)}학년 ${nv(s.class)}반 ${s.number||''}번`;
+    document.getElementById('seName').value = s.name || '';
+    document.getElementById('sePw').value = s.password || '';
+    document.getElementById('seMaster').checked = !!s.isMaster;
+    document.getElementById('studentEditModal').classList.add('show');
+  };
+  window.closeStudentEdit = () => document.getElementById('studentEditModal').classList.remove('show');
+  window.saveStudentEdit = async () => {
+    const id = document.getElementById('seId').value;
+    const name = document.getElementById('seName').value.trim();
+    const pw = document.getElementById('sePw').value.trim();
+    const isMaster = document.getElementById('seMaster').checked;
+    if (!name) { toast('이름을 입력하세요.', 'error'); return; }
+    showLoading(true);
+    try {
+      await updateDoc(doc(db, 'students', id), {
+        name,
+        password: pw || null,
+        registered: !!pw,
+        isMaster: isMaster || false
+      });
+      const s = allStudents.find(x => x.id === id);
+      if (s) { s.name = name; s.password = pw || null; s.registered = !!pw; s.isMaster = isMaster || false; }
+      closeStudentEdit();
+      toast('저장되었습니다.', 'success');
+      renderStudents();
+    } catch (e) { toast('오류: ' + e.message, 'error'); }
+    showLoading(false);
+  };
+
+  window.deleteStudent = (id, name) => {
+    confirmDialog('학생 삭제', `"${name}"을(를) 삭제하시겠습니까?`, async () => {
+      showLoading(true);
+      try {
+        await deleteDoc(doc(db, 'students', id));
+        toast('삭제되었습니다.', 'success');
+        await loadStudents();
+      } catch (e) {
+        toast('오류: ' + e.message, 'error');
+      }
+      showLoading(false);
+    });
+  };
+
+  // ── 학생 개별 추가 ──
+  window.addStudent = async () => {
+    const schoolName = document.getElementById('addSchoolName').value.trim();
+    const name = document.getElementById('addName').value.trim();
+    const grade = document.getElementById('addGrade').value.trim();
+    const cls = document.getElementById('addClass').value.trim();
+    const number = document.getElementById('addNumber').value.trim();
+    const err = document.getElementById('addStudentErr');
+    err.innerText = '';
+    if (!name)   { err.innerText = '이름을 입력하세요.'; return; }
+    if (!grade)  { err.innerText = '학년을 입력하세요.'; return; }
+    if (!number) { err.innerText = '번호를 입력하세요.'; return; }
+    showLoading(true);
+    try {
+      await addDoc(collection(db, 'students'), {
+        schoolName, grade, class: cls, number, name,
+        registered: false, password: null,
+        createdAt: serverTimestamp()
+      });
+      toast(`${name} 추가 완료!`, 'success');
+      document.getElementById('addSchoolName').value = '';
+      document.getElementById('addName').value = '';
+      document.getElementById('addGrade').value = '';
+      document.getElementById('addClass').value = '';
+      document.getElementById('addNumber').value = '';
+      await loadStudents();
+    } catch(e) { err.innerText = '오류: ' + e.message; }
+    showLoading(false);
+  };
+
+  // ── 앱 설정 ──
+  // 학생 데이터 기반으로 학교 드롭다운 채우기 (등록된 학생의 학교명 = 자유텍스트)
+  window.loadAppStudents = async () => {
+    const snap = await getDocs(collection(db, 'students'));
+    _appStudents = snap.docs.map(d => d.data());
+    const names = [...new Set(_appStudents.map(s => (s.schoolName||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ko'));
+    const sel = document.getElementById('appSchool');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">학교 선택</option>' + names.map(n => `<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('');
+    if (cur && names.includes(cur)) sel.value = cur;
+  };
+
+  window.loadAppSettings = async () => {
+    const schoolName = document.getElementById('appSchool').value;
+    const grade = document.getElementById('appGrade').value;
+    const cls = document.getElementById('appClass').value;
+    const area = document.getElementById('appSettingsArea');
+
+    if (!schoolName) {
+      area.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-device"/></svg></div>학교를 선택하세요.</div>';
+      return;
+    }
+
+    showLoading(true);
+    try {
+      // 해당 학교 학생들의 실제 (학년·반) 조합만 추출 (없는 학급은 안 보이게)
+      const seen = new Set();
+      const combos = [];
+      _appStudents
+        .filter(s => (s.schoolName||'').trim() === schoolName)
+        .forEach(s => {
+          const g = nv(s.grade), c = nv(s.class);
+          if (!g || !c) return;
+          if (grade && nv(grade) !== g) return;
+          if (cls && nv(cls) !== c) return;
+          const k = g + '|' + c;
+          if (!seen.has(k)) { seen.add(k); combos.push({ grade: g, class: c }); }
+        });
+      combos.sort((a,b) => (parseInt(a.grade)||0)-(parseInt(b.grade)||0) || (parseInt(a.class)||0)-(parseInt(b.class)||0));
+
+      if (!combos.length) {
+        area.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-people"/></svg></div>이 학교에 등록된 학급(학생)이 없습니다.</div>';
+        showLoading(false);
+        return;
+      }
+
+      const schEnc = encodeURIComponent(schoolName);
+      const settingDocs = await Promise.all(combos.map(combo => {
+        const docId = appKey(schoolName, combo.grade, combo.class);
+        return getDoc(doc(db, 'appSettings', docId)).then(d => ({
+          ...combo, docId,
+          apps: d.exists() ? (d.data().apps || {}) : {}
+        }));
+      }));
+
+      area.innerHTML = settingDocs.map(s => `
+        <div class="card" id="card_${s.docId}">
+          <h2><span class="icon"><svg width="18" height="18"><use href="#ic-people"/></svg></span> ${s.grade}학년 ${s.class}반</h2>
+          <div class="app-grid">
+            ${APPS.map(app => `
+              <div class="app-card">
+                <div class="app-card-name" style="display:flex;align-items:center;gap:6px;"><svg width="15" height="15" style="color:var(--sub);flex-shrink:0;"><use href="#${app.icon}"/></svg>${app.name}</div>
+                <div class="app-card-id">${app.id}</div>
+                <label class="toggle" title="${app.name} 공개">
+                  <input type="checkbox" ${s.apps[app.id] ? 'checked' : ''}
+                    onchange="saveAppSetting('${s.docId}','${schEnc}','${s.grade}','${s.class}','${app.id}',this.checked)">
+                  <div class="toggle-track"></div>
+                </label>
+              </div>
+            `).join('')}
+          </div>
+          <div class="btn-row">
+            <button class="btn sm accent" onclick="enableAll('${s.docId}')">전체 공개</button>
+            <button class="btn sm danger" onclick="disableAll('${s.docId}')">전체 비공개</button>
+          </div>
+        </div>
+      `).join('');
+    } catch (e) {
+      toast('오류: ' + e.message, 'error');
+    }
+    showLoading(false);
+  };
+
+  window.saveAppSetting = async (docId, schoolEnc, grade, cls, appId, enabled) => {
+    try {
+      const schoolName = decodeURIComponent(schoolEnc);
+      const ref = doc(db, 'appSettings', docId);
+      const snap = await getDoc(ref);
+      const apps = snap.exists() ? (snap.data().apps || {}) : {};
+      apps[appId] = enabled;
+      await setDoc(ref, { schoolName, grade, class: cls, apps }, { merge: true });
+      toast(`${appId} ${enabled ? '공개' : '비공개'} 설정 저장`, 'success');
+    } catch (e) {
+      toast('저장 오류: ' + e.message, 'error');
+    }
+  };
+
+  window.enableAll = async (docId) => {
+    const card = document.getElementById('card_' + docId);
+    card.querySelectorAll('input[type=checkbox]').forEach(cb => { if (!cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change')); } });
+  };
+
+  window.disableAll = async (docId) => {
+    const card = document.getElementById('card_' + docId);
+    card.querySelectorAll('input[type=checkbox]').forEach(cb => { if (cb.checked) { cb.checked = false; cb.dispatchEvent(new Event('change')); } });
+  };
+
+  // ── 초기화 ──
+  async function init() {
+    showLoading(true);
+    try {
+      await loadSchools();
+    } catch(e) {
+      console.error('init error:', e);
+    }
+    showLoading(false);
+    // 다른 페이지의 와플에서 #섹션으로 들어온 경우 해당 섹션, 아니면 기본 학생 관리
+    const target = location.hash.replace('#','');
+    if (target && document.getElementById('section-' + target)) showSection(target);
+    else showSection('students');
+  }
+
+  init();
+
+  // ── 패들릿 수업 관리 ──
+  function renderSchoolCheckboxes(selectedIds) {
+    const wrap = document.getElementById('adm_school_boxes');
+    if (!wrap) return;
+    if (!schools.length) { wrap.innerHTML = '<span style="font-size:0.82rem;color:var(--sub);">학교를 먼저 등록하세요.</span>'; return; }
+    wrap.innerHTML = schools.map(s => `<label style="display:flex;align-items:center;gap:4px;font-size:0.88rem;"><input type="checkbox" class="adm-s" value="${s.id}"> ${s.name}</label>`).join('');
+    if (selectedIds?.length) document.querySelectorAll('.adm-s').forEach(i => i.checked = selectedIds.includes(i.value));
+  }
+
+  // ── 패들릿 수업 관리 (Firestore) ──
+
+  let _adminGradeFilter = 'all';
+  window.setAdminGradeTab = (g) => {
+    _adminGradeFilter = g;
+    document.querySelectorAll('.adm-grade-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.g === g));
+    document.querySelectorAll('.adm-grade-group').forEach(el => {
+      el.style.display = (g === 'all' || el.dataset.g === g) ? '' : 'none';
+    });
+  };
+  window.loadAdminList = async () => {
+    const data = await getDocs(query(collection(db, 'classes'), orderBy('createdAt', 'asc')));
+    const list = data.docs.map(d => ({ id: d.id, ...d.data() }));
+    const el = document.getElementById('adminList');
+    if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-board"/></svg></div>등록된 수업이 없습니다.</div>'; return; }
+    const gradeOrder = ['1','2','3'];
+    const groups = {};
+    list.forEach(c => {
+      const g = (c.grade && gradeOrder.includes(String(c.grade))) ? String(c.grade) : '기타';
+      if (!groups[g]) groups[g] = [];
+      groups[g].push(c);
+    });
+    const renderItem = c => `
+      <div class="list-item">
+        <div>
+          <div class="list-item-name"><svg width="15" height="15" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-board"/></svg>${c.name}</div>
+          <div class="list-item-sub">${c.schoolName||'관산중학교'} · ${!c.grade ? '학교 전체' : !c.group ? c.grade+'학년 전체' : c.grade+'학년 '+c.group+'반'} <span style="font-size:0.75rem;padding:2px 7px;border-radius:6px;font-weight:700;background:${c.status==='ON'?'rgba(34,197,94,0.15)':'rgba(239,68,68,0.12)'};color:${c.status==='ON'?'#16a34a':'#ef4444'}">${c.status}</span></div>
+        </div>
+        <div class="list-item-actions" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <select onchange="toggleClassStatus('${c.id}',this.value)" style="font-size:0.78rem;padding:4px 8px;border-radius:8px;border:1.5px solid var(--border-card);background:var(--glass);cursor:pointer;font-weight:700;color:${c.status==='ON'?'#22c55e':'#ef4444'}">
+            <option value="ON" ${c.status==='ON'?'selected':''}>ON</option>
+            <option value="OFF" ${c.status!=='ON'?'selected':''}>OFF</option>
+          </select>
+          <button class="icon-action" title="수정" onclick='editAdminUI(${JSON.stringify(c).replace(/'/g,"&#39;")})'><svg width="16" height="16"><use href="#ic-edit"/></svg></button>
+          <button class="btn ghost sm" style="color:var(--accent)" onclick='openTranslateModal(${JSON.stringify(c).replace(/'/g,"&#39;")})'>번역</button>
+          <button class="icon-action danger" title="삭제" onclick="delAdminClass('${c.id}')"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
+        </div>
+      </div>`;
+    const orderedKeys = [...gradeOrder.filter(g => groups[g]), ...(groups['기타'] ? ['기타'] : [])];
+    const tabKeys = ['all', ...orderedKeys];
+    const tabLabels = {all:'전체', '1':'1학년', '2':'2학년', '3':'3학년', '기타':'기타'};
+    const tabs = tabKeys.map(g => `<button class="adm-grade-tab btn ghost sm${_adminGradeFilter===g?' active':''}" data-g="${g}" onclick="setAdminGradeTab('${g}')" style="margin-right:4px;margin-bottom:8px;">${tabLabels[g]||g}</button>`).join('');
+    const content = orderedKeys.map(g => `
+      <div class="adm-grade-group" data-g="${g}" style="${_adminGradeFilter!=='all'&&_adminGradeFilter!==g?'display:none':''}">
+        <div style="margin-bottom:4px;margin-top:4px;font-size:0.8rem;font-weight:700;color:var(--sub);padding:0 2px;">${tabLabels[g]||g}</div>
+        ${groups[g].map(renderItem).join('')}
+      </div>`).join('');
+    el.innerHTML = `<div style="margin-bottom:4px;">${tabs}</div>${content}`;
+  };
+
+  // ── 패들릿 배정 드롭다운 (학교/학년/반) ──
+  let _padStudents = null;
+  async function ensurePadStudents() {
+    if (!_padStudents) {
+      const snap = await getDocs(collection(db, 'students'));
+      _padStudents = snap.docs.map(d => d.data());
+    }
+    return _padStudents;
+  }
+  function fillSelect(id, values, placeholder, keep) {
+    const sel = document.getElementById(id);
+    const cur = sel.value;
+    sel.innerHTML = `<option value="">${placeholder}</option>` +
+      values.map(v => `<option value="${String(v).replace(/"/g,'&quot;')}">${v}</option>`).join('');
+    sel.value = (keep && values.map(String).includes(cur)) ? cur : '';
+  }
+  // 학생 명렬에 실제 입력된 값만 옵션으로 (임의 범위 없음)
+  function padGradeOptions(school) {
+    const ds = (_padStudents||[]).filter(s => !school || (s.schoolName||'').trim() === school);
+    return distinctSorted(ds.map(s => nv(s.grade)));
+  }
+  function padClassOptions(school, grade) {
+    const ds = (_padStudents||[]).filter(s => (!school || (s.schoolName||'').trim() === school) && (!grade || nv(s.grade) === grade));
+    return distinctSorted(ds.map(s => nv(s.class)));
+  }
+  async function buildPaddletDropdowns() {
+    await ensurePadStudents();
+    // 학교도 학생 명렬에 있는 학교만
+    const names = distinctSorted((_padStudents||[]).map(s => s.schoolName));
+    fillSelect('adm_school', names, '학교 선택', true);
+    onAdmSchoolChange();
+    renderPending();
+  }
+
+  // 배정 대기 학급 목록 (저장 누르기 전까지 staging)
+  let _pending = [];
+  function renderPending() {
+    const el = document.getElementById('adm_pending');
+    if (!el) return;
+    if (!_pending.length) {
+      el.innerHTML = '<span style="font-size:0.8rem;color:var(--sub);">담은 학급이 없습니다. 학교·학년·반 선택 후 [＋ 담기]</span>';
+      return;
+    }
+    el.innerHTML = _pending.map((p,i) => {
+      const label = !p.grade ? `${p.school} 전체` : !p.group ? `${p.school} ${p.grade}학년 전체` : `${p.school} ${p.grade}-${p.group}`;
+      return `<span style="display:inline-flex;align-items:center;gap:7px;background:var(--accent-light);color:var(--accent);border:1px solid rgba(42,92,230,0.25);border-radius:50px;padding:5px 12px;font-size:0.82rem;font-weight:700;">${label}<span onclick="removePending(${i})" style="cursor:pointer;opacity:0.7;display:inline-flex;"><svg width="11" height="11"><use href="#ic-close"/></svg></span></span>`;
+    }).join('');
+  }
+  window.addPendingClass = () => {
+    const school = document.getElementById('adm_school').value.trim();
+    const gradeRaw = document.getElementById('adm_grade').value;
+    const groupRaw = document.getElementById('adm_class').value;
+    if (!school || !gradeRaw) { toast('학교·학년을 선택하세요 (학년은 "전체" 가능).', 'error'); return; }
+    if (gradeRaw !== '전체' && !groupRaw) { toast('반을 선택하세요 (반은 "전체" 가능).', 'error'); return; }
+    const grade = gradeRaw === '전체' ? '' : nv(gradeRaw);
+    const group = (gradeRaw === '전체' || groupRaw === '전체') ? '' : nv(groupRaw);
+    if (_pending.some(p => p.school===school && p.grade===grade && p.group===group)) { toast('이미 담은 범위입니다.', 'error'); return; }
+    _pending.push({ school, grade, group });
+    renderPending();
+    const c = document.getElementById('adm_class'); c.value = ''; c.focus();
+  };
+  window.removePending = (i) => { _pending.splice(i,1); renderPending(); };
+  window.onAdmSchoolChange = () => {
+    const school = document.getElementById('adm_school').value;
+    fillSelect('adm_grade', ['전체', ...padGradeOptions(school)], '학년', true);
+    onAdmGradeChange();
+  };
+  window.onAdmGradeChange = () => {
+    const school = document.getElementById('adm_school').value;
+    const grade = document.getElementById('adm_grade').value;
+    const classSel = document.getElementById('adm_class');
+    if (grade === '전체') {
+      classSel.innerHTML = '<option value="전체">전체</option>';
+      classSel.value = '전체';
+      classSel.disabled = true;
+    } else {
+      classSel.disabled = false;
+      fillSelect('adm_class', ['전체', ...padClassOptions(school, grade)], '반', true);
+    }
+  };
+
+  window.saveAdminClass = async () => {
+    const id = document.getElementById('adm_docId').value;
+    const name = document.getElementById('adm_name').value.trim();
+    const desc = document.getElementById('adm_desc').value;
+    const ex = document.getElementById('adm_ex').value;
+    const popup = document.getElementById('adm_popup').value;
+
+    if (!name) { toast('수업명을 입력하세요.', 'error'); return; }
+
+    showLoading(true);
+    try {
+      // 수업 설명/안내 자동 번역 (zh/ru/en)
+      const tr = await translateClassFields(name, desc, ex);
+      if (id) {
+        // 수정 — 단일 문서 (현재 드롭다운 값 사용)
+        const school = document.getElementById('adm_school').value.trim();
+        const gradeRaw = document.getElementById('adm_grade').value;
+        const groupRaw = document.getElementById('adm_class').value;
+        if (!school || !gradeRaw) { toast('학교·학년을 선택하세요 (학년은 "전체" 가능).', 'error'); showLoading(false); return; }
+        if (gradeRaw !== '전체' && !groupRaw) { toast('반을 선택하세요 (반은 "전체" 가능).', 'error'); showLoading(false); return; }
+        const grade = gradeRaw === '전체' ? '' : nv(gradeRaw);
+        const group = (gradeRaw === '전체' || groupRaw === '전체') ? '' : nv(groupRaw);
+        await updateDoc(doc(db, 'classes', id), { name, schoolName: school, grade, group, desc, ex, popup, ...tr });
+        toast('수정되었습니다.', 'success');
+      } else {
+        // 저장 — 담아둔 모든 학급에 일괄 배정
+        if (!_pending.length) { toast('학급을 담은 뒤 저장하세요.', 'error'); showLoading(false); return; }
+        const batch = writeBatch(db);
+        _pending.forEach(p => {
+          const ref = doc(collection(db, 'classes'));
+          batch.set(ref, {
+            name, schoolName: p.school, grade: p.grade, group: p.group, desc, ex, popup, ...tr,
+            status: 'ON', createdAt: serverTimestamp()
+          });
+        });
+        await batch.commit();
+        toast(`${_pending.length}개 학급에 배정되었습니다.`, 'success');
+      }
+      window.resetAdminForm();
+      await window.loadAdminList();
+    } catch(e) { toast('오류: ' + e.message, 'error'); }
+    showLoading(false);
+  };
+
+  window.toggleClassStatus = async (id, status) => {
+    showLoading(true);
+    await updateDoc(doc(db, 'classes', id), { status });
+    await window.loadAdminList();
+    showLoading(false);
+  };
+
+  window.editAdminUI = async (c) => {
+    document.getElementById('adm_docId').value = c.id;
+    document.getElementById('adm_name').value = c.name;
+    document.getElementById('adm_desc').value = c.desc||'';
+    document.getElementById('adm_ex').value = c.ex||'';
+    document.getElementById('adm_popup').value = c.popup||'';
+    _pending = []; renderPending();   // 수정은 단일 문서라 담기 목록 미사용
+    // 드롭다운 구성 후 값 지정 (기존 수업은 학교 없으면 관산중학교로)
+    await buildPaddletDropdowns();
+    const school = (c.schoolName || '관산중학교');
+    const schoolSel = document.getElementById('adm_school');
+    if (![...schoolSel.options].some(o => o.value === school)) {
+      schoolSel.insertAdjacentHTML('beforeend', `<option value="${school.replace(/"/g,'&quot;')}">${school}</option>`);
+    }
+    schoolSel.value = school;
+    onAdmSchoolChange();
+    const gradeSel = document.getElementById('adm_grade'); const g = nv(c.grade||'') || '전체';
+    if (g !== '전체' && ![...gradeSel.options].some(o => o.value === g)) gradeSel.insertAdjacentHTML('beforeend', `<option value="${g}">${g}</option>`);
+    gradeSel.value = g; onAdmGradeChange();
+    const classSel = document.getElementById('adm_class'); const cl = nv(c.group||'') || '전체';
+    if (cl !== '전체' && ![...classSel.options].some(o => o.value === cl)) classSel.insertAdjacentHTML('beforeend', `<option value="${cl}">${cl}</option>`);
+    if (!classSel.disabled) classSel.value = cl;
+    const info = document.getElementById('adm_edit_info');
+    info.style.display='block'; info.innerText=`수정 중: ${c.name}`;
+    document.getElementById('adm_cancel_btn').classList.remove('hidden');
+  };
+
+  window.delAdminClass = (id) => {
+    confirmDialog('수업 삭제', '이 수업을 삭제하시겠습니까?', async () => {
+      showLoading(true);
+      await deleteDoc(doc(db, 'classes', id));
+      await window.loadAdminList();
+      showLoading(false);
+    });
+  };
+
+  window.resetAdminForm = () => {
+    document.getElementById('adm_docId').value='';
+    document.getElementById('adm_name').value='';
+    document.getElementById('adm_desc').value='';
+    document.getElementById('adm_ex').value='';
+    document.getElementById('adm_popup').value='';
+    document.getElementById('adm_grade').value='';
+    document.getElementById('adm_class').value='';
+    _pending = [];
+    renderPending();
+    document.getElementById('adm_edit_info').style.display='none';
+    document.getElementById('adm_cancel_btn').classList.add('hidden');
+  };
+
+  // ── 시험 관리 ──
+  let exams = [];
+  let activeExamSubTab = 'list';
+
+  window.showExamTab = (tab) => {
+    activeExamSubTab = tab;
+    ['list','questions','assign','results','legacy'].forEach(t => {
+      document.getElementById('examTab-'+t).classList.toggle('hidden', t !== tab);
+      const btn = document.getElementById('examSubTab-'+t);
+      if (btn) { btn.classList.toggle('accent', t === tab); btn.classList.toggle('ghost', t !== tab); }
+    });
+    if (tab === 'questions') populateExamSelects();
+    if (tab === 'assign') { populateExamSelects(); loadAssignList(); onAsGradeChange(); }
+    if (tab === 'results') { loadAssignSelect(); }
+  };
+
+  async function initExamSection() {
+    await loadExamList();
+    window.showExamTab('list');
+  }
+
+  async function loadExamList() {
+    const snap = await getDocs(query(collection(db, 'exams'), orderBy('createdAt', 'desc')));
+    exams = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderExamList();
+  }
+
+  function renderExamList() {
+    const el = document.getElementById('examList');
+    if (!exams.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-clipboard"/></svg></div>등록된 시험이 없습니다.</div>'; return; }
+    el.innerHTML = exams.map(e => `
+      <div class="list-item">
+        <div class="list-item-info">
+          <div class="list-item-name"><svg width="15" height="15" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-clipboard"/></svg>${e.title}</div>
+          ${e.desc ? `<div class="list-item-sub">${e.desc}</div>` : ''}
+        </div>
+        <div class="list-item-actions">
+          <button class="icon-action" title="수정" onclick='editExam(${JSON.stringify({id:e.id,title:e.title,desc:e.desc||""})})'><svg width="16" height="16"><use href="#ic-edit"/></svg></button>
+          <button class="icon-action danger" title="삭제" onclick="deleteExam('${e.id}','${e.title.replace(/'/g,"\\'")}')"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
+        </div>
+      </div>`).join('');
+  }
+
+  async function populateExamSelects() {
+    ['q_examId','qlist_examId','as_examId'].forEach(id => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      const cur = sel.value;
+      sel.innerHTML = '<option value="">시험 선택</option>' + exams.map(e => `<option value="${e.id}" ${e.id===cur?'selected':''}>${e.title}</option>`).join('');
+    });
+    const asSch = document.getElementById('as_schoolName');
+    if (asSch) {
+      let schools = _appStudents.map(s=>s.schoolName).filter(Boolean);
+      if (!schools.length) {
+        // sessionStorage 캐시 먼저 확인
+        const cached = sessionStorage.getItem('_ohStudentSchools');
+        if (cached) {
+          schools = JSON.parse(cached);
+        } else {
+          try {
+            const snap = await getDocs(collection(db, 'students'));
+            _appStudents = snap.docs.map(d=>d.data());
+            schools = _appStudents.map(s=>s.schoolName).filter(Boolean);
+            sessionStorage.setItem('_ohStudentSchools', JSON.stringify([...new Set(schools)].sort()));
+          } catch(e) {}
+        }
+      }
+      const uniqueSchools = [...new Set(schools)].sort();
+      asSch.innerHTML = '<option value="">전체 학교</option>' + uniqueSchools.map(s=>`<option value="${s}">${s}</option>`).join('');
+    }
+  }
+
+  window.saveExam = async () => {
+    const docId = document.getElementById('exam_docId').value;
+    const title = document.getElementById('exam_title').value.trim();
+    if (!title) { toast('시험 제목을 입력하세요.', 'error'); return; }
+    const data = { title, desc: document.getElementById('exam_desc').value.trim() };
+    showLoading(true);
+    try {
+      if (docId) await updateDoc(doc(db,'exams',docId), data);
+      else await addDoc(collection(db,'exams'), { ...data, createdAt: serverTimestamp() });
+      toast('저장되었습니다.', 'success');
+      resetExamForm();
+      await loadExamList();
+    } catch(e) { toast('오류: '+e.message, 'error'); }
+    showLoading(false);
+  };
+
+  window.editExam = (e) => {
+    document.getElementById('exam_docId').value = e.id;
+    document.getElementById('exam_title').value = e.title;
+    document.getElementById('exam_desc').value = e.desc || '';
+    document.getElementById('exam_cancel_btn').classList.remove('hidden');
+  };
+
+  window.deleteExam = (id, title) => {
+    confirmDialog('시험 삭제', `"${title}"을(를) 삭제하시겠습니까?`, async () => {
+      showLoading(true);
+      await deleteDoc(doc(db,'exams',id));
+      await loadExamList();
+      showLoading(false);
+    });
+  };
+
+  window.resetExamForm = () => {
+    document.getElementById('exam_docId').value = '';
+    document.getElementById('exam_title').value = '';
+    document.getElementById('exam_desc').value = '';
+    document.getElementById('exam_cancel_btn').classList.add('hidden');
+  };
+
+  // ── 문제 관리 ──
+  let _testCases = [];
+  let _qCache = {};
+
+  const renderTestCases = (tcs) => {
+    _testCases = tcs || [];
+    const el = document.getElementById('q_tcList');
+    if (!el) return;
+    if (!_testCases.length) { el.innerHTML = '<div style="color:var(--sub);font-size:0.82rem;">테스트케이스 없음</div>'; return; }
+    el.innerHTML = _testCases.map((tc, i) => `
+      <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px;">
+        <div style="font-size:0.8rem;"><span style="color:var(--sub);">입력</span><br><pre style="margin:2px 0;font-size:0.82rem;white-space:pre-wrap;">${tc.input||'(없음)'}</pre></div>
+        <div style="font-size:0.8rem;"><span style="color:var(--sub);">출력</span><br><pre style="margin:2px 0;font-size:0.82rem;white-space:pre-wrap;">${tc.expected||''}</pre></div>
+        <button class="btn ghost sm" onclick="removeTestCase(${i})" style="color:#e74c3c;"><svg width="12" height="12"><use href="#ic-close"/></svg></button>
+      </div>`).join('');
+  };
+
+  window.addTestCase = () => {
+    const inp = document.getElementById('q_tcInput').value;
+    const exp = document.getElementById('q_tcExpected').value;
+    if (!exp) { toast('예상 출력을 입력하세요.', 'error'); return; }
+    _testCases.push({ input: inp, expected: exp });
+    renderTestCases(_testCases);
+    document.getElementById('q_tcInput').value = '';
+    document.getElementById('q_tcExpected').value = '';
+  };
+
+  window.removeTestCase = (i) => {
+    _testCases.splice(i, 1);
+    renderTestCases(_testCases);
+  };
+
+  window.toggleQTypeFields = () => {
+    const type = document.getElementById('q_type').value;
+    document.getElementById('qf_mc').classList.toggle('hidden', type !== 'mc');
+    document.getElementById('qf_sa').classList.toggle('hidden', type !== 'sa');
+    document.getElementById('qf_code').classList.toggle('hidden', type !== 'code');
+  };
+
+  window.loadQList = async (forceId) => {
+    // forceId 우선, 없으면 qlist_examId, 없으면 q_examId
+    const examId = forceId || document.getElementById('qlist_examId')?.value || document.getElementById('q_examId')?.value;
+    if (!examId) return;
+    const a = document.getElementById('q_examId'); if (a) a.value = examId;
+    const b = document.getElementById('qlist_examId'); if (b) b.value = examId;
+    const el = document.getElementById('qList');
+    try {
+    let snap;
+    try {
+      snap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId), orderBy('order','asc')));
+    } catch(e) {
+      // composite index 없을 때 fallback
+      snap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId)));
+    }
+    const qs = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.order||0)-(b.order||0));
+    _qCache = {};
+    qs.forEach(q => { _qCache[q.id] = q; });
+    if (!qs.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-help"/></svg></div>문제가 없습니다.</div>'; return; }
+    const typeLabels = { mc:'객관식', sa:'단답형', code:'코딩' };
+    el.innerHTML = qs.map((q,i) => `
+      <div class="list-item">
+        <div class="list-item-info">
+          <div class="list-item-name">Q${i+1}. [${typeLabels[q.type]||q.type}] ${q.title||''}</div>
+          <div class="list-item-sub">${q.points||0}점 · 순서:${q.order}</div>
+        </div>
+        <div class="list-item-actions">
+          <button class="icon-action" title="수정" onclick="editQuestionById('${q.id}')"><svg width="16" height="16"><use href="#ic-edit"/></svg></button>
+          <button class="icon-action danger" title="삭제" onclick="deleteQuestion('${q.id}')"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
+        </div>
+      </div>`).join('');
+    } catch(e) { el.innerHTML = `<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-alert"/></svg></div>${e.message}</div>`; }
+  };
+
+  window.saveQuestion = async () => {
+    const examId = document.getElementById('q_examId').value;
+    if (!examId) { toast('시험을 선택하세요.', 'error'); return; }
+    const docId = document.getElementById('q_docId').value;
+    const type = document.getElementById('q_type').value;
+    const title = document.getElementById('q_title').value.trim();
+    if (!title) { toast('문제 제목을 입력하세요.', 'error'); return; }
+    // 순서 자동 계산 (신규 문제일 때)
+    let orderVal = parseInt(document.getElementById('q_order').value) || 0;
+    if (!docId && !orderVal) {
+      try {
+        const countSnap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId)));
+        orderVal = countSnap.size + 1;
+      } catch(e) { orderVal = 1; }
+    }
+    const data = {
+      examId, type,
+      title,
+      content: document.getElementById('q_content').value.trim(),
+      imageUrl: document.getElementById('q_imageUrl').value.trim(),
+      points: parseInt(document.getElementById('q_points').value) || 10,
+      order: orderVal || 1,
+    };
+    if (type === 'mc') {
+      data.options = document.getElementById('q_options').value.split('\n').map(s=>s.trim()).filter(Boolean);
+      data.answer = String(parseInt(document.getElementById('q_answer_mc').value) || 0);
+    } else if (type === 'sa') {
+      data.answer = document.getElementById('q_answer_sa').value.trim();
+    } else if (type === 'code') {
+      data.inDesc = document.getElementById('q_inDesc').value.trim();
+      data.outDesc = document.getElementById('q_outDesc').value.trim();
+      data.inEx = document.getElementById('q_inEx').value.trim();
+      data.outEx = document.getElementById('q_outEx').value.trim();
+      data.boilerplate = document.getElementById('q_boilerplate').value;
+      data.testCases = _testCases.slice();
+    }
+    // 자동번역
+    if (!data.titleZh) {
+      try {
+        const toTr = [data.title, data.content].filter(Boolean);
+        const optsKo = type === 'mc' ? (data.options || []) : [];
+        const allTexts = [...toTr, ...optsKo];
+        if (allTexts.length) {
+          const langCodes = [['zh-cn','Zh'],['ru','Ru'],['en','En']];
+          await Promise.all(langCodes.map(async ([code, cap]) => {
+            const res = await translateTexts(allTexts, code);
+            let i = 0;
+            if (data.title) data['title'+cap] = res[i++] || '';
+            if (data.content) data['content'+cap] = res[i++] || '';
+            if (optsKo.length) data['options'+cap] = res.slice(i);
+          }));
+        }
+      } catch(e) { console.error('auto-translate question:', e); }
+    }
+    showLoading(true);
+    try {
+      if (docId) await updateDoc(doc(db,'exam_questions',docId), data);
+      else await addDoc(collection(db,'exam_questions'), { ...data, createdAt: serverTimestamp() });
+      toast('저장되었습니다.', 'success');
+      const savedExamId = examId;
+      resetQForm();
+      await loadQList(savedExamId);
+    } catch(e) { toast('오류: '+e.message, 'error'); }
+    showLoading(false);
+  };
+
+  window.editQuestionById = (id) => {
+    const q = _qCache[id];
+    if (!q) { toast('문제를 찾을 수 없습니다.', 'error'); return; }
+    window.editQuestion(q);
+  };
+
+  window.editQuestion = (q) => {
+    document.getElementById('q_docId').value = q.id;
+    document.getElementById('q_examId').value = q.examId;
+    document.getElementById('q_type').value = q.type;
+    document.getElementById('q_title').value = q.title||'';
+    document.getElementById('q_content').value = q.content||'';
+    document.getElementById('q_imageUrl').value = q.imageUrl||'';
+    document.getElementById('q_points').value = q.points||10;
+    document.getElementById('q_order').value = q.order||1;
+    if (q.type === 'mc') {
+      document.getElementById('q_options').value = (q.options||[]).join('\n');
+      updateMcAnswerSelect();
+      document.getElementById('q_answer_mc').value = q.answer||'0';
+    } else if (q.type === 'sa') {
+      document.getElementById('q_answer_sa').value = q.answer||'';
+    } else if (q.type === 'code') {
+      document.getElementById('q_inDesc').value = q.inDesc||'';
+      document.getElementById('q_outDesc').value = q.outDesc||'';
+      document.getElementById('q_inEx').value = q.inEx||'';
+      document.getElementById('q_outEx').value = q.outEx||'';
+      document.getElementById('q_boilerplate').value = q.boilerplate||'';
+      renderTestCases(q.testCases||[]);
+    }
+    window.toggleQTypeFields();
+    document.getElementById('q_cancel_btn').classList.remove('hidden');
+    window.showExamTab('questions');
+    document.getElementById('q_title').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
+  window.deleteQuestion = (id) => {
+    confirmDialog('문제 삭제', '이 문제를 삭제하시겠습니까?', async () => {
+      showLoading(true);
+      await deleteDoc(doc(db,'exam_questions',id));
+      await loadQList();
+      showLoading(false);
+    });
+  };
+
+  window.updateMcAnswerSelect = () => {
+    const opts = document.getElementById('q_options').value.split('\n').map(s=>s.trim()).filter(Boolean);
+    const sel = document.getElementById('q_answer_mc');
+    const prev = sel.value;
+    sel.innerHTML = opts.length
+      ? opts.map((o,i) => `<option value="${i}">${i+1}번. ${o}</option>`).join('')
+      : '<option value="0">선택지를 먼저 입력하세요</option>';
+    if (prev && parseInt(prev) < opts.length) sel.value = prev;
+  };
+
+  window.resetQForm = () => {
+    ['q_docId','q_title','q_content','q_imageUrl','q_options','q_answer_sa','q_inDesc','q_outDesc','q_inEx','q_outEx','q_boilerplate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    document.getElementById('q_answer_mc').innerHTML = '<option value="0">선택지를 먼저 입력하세요</option>';
+    renderTestCases([]);
+    document.getElementById('q_points').value='10';
+    document.getElementById('q_order').value='1';
+    document.getElementById('q_type').value='mc';
+    window.toggleQTypeFields();
+    document.getElementById('q_cancel_btn').classList.add('hidden');
+  };
+
+  // ── 배정 관리 ──
+  window.onAsGradeChange = () => {
+    const grade = document.getElementById('as_grade').value;
+    const classSel = document.getElementById('as_class');
+    if (!grade) { classSel.value = ''; classSel.disabled = true; }
+    else classSel.disabled = false;
+  };
+
+  let _pendingAs = [];
+  function renderAsPending() {
+    const el = document.getElementById('as_pending');
+    if (!_pendingAs.length) {
+      el.innerHTML = '<span style="font-size:0.8rem;color:var(--sub);">담은 배정이 없습니다. 학교·학년·반 선택 후 [＋ 담기] (학년·반은 "전체" 가능)</span>';
+      return;
+    }
+    el.innerHTML = _pendingAs.map((p,i) => {
+      const label = `${p.schoolName||'전체 학교'} ${!p.grade ? '전체 학년' : (!p.class ? p.grade+'학년 전체' : p.grade+'학년 '+p.class+'반')}`;
+      return `<span style="display:inline-flex;align-items:center;gap:7px;background:var(--accent-light);color:var(--accent);border:1px solid rgba(42,92,230,0.25);border-radius:50px;padding:5px 12px;font-size:0.82rem;font-weight:700;">${label}<span onclick="removePendingAs(${i})" style="cursor:pointer;opacity:0.7;display:inline-flex;"><svg width="11" height="11"><use href="#ic-close"/></svg></span></span>`;
+    }).join('');
+  }
+  window.removePendingAs = (i) => { _pendingAs.splice(i,1); renderAsPending(); };
+  window.addPendingAssign = () => {
+    const schoolName = document.getElementById('as_schoolName')?.value || '';
+    const grade = document.getElementById('as_grade').value;
+    const cls = document.getElementById('as_class').value;
+    if (_pendingAs.some(p => p.schoolName===schoolName && p.grade===grade && p.class===cls)) { toast('이미 담은 범위입니다.', 'error'); return; }
+    _pendingAs.push({ schoolName, grade, class: cls });
+    renderAsPending();
+  };
+
+  window.saveAssignment = async () => {
+    const docId = document.getElementById('as_docId').value;
+    const examId = document.getElementById('as_examId').value;
+    const code = document.getElementById('as_code').value.trim().toUpperCase();
+    const duration = parseInt(document.getElementById('as_duration').value) || 0;
+    if (!examId) { toast('시험을 선택하세요.', 'error'); return; }
+    if (!code) { toast('시험 코드를 입력하세요.', 'error'); return; }
+    showLoading(true);
+    try {
+      if (docId) {
+        // 수정 — 단일 문서 (현재 드롭다운 값 사용)
+        const grade = document.getElementById('as_grade').value;
+        const cls = document.getElementById('as_class').value;
+        const schoolName = document.getElementById('as_schoolName')?.value || '';
+        const data = { examId, code, grade, class: cls, schoolName, duration, status: 'ON' };
+        await updateDoc(doc(db,'exam_assignments',docId), data);
+      } else {
+        // 저장 — 담아둔 모든 범위에 동일한 코드로 일괄 배정
+        if (!_pendingAs.length) { toast('배정 범위를 담은 뒤 저장하세요.', 'error'); showLoading(false); return; }
+        const batch = writeBatch(db);
+        _pendingAs.forEach(p => {
+          const ref = doc(collection(db,'exam_assignments'));
+          batch.set(ref, {
+            examId, code, grade: p.grade, class: p.class, schoolName: p.schoolName, duration, status: 'ON',
+            createdAt: serverTimestamp(),
+          });
+        });
+        await batch.commit();
+        _pendingAs = []; renderAsPending();
+      }
+      toast('저장되었습니다.', 'success');
+      resetAsForm();
+      await loadAssignList();
+    } catch(e) { toast('오류: '+e.message, 'error'); }
+    showLoading(false);
+  };
+
+  async function loadAssignList() {
+    const snap = await getDocs(query(collection(db,'exam_assignments'), orderBy('createdAt','desc')));
+    const list = snap.docs.map(d=>({id:d.id,...d.data()}));
+    const el = document.getElementById('assignList');
+    if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-target"/></svg></div>등록된 배정이 없습니다.</div>'; return; }
+    el.innerHTML = list.map(a => {
+      const exam = exams.find(e=>e.id===a.examId);
+      return `<div class="list-item">
+        <div class="list-item-info">
+          <div class="list-item-name"><svg width="15" height="15" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-target"/></svg><b style="letter-spacing:0.1em;">${a.code}</b> — ${exam?.title||a.examId}</div>
+          <div class="list-item-sub">${a.schoolName?a.schoolName+' · ':'전체 학교 · '}${!a.grade ? '전체 학년' : (!a.class ? a.grade+'학년 전체' : a.grade+'학년 '+a.class+'반')} · ${a.duration>0?a.duration+'분':'무제한'}</div>
+        </div>
+        <div class="list-item-actions" style="display:flex;gap:8px;align-items:center;">
+          <select onchange="toggleAsStatus('${a.id}',this.value)" style="font-size:0.78rem;padding:4px 8px;border-radius:8px;border:1.5px solid var(--border-card);background:var(--glass);cursor:pointer;font-weight:700;color:${a.status==='ON'?'#22c55e':'#ef4444'}">
+            <option value="ON" ${a.status==='ON'?'selected':''}>ON</option>
+            <option value="OFF" ${a.status==='OFF'?'selected':''}>OFF</option>
+          </select>
+          <button class="icon-action danger" title="삭제" onclick="deleteAssign('${a.id}')"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  window.toggleAsStatus = async (id, status) => {
+    showLoading(true);
+    await updateDoc(doc(db,'exam_assignments',id), { status });
+    await loadAssignList();
+    showLoading(false);
+  };
+
+  window.deleteAssign = (id) => {
+    confirmDialog('배정 삭제', '이 배정을 삭제하시겠습니까?', async () => {
+      showLoading(true);
+      await deleteDoc(doc(db,'exam_assignments',id));
+      await loadAssignList();
+      showLoading(false);
+    });
+  };
+
+  window.resetAsForm = () => {
+    document.getElementById('as_docId').value='';
+    document.getElementById('as_examId').value='';
+    document.getElementById('as_code').value='';
+    document.getElementById('as_duration').value='45';
+    const asSchEl = document.getElementById('as_schoolName'); if(asSchEl) asSchEl.value='';
+    document.getElementById('as_grade').value='';
+    onAsGradeChange();
+    document.getElementById('as_cancel_btn').classList.add('hidden');
+    _pendingAs = []; renderAsPending();
+  };
+
+  // ── 결과 조회 ──
+  async function loadAssignSelect() {
+    let snap;
+    try {
+      snap = await getDocs(query(collection(db,'exam_assignments'), orderBy('createdAt','desc')));
+    } catch(e) {
+      snap = await getDocs(collection(db,'exam_assignments'));
+    }
+    const list = snap.docs.map(d=>({id:d.id,...d.data()}));
+    const sel = document.getElementById('res_asId');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">배정을 선택하세요</option>' + list.map(a => {
+      const exam = exams.find(e=>e.id===a.examId);
+      const scopeLabel = !a.grade ? '전체 학년' : (!a.class ? a.grade+'학년 전체' : a.grade+'학년'+a.class+'반');
+      return `<option value="${a.id}" ${a.id===cur?'selected':''}>${a.code} — ${exam?.title||''} (${scopeLabel})</option>`;
+    }).join('');
+  }
+
+  window.loadResults = async () => {
+    const asId = document.getElementById('res_asId').value;
+    const el = document.getElementById('resultTable');
+    if (!asId) { el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-chart"/></svg></div>배정을 선택하세요.</div>'; return; }
+    showLoading(true);
+    try {
+      let progSnap = await getDocs(query(collection(db,'exam_progress'), where('asId','==',asId)));
+      let progs = progSnap.docs.map(d=>({id:d.id,...d.data()}));
+      // fallback: doc ID prefix (migrated/old docs that lack asId field)
+      if (!progs.length) {
+        const allSnap = await getDocs(collection(db,'exam_progress'));
+        progs = allSnap.docs.filter(d=>d.id.startsWith(asId+'_')).map(d=>({id:d.id,...d.data()}));
+      }
+      if (!progs.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-chart"/></svg></div>결과가 없습니다.</div>'; showLoading(false); return; }
+      // 정렬: 학년→반→번호
+      progs.sort((a,b) => {
+        if (a.grade!==b.grade) return String(a.grade).localeCompare(String(b.grade));
+        if (a.class!==b.class) return String(a.class).localeCompare(String(b.class));
+        return parseInt(a.num||0) - parseInt(b.num||0);
+      });
+      progs.forEach(p => { p._studentId = p.studentId||p.id.split('_').slice(1).join('_')||''; });
+      window._resultsAsId = asId;
+      window._resultsProgs = progs;
+      const html = `<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+        <thead><tr style="border-bottom:2px solid var(--border-card);">
+          <th style="padding:8px 12px;"><input type="checkbox" onchange="document.querySelectorAll('.res-chk').forEach(c=>c.checked=this.checked)"></th>
+          <th style="text-align:left;padding:8px 12px;color:var(--sub);">학년/반/번호</th>
+          <th style="text-align:left;padding:8px 12px;color:var(--sub);">이름</th>
+          <th style="text-align:right;padding:8px 12px;color:var(--sub);">점수</th>
+          <th style="text-align:right;padding:8px 12px;color:var(--sub);">이탈</th>
+          <th style="text-align:left;padding:8px 12px;color:var(--sub);">상태</th>
+          <th style="text-align:center;padding:8px 12px;color:var(--sub);">채점</th>
+        </tr></thead>
+        <tbody>${progs.map(p=>`<tr style="border-bottom:1px solid var(--border-card);">
+          <td style="padding:8px 12px;"><input type="checkbox" class="res-chk" value="${p.id}"></td>
+          <td style="padding:8px 12px;">${p.grade||'-'}학년 ${p.class||'-'}반 ${p.num||'-'}번</td>
+          <td style="padding:8px 12px;font-weight:700;">${p.name||'-'}</td>
+          <td style="padding:8px 12px;text-align:right;font-weight:800;color:var(--accent);">${p.totalScore!==undefined?p.totalScore:'-'}${p.totalPoints?'/'+p.totalPoints:''}</td>
+          <td style="padding:8px 12px;text-align:right;color:${(p.alertCount||0)>3?'#ef4444':'var(--sub)'};">${p.alertCount||0}</td>
+          <td style="padding:8px 12px;"><span style="padding:3px 10px;border-radius:50px;font-size:0.75rem;font-weight:700;background:${p.status==='submitted'?'rgba(34,197,94,0.15)':'rgba(245,158,11,0.15)'};color:${p.status==='submitted'?'#22c55e':'#f59e0b'}">${p.status==='submitted'?'제출':'진행중'}</span></td>
+          <td style="padding:8px 12px;text-align:center;"><button class="btn ghost sm" onclick="gradeStudent('${asId}','${p._studentId}','${p.id}')">채점</button></td>
+        </tr>`).join('')}</tbody>
+      </table></div>`;
+      el.innerHTML = html;
+    } catch(e) { el.innerHTML = '<div style="color:#ef4444;padding:20px;">오류: '+e.message+'</div>'; }
+    showLoading(false);
+  };
+
+  window.exportResults = async () => {
+    const asId = document.getElementById('res_asId').value;
+    if (!asId) { toast('배정을 선택하세요.', 'error'); return; }
+    showLoading(true);
+    const progSnap = await getDocs(query(collection(db,'exam_progress'), where('asId','==',asId)));
+    const progs = progSnap.docs.map(d=>d.data());
+    progs.sort((a,b) => parseInt(a.num||0)-parseInt(b.num||0));
+    const rows = [['학년','반','번호','이름','점수','만점','이탈횟수','상태']];
+    progs.forEach(p => rows.push([p.grade,p.class,p.num,p.name,p.totalScore??'',p.totalPoints??'',p.alertCount||0,p.status]));
+    const csv = rows.map(r=>r.map(c=>`"${String(c||'').replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob(['﻿'+csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `exam_results_${asId}.csv`;
+    a.click();
+    showLoading(false);
+  };
+
+  // ── 결과 PDF 내보내기 (선택 학생 일괄, 브라우저 인쇄로 PDF 저장) ──
+  window.exportResultsPDF = async () => {
+    const progs = window._resultsProgs || [];
+    if (!progs.length) { toast('먼저 배정을 선택해 결과를 불러오세요.', 'error'); return; }
+    const checked = [...document.querySelectorAll('.res-chk:checked')].map(c => c.value);
+    if (!checked.length) { toast('내보낼 학생을 선택하세요.', 'error'); return; }
+    const selected = progs.filter(p => checked.includes(p.id));
+    const asId = window._resultsAsId;
+    showLoading(true);
+    try {
+      const examId = selected[0].examId;
+      const examSnap = await getDoc(doc(db,'exams', examId));
+      const examTitle = examSnap.exists() ? (examSnap.data().title||'') : '';
+      let qSnap;
+      try { qSnap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId), orderBy('order','asc'))); }
+      catch(e) { qSnap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId))); }
+      const questions = qSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.order||0)-(b.order||0));
+      const typeLabel = { mc:'객관식', sa:'주관식', code:'코딩' };
+
+      const pages = [];
+      for (const p of selected) {
+        const resSnap = await getDocs(query(collection(db,'exam_results'), where('asId','==',asId), where('studentId','==',p._studentId)));
+        const items = resSnap.docs.map(d=>d.data()).sort((a,b)=>(a.qIdx||0)-(b.qIdx||0));
+        const rows = items.map((r,ri) => {
+          const q = questions[r.qIdx] || questions.find(qq=>qq.id===r.questionId) || {};
+          let correctAnswerHtml;
+          if (q.type === 'mc') {
+            correctAnswerHtml = escHtml(q.options && q.options[parseInt(q.answer)] !== undefined ? `${parseInt(q.answer)+1}번. ${q.options[parseInt(q.answer)]}` : (q.answer??''));
+          } else if (q.type === 'code') {
+            correctAnswerHtml = (q.testCases && q.testCases.length)
+              ? q.testCases.map((tc,ti)=>`<div style="margin-top:2px;">#${ti+1} 입력: <code>${escHtml(tc.input||'')}</code> → 출력: <code>${escHtml(tc.expected||'')}</code></div>`).join('')
+              : '(테스트케이스 없음 — 코드 채점은 실행 결과로 판단)';
+          } else {
+            correctAnswerHtml = escHtml(q.answer||'');
+          }
+          const isCode = (r.type||q.type) === 'code';
+          const typeColor = isCode ? '#7c4dff' : ((r.type||q.type)==='sa' ? '#22c55e' : '#2a5ce6');
+          const answerBlock = isCode
+            ? `<div style="background:#1a1f2e;color:#dde2f0;border-radius:10px;padding:14px 16px;margin-bottom:12px;overflow-x:auto;"><b style="color:#9aa4c0;font-size:0.82rem;">학생 답:</b><pre style="margin:8px 0 0;white-space:pre;font-family:'SF Mono',Consolas,monospace;font-size:0.86rem;line-height:1.6;">${escHtml(r.value||'(미답)')}</pre></div>`
+            : `<div style="font-size:0.92rem;background:#f7f8fb;border-radius:10px;padding:12px 14px;margin-bottom:12px;white-space:pre-wrap;word-break:break-word;line-height:1.6;"><b>학생 답:</b> ${escHtml(r.value||'(미답)')}</div>`;
+          return `
+            <div style="border:1px solid #eaeaf0;border-radius:14px;padding:20px 22px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04);break-inside:avoid;">
+              <div style="font-size:0.8rem;font-weight:800;color:${typeColor};margin-bottom:8px;letter-spacing:-0.01em;">Q${(r.qIdx??ri)+1}. ${escHtml(typeLabel[r.type||q.type]||'')} · 배점 ${r.maxScore??q.points??0}점</div>
+              <div style="font-weight:800;font-size:1.02rem;margin-bottom:6px;letter-spacing:-0.01em;">${escHtml(r.title||q.title||'')}</div>
+              ${(r.content||q.content) ? `<div style="font-size:0.92rem;color:#444;margin-bottom:14px;white-space:pre-wrap;line-height:1.6;">${escHtml(r.content||q.content)}</div>` : ''}
+              ${answerBlock}
+              <div style="font-size:0.86rem;color:#555;margin-bottom:10px;line-height:1.7;"><b style="color:#333;">정답:</b> ${correctAnswerHtml}</div>
+              <div style="font-size:0.9rem;font-weight:800;color:${(r.score||0)>=(r.maxScore||0)&&(r.maxScore||0)>0?'#1a8a3f':'#c0392b'};">획득 점수: ${r.score??0} / ${r.maxScore??0}</div>
+              ${r.feedback ? `<div style="font-size:0.8rem;color:#999;margin-top:6px;">피드백: ${escHtml(r.feedback)}</div>` : ''}
+            </div>`;
+        }).join('');
+        pages.push(`
+          <div style="page-break-after:always;padding:40px 0;font-family:'Pretendard','Apple SD Gothic Neo','Malgun Gothic',sans-serif;color:#1a1a1a;">
+            <div style="max-width:760px;margin:0 auto;padding:0 24px;">
+              <h1 style="font-size:1.5rem;font-weight:900;margin:0 0 6px;letter-spacing:-0.02em;">${escHtml(examTitle)}</h1>
+              <div style="font-size:0.92rem;color:#666;margin-bottom:26px;">${escHtml(p.grade||'-')}학년 ${escHtml(p.class||'-')}반 ${escHtml(p.num||'-')}번 ${escHtml(p.name||'')} · 총점 ${p.totalScore??'-'} / ${p.totalPoints??'-'}</div>
+              ${rows || '<div style="color:#999;">채점 결과가 없습니다.</div>'}
+            </div>
+          </div>`);
+      }
+      const win = window.open('', '_blank');
+      win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${escHtml(examTitle)} 결과</title>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+        <style>
+          * { -webkit-print-color-adjust: exact; print-color-adjust: exact; color-adjust: exact; }
+          @media print { body { margin:0; } }
+          body { margin:0; background:#fff; }
+        </style>
+        </head><body>${pages.join('')}</body></html>`);
+      win.document.close();
+      win.onload = () => win.print();
+    } catch(e) { toast('PDF 생성 오류: '+e.message, 'error'); }
+    showLoading(false);
+  };
+
+  // ── 채점 모달 ──
+  function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  window.gradeStudent = async (asId, studentId, progDocId) => {
+    showLoading(true);
+    try {
+      let resultsSnap = await getDocs(query(collection(db,'exam_results'),
+        where('asId','==',asId), where('studentId','==',studentId)));
+      let items = resultsSnap.docs.map(d=>({docId:d.id,...d.data()}))
+        .sort((a,b)=>(a.qIdx||0)-(b.qIdx||0));
+      showLoading(false);
+
+      const isDark = document.body.classList.contains('dark');
+      const bg = isDark ? '#1a1f2e' : '#ffffff';
+      const fg = isDark ? '#dde2f0' : '#1a1f2e';
+      const sub = isDark ? '#7a849a' : '#7a849a';
+      const border = isDark ? '#2a3050' : '#e2e8f0';
+      const answerBg = isDark ? '#0d1020' : '#f8faff';
+      const inputBg = isDark ? '#13172a' : '#f1f5ff';
+
+      const modal = document.createElement('div');
+      modal.id = 'gradeModal';
+      modal.style.cssText = `position:fixed;inset:0;z-index:9000;display:flex;align-items:flex-start;justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);padding:20px;overflow-y:auto;`;
+      const inner = document.createElement('div');
+      inner.style.cssText = `background:${bg};border-radius:20px;padding:28px;max-width:640px;width:100%;margin:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);color:${fg};font-family:inherit;`;
+
+      const progData = items[0] || {};
+      const name = progData.name || progDocId.split('_')[1] || progDocId;
+
+      const typeLabel = { mc:'객관식', sa:'주관식', code:'코딩' };
+      const autoScore = { mc: true, sa: true, code: false };
+
+      inner.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+          <div>
+            <div style="font-size:1.05rem;font-weight:900;color:${fg};">${escHtml(name)} 채점</div>
+            <div style="font-size:0.78rem;color:${sub};margin-top:2px;">${progData.grade||'-'}학년 ${progData.class||'-'}반 ${progData.num||'-'}번</div>
+          </div>
+          <button onclick="document.getElementById('gradeModal').remove()" style="background:none;border:1px solid ${border};border-radius:50px;padding:6px 14px;cursor:pointer;font-size:0.82rem;color:${fg};">닫기</button>
+        </div>
+        ${items.length === 0
+          ? `<div style="text-align:center;padding:40px;color:${sub};">제출 데이터가 없습니다.</div>`
+          : items.map((r,ri) => {
+            const isAuto = autoScore[r.type];
+            return `
+              <div style="border:1px solid ${border};border-radius:14px;padding:16px;margin-bottom:14px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                  <span style="font-size:0.72rem;font-weight:800;background:${r.type==='code'?'rgba(124,77,255,0.15)':r.type==='sa'?'rgba(34,197,94,0.12)':'rgba(42,92,230,0.12)'};color:${r.type==='code'?'#7c4dff':r.type==='sa'?'#22c55e':'#2a5ce6'};padding:2px 10px;border-radius:50px;">${typeLabel[r.type]||r.type}</span>
+                  <span style="font-size:0.82rem;font-weight:700;color:${fg};">Q${(r.qIdx||ri)+1}. ${escHtml(r.title||'')}</span>
+                </div>
+                <div style="background:${answerBg};border-radius:10px;padding:10px 14px;font-size:0.85rem;margin-bottom:10px;white-space:pre-wrap;word-break:break-all;border:1px solid ${border};min-height:36px;color:${fg};">${escHtml(r.value||'(미답)')}</div>
+                ${isAuto ? `<div style="font-size:0.78rem;color:${sub};margin-bottom:10px;">자동채점: <strong style="color:${r.feedback==='정답'?'#22c55e':'#ef4444'}">${escHtml(r.feedback||'-')}</strong></div>` : ''}
+                <div style="display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;">
+                  <div style="display:flex;align-items:center;gap:6px;white-space:nowrap;">
+                    <label style="font-size:0.78rem;font-weight:700;color:${sub};">점수</label>
+                    <input type="number" value="${r.score||0}" min="0" max="${r.maxScore||0}" data-docid="${r.docId}" data-max="${r.maxScore||0}"
+                      id="gscore_${ri}" style="width:64px;padding:5px 8px;border:1px solid ${border};border-radius:8px;background:${inputBg};color:${fg};font-size:0.88rem;font-weight:700;text-align:center;">
+                    <span style="font-size:0.78rem;color:${sub};">/ ${r.maxScore||0}점</span>
+                  </div>
+                  <div>
+                    <textarea id="gfeedback_${ri}" data-docid="${r.docId}" rows="2"
+                      placeholder="피드백 입력 (선택사항)"
+                      style="width:100%;padding:6px 10px;border:1px solid ${border};border-radius:8px;background:${inputBg};color:${fg};font-size:0.82rem;resize:vertical;">${escHtml(r.feedback && !isAuto ? r.feedback : '')}</textarea>
+                  </div>
+                </div>
+              </div>`;
+          }).join('')}
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
+          <button onclick="document.getElementById('gradeModal').remove()" style="background:none;border:1px solid ${border};border-radius:50px;padding:8px 20px;cursor:pointer;font-size:0.85rem;font-weight:600;color:${fg};">취소</button>
+          <button onclick="saveGrades('${progDocId}',${items.length})" style="background:#2a5ce6;border:none;border-radius:50px;padding:8px 20px;cursor:pointer;font-size:0.85rem;font-weight:700;color:#fff;">저장</button>
+        </div>`;
+      modal.appendChild(inner);
+      document.body.appendChild(modal);
+    } catch(e) { toast('오류: '+e.message, 'error'); showLoading(false); }
+  };
+
+  window.saveGrades = async (progDocId, count) => {
+    showLoading(true);
+    try {
+      const batch = writeBatch(db);
+      let total = 0, totalPoints = 0;
+      for (let i = 0; i < count; i++) {
+        const scoreInp = document.getElementById('gscore_'+i);
+        const fbInp = document.getElementById('gfeedback_'+i);
+        if (!scoreInp) continue;
+        const docId = scoreInp.dataset.docid;
+        const score = parseInt(scoreInp.value) || 0;
+        const max = parseInt(scoreInp.dataset.max) || 0;
+        const feedback = fbInp?.value?.trim() || '';
+        total += score; totalPoints += max;
+        if (docId) batch.update(doc(db,'exam_results',docId), { score, feedback });
+      }
+      batch.update(doc(db,'exam_progress',progDocId), { totalScore: total, totalPoints });
+      await batch.commit();
+      toast('채점 저장 완료', 'success');
+      document.getElementById('gradeModal')?.remove();
+      await loadResults();
+    } catch(e) { toast('저장 오류: '+e.message, 'error'); }
+    showLoading(false);
+  };
+
+  // ── 누락 번역 보완 ──
+  window.fixMissingTranslations = async () => {
+    const examId = document.getElementById('qlist_examId').value;
+    if (!examId) { toast('시험을 먼저 선택하세요.', 'error'); return; }
+    showLoading(true);
+    try {
+      const qSnap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId)));
+      const missing = qSnap.docs.filter(d => !d.data().titleEn);
+      if (!missing.length) { toast('모든 문제에 번역이 있습니다.', 'success'); showLoading(false); return; }
+      for (const qDoc of missing) {
+        const q = qDoc.data();
+        const toTr = [q.title, q.content].filter(Boolean);
+        const optsKo = q.type === 'mc' ? (q.options || []) : [];
+        const allTexts = [...toTr, ...optsKo];
+        if (!allTexts.length) continue;
+        const update = {};
+        const langCodes = [['zh-cn','Zh'],['ru','Ru'],['en','En']];
+        await Promise.all(langCodes.map(async ([code, cap]) => {
+          const res = await translateTexts(allTexts, code);
+          let idx = 0;
+          if (q.title) update['title'+cap] = res[idx++] || '';
+          if (q.content) update['content'+cap] = res[idx++] || '';
+          if (optsKo.length) update['options'+cap] = res.slice(idx);
+        }));
+        await updateDoc(doc(db,'exam_questions',qDoc.id), update);
+      }
+      toast(`${missing.length}개 문제 번역 완료`, 'success');
+      await loadQList(examId);
+    } catch(e) { toast('번역 오류: '+e.message, 'error'); }
+    showLoading(false);
+  };
+
+  // ── 레거시 시스템 데이터 가져오기 ──
+  // 따옴표로 감싼 셀 안의 줄바꿈/구분자는 무시하고, 전체 텍스트를 한 번에 스캔 (RFC4180 스타일)
+  function lgParseRows(text) {
+    const raw = text.replace(/\r\n/g,'\n');
+    if (!raw.trim()) return [];
+    const firstLine = raw.split('\n', 1)[0];
+    const delim = firstLine.includes('\t') ? '\t' : ',';
+    const rows = [];
+    let row = []; let cur = ''; let inQ = false;
+    for (let i = 0; i < raw.length; i++) {
+      const ch = raw[i];
+      if (inQ) {
+        if (ch === '"') { if (raw[i+1] === '"') { cur += '"'; i++; } else inQ = false; }
+        else cur += ch;
+      } else {
+        if (ch === '"') inQ = true;
+        else if (ch === delim) { row.push(cur); cur = ''; }
+        else if (ch === '\n') { row.push(cur); cur = ''; rows.push(row); row = []; }
+        else cur += ch;
+      }
+    }
+    row.push(cur); rows.push(row);
+    return rows.filter(r => r.some(c => c.trim() !== ''));
+  }
+  function lgIsHeader(row) { return /시험ID|타임스탬프|학번|이름|유형/.test(row.join(',')); }
+
+  function lgNv(v) { return String(v||'').replace(/학년|학|반|번/g,'').trim(); }
+  function lgParseStudentCode(code) {
+    // "2학년-1반-6번" 또는 "공동교육과정-1반-20316번" 형태
+    const parts = String(code||'').split('-').map(s=>s.trim());
+    return { grade: lgNv(parts[0]||''), class: lgNv(parts[1]||''), num: lgNv(parts[2]||'') };
+  }
+  function lgParseTestCases(raw) {
+    // 형식: "입력1:출력1|입력2:출력2|..." (예: "4 3:7|100 121:221")
+    if (!raw || !raw.trim()) return [];
+    return raw.split('|').map(pair => {
+      const idx = pair.indexOf(':');
+      if (idx === -1) return null;
+      return { input: pair.slice(0, idx).trim(), expected: pair.slice(idx+1).trim() };
+    }).filter(Boolean);
+  }
+  function lgMapType(t) {
+    const s = String(t||'').trim();
+    if (s.includes('객관')) return 'mc';
+    if (s.includes('코딩') || s.includes('코드') || s.includes('프로그래밍') || s.includes('프로그램')) return 'code';
+    return 'sa'; // 단답형, 서술형
+  }
+
+  let lgData = null; // { exams:[{id,title}], questionsByExam: Map, resultsByExam: Map }
+
+  window.previewLegacy = () => {
+    try {
+      const examRows = lgParseRows(document.getElementById('lg_exams').value);
+      const qRows = lgParseRows(document.getElementById('lg_questions').value);
+      const rRows = lgParseRows(document.getElementById('lg_results').value);
+      if (examRows.length && lgIsHeader(examRows[0])) examRows.shift();
+      if (qRows.length && lgIsHeader(qRows[0])) qRows.shift();
+      if (rRows.length && lgIsHeader(rRows[0])) rRows.shift();
+
+      const examsList = examRows.filter(r=>r[0]).map(r => ({ id: r[0].trim(), title: (r[1]||'').trim(), createdAt: (r[2]||'').trim() }));
+
+      const questionsByExam = new Map();
+      qRows.forEach(r => {
+        const examIdOld = (r[0]||'').trim();
+        if (!examIdOld) return;
+        const row = {
+          type: lgMapType((r[1]||'').trim()), points: parseInt(r[2])||0, title: (r[3]||'').trim(),
+          contentKr: r[4]||'', contentEn: r[5]||'', contentCh: r[6]||'', contentRu: r[7]||'',
+          optsKr: r[8]||'', optsEn: r[9]||'', optsCh: r[10]||'', optsRu: r[11]||'',
+          answer: (r[12]||'').trim(), imageUrl: (r[13]||'').trim(),
+          testCaseRaw: r[15]||'', inDesc: r[16]||'', outDesc: r[17]||'', inEx: r[18]||'', outEx: r[19]||'',
+        };
+        if (!questionsByExam.has(examIdOld)) questionsByExam.set(examIdOld, []);
+        questionsByExam.get(examIdOld).push(row);
+      });
+
+      const resultsByExam = new Map();
+      rRows.forEach(r => {
+        const examIdOld = (r[1]||'').trim();
+        if (!examIdOld) return;
+        const row = {
+          timestamp: r[0]||'', studentCode: (r[2]||'').trim(), name: (r[3]||'').trim(),
+          lang: (r[4]||'ko').trim(), qIdOld: r[5]||'', rawAnswer: r[6]||'', krAnswer: r[7]||'',
+          score: parseFloat(r[8])||0, feedback: r[9]||'',
+        };
+        if (!row.studentCode || !row.name) return;
+        if (!resultsByExam.has(examIdOld)) resultsByExam.set(examIdOld, []);
+        resultsByExam.get(examIdOld).push(row);
+      });
+
+      lgData = { examsList, questionsByExam, resultsByExam };
+
+      const sel = document.getElementById('lg_examSelect');
+      sel.innerHTML = examsList.map(e => {
+        const qCount = (questionsByExam.get(e.id)||[]).length;
+        const studentSet = new Set((resultsByExam.get(e.id)||[]).map(r=>r.studentCode+'|'+r.name));
+        return `<option value="${e.id}">${escHtml(e.title)} (문항 ${qCount}개, 학생 ${studentSet.size}명)</option>`;
+      }).join('');
+
+      document.getElementById('lg_summary').innerHTML =
+        `시험 ${examsList.length}개 · 문항 ${qRows.length}행 · 결과 ${rRows.length}행 인식됨`;
+      document.getElementById('lg_preview').classList.remove('hidden');
+      document.getElementById('lg_log').innerText = '';
+    } catch(e) { toast('파싱 오류: '+e.message, 'error'); }
+  };
+
+  async function lgWipeExisting(legacyExamId) {
+    const exSnap = await getDocs(query(collection(db,'exams'), where('legacyExamId','==',legacyExamId)));
+    for (const exDoc of exSnap.docs) {
+      const examId = exDoc.id;
+      const qSnap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId)));
+      for (const qd of qSnap.docs) await deleteDoc(qd.ref);
+      const asSnap = await getDocs(query(collection(db,'exam_assignments'), where('examId','==',examId)));
+      for (const asDoc of asSnap.docs) {
+        const asId = asDoc.id;
+        const progSnap = await getDocs(query(collection(db,'exam_progress'), where('asId','==',asId)));
+        for (const pd of progSnap.docs) await deleteDoc(pd.ref);
+        const resSnap = await getDocs(query(collection(db,'exam_results'), where('asId','==',asId)));
+        for (const rd of resSnap.docs) await deleteDoc(rd.ref);
+        await deleteDoc(asDoc.ref);
+      }
+      await deleteDoc(exDoc.ref);
+    }
+  }
+
+  async function lgImportOneExam(examIdOld, log) {
+    if (!lgData) return;
+    const examMeta = lgData.examsList.find(e => e.id === examIdOld);
+    if (!examMeta) { log.push(`[건너뜀] ${examIdOld}: Exams 목록에 없음`); return; }
+    const qRows = lgData.questionsByExam.get(examIdOld) || [];
+    if (!qRows.length) { log.push(`[건너뜀] ${examMeta.title}: 문항 없음`); return; }
+
+    await lgWipeExisting(examIdOld); // 재실행 안전 (기존 것 삭제 후 재생성)
+
+    const examRef = await addDoc(collection(db,'exams'), {
+      title: examMeta.title, desc: '', legacyExamId: examIdOld, createdAt: serverTimestamp(),
+    });
+    const examId = examRef.id;
+
+    const newQuestions = [];
+    for (let i = 0; i < qRows.length; i++) {
+      const q = qRows[i];
+      const data = {
+        examId, type: q.type, title: q.title, content: q.contentKr,
+        contentEn: q.contentEn, contentZh: q.contentCh, contentRu: q.contentRu,
+        imageUrl: q.imageUrl, points: q.points, order: i+1,
+        legacy: true, legacyExamId: examIdOld, createdAt: serverTimestamp(),
+      };
+      if (q.type === 'mc') {
+        data.options = q.optsKr.split('|').map(s=>s.trim()).filter(Boolean);
+        data.optionsEn = q.optsEn.split('|').map(s=>s.trim()).filter(Boolean);
+        data.optionsZh = q.optsCh.split('|').map(s=>s.trim()).filter(Boolean);
+        data.optionsRu = q.optsRu.split('|').map(s=>s.trim()).filter(Boolean);
+        data.answer = String((parseInt(q.answer,10)||1) - 1);
+      } else if (q.type === 'code') {
+        data.inDesc = q.inDesc; data.outDesc = q.outDesc; data.inEx = q.inEx; data.outEx = q.outEx;
+        data.testCases = lgParseTestCases(q.testCaseRaw);
+      } else {
+        data.answer = q.answer;
+      }
+      const qRef = await addDoc(collection(db,'exam_questions'), data);
+      newQuestions.push({ id: qRef.id, ...data });
+    }
+
+    // 결과를 담을 레거시 전용 배정(assignment) 하나 생성
+    const asRef = await addDoc(collection(db,'exam_assignments'), {
+      examId, code: 'LEGACY', schoolName: '', grade: '', class: '', duration: 0,
+      status: 'CLOSED', legacy: true, legacyExamId: examIdOld, createdAt: serverTimestamp(),
+    });
+    const asId = asRef.id;
+
+    // 학생별로 결과 행 묶기
+    const rRows = lgData.resultsByExam.get(examIdOld) || [];
+    const byStudent = new Map();
+    rRows.forEach(r => {
+      const key = r.studentCode + '|' + r.name;
+      if (!byStudent.has(key)) byStudent.set(key, []);
+      byStudent.get(key).push(r);
+    });
+
+    let studentCount = 0;
+    for (const [key, rows] of byStudent) {
+      const first = rows[0];
+      const { grade, class: cls, num } = lgParseStudentCode(first.studentCode);
+      const studentId = 'legacy_' + key.replace(/[^\w가-힣]/g,'_');
+      let totalScore = 0, totalPoints = 0;
+      for (let i = 0; i < rows.length && i < newQuestions.length; i++) {
+        const r = rows[i]; const q = newQuestions[i];
+        totalScore += r.score; totalPoints += q.points;
+        await addDoc(collection(db,'exam_results'), {
+          asId, examId, studentId, name: first.name, grade, class: cls, num,
+          lang: r.lang || 'ko', qIdx: i, type: q.type, title: q.title, content: q.content,
+          value: r.krAnswer || r.rawAnswer || '', score: r.score, maxScore: q.points,
+          feedback: r.feedback || '', legacy: true, createdAt: serverTimestamp(),
+        });
+      }
+      await setDoc(doc(db,'exam_progress', `${asId}_${studentId}`), {
+        examId, asId, studentId, name: first.name, grade, class: cls, num,
+        status: 'submitted', alertCount: 0, totalScore, totalPoints, legacy: true,
+      });
+      studentCount++;
+    }
+    log.push(`[완료] ${examMeta.title}: 문항 ${newQuestions.length}개, 학생 ${studentCount}명 가져옴`);
+  }
+
+  async function lgDoImport(targets) {
+    showLoading(true);
+    const log = [];
+    try {
+      for (const examIdOld of targets) await lgImportOneExam(examIdOld, log);
+      document.getElementById('lg_log').innerText = log.join('\n');
+      toast('가져오기 완료', 'success');
+      await loadExamList();
+    } catch(e) {
+      log.push('[오류] ' + e.message);
+      document.getElementById('lg_log').innerText = log.join('\n');
+      toast('가져오기 중 오류 발생', 'error');
+    }
+    showLoading(false);
+  }
+
+  window.runLegacyImport = (all) => {
+    if (!lgData) { toast('먼저 미리보기를 실행하세요.', 'error'); return; }
+    const targets = all ? lgData.examsList.map(e=>e.id) : [document.getElementById('lg_examSelect').value];
+    if (!targets.length || !targets[0]) { toast('가져올 시험을 선택하세요.', 'error'); return; }
+    confirmDialog(
+      '레거시 데이터 가져오기',
+      all ? `시험 ${targets.length}개를 전부 가져옵니다. 같은 시험이 이미 있으면 덮어씁니다. 계속할까요?`
+          : `선택한 시험 1개를 가져옵니다. 계속할까요?`,
+      () => lgDoImport(targets)
+    );
+  };
+
+  // ── 패들릿 일괄 번역 ──
+  async function gtranslate(texts, targetLang, sourceLang) {
+    const res = await fetch('/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texts, targetLang, sourceLang })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error || !data.translations) throw new Error(data.error || data.message || `HTTP ${res.status}`);
+    return data.translations.map(t => t.text);
+  }
+
+  async function translateAllLangs(sub, msg, srcLang) {
+    const sl = srcLang === 'zh' ? 'zh-cn' : (srcLang || 'ko');
+    const targets = ['ko','zh-cn','ru','en'].filter(t => t !== sl);
+    const results = await Promise.all(targets.map(tl => gtranslate([sub||'', msg||''], tl, sl)));
+    const map = {};
+    targets.forEach((tl, i) => { map[tl] = results[i]; });
+    const g = (tl) => map[tl] || ['',''];
+    return {
+      subKo: srcLang==='ko' ? sub : (g('ko')[0]||''),
+      msgKo: srcLang==='ko' ? msg : (g('ko')[1]||''),
+      subZh: srcLang==='zh' ? sub : (g('zh-cn')[0]||''),
+      msgZh: srcLang==='zh' ? msg : (g('zh-cn')[1]||''),
+      subRu: srcLang==='ru' ? sub : (g('ru')[0]||''),
+      msgRu: srcLang==='ru' ? msg : (g('ru')[1]||''),
+      subEn: srcLang==='en' ? sub : (g('en')[0]||''),
+      msgEn: srcLang==='en' ? msg : (g('en')[1]||''),
+    };
+  }
+
+  // ohdlet.html의 classBoardKey와 반드시 동일해야 한다 — 게시글이 어느 수업에
+  // 속하는지 이 값으로 구분한다(이름만으로는 학교가 다른 동명 수업과 섞인다).
+  function classBoardKey(c) {
+    const g = c.grade || '', grp = c.group || '';
+    return `${c.name||''}__${c.schoolName||''}${g?('__g'+g):''}${grp?('__c'+grp):''}`;
+  }
+
+  let _txClass = null, _txPosts = [], _txChecked = new Set();
+
+  window.openTranslateModal = async (c) => {
+    _txClass = c; _txPosts = []; _txChecked = new Set();
+    const _txBoardKey = classBoardKey(c);
+    const modal = document.getElementById('translateModal');
+    document.getElementById('txClassName').textContent = c.name;
+    document.getElementById('txList').innerHTML = '<div style="padding:20px;text-align:center;color:var(--sub)">불러오는 중...</div>';
+    document.getElementById('txProgress').textContent = '';
+    document.getElementById('txRunBtn').disabled = false;
+    modal.classList.remove('hidden');
+    try {
+      // classTitle(이름)만으로 걸러진 posts 중, 이 수업 것이 아닌(동명이지만
+      // 다른 학교/학년/반) 게시글은 boardKey로 한 번 더 걸러낸다. boardKey가
+      // 없는 옛 게시글은 이름만으로 계속 포함한다(ohdlet.html과 동일한 하위호환).
+      const snap = await getDocs(query(collection(db,'posts'), where('classTitle','==',c.name)));
+      _txPosts = snap.docs.map(d => ({id:d.id,...d.data()})).filter(p => !p.boardKey || p.boardKey === _txBoardKey);
+      // 번역 누락 감지: subKo 비어있거나, 어느 언어 번역이라도 비어있는 게시물
+      const isMissing = p => {
+        const src = p.srcLang || 'ko';
+        if (src==='ko' && (!p.subKo && !p.msgKo)) return false; // 글 자체가 없음
+        return !p.subKo || !p.subZh || !p.subRu || !p.subEn;
+      };
+      const missing = _txPosts.filter(isMissing);
+      _txChecked = new Set(missing.map(p => p.id));
+      renderTxList(missing, _txPosts);
+    } catch(e) {
+      document.getElementById('txList').innerHTML = `<div style="color:#ef4444;padding:10px">${e.message}</div>`;
+    }
+  };
+
+  function renderTxList(missing, all) {
+    const el = document.getElementById('txList');
+    if (!all.length) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--sub)">게시물이 없습니다.</div>'; return; }
+    const rows = all.map(p => {
+      const src = p.srcLang || 'ko';
+      const srcTxt = ({ko:'한국어',zh:'중국어',ru:'러시아어',en:'영어'})[src] || src;
+      const sub = p[`sub${({ko:'Ko',zh:'Zh',ru:'Ru',en:'En'})[src]}`] || p.subKo || '';
+      const langs = ['Ko','Zh','Ru','En'];
+      const missing = langs.filter(l => !p['sub'+l] && !p['msg'+l]);
+      const badge = missing.length ? `<span style="font-size:0.7rem;padding:2px 7px;border-radius:50px;background:rgba(239,68,68,0.12);color:#ef4444;margin-left:6px;">누락: ${missing.join(',')}</span>` : `<span style="font-size:0.7rem;padding:2px 7px;border-radius:50px;background:rgba(34,197,94,0.12);color:#16a34a;margin-left:6px;">완료</span>`;
+      const checked = _txChecked.has(p.id);
+      return `<label style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:10px;border:1px solid var(--border-card);background:var(--glass);margin-bottom:6px;cursor:pointer;">
+        <input type="checkbox" ${checked?'checked':''} onchange="txToggle('${p.id}',this.checked)" style="width:16px;height:16px;accent-color:var(--accent)">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:0.85rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sub||'(제목 없음)'}</div>
+          <div style="font-size:0.72rem;color:var(--sub)">원문: ${srcTxt} · ${p.name||''} ${badge}</div>
+        </div>
+      </label>`;
+    });
+    const missCnt = all.filter(p => _txChecked.has(p.id)).length;
+    el.innerHTML = `<div style="font-size:0.82rem;color:var(--sub);margin-bottom:10px">전체 ${all.length}건 · 번역 필요 <strong style="color:var(--accent)">${missing.length}건</strong> 선택됨</div>` + rows.join('');
+  }
+
+  window.txToggle = (id, checked) => { if(checked) _txChecked.add(id); else _txChecked.delete(id); };
+  window.txSelectAll = (checked) => {
+    _txPosts.forEach(p => { if(checked) _txChecked.add(p.id); else _txChecked.delete(p.id); });
+    document.querySelectorAll('#txList input[type=checkbox]').forEach(cb => cb.checked = checked);
+  };
+  window.closeTranslateModal = () => document.getElementById('translateModal').classList.add('hidden');
+
+  window.runTranslate = async () => {
+    const ids = [..._txChecked];
+    if (!ids.length) { toast('번역할 게시물을 선택하세요.', 'error'); return; }
+    document.getElementById('txRunBtn').disabled = true;
+    const prog = document.getElementById('txProgress');
+    let done = 0;
+    for (const id of ids) {
+      const p = _txPosts.find(x => x.id === id);
+      if (!p) continue;
+      const srcLang = p.srcLang || 'ko';
+      const sfx = ({ko:'Ko',zh:'Zh',ru:'Ru',en:'En'})[srcLang] || 'Ko';
+      const sub = p['sub'+sfx] || p.subKo || '';
+      const msg = p['msg'+sfx] || p.msgKo || '';
+      prog.textContent = `${done+1}/${ids.length} 번역 중...`;
+      try {
+        const tr = await translateAllLangs(sub, msg, srcLang);
+        await updateDoc(doc(db,'posts',id), tr);
+        done++;
+      } catch(e) {
+        console.error('tx error:', p.id, e);
+        prog.textContent = `오류 (${p.id}): ${e.message}`;
+        await new Promise(r => setTimeout(r, 500));
+      }
+      await new Promise(r => setTimeout(r, 120));
+    }
+    prog.textContent = `${done}건 번역 완료`;
+    document.getElementById('txRunBtn').disabled = false;
+    toast(`${done}건 번역 완료!`, 'success');
+    // 목록 갱신
+    await openTranslateModal(_txClass);
+  };
+</script>
+
+<!-- 번역 모달 -->
+<div id="translateModal" class="hidden" style="position:fixed;inset:0;z-index:3000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.4);backdrop-filter:blur(6px);" onclick="if(event.target===this)closeTranslateModal()">
+  <div style="background:var(--card-bg, #fff);backdrop-filter:var(--blur);-webkit-backdrop-filter:var(--blur);border:1px solid var(--border);border-radius:22px;box-shadow:var(--shadow-md);width:min(600px,94vw);max-height:80vh;display:flex;flex-direction:column;overflow:hidden;">
+    <div style="padding:20px 24px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+      <div>
+        <div style="font-size:1.05rem;font-weight:900;display:flex;align-items:center;gap:6px;"><svg width="16" height="16" style="color:var(--sub);"><use href="#ic-globe"/></svg>일괄 번역</div>
+        <div style="font-size:0.8rem;color:var(--sub);margin-top:2px;" id="txClassName"></div>
+      </div>
+      <button onclick="closeTranslateModal()" style="background:none;border:none;cursor:pointer;color:var(--sub);line-height:1;display:flex;"><svg width="16" height="16"><use href="#ic-close"/></svg></button>
+    </div>
+    <div style="padding:14px 24px 8px;flex-shrink:0;display:flex;align-items:center;gap:10px;">
+      <label style="font-size:0.82rem;font-weight:600;display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <input type="checkbox" onchange="txSelectAll(this.checked)" style="width:15px;height:15px;accent-color:var(--accent)"> 전체 선택
+      </label>
+      <span style="flex:1"></span>
+      <div id="txProgress" style="font-size:0.82rem;font-weight:700;color:var(--accent)"></div>
+    </div>
+    <div id="txList" style="flex:1;overflow-y:auto;padding:6px 24px 10px;"></div>
+    <div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;flex-shrink:0;">
+      <button class="btn ghost sm" onclick="closeTranslateModal()">닫기</button>
+      <button class="btn accent sm" id="txRunBtn" onclick="runTranslate()">선택 번역 실행</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

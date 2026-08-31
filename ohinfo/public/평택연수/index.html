@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>평택연수 견본 모음 · OHweb</title>
+  <link rel="icon" type="image/svg+xml" href="shared/icon.svg">
+  <link rel="apple-touch-icon" href="shared/apple-touch-icon.png">
+  <link rel="stylesheet" href="shared/theme.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); min-height: 100vh; font-family: var(--font); color: var(--text); }
+
+    .nav { display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 56px; background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+    .nav-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .nav-brand img { height: 26px; }
+    .nav-brand span { font-size: 0.88rem; font-weight: 700; color: var(--sub); }
+    .dark-toggle { width: 38px; height: 22px; border-radius: 50px; background: var(--glass); border: 1px solid var(--border); backdrop-filter: var(--blur); cursor: pointer; position: relative; transition: 0.3s; }
+    body.dark .dark-toggle { background: rgba(42,92,230,0.6); border-color: rgba(100,140,255,0.4); }
+    .dark-toggle::after { content:''; position:absolute; top:3px; left:3px; width:14px; height:14px; border-radius:50%; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.2); transition:transform 0.3s; }
+    body.dark .dark-toggle::after { transform: translateX(16px); }
+
+    main { max-width: 960px; margin: 0 auto; padding: 48px 20px 80px; }
+    .hero { text-align: center; margin-bottom: 40px; }
+    .hero h1 { font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 900; letter-spacing: -0.02em; background: var(--accent-grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 10px; }
+    .hero p { color: var(--sub); font-size: 0.95rem; line-height: 1.6; }
+    .hero p.note { font-size: 0.82rem; margin-top: 8px; color: var(--text-3); }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+    .card {
+      display: flex; flex-direction: column; gap: 8px; text-decoration: none; color: inherit;
+      background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border); border-radius: 20px; padding: 22px;
+      box-shadow: var(--highlight), var(--shadow-md);
+      transition: transform 0.15s, box-shadow 0.2s;
+    }
+    .card.live:hover { transform: translateY(-3px); box-shadow: var(--highlight), 0 10px 24px rgba(0,0,0,0.12); }
+    .card.soon { opacity: 0.55; cursor: default; }
+    .card-icon { font-size: 1.8rem; }
+    .card-title { font-size: 1.05rem; font-weight: 800; letter-spacing: -0.01em; }
+    .card-desc { font-size: 0.85rem; color: var(--sub); line-height: 1.5; flex: 1; }
+    .card-tag { align-self: flex-start; font-size: 0.68rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; letter-spacing: 0.02em; }
+    .card-tag.live { background: rgba(34,197,94,0.14); color: #16a34a; }
+    .card-tag.soon { background: var(--glass); color: var(--text-3); border: 1px solid var(--border-card); }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <a href="./" class="nav-brand">
+      <img src="shared/logo.png" alt="OHweb">
+      <span>평택연수 견본 모음</span>
+    </a>
+    <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
+  </nav>
+
+  <main>
+    <div class="hero">
+      <h1>바이브코딩 연수 견본 사이트</h1>
+      <p>버튼을 눌러 각 웹앱을 직접 체험해 보세요. 로그인 없이 바로 써볼 수 있고,<br>모든 데이터는 이 브라우저에만(localStorage) 저장되며 서버로 전송되지 않습니다.</p>
+      <p class="note">※ 실제 학교 운영 사이트가 아닌 개인정보·인증을 제거한 시연용 사본입니다.</p>
+    </div>
+
+    <div class="grid">
+      <a href="timer/" class="card live">
+        <div class="card-icon">⏱️</div>
+        <div class="card-title">수업 타이머</div>
+        <div class="card-desc">수업 활동 시간을 재고, 종료 시 알림음을 울려주는 타이머. 전체화면·다크모드 지원.</div>
+        <span class="card-tag live">체험 가능</span>
+      </a>
+
+      <a href="seatchange/" class="card live">
+        <div class="card-icon">💺</div>
+        <div class="card-title">자리 바꾸기</div>
+        <div class="card-desc">교실 모양대로 책상을 배치하고, 짝 금지·직전 자리 회피 같은 규칙에 맞게 자동으로 자리를 바꿔주는 도구.</div>
+        <span class="card-tag live">체험 가능</span>
+      </a>
+
+      <a href="shortener/" class="card live">
+        <div class="card-icon">🔗</div>
+        <div class="card-title">단축 URL</div>
+        <div class="card-desc">긴 주소를 짧은 링크로 바꿔주는 도구. 학생 배포용 링크 관리에 유용.</div>
+        <span class="card-tag live">체험 가능</span>
+      </a>
+
+      <a href="settle/" class="card live">
+        <div class="card-icon">🧾</div>
+        <div class="card-title">모둠/회비 정산</div>
+        <div class="card-desc">지출과 송금을 기록하고, 최소 송금 경로로 자동 정산해주는 계산기. 봉사·모둠활동 회비 관리에 유용.</div>
+        <span class="card-tag live">체험 가능</span>
+      </a>
+
+      <a href="admin/" class="card live">
+        <div class="card-icon">🗂️</div>
+        <div class="card-title">관리자 대시보드 (ohweb)</div>
+        <div class="card-desc">학교·학생·학급을 등록하고 시험을 출제·채점하는 관리자 화면. 실제 운영 도구를 견본 데이터로 그대로 눌러볼 수 있습니다.</div>
+        <span class="card-tag live">체험 가능</span>
+      </a>
+
+      <a href="broadcast/" class="card live">
+        <div class="card-icon">📻</div>
+        <div class="card-title">방송부 관리 (GWBS)</div>
+        <div class="card-desc">방송 일정·출석·신청곡·업무 매뉴얼을 관리하는 방송부 도구. 학생용 신청곡 페이지도 함께 체험할 수 있습니다.</div>
+        <span class="card-tag live">체험 가능</span>
+      </a>
+
+      <a href="volunteer/" class="card live">
+        <div class="card-icon">🤝</div>
+        <div class="card-title">봉사활동 관리 (GWVS)</div>
+        <div class="card-desc">학생 봉사시간을 등록·수정하고 변경 이력을 자동으로 남기는 관리 도구.</div>
+        <span class="card-tag live">체험 가능</span>
+      </a>
+
+      <a href="travel/" class="card live">
+        <div class="card-icon">✈️</div>
+        <div class="card-title">여행 플래너 (OHtravel)</div>
+        <div class="card-desc">장기 여행 일정·교통편·숙소·경비를 한 곳에서 관리하는 도구. 관리자 설정 비밀번호는 "demo"입니다.</div>
+        <span class="card-tag live">체험 가능</span>
+      </a>
+
+      <a href="#" class="card soon">
+        <div class="card-icon">🏫</div>
+        <div class="card-title">학교 정보 사이트 (ohinfo)</div>
+        <div class="card-desc">아직 견본화 전입니다. ohinfo에 실제로 있는 기능(홈, 설문/신청서, Q&amp;A, 시험 안내 등) 중 어떤 걸 먼저 만들지 정한 뒤 채울 예정입니다.</div>
+        <span class="card-tag soon">준비 중</span>
+      </a>
+    </div>
+  </main>
+
+  <script>
+    function toggleDark() { document.body.classList.toggle('dark'); localStorage.setItem('dark', document.body.classList.contains('dark') ? '1' : '0'); }
+    if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
+  </script>
+</body>
+</html>

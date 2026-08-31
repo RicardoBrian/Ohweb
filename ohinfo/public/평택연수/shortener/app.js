@@ -1,15 +1,26 @@
-import { db } from './firebase-config.js';
-import {
-  collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, orderBy, serverTimestamp,
-} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+/**
+ * ohshort (견본) — 원본은 Firestore + 관리자 Google 로그인을 쓰지만,
+ * 이 견본은 로그인 없이 바로 쓸 수 있고 데이터는 이 브라우저의
+ * localStorage에만 저장된다(서버로 전송하지 않음). UI/동작은 원본과 동일하게 유지.
+ */
 
 const app = document.getElementById('app');
-// 단축 링크가 배포되는 곳 — 관리 페이지(short.kakainfo.com)와 다른 도메인이다.
-// 실제 리다이렉트는 ohinfo 프로젝트의 functions/[[code]].js가 처리한다.
+const STORE_KEY = 'ohshrt.demo.links';
 const publicBase = 'https://kakainfo.com';
 
 const CODE_RE = /^[\p{L}\p{N}_-]{2,32}$/u;
-const RESERVED = new Set(['api', 'admin', 'login', 'logout', 'favicon.ico', 'style.css', 'app.js', 'firebase-config.js', 'admin-auth.js', '평택연수', '프롬프트']);
+const RESERVED = new Set(['api', 'admin', 'login', 'logout', 'favicon.ico', 'style.css', 'app.js']);
+
+function loadLinksStore() {
+  try {
+    return JSON.parse(localStorage.getItem(STORE_KEY) || '[]');
+  } catch {
+    return [];
+  }
+}
+function saveLinksStore(links) {
+  localStorage.setItem(STORE_KEY, JSON.stringify(links));
+}
 
 function escapeHtml(str) {
   return str.replace(/[&<>"']/g, (c) => ({
@@ -19,8 +30,7 @@ function escapeHtml(str) {
 
 function formatDate(ts) {
   if (!ts) return '';
-  const d = ts.toDate ? ts.toDate() : new Date(ts);
-  return d.toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  return new Date(ts).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
 function isValidUrl(value) {
@@ -52,39 +62,10 @@ function showToast(message, type = 'success') {
   }, 2200);
 }
 
-function renderLogin(errorMessage = '') {
-  app.innerHTML = `
-    <div class="login-wrap">
-      <div class="login-card">
-        <p class="brand">oh sh.rt</p>
-        <p class="brand-sub">계속하려면 로그인하세요</p>
-        <button class="btn btn-primary" id="loginBtn">Google로 로그인</button>
-        <p class="error-msg" id="loginError">${errorMessage ? escapeHtml(errorMessage) : ''}</p>
-      </div>
-    </div>
-  `;
-  document.getElementById('loginBtn').addEventListener('click', async () => {
-    const errorEl = document.getElementById('loginError');
-    errorEl.textContent = '';
-    try {
-      await window.AdminAuth.login();
-      if (window.AdminAuth.isValid()) {
-        await renderDashboard();
-      } else {
-        errorEl.textContent = '관리자 계정이 아닙니다.';
-        await window.AdminAuth.logout();
-      }
-    } catch (e) {
-      errorEl.textContent = '로그인 실패: ' + e.message;
-    }
-  });
-}
-
 async function renderDashboard() {
   app.innerHTML = `
     <div class="topbar">
-      <p class="brand">oh sh.rt</p>
-      <button class="btn btn-ghost" id="logoutBtn" style="width:auto;padding:8px 16px;font-size:13px;">로그아웃</button>
+      <p class="brand">oh sh.rt <span style="opacity:.6;font-weight:500;">(견본)</span></p>
     </div>
     <div class="dashboard">
       <div class="create-card">
@@ -107,18 +88,13 @@ async function renderDashboard() {
         </form>
       </div>
       <div class="links-section">
-        <h2>내 링크</h2>
+        <h2>내 링크 <span style="opacity:.5;font-weight:500;font-size:0.8em;">(이 브라우저에만 저장됨)</span></h2>
         <div class="link-list" id="linkList">
           <div class="empty-state">불러오는 중...</div>
         </div>
       </div>
     </div>
   `;
-
-  document.getElementById('logoutBtn').addEventListener('click', async () => {
-    await window.AdminAuth.logout();
-    renderLogin();
-  });
 
   const createForm = document.getElementById('createForm');
   const createError = document.getElementById('createError');
@@ -134,27 +110,25 @@ async function renderDashboard() {
       const alias = document.getElementById('alias').value.trim();
       if (!isValidUrl(url)) throw new Error('유효한 URL을 입력하세요 (http:// 또는 https://)');
 
-      // 유니코드 정규화(NFC) — 한글 등은 브라우저/입력기에 따라 같은 글자도
-      // 다른 바이트 조합(NFC/NFD)으로 만들어질 수 있다. 저장할 때와 나중에
-      // URL로 조회할 때 형태가 어긋나면 Firestore가 다른 문서로 취급해서
-      // "코드는 맞는데 못 찾는" 문제가 생긴다 — 항상 NFC로 통일해서 막는다.
+      const links = loadLinksStore();
       let code = alias.normalize('NFC');
       if (code) {
         if (!CODE_RE.test(code) || RESERVED.has(code.toLowerCase())) {
           throw new Error('커스텀 코드는 한글/영문/숫자/-/_ 2~32자여야 하며 예약어는 사용할 수 없습니다');
         }
-        if ((await getDoc(doc(db, 'short_links', code))).exists()) {
+        if (links.some((l) => l.code === code)) {
           throw new Error('이미 사용 중인 코드입니다');
         }
       } else {
         for (let i = 0; i < 5; i++) {
           const candidate = randomCode();
-          if (!(await getDoc(doc(db, 'short_links', candidate))).exists()) { code = candidate; break; }
+          if (!links.some((l) => l.code === candidate)) { code = candidate; break; }
         }
         if (!code) throw new Error('코드 생성에 실패했습니다. 다시 시도하세요');
       }
 
-      await setDoc(doc(db, 'short_links', code), { url, createdAt: serverTimestamp() });
+      links.unshift({ code, url, createdAt: Date.now() });
+      saveLinksStore(links);
       createForm.reset();
       showToast('단축 URL이 생성되었습니다');
       await loadLinks();
@@ -173,8 +147,7 @@ async function loadLinks() {
   const listEl = document.getElementById('linkList');
   if (!listEl) return;
   try {
-    const snap = await getDocs(query(collection(db, 'short_links'), orderBy('createdAt', 'desc')));
-    const links = snap.docs.map((d) => ({ code: d.id, ...d.data() }));
+    const links = loadLinksStore().slice().sort((a, b) => b.createdAt - a.createdAt);
     if (!links.length) {
       listEl.innerHTML = `<div class="empty-state">아직 생성된 링크가 없습니다.</div>`;
       return;
@@ -186,7 +159,7 @@ async function loadLinks() {
         return `
           <div class="link-card" data-code="${escapeHtml(link.code)}">
             <div class="link-info">
-              <a class="link-short" href="${escapeHtml(shortUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(shortHost)}/${escapeHtml(link.code)}</a>
+              <span class="link-short">${escapeHtml(shortHost)}/${escapeHtml(link.code)} <span style="opacity:.5;font-size:0.85em;">(견본 — 실제 이동 안됨)</span></span>
               <div class="link-original" title="${escapeHtml(link.url)}">${escapeHtml(link.url)}</div>
               <div class="link-date">${formatDate(link.createdAt)}</div>
             </div>
@@ -213,13 +186,10 @@ async function loadLinks() {
     listEl.querySelectorAll('.delete-btn').forEach((btn) => {
       btn.addEventListener('click', async () => {
         if (!confirm('이 링크를 삭제할까요?')) return;
-        try {
-          await deleteDoc(doc(db, 'short_links', btn.dataset.code));
-          showToast('삭제되었습니다');
-          await loadLinks();
-        } catch (err) {
-          showToast(err.message, 'error');
-        }
+        const links = loadLinksStore().filter((l) => l.code !== btn.dataset.code);
+        saveLinksStore(links);
+        showToast('삭제되었습니다');
+        await loadLinks();
       });
     });
   } catch (err) {
@@ -227,13 +197,4 @@ async function loadLinks() {
   }
 }
 
-async function init() {
-  await window.AdminAuth.ready;
-  if (window.AdminAuth.isValid()) {
-    await renderDashboard();
-  } else {
-    renderLogin();
-  }
-}
-
-init();
+renderDashboard();

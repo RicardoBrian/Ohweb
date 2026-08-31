@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>수업 타이머 (견본) · OHweb</title>
+  <link rel="icon" type="image/svg+xml" href="../shared/icon.svg">
+  <link rel="apple-touch-icon" href="../shared/apple-touch-icon.png">
+  <link rel="stylesheet" href="../shared/theme.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); min-height: 100vh; display: flex; flex-direction: column; font-family: var(--font); color: var(--text); }
+
+    /* ── Nav ── */
+    .nav { display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 56px; background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+    .nav-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .nav-brand img { height: 28px; }
+    .nav-brand span { font-size: 0.88rem; font-weight: 700; color: var(--sub); }
+    .nav-right { display: flex; align-items: center; gap: 10px; }
+    .btn-icon { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border); background: var(--glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; transition: background 0.2s; color: var(--text); }
+    .btn-icon:hover { background: var(--glass-strong); }
+    .dark-toggle { width: 38px; height: 22px; border-radius: 50px; background: var(--glass); border: 1px solid var(--border); backdrop-filter: var(--blur); cursor: pointer; position: relative; transition: 0.3s; }
+    body.dark .dark-toggle { background: rgba(42,92,230,0.6); border-color: rgba(100,140,255,0.4); }
+    .dark-toggle::after { content:''; position:absolute; top:3px; left:3px; width:14px; height:14px; border-radius:50%; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.2); transition:transform 0.3s; }
+    body.dark .dark-toggle::after { transform: translateX(16px); }
+
+    /* ── Layout ── */
+    main { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 28px 16px; gap: 20px; }
+
+    /* ═══════════════════════════════════════
+       SETUP VIEW (설정 화면)
+    ═══════════════════════════════════════ */
+    #setupView { display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; max-width: 560px; }
+    #setupView.hidden { display: none; }
+
+    .title-card {
+      width: 100%;
+      background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border); border-radius: 24px; padding: 22px 26px;
+      box-shadow: var(--highlight), var(--shadow-md);
+    }
+    .field-label { font-size: 0.7rem; font-weight: 700; color: var(--sub); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px; }
+    .title-row { display: flex; gap: 10px; align-items: center; }
+    .title-inp {
+      flex: 1; padding: 11px 16px; border-radius: 12px;
+      border: 1px solid var(--border-card); background: var(--glass);
+      color: var(--text); font-family: var(--font); font-size: 1rem; font-weight: 600;
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .title-inp:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-light); }
+    .title-inp::placeholder { color: var(--text-3); font-weight: 400; }
+    .btn-translate {
+      padding: 11px 16px; border-radius: 12px; border: 1px solid var(--border-card);
+      background: var(--glass); color: var(--text); font-family: var(--font);
+      font-size: 0.85rem; font-weight: 600; cursor: pointer;
+      box-shadow: var(--highlight); white-space: nowrap;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .btn-translate:hover { background: var(--glass-strong); }
+    .btn-translate:active { transform: scale(0.97); }
+    .btn-translate:disabled { opacity: 0.5; cursor: not-allowed; }
+    .trans-row { display: flex; gap: 10px; margin-top: 12px; }
+    .trans-chip { flex: 1; background: var(--glass); border: 1px solid var(--border-card); border-radius: 10px; padding: 8px 12px; }
+    .trans-lang { font-size: 0.62rem; font-weight: 700; color: var(--sub); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 3px; }
+    .trans-text { font-size: 0.88rem; font-weight: 600; color: var(--text); min-height: 20px; }
+    .trans-text.loading { color: var(--text-3); font-style: italic; font-size: 0.8rem; }
+
+    .timer-setup-card {
+      width: 100%;
+      background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border); border-radius: 24px; padding: 22px 26px;
+      box-shadow: var(--highlight), var(--shadow-md);
+    }
+    .presets { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+    .preset-btn {
+      padding: 8px 18px; border-radius: 20px; border: 1px solid var(--border-card);
+      background: var(--glass); color: var(--text); font-family: var(--font);
+      font-size: 0.88rem; font-weight: 600; cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    }
+    .preset-btn:hover { background: var(--glass-strong); }
+    .preset-btn:active { transform: scale(0.95); }
+    .preset-btn.active { background: var(--accent-grad); color: #fff; border-color: transparent; }
+    .custom-row { display: flex; gap: 8px; align-items: center; margin-bottom: 18px; flex-wrap: wrap; }
+    .custom-inp {
+      width: 68px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--border-card);
+      background: var(--glass); color: var(--text); font-family: var(--font);
+      font-size: 0.92rem; font-weight: 600; text-align: center; outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .custom-inp:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+    .custom-label { font-size: 0.82rem; color: var(--sub); font-weight: 600; }
+    .btn-start-big {
+      width: 100%; padding: 15px; border-radius: var(--radius-pill); border: none;
+      background: #1d1d1f; color: #fff; font-family: var(--font);
+      font-size: 1.05rem; font-weight: 700; cursor: pointer;
+      box-shadow: var(--highlight), var(--shadow-md);
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    body.dark .btn-start-big { background: #f5f5f7; color: #1d1d1f; }
+    .btn-start-big:hover { opacity: 0.88; }
+    .btn-start-big:active { transform: scale(0.97); }
+    .btn-start-big:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ═══════════════════════════════════════
+       RUN VIEW (실행 화면 — 타이머 진행 중)
+    ═══════════════════════════════════════ */
+    #runView { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100%; gap: 0; }
+    #runView.visible { display: flex; }
+
+    /* 제목 영역 */
+    .run-title-wrap { text-align: center; margin-bottom: 20px; animation: fadeUp 0.4s ease; }
+    .run-title-ko {
+      font-size: clamp(1.6rem, 4vw, 2.8rem);
+      font-weight: 900; letter-spacing: -0.03em;
+      background: var(--accent-grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+      line-height: 1.2; margin-bottom: 8px;
+    }
+    .run-trans-row { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }
+    .run-trans-item { text-align: center; }
+    .run-trans-lang { font-size: 0.65rem; font-weight: 700; color: var(--sub); letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 2px; }
+    .run-trans-text { font-size: clamp(0.9rem, 2vw, 1.3rem); font-weight: 600; color: var(--text-2); }
+
+    /* 큰 링 */
+    .run-ring-wrap { position: relative; width: min(420px, 80vw); height: min(420px, 80vw); margin: 0 auto 24px; }
+    .run-ring-svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .run-ring-bg { fill: none; stroke: var(--border-card); stroke-width: 10; }
+    .run-ring-fill { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 0.5s linear, stroke 0.4s; }
+    .run-ring-inner { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
+    .run-time-num {
+      font-size: clamp(3.6rem, 14vw, 7rem);
+      font-weight: 800; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; line-height: 1;
+      transition: color 0.4s;
+    }
+    .run-time-label { font-size: 0.78rem; font-weight: 700; color: var(--sub); letter-spacing: 0.06em; text-transform: uppercase; }
+
+    /* 카드 상태 색상 */
+    .run-ring-fill.ok    { stroke: #0071e3; }
+    .run-ring-fill.warn  { stroke: #f59e0b; }
+    .run-ring-fill.danger{ stroke: #ef4444; }
+    .run-ring-fill.done  { stroke: #22c55e; }
+    .run-time-num.warn   { color: #b45309; }
+    body.dark .run-time-num.warn { color: #fbbf24; }
+    .run-time-num.danger { color: #ef4444; }
+    .run-time-num.done   { color: #22c55e; }
+
+    /* 글로우 애니메이션 (위험) */
+    @keyframes dangerPulse { 0%,100%{opacity:1} 50%{opacity:0.65} }
+    .run-time-num.danger { animation: dangerPulse 1s ease infinite; }
+
+    /* 컨트롤 */
+    .run-controls { display: flex; gap: 12px; justify-content: center; }
+    .btn-ctrl {
+      padding: 12px 30px; border-radius: var(--radius-pill); border: none;
+      font-family: var(--font); font-size: 0.95rem; font-weight: 700; cursor: pointer;
+      transition: filter 0.2s, transform 0.15s;
+    }
+    .btn-ctrl:active { transform: scale(0.95); }
+    .btn-pause { background: #1d1d1f; color: #fff; box-shadow: var(--highlight), var(--shadow-md); }
+    body.dark .btn-pause { background: #f5f5f7; color: #1d1d1f; }
+    .btn-pause:hover { opacity: 0.88; }
+    .btn-back  { background: var(--glass); border: 1px solid var(--border-card); color: var(--text); }
+    .btn-back:hover { background: var(--glass-strong); }
+    .btn-sound { background: var(--glass); border: 1px solid var(--border-card); color: var(--text); padding: 12px 14px; }
+    .btn-sound:hover { background: var(--glass-strong); }
+
+    /* 종료 배너 */
+    .done-banner {
+      display: none; margin-top: 18px; padding: 12px 24px; border-radius: 14px;
+      background: rgba(34,197,94,0.14); border: 1px solid rgba(34,197,94,0.4);
+      color: #16a34a; font-weight: 700; font-size: 1rem; text-align: center;
+      animation: fadeUp 0.3s ease;
+    }
+    body.dark .done-banner { color: #4ade80; }
+    .done-banner.show { display: block; }
+
+    @keyframes fadeUp { from { opacity:0; transform: translateY(12px); } to { opacity:1; transform: translateY(0); } }
+
+    /* ── Fullscreen ── */
+    :fullscreen .nav, :-webkit-full-screen .nav { display: none; }
+    :fullscreen main, :-webkit-full-screen main { padding: 40px 24px; background: var(--bg); }
+    :fullscreen .run-ring-wrap, :-webkit-full-screen .run-ring-wrap { width: min(420px, 60vw); height: min(420px, 60vw); }
+  </style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute;">
+  <defs>
+    <symbol id="ic-bell" viewBox="0 0 24 24"><path d="M6 10a6 6 0 0 1 12 0v4l1.8 3H4.2L6 14Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9.5 20a2.5 2.5 0 0 0 5 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="ic-bell-off" viewBox="0 0 24 24"><path d="M6 10a6 6 0 0 1 10.2-4.3M18 10v4l1.8 3H8.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 10v4L4.2 17H7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M9.5 20a2.5 2.5 0 0 0 5 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="3.5" y1="3.5" x2="20.5" y2="20.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="ic-expand" viewBox="0 0 24 24"><path d="M8 4H4v4M16 4h4v4M8 20H4v-4M16 20h4v-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-play" viewBox="0 0 24 24"><path d="M7 5.5 19 12 7 18.5Z" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-back" viewBox="0 0 24 24"><path d="M18 12H5M10 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-bell-ring" viewBox="0 0 24 24"><path d="M6 10a6 6 0 0 1 12 0v4l1.8 3H4.2L6 14Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9.5 20a2.5 2.5 0 0 0 5 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  </defs>
+</svg>
+
+  <nav class="nav">
+    <a href="../index.html" class="nav-brand">
+      <img src="../shared/logo.png" alt="OHweb">
+      <span>수업 타이머 (견본)</span>
+    </a>
+    <div class="nav-right">
+      <button class="btn-icon" id="soundBtn" onclick="toggleSound()" title="알림음"><svg width="17" height="17"><use href="#ic-bell"/></svg></button>
+      <button class="btn-icon" onclick="toggleFs()" title="전체화면"><svg width="16" height="16"><use href="#ic-expand"/></svg></button>
+      <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
+    </div>
+  </nav>
+
+  <main>
+    <!-- ── 설정 화면 ── -->
+    <div id="setupView">
+      <!-- 제목 입력 -->
+      <div class="title-card">
+        <div class="field-label">타이머 제목 (주제)</div>
+        <div class="title-row">
+          <input class="title-inp" id="titleInp" placeholder="예: 1번 문제 풀기" maxlength="40" oninput="onTitleInput()">
+          <button class="btn-translate" id="transBtn" onclick="doTranslate()" disabled>번역</button>
+        </div>
+        <div class="trans-row">
+          <div class="trans-chip">
+            <div class="trans-lang">中文</div>
+            <div class="trans-text" id="transZh">—</div>
+          </div>
+          <div class="trans-chip">
+            <div class="trans-lang">Русский</div>
+            <div class="trans-text" id="transRu">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 시간 설정 + 시작 -->
+      <div class="timer-setup-card">
+        <div class="field-label" style="margin-bottom:10px;">시간 설정</div>
+        <div class="presets" id="presets">
+          <button class="preset-btn" onclick="setPreset(5,this)">5분</button>
+          <button class="preset-btn" onclick="setPreset(10,this)">10분</button>
+          <button class="preset-btn" onclick="setPreset(15,this)">15분</button>
+          <button class="preset-btn" onclick="setPreset(20,this)">20분</button>
+          <button class="preset-btn" onclick="setPreset(30,this)">30분</button>
+        </div>
+        <div class="custom-row">
+          <span class="custom-label">직접 입력</span>
+          <input class="custom-inp" id="customMin" type="number" min="0" max="99" placeholder="분">
+          <span class="custom-label">분</span>
+          <input class="custom-inp" id="customSec" type="number" min="0" max="59" placeholder="초">
+          <span class="custom-label">초</span>
+          <button class="preset-btn" onclick="setCustom()">설정</button>
+        </div>
+        <button class="btn-start-big" id="startBig" onclick="startTimer()" disabled><svg width="13" height="13" style="vertical-align:-1px;margin-right:5px;"><use href="#ic-play"/></svg>타이머 시작</button>
+      </div>
+    </div>
+
+    <!-- ── 실행 화면 ── -->
+    <div id="runView">
+      <!-- 제목 -->
+      <div class="run-title-wrap" id="runTitleWrap">
+        <div class="run-title-ko" id="runTitleKo"></div>
+        <div class="run-trans-row" id="runTransRow"></div>
+      </div>
+
+      <!-- 큰 링 -->
+      <div class="run-ring-wrap">
+        <svg class="run-ring-svg" viewBox="0 0 200 200">
+          <circle class="run-ring-bg" cx="100" cy="100" r="88"/>
+          <circle class="run-ring-fill ok" id="runRingFill" cx="100" cy="100" r="88"
+            stroke-dasharray="552.9" stroke-dashoffset="0"/>
+        </svg>
+        <div class="run-ring-inner">
+          <div class="run-time-num" id="runTimeNum">00:00</div>
+          <div class="run-time-label" id="runTimeLabel">진행 중</div>
+        </div>
+      </div>
+
+      <!-- 컨트롤 -->
+      <div class="run-controls">
+        <button class="btn-ctrl btn-back" onclick="backToSetup()"><svg width="13" height="13" style="vertical-align:-1px;margin-right:4px;"><use href="#ic-back"/></svg>돌아가기</button>
+        <button class="btn-ctrl btn-pause" id="pauseBtn" onclick="togglePause()">일시정지</button>
+      </div>
+      <div class="done-banner" id="doneBanner"><svg width="15" height="15" style="vertical-align:-2px;margin-right:5px;"><use href="#ic-bell-ring"/></svg>시간이 종료되었습니다!</div>
+    </div>
+  </main>
+
+  <script>
+    // ── 다크모드 ──
+    function toggleDark() { document.body.classList.toggle('dark'); localStorage.setItem('dark', document.body.classList.contains('dark')?'1':'0'); }
+    if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
+
+    // ── 전체화면 ──
+    function toggleFs() { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(()=>{}); }
+
+    // ── 사운드 ──
+    let soundOn = true;
+    let audioCtx = null;
+    function toggleSound() {
+      soundOn = !soundOn;
+      document.getElementById('soundBtn').innerHTML = soundOn
+        ? '<svg width="17" height="17"><use href="#ic-bell"/></svg>'
+        : '<svg width="17" height="17"><use href="#ic-bell-off"/></svg>';
+    }
+    function playDone() {
+      if (!soundOn) return;
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        [523,659,784,1047].forEach((f, i) => {
+          const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+          o.connect(g); g.connect(audioCtx.destination);
+          o.frequency.value = f; o.type = 'sine';
+          const t = audioCtx.currentTime + i * 0.2;
+          g.gain.setValueAtTime(0.35, t);
+          g.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+          o.start(t); o.stop(t + 0.55);
+        });
+      } catch(e) {}
+    }
+
+    // ── 번역 ──
+    let zhText = '', ruText = '';
+    function onTitleInput() {
+      const v = document.getElementById('titleInp').value.trim();
+      document.getElementById('transBtn').disabled = !v;
+      updateStartBtn();
+      zhText = ''; ruText = '';
+      document.getElementById('transZh').textContent = '—';
+      document.getElementById('transRu').textContent = '—';
+    }
+    async function doTranslate() {
+      const title = document.getElementById('titleInp').value.trim();
+      if (!title) return;
+      const btn = document.getElementById('transBtn');
+      btn.disabled = true; btn.textContent = '…';
+      ['transZh','transRu'].forEach(id => { const el = document.getElementById(id); el.textContent = '번역 중…'; el.className = 'trans-text loading'; });
+      try {
+        const [zh, ru] = await Promise.all([translate(title,'zh-cn'), translate(title,'ru')]);
+        zhText = zh || ''; ruText = ru || '';
+        setTransEl('transZh', zhText || '—');
+        setTransEl('transRu', ruText || '—');
+      } catch(e) {
+        setTransEl('transZh','번역 실패'); setTransEl('transRu','번역 실패');
+      }
+      btn.disabled = false; btn.textContent = '번역';
+    }
+    function setTransEl(id, txt) { const el = document.getElementById(id); el.textContent = txt; el.className = 'trans-text'; }
+    async function translate(text, lang) {
+      const res = await fetch('/api/translate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({texts:[text], targetLang:lang, sourceLang:'ko'}) });
+      const data = await res.json();
+      if (!res.ok || data.error || !data.translations) throw new Error(data.error || `HTTP ${res.status}`);
+      return data.translations[0]?.text || '';
+    }
+
+    // ── 타이머 상태 ──
+    const CIRC = 2 * Math.PI * 88;
+    let totalSecs = 0, remainSecs = 0, running = false, interval = null;
+
+    function fmt(s) { return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; }
+
+    function setPreset(min, btn) {
+      totalSecs = remainSecs = min * 60;
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      updateStartBtn();
+    }
+    function setCustom() {
+      const m = parseInt(document.getElementById('customMin').value) || 0;
+      const s = parseInt(document.getElementById('customSec').value) || 0;
+      const total = m*60+s;
+      if (total <= 0) return;
+      totalSecs = remainSecs = total;
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+      updateStartBtn();
+    }
+    function updateStartBtn() {
+      document.getElementById('startBig').disabled = totalSecs === 0;
+    }
+
+    // ── 실행 화면 진입 ──
+    function startTimer() {
+      if (totalSecs === 0) return;
+      remainSecs = totalSecs;
+      running = true;
+
+      // 제목 채우기
+      const ko = document.getElementById('titleInp').value.trim();
+      document.getElementById('runTitleKo').textContent = ko || '';
+      document.getElementById('runTitleWrap').style.display = ko ? '' : 'none';
+
+      const transRow = document.getElementById('runTransRow');
+      transRow.innerHTML = '';
+      if (ko) {
+        if (zhText) transRow.innerHTML += `<div class="run-trans-item"><div class="run-trans-text">${escHtml(zhText)}</div></div>`;
+        if (ruText) transRow.innerHTML += `<div class="run-trans-item"><div class="run-trans-text">${escHtml(ruText)}</div></div>`;
+      }
+
+      // 뷰 전환
+      document.getElementById('setupView').classList.add('hidden');
+      document.getElementById('runView').classList.add('visible');
+      document.getElementById('doneBanner').classList.remove('show');
+      document.getElementById('pauseBtn').textContent = '일시정지';
+
+      updateRunView();
+      clearInterval(interval);
+      interval = setInterval(tick, 1000);
+    }
+
+    function tick() {
+      if (!running) return;
+      if (remainSecs <= 0) {
+        clearInterval(interval); running = false;
+        document.getElementById('pauseBtn').textContent = '다시 시작';
+        document.getElementById('doneBanner').classList.add('show');
+        updateRunView();
+        playDone(); return;
+      }
+      remainSecs--;
+      updateRunView();
+    }
+
+    function updateRunView() {
+      const pct = totalSecs > 0 ? remainSecs / totalSecs : 0;
+      const offset = CIRC * (1 - pct);
+      const fill = document.getElementById('runRingFill');
+      const num  = document.getElementById('runTimeNum');
+      fill.style.strokeDashoffset = offset;
+
+      fill.className = 'run-ring-fill ';
+      num.className  = 'run-time-num ';
+      if (remainSecs === 0 && totalSecs > 0) { fill.className += 'done'; num.className += 'done'; }
+      else if (pct <= 0.2)  { fill.className += 'danger'; num.className += 'danger'; }
+      else if (pct <= 0.5)  { fill.className += 'warn';   num.className += 'warn'; }
+      else                   { fill.className += 'ok'; }
+
+      document.getElementById('runTimeNum').textContent = fmt(remainSecs);
+      document.getElementById('runTimeLabel').textContent =
+        remainSecs === 0 ? '종료' : running ? '진행 중' : '일시정지';
+    }
+
+    function togglePause() {
+      if (remainSecs === 0) { remainSecs = totalSecs; running = true; document.getElementById('doneBanner').classList.remove('show'); clearInterval(interval); interval = setInterval(tick,1000); document.getElementById('pauseBtn').textContent='일시정지'; updateRunView(); return; }
+      running = !running;
+      document.getElementById('pauseBtn').textContent = running ? '일시정지' : '계속';
+      document.getElementById('runTimeLabel').textContent = running ? '진행 중' : '일시정지';
+    }
+
+    function backToSetup() {
+      clearInterval(interval); running = false;
+      document.getElementById('runView').classList.remove('visible');
+      document.getElementById('setupView').classList.remove('hidden');
+    }
+
+    function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    // 링 초기화
+    document.getElementById('runRingFill').style.strokeDasharray = CIRC;
+  </script>
+</body>
+</html>

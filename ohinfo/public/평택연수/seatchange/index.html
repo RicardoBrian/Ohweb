@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>SeatChange (견본) — 자리 바꾸기</title>
+  <meta name="description" content="교실 모양 그대로 책상을 배치하고, 규칙에 맞게 자리를 바꿉니다.">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="theme.css">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<!-- 아이콘 스프라이트 — 이모지 대신 항상 currentColor SVG. -->
+<svg width="0" height="0" style="position:absolute;">
+  <defs>
+    <symbol id="ic-close" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="5" y1="12" x2="19" y2="12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-share" viewBox="0 0 24 24"><circle cx="6" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="17" cy="6" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="17" cy="18" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/><line x1="8.3" y1="10.8" x2="14.8" y2="7.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="8.3" y1="13.2" x2="14.8" y2="16.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="ic-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.1" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 3.5v2.4M12 18.1v2.4M20.5 12h-2.4M5.9 12H3.5M17.7 6.3l-1.7 1.7M8 16l-1.7 1.7M17.7 17.7 16 16M8 8 6.3 6.3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="ic-upload" viewBox="0 0 24 24"><path d="M12 15.5V5M12 5 7.5 9.5M12 5l4.5 4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 16v2.5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-download" viewBox="0 0 24 24"><path d="M12 4v10.5M12 14.5 7.5 10M12 14.5 16.5 10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 16v2.5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-expand" viewBox="0 0 24 24"><path d="M4 9V5a1 1 0 0 1 1-1h4M20 9V5a1 1 0 0 0-1-1h-4M4 15v4a1 1 0 0 0 1 1h4M20 15v4a1 1 0 0 1-1 1h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-redo" viewBox="0 0 24 24"><path d="M5 12a7 7 0 0 1 12-4.9M19 12a7 7 0 0 1-12 4.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="17,3 17,7.5 12.5,7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><polyline points="7,21 7,16.5 11.5,16.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-flip" viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2M4 16v2a2 2 0 0 0 2 2h2M20 8V6a2 2 0 0 0-2-2h-2M20 16v2a2 2 0 0 1-2 2h-2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="12" y1="3" x2="12" y2="21" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-dasharray="2.2 2.6"/></symbol>
+    <symbol id="ic-save" viewBox="0 0 24 24"><path d="M5 4h11l3 3v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 4v5h7V4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><rect x="8" y="13.3" width="8" height="5" fill="none" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="ic-folder" viewBox="0 0 24 24"><path d="M4 7a1 1 0 0 1 1-1h4.3l2 2H19a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<nav class="nav">
+  <span style="font-weight:900;font-size:1.05rem;letter-spacing:-0.02em;">SeatChange</span>
+  <div class="dark-toggle" id="darkToggle" title="다크모드" role="button" tabindex="0" style="margin-left:auto;"></div>
+</nav>
+
+<div class="wrap">
+
+  <!-- ── 방 제목 · 저장 · 불러오기 · 공유 · 설정 ── -->
+  <div class="roombar">
+    <input class="inp edit-only" id="roomName" placeholder="예: 3학년 2반" maxlength="60">
+    <h1 class="view-title" id="roomTitleText" hidden></h1>
+    <button class="btn sm accent edit-only" id="btnSave" title="저장"><svg width="14" height="14" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-save"/></svg>저장</button>
+    <button class="icon-action edit-only" id="btnLoad" title="불러오기"><svg width="18" height="18"><use href="#ic-folder"/></svg></button>
+    <button class="icon-action" id="btnShare" title="공유 링크 복사"><svg width="18" height="18"><use href="#ic-share"/></svg></button>
+    <button class="icon-action edit-only" id="btnSettings" title="설정"><svg width="18" height="18"><use href="#ic-gear"/></svg></button>
+  </div>
+
+  <div class="banner warn noprint" id="readonlyBanner" hidden>
+    읽기 전용 — 공유받은 좌석표입니다.
+    <button class="btn sm ghost" id="btnNewRoom" style="margin-left:6px;">내 좌석표 만들기</button>
+  </div>
+
+  <div id="banner"></div>
+
+  <!-- ── 교실 보드: 항상 최상단, 이게 곧 메인 화면 ── -->
+  <div class="boardcard" id="boardcard">
+    <div class="board">
+      <div class="grid" id="grid"></div>
+    </div>
+    <div class="blackboard">칠판</div>
+    <div class="boardtools edit-only pre-arrange" id="boardTools">
+      <span class="bt-label">줄</span>
+      <button class="icon-action" id="rowMinus" title="줄 삭제">−</button>
+      <button class="icon-action" id="rowPlus" title="줄 추가"><svg width="15" height="15"><use href="#ic-plus"/></svg></button>
+      <span class="bt-label" style="margin-left:14px;">분단</span>
+      <button class="icon-action" id="colMinus" title="분단 삭제">−</button>
+      <button class="icon-action" id="colPlus" title="분단 추가"><svg width="15" height="15"><use href="#ic-plus"/></svg></button>
+      <span class="bt-hint">책상을 눌러 삭제 · 드래그로 이동</span>
+    </div>
+    <div class="boardstatus post-arrange noprint" id="boardStatus">
+      <span id="revealProgress"></span>
+      <button class="btn sm ghost" id="btnRevealAll">전체 공개</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── 하단 액션 ── -->
+<div class="actionbar noprint">
+  <button class="btn ghost sm" id="btnPrint">인쇄</button>
+  <button class="btn accent edit-only pre-arrange" id="btnArrange">배치 시작</button>
+  <button class="btn sm edit-only post-arrange" id="btnRedesign">다시 설계</button>
+  <button class="btn sm" id="btnFullscreen"><svg width="15" height="15" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-expand"/></svg>전체화면</button>
+  <button class="icon-action" id="btnFlip" title="화면 반전 (마주 앉은 사람에게 보여줄 때)"><svg width="17" height="17"><use href="#ic-flip"/></svg></button>
+</div>
+
+<!-- ── 설정 패널 · 불러오기 대화상자가 공유하는 배경 ── -->
+<div class="scrim hidden" id="scrim"></div>
+
+<!-- ── 불러오기 (편집 전용) ── -->
+<div class="dialog hidden" id="loadDialog">
+  <div class="panel-head">
+    <span>좌석표 불러오기</span>
+    <button class="icon-action" id="btnCloseLoad"><svg width="18" height="18"><use href="#ic-close"/></svg></button>
+  </div>
+  <div class="dialog-body">
+    <button class="btn sm ghost" id="btnNewRoomFromLoad" style="width:100%;margin-bottom:10px;">+ 새 좌석표</button>
+    <div id="loadList"></div>
+  </div>
+</div>
+
+<!-- ── 설정 패널 (편집 전용) ── -->
+<div class="panel hidden" id="settingsPanel">
+  <div class="panel-head">
+    <span>설정</span>
+    <button class="icon-action" id="btnClosePanel"><svg width="18" height="18"><use href="#ic-close"/></svg></button>
+  </div>
+  <div class="panel-body">
+
+    <section class="panel-section">
+      <div class="panel-h">명렬표 업로드 <span class="hint">이름, 줄배정(선택) 두 칸짜리 CSV</span></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn sm ghost" id="btnTemplate"><svg width="15" height="15" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-download"/></svg>양식 다운로드</button>
+        <label class="btn sm" for="fileRoster" style="cursor:pointer;"><svg width="15" height="15" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-upload"/></svg>업로드
+          <input type="file" id="fileRoster" accept=".csv,text/csv" style="display:none;">
+        </label>
+      </div>
+      <div class="row-sub" style="margin-top:8px;">줄배정 칸을 비워두면 자동 배치, 숫자(1부터)를 쓰면 그 줄에만 앉습니다 — 학생은 모릅니다.</div>
+    </section>
+
+    <section class="panel-section">
+      <div class="panel-h">명단 <span class="hint">직접 추가도 가능</span></div>
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <input class="inp" id="quickName" placeholder="이름 입력 후 Enter">
+        <button class="btn sm" id="clearNames">전체 지우기</button>
+      </div>
+      <div id="rosterList"></div>
+    </section>
+
+    <section class="panel-section">
+      <div class="panel-h">짝 금지</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <select class="inp" id="avoidA" style="flex:1;min-width:110px;"></select>
+        <select class="inp" id="avoidB" style="flex:1;min-width:110px;"></select>
+        <button class="btn sm" id="addAvoid">추가</button>
+      </div>
+      <div class="roster" id="avoidList" style="margin-top:10px;"></div>
+    </section>
+
+    <section class="panel-section">
+      <div class="panel-h">규칙</div>
+      <div class="inset-group">
+        <div class="inset-row">
+          <div><span class="row-label" style="min-width:0;">직전과 다른 자리</span><div class="row-sub">모두 자리를 옮기게 합니다</div></div>
+          <div class="sw" id="swSeat" role="switch" tabindex="0"></div>
+        </div>
+        <div class="inset-row">
+          <div><span class="row-label" style="min-width:0;">직전과 다른 짝</span><div class="row-sub">지난번 짝꿍을 피합니다</div></div>
+          <div class="sw" id="swMate" role="switch" tabindex="0"></div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<!-- ── 이름 공개 오버레이 ── -->
+<div class="reveal hidden" id="revealOverlay">
+  <div class="reveal-name" id="revealName"></div>
+  <div class="reveal-hint">화면을 누르면 닫혀요</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

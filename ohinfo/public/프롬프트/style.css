@@ -1,0 +1,170 @@
+/* 프롬프트 생성기 — theme.css(OHinfo Liquid Glass) 위에 올라가는 페이지 전용 스타일 */
+
+.nav-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
+.nav-brand img { height: 28px; }
+.nav-brand span { font-size: 0.9rem; font-weight: 700; color: var(--sub); }
+
+.wrap { max-width: 720px; margin: 0 auto; padding: 32px 20px 100px; }
+
+.page-intro { text-align: center; margin-bottom: 24px; }
+.page-intro h1 {
+  font-size: clamp(1.5rem, 4vw, 2rem); font-weight: 900; letter-spacing: -0.02em;
+  background: var(--accent-grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  margin: 0 0 8px;
+}
+.hint { color: var(--sub); font-size: 0.9rem; margin: 0; }
+
+/* ── Step indicator ── */
+.steps { display: flex; gap: 8px; margin-bottom: 20px; }
+.step {
+  flex: 1; display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px; border-radius: var(--radius-pill);
+  background: var(--glass); border: 1px solid var(--border-card);
+  backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+  color: var(--text-3); font-size: 0.82rem; font-weight: 700;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+.step-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--glass-strong); color: var(--text-2); font-size: 0.72rem; flex-shrink: 0;
+}
+.step-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.step.active { border-color: var(--accent); color: var(--text); background: var(--accent-light); }
+.step.active .step-num { background: var(--accent-grad); color: #fff; }
+.step.done .step-num { background: var(--success-light); color: var(--success); }
+
+@media (max-width: 560px) {
+  .step-label { display: none; }
+  .step { flex: 0 0 auto; padding: 10px; }
+}
+
+/* ── Panels ── */
+.panel {
+  display: none;
+  border-radius: var(--radius-lg);
+  background: var(--glass-strong);
+  padding: 28px 26px;
+  margin-bottom: 20px;
+}
+.panel.active { display: block; animation: fadeUp 0.25s var(--ease); }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+.panel h2 { font-size: 1.2rem; font-weight: 800; letter-spacing: -0.01em; margin: 0 0 6px; }
+.panel .hint { margin-bottom: 20px; }
+
+.panel-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.panel-head-row .btn { flex-shrink: 0; }
+
+.feature-card-actions { display: flex; align-items: center; gap: 6px; }
+.icon-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.icon-btn:disabled:hover { background: var(--glass); color: var(--sub); }
+.err { color: var(--danger); font-size: 0.82rem; font-weight: 600; margin: 8px 0 0; }
+
+/* ── Radio cards (목적 선택) ── */
+.radio-group { display: flex; flex-direction: column; gap: 10px; }
+.radio-card {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 16px 18px; border-radius: var(--radius);
+  border: 1.5px solid var(--border-card); background: var(--glass);
+  cursor: pointer; transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.radio-card:hover { background: var(--glass-strong); }
+.radio-card input[type="radio"] { margin-top: 3px; accent-color: var(--accent); width: 18px; height: 18px; flex-shrink: 0; }
+.radio-card:has(input:checked) { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); background: var(--glass-strong); }
+.radio-card-title { font-weight: 700; font-size: 0.98rem; }
+.radio-card-desc { font-size: 0.84rem; color: var(--sub); margin-top: 2px; }
+
+/* ── Fields ── */
+.field-block { margin-bottom: 26px; }
+.field-block:last-child { margin-bottom: 0; }
+.field-label { display: block; font-size: 0.78rem; font-weight: 700; color: var(--sub); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.04em; }
+
+textarea.inp { resize: vertical; }
+
+/* ── Feature cards ── */
+.feature-card {
+  background: var(--glass); border: 1px solid var(--border-card); border-radius: var(--radius);
+  padding: 16px 18px; margin-bottom: 14px; box-shadow: var(--highlight);
+}
+.feature-card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.feature-card-head span { font-size: 0.78rem; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.03em; }
+.feature-row { margin-bottom: 10px; }
+.feature-row:last-child { margin-bottom: 0; }
+.feature-row label { display: block; font-size: 0.78rem; color: var(--sub); margin-bottom: 5px; }
+
+.step-list { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.step-row { display: flex; align-items: center; gap: 8px; }
+.step-row-num {
+  flex-shrink: 0; min-width: 46px; text-align: center;
+  font-size: 0.74rem; font-weight: 700; color: var(--sub);
+  padding: 4px 8px; border-radius: var(--radius-sm);
+  background: var(--glass-strong); border: 1px solid var(--border-card);
+}
+.step-row .inp { flex: 1; padding: 9px 12px; }
+
+.icon-btn {
+  width: 32px; height: 32px; flex-shrink: 0;
+  border-radius: 8px; border: 1px solid var(--border-card); background: var(--glass);
+  color: var(--sub); cursor: pointer; font-size: 0.95rem; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.icon-btn:hover { background: var(--danger-light); color: var(--danger); }
+
+.empty-features { color: var(--text-3); font-size: 0.88rem; padding: 18px; text-align: center; border: 1.5px dashed var(--border-card); border-radius: var(--radius); }
+
+/* ── Nav buttons ── */
+.nav-btns { display: flex; justify-content: space-between; margin-top: 24px; }
+
+/* ── Toggle (디자인 모드) ── */
+.toggle-group { display: inline-flex; background: var(--glass); border-radius: var(--radius-pill); padding: 4px; margin-bottom: 22px; border: 1px solid var(--border-card); }
+.toggle-btn {
+  padding: 9px 20px; border: none; background: none; border-radius: var(--radius-pill);
+  font-family: inherit; font-size: 0.88rem; font-weight: 700; color: var(--sub); cursor: pointer;
+  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.toggle-btn.active { background: var(--glass-strong); color: var(--text); box-shadow: var(--shadow-sm); }
+
+/* ── Preset grid ── */
+.preset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.preset-card {
+  border: 1.5px solid var(--border-card); border-radius: var(--radius);
+  padding: 14px; cursor: pointer; background: var(--glass);
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease), transform 0.1s var(--ease);
+}
+.preset-card:hover { transform: translateY(-2px); background: var(--glass-strong); }
+.preset-card.selected { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); background: var(--glass-strong); }
+.preset-swatch { height: 64px; border-radius: 10px; margin-bottom: 10px; position: relative; overflow: hidden; }
+.preset-name { font-weight: 700; font-size: 0.92rem; margin-bottom: 3px; }
+.preset-desc { font-size: 0.78rem; color: var(--sub); line-height: 1.45; }
+
+/* preset swatch looks */
+.swatch-liquid { background: linear-gradient(135deg, #cfe0ff, #f0d9ff, #cdf3ff); }
+.swatch-liquid::after { content: ''; position: absolute; inset: 14px 10px; border-radius: 8px; background: rgba(255,255,255,0.55); backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,0.7); }
+.swatch-bw { background: #fff; border: 1px solid #d8d8d8; }
+.swatch-bw::after { content: ''; position: absolute; left: 10px; right: 10px; top: 24px; height: 8px; background: #1c1c1f; border-radius: 4px; }
+.swatch-bw::before { content: ''; position: absolute; left: 10px; right: 40px; top: 40px; height: 6px; background: #9a9aa2; border-radius: 3px; }
+.swatch-minimal { background: #fafafa; border: 1px solid #ececec; }
+.swatch-minimal::after { content: ''; position: absolute; left: 12px; right: 12px; top: 18px; height: 28px; background: #fff; border: 1px solid #e2e6ee; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
+.swatch-warm { background: linear-gradient(135deg, #f3e3d3, #f6cbb0, #efb59c); }
+.swatch-neon { background: #0c0c14; box-shadow: inset 0 0 0 1px #1c1c2a; }
+.swatch-neon::after {
+  content: ''; position: absolute; left: 14px; right: 14px; top: 22px; height: 20px; border-radius: 8px;
+  background: transparent; border: 2px solid #39ffb0; box-shadow: 0 0 10px #39ffb0, 0 0 4px #39ffb0 inset;
+}
+.swatch-neon::before {
+  content: ''; position: absolute; width: 14px; height: 14px; border-radius: 50%; right: 16px; bottom: 12px;
+  background: #ff3df0; box-shadow: 0 0 12px #ff3df0;
+}
+
+/* ── Result ── */
+.result-textarea { width: 100%; min-height: 340px; font-family: "SFMono-Regular", Consolas, Menlo, monospace; font-size: 0.86rem; line-height: 1.7; white-space: pre-wrap; }
+.result-btns { display: flex; gap: 10px; margin-top: 16px; }
+.copied-msg { color: var(--success); font-size: 0.85rem; font-weight: 700; margin-top: 10px; }
+
+@media (max-width: 480px) {
+  .nav-btns .btn { flex: 1; }
+  .result-btns .btn { flex: 1; }
+  .panel { padding: 22px 18px; }
+}
