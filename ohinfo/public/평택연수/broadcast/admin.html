@@ -1,0 +1,1591 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=0">
+  <title>샘플중학교 방송부 — 관리자 (견본)</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="../shared/firestore-lite-compat.global.js" data-ns="gwbs-demo"></script>
+  <script>
+  window.FSLite.seedIfEmpty(function (s) {
+    var now = Date.now();
+    s.put('broadcasts', '2026-09-01', { date: '9월 1일 (화)', dateValue: '2026-09-01', tasks: [
+      { id: 't1', period: '아침방송', p3: '김하늘', p2: '이도윤, 박서준', p1: '최유나, 정민재', rawVideoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', notice: '' }
+    ] });
+    s.put('broadcasts', '2026-09-08', { date: '9월 8일 (화)', dateValue: '2026-09-08', tasks: [
+      { id: 't2', period: '아침방송', p3: '이도윤', p2: '최유나', p1: '김하늘, 정민재', rawVideoUrl: '', notice: '견본 데이터입니다' }
+    ] });
+    s.put('songs', 'sg1', { grade: '2학년', classInfo: '3반', name: '김하늘', song: '좋은 날', artist: '아이유', isDone: false, createdAt: { __ts: now - 3600000 } });
+    s.put('songs', 'sg2', { grade: '1학년', classInfo: '5반', name: '이도윤', song: 'Dynamite', artist: 'BTS', isDone: true, createdAt: { __ts: now - 7200000 } });
+    s.put('manuals', 'm1', { mainTitle: '아침방송 진행 순서', mainDesc: '방송 시작 전 확인할 것들', subItems: [
+      { subTitle: '방송 시작 전', steps: ['방송실 열쇠 수령', '마이크·스피커 전원 확인', '재생목록 점검'] },
+      { subTitle: '방송 중', steps: ['시간 엄수(8:20 시작)', '신청곡 순서대로 재생'] }
+    ], createdAt: { __ts: now - 86400000 } });
+  });
+  </script>
+  <style>
+    /* ── Design tokens ───────────────────────────────────── */
+    :root {
+      --bg: #f0f2f8;
+      --surface: rgba(255,255,255,0.62);
+      --surface-2: rgba(255,255,255,0.82);
+      --glass: rgba(255,255,255,0.55);
+      --glass-strong: rgba(255,255,255,0.78);
+      --glass-nav: rgba(240,242,248,0.78);
+      --blur: saturate(180%) blur(22px);
+      --text: #0d0f1a;
+      --text-2: #3b3f5c;
+      --text-3: #7a7f9a;
+      --accent: #0071e3;
+      --accent-light: #0a84ff;
+      --accent-grad: linear-gradient(135deg,#0071e3,#7c3aed);
+      --danger: #ff453a;
+      --success: #30d158;
+      --warn: #ff9f0a;
+      --border: rgba(80,90,160,0.13);
+      --hairline: rgba(80,90,160,0.09);
+      --highlight: rgba(0,113,227,0.08);
+      --shadow: 0 8px 32px rgba(13,15,26,0.12), 0 1.5px 4px rgba(13,15,26,0.06);
+      --shadow-sm: 0 2px 8px rgba(13,15,26,0.08);
+      --shadow-md: 0 16px 48px rgba(13,15,26,0.15);
+      --radius: 20px;
+      --radius-sm: 13px;
+      --radius-lg: 26px;
+      --radius-pill: 980px;
+      --ease: cubic-bezier(0.4,0,0.2,1);
+      --dur: 0.22s;
+      --cta: #1d1d1f;
+      --cta-text: #ffffff;
+      --icon-btn-bg-hover: rgba(0,0,0,0.06);
+    }
+    body.dark {
+      --bg: #0d0f1a;
+      --surface: rgba(30,32,48,0.72);
+      --surface-2: rgba(38,40,58,0.88);
+      --glass: rgba(30,32,48,0.65);
+      --glass-strong: rgba(38,40,58,0.9);
+      --glass-nav: rgba(18,20,34,0.82);
+      --text: #eef0f8;
+      --text-2: #b8bdd8;
+      --text-3: #6b7099;
+      --accent: #0a84ff;
+      --accent-light: #409cff;
+      --border: rgba(120,130,200,0.18);
+      --hairline: rgba(120,130,200,0.1);
+      --highlight: rgba(10,132,255,0.12);
+      --shadow: 0 8px 32px rgba(0,0,0,0.35), 0 1.5px 4px rgba(0,0,0,0.2);
+      --shadow-sm: 0 2px 8px rgba(0,0,0,0.25);
+      --shadow-md: 0 16px 48px rgba(0,0,0,0.5);
+      --cta: #f5f5f7;
+      --cta-text: #0d0f1a;
+      --icon-btn-bg-hover: rgba(255,255,255,0.10);
+    }
+
+    /* ── Reset ───────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'IBM Plex Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      font-size: 15px;
+      line-height: 1.6;
+      transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+      overflow-x: hidden;
+    }
+
+    /* ── Mesh background ─────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: -1;
+      background:
+        radial-gradient(ellipse 80% 50% at 15% 20%, rgba(59,91,219,0.22) 0%, transparent 65%),
+        radial-gradient(ellipse 60% 60% at 85% 10%, rgba(124,58,237,0.18) 0%, transparent 60%),
+        radial-gradient(ellipse 70% 40% at 60% 80%, rgba(14,165,233,0.15) 0%, transparent 65%),
+        radial-gradient(ellipse 50% 50% at 30% 70%, rgba(59,91,219,0.12) 0%, transparent 60%),
+        var(--bg);
+      pointer-events: none;
+    }
+    body.dark::before {
+      background:
+        radial-gradient(ellipse 80% 50% at 15% 20%, rgba(59,91,219,0.35) 0%, transparent 65%),
+        radial-gradient(ellipse 60% 60% at 85% 10%, rgba(124,58,237,0.30) 0%, transparent 60%),
+        radial-gradient(ellipse 70% 40% at 60% 80%, rgba(14,165,233,0.20) 0%, transparent 65%),
+        radial-gradient(ellipse 50% 50% at 30% 70%, rgba(59,91,219,0.18) 0%, transparent 60%),
+        #0d0f1a;
+    }
+
+    /* ── Components ──────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+    }
+    .card-sm { border-radius: var(--radius-sm); padding: 16px; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 9px 18px; border-radius: var(--radius-pill);
+      font-family: inherit; font-size: 14px; font-weight: 500;
+      border: none; cursor: pointer;
+      transition: all var(--dur) var(--ease);
+      background: var(--surface-2); color: var(--text);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border);
+      white-space: nowrap;
+      letter-spacing: -0.01em;
+    }
+    .btn:hover { opacity: 0.82; transform: translateY(-1px); box-shadow: var(--shadow-sm); }
+    .btn:active { transform: translateY(0); opacity: 1; }
+    .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .btn.accent { background: var(--accent); color: #fff; border-color: transparent; }
+    .btn.accent:hover { background: var(--accent-light); opacity: 1; }
+    .btn.ghost { background: transparent; border-color: var(--border); }
+    .btn.danger { background: var(--danger); color: #fff; border-color: transparent; }
+    .btn.danger:hover { opacity: 0.88; }
+    .btn.sm { padding: 5px 13px; font-size: 13px; }
+    .btn.icon { padding: 8px; min-width: 36px; justify-content: center; }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+    /* Primary CTA — neutral dark */
+    .btn.primary {
+      background: var(--cta);
+      border-color: transparent;
+      color: var(--cta-text);
+    }
+    .btn.primary:hover { opacity: 0.82; transform: translateY(-1px); }
+
+    /* Icon-only circle button */
+    .icon-btn {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--text-2);
+      cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+      flex-shrink: 0;
+      padding: 0;
+    }
+    .icon-btn:hover { background: var(--icon-btn-bg-hover); color: var(--text); }
+    .icon-btn.danger { color: var(--danger); }
+    .icon-btn.danger:hover { background: rgba(255,69,58,0.10); }
+    .icon-btn svg { width: 17px; height: 17px; }
+
+    .inp {
+      width: 100%; padding: 10px 14px;
+      background: var(--glass); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); color: var(--text);
+      font-family: inherit; font-size: 14px;
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+      outline: none;
+    }
+    .inp:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,113,227,0.15); }
+    .inp::placeholder { color: var(--text-3); }
+    textarea.inp { resize: vertical; min-height: 80px; }
+    select.inp { cursor: pointer; }
+
+    .badge {
+      display: inline-block; padding: 3px 10px;
+      border-radius: var(--radius-pill); font-size: 12px; font-weight: 500;
+      background: var(--highlight); color: var(--accent); border: 1px solid rgba(0,113,227,0.18);
+    }
+    .badge.success { background: rgba(48,209,88,0.12); color: var(--success); border-color: rgba(48,209,88,0.2); }
+    .badge.warn { background: rgba(255,159,10,0.12); color: var(--warn); border-color: rgba(255,159,10,0.2); }
+    .badge.danger { background: rgba(255,69,58,0.12); color: var(--danger); border-color: rgba(255,69,58,0.2); }
+    .badge.neutral { background: var(--surface-2); color: var(--text-3); border-color: var(--border); }
+
+    .lbl {
+      display: block; font-size: 12px; font-weight: 600;
+      color: var(--text-3); letter-spacing: 0.04em; text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    /* ── Nav ─────────────────────────────────────────────── */
+    #nav {
+      position: sticky; top: 0; z-index: 200;
+      background: var(--glass-nav);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border-bottom: 1px solid var(--hairline);
+      padding: 0 24px;
+      display: flex; align-items: center; gap: 16px;
+      height: 58px;
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 15px; font-weight: 600; color: var(--text);
+      text-decoration: none; flex-shrink: 0;
+    }
+    .nav-logo-dot {
+      width: 28px; height: 28px; border-radius: 8px;
+      background: var(--cta); color: var(--cta-text); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+    }
+    .nav-title { font-size: 14px; font-weight: 600; color: var(--text); flex: 1; text-align: center; }
+    .nav-actions { display: flex; gap: 8px; align-items: center; margin-left: auto; }
+    .nav-actions .btn { height: 34px; }
+
+    /* ── Layout ──────────────────────────────────────────── */
+    #app { display: flex; min-height: calc(100vh - 58px); }
+    #sidebar {
+      width: 220px; flex-shrink: 0;
+      padding: 20px 12px;
+      position: sticky; top: 58px; height: calc(100vh - 58px); overflow-y: auto;
+    }
+    .sidebar-inner {
+      background: var(--surface);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      padding: 10px;
+      display: flex; flex-direction: column; gap: 3px;
+    }
+    .sidebar-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; border-radius: var(--radius-sm);
+      cursor: pointer; font-size: 14px; font-weight: 500;
+      color: var(--text-2); transition: all var(--dur) var(--ease);
+      border: 1px solid transparent; user-select: none;
+    }
+    .sidebar-item:hover { background: var(--highlight); color: var(--text); }
+    .sidebar-item.active {
+      background: var(--cta); color: var(--cta-text);
+    }
+    .sidebar-item .s-icon { font-size: 16px; flex-shrink: 0; }
+    .sidebar-item .s-label { flex: 1; }
+
+    #main { flex: 1; padding: 28px 28px 80px; min-width: 0; }
+
+    /* ── Section headings ────────────────────────────────── */
+    .section-head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 22px; flex-wrap: wrap; gap: 10px;
+    }
+    .section-head h2 { font-size: 22px; font-weight: 700; color: var(--text); }
+    .section-head .s-sub { font-size: 14px; color: var(--text-3); margin-top: 2px; }
+
+    /* ── Dashboard stats ─────────────────────────────────── */
+    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+    .stat-card {
+      background: var(--surface);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      box-shadow: var(--shadow-sm); padding: 22px;
+      display: flex; flex-direction: column; gap: 8px;
+      transition: box-shadow var(--dur) var(--ease);
+    }
+    .stat-card:hover { box-shadow: var(--shadow); }
+    .stat-icon { line-height: 1; color: var(--text-3); }
+    .stat-val { font-size: 34px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1; }
+    .stat-label { font-size: 13px; color: var(--text-3); font-weight: 500; }
+
+    /* ── Two-panel layout ────────────────────────────────── */
+    .two-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+    .panel-list {
+      background: var(--surface);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      box-shadow: var(--shadow-sm); overflow: hidden;
+    }
+    .panel-list-head {
+      padding: 16px 20px; border-bottom: 1px solid var(--hairline);
+      font-size: 14px; font-weight: 600; color: var(--text-2);
+    }
+    .panel-list-body { max-height: 520px; overflow-y: auto; }
+    .list-item {
+      padding: 14px 20px; border-bottom: 1px solid var(--hairline);
+      cursor: pointer; transition: background var(--dur) var(--ease);
+      display: flex; flex-direction: column; gap: 5px;
+    }
+    .list-item:last-child { border-bottom: none; }
+    .list-item:hover { background: var(--highlight); }
+    .list-item.active { background: var(--highlight); border-left: 3px solid var(--accent); padding-left: 17px; }
+    .list-item-title { font-size: 14px; font-weight: 600; color: var(--text); }
+    .list-item-sub { font-size: 12px; color: var(--text-3); display: flex; flex-wrap: wrap; gap: 4px; }
+    .panel-form {
+      background: var(--surface);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      box-shadow: var(--shadow-sm); padding: 24px;
+      display: flex; flex-direction: column; gap: 14px;
+    }
+    .form-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; }
+    .form-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+
+    /* ── Student management ──────────────────────────────── */
+    .grade-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .grade-card {
+      background: var(--surface);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      display: flex; flex-direction: column;
+    }
+    .grade-head {
+      padding: 18px 20px 14px; border-bottom: 1px solid var(--hairline);
+      font-size: 15px; font-weight: 700; color: var(--text);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .grade-body { padding: 16px 20px; flex: 1; }
+    .student-chips { display: flex; flex-wrap: wrap; gap: 7px; min-height: 40px; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--glass-strong); border: 1px solid var(--border);
+      border-radius: var(--radius-pill); padding: 4px 10px 4px 12px;
+      font-size: 13px; font-weight: 500; color: var(--text);
+    }
+    .chip-del {
+      background: none; border: none; cursor: pointer; padding: 0;
+      color: var(--text-3); font-size: 15px; line-height: 1;
+      display: flex; transition: color var(--dur) var(--ease);
+    }
+    .chip-del:hover { color: var(--danger); }
+    .grade-foot { padding: 14px 20px; border-top: 1px solid var(--hairline); display: flex; gap: 8px; }
+    .grade-foot .inp { flex: 1; }
+
+    /* ── Attendance table ────────────────────────────────── */
+    .table-wrap { overflow-x: auto; border-radius: var(--radius); }
+    table {
+      width: 100%; border-collapse: collapse;
+      font-size: 14px;
+    }
+    th {
+      padding: 12px 16px; text-align: left;
+      font-size: 12px; font-weight: 600; color: var(--text-3);
+      letter-spacing: 0.04em; text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    td {
+      padding: 12px 16px; border-bottom: 1px solid var(--hairline);
+      color: var(--text-2); vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--highlight); }
+    .empty-state {
+      padding: 48px 20px; text-align: center;
+      color: var(--text-3); font-size: 14px;
+    }
+
+    /* ── Song cards ──────────────────────────────────────── */
+    .song-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .song-col-head {
+      font-size: 13px; font-weight: 600; color: var(--text-3);
+      letter-spacing: 0.04em; text-transform: uppercase;
+      margin-bottom: 10px; padding-left: 4px;
+    }
+    .song-item {
+      background: var(--glass-strong); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 14px 16px;
+      display: flex; align-items: center; gap: 10px;
+      transition: box-shadow var(--dur) var(--ease);
+      margin-bottom: 8px;
+    }
+    .song-item:hover { box-shadow: var(--shadow-sm); }
+    .song-info { flex: 1; min-width: 0; }
+    .song-title { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .song-meta { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+
+    /* ── Modal overlay ───────────────────────────────────── */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 500;
+      background: rgba(13,15,26,0.55);
+      backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+      opacity: 0; pointer-events: none;
+      transition: opacity var(--dur) var(--ease);
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal-box {
+      background: var(--glass-strong);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border); border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-md); padding: 32px;
+      width: 100%; max-width: 480px; max-height: 85vh; overflow-y: auto;
+      transform: translateY(16px) scale(0.97);
+      transition: transform var(--dur) var(--ease);
+    }
+    .modal-overlay.open .modal-box { transform: translateY(0) scale(1); }
+    .modal-head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .modal-head h3 { font-size: 18px; font-weight: 700; color: var(--text); }
+    .modal-close {
+      background: var(--surface-2); border: 1px solid var(--border); border-radius: 50%;
+      width: 30px; height: 30px; cursor: pointer; font-size: 16px;
+      display: flex; align-items: center; justify-content: center; color: var(--text-2);
+      transition: all var(--dur) var(--ease); flex-shrink: 0;
+    }
+    .modal-close:hover { background: var(--danger); color: #fff; border-color: transparent; }
+
+    /* ── Password modal ──────────────────────────────────── */
+    #pw-modal { z-index: 900; }
+    #pw-modal .modal-box { max-width: 400px; text-align: center; }
+    #pw-modal .modal-box h2 { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+    #pw-modal .modal-box p { font-size: 14px; color: var(--text-3); margin-bottom: 24px; }
+
+    /* ── Student picker ──────────────────────────────────── */
+    #picker-modal .student-pick-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+    #picker-modal .pick-chip {
+      padding: 7px 14px; border-radius: var(--radius-pill);
+      background: var(--glass); border: 1px solid var(--border);
+      cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text);
+      transition: all var(--dur) var(--ease);
+    }
+    #picker-modal .pick-chip:hover { background: var(--accent); color: #fff; border-color: transparent; }
+
+    /* ── Confirm modal ───────────────────────────────────── */
+    #confirm-modal .confirm-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
+    /* ── Toast ───────────────────────────────────────────── */
+    #toast-container {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+      z-index: 9999; display: flex; flex-direction: column; align-items: center; gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      background: var(--glass-strong);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border); border-radius: var(--radius-pill);
+      box-shadow: var(--shadow-md); padding: 11px 22px;
+      font-size: 14px; font-weight: 500; color: var(--text);
+      display: flex; align-items: center; gap: 8px; white-space: nowrap;
+      animation: toast-in 0.25s var(--ease);
+    }
+    .toast.out { animation: toast-out 0.25s var(--ease) forwards; }
+    .toast-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .toast.info .toast-dot { background: var(--accent); }
+    .toast.success .toast-dot { background: var(--success); }
+    .toast.error .toast-dot { background: var(--danger); }
+    .toast.warn .toast-dot { background: var(--warn); }
+    @keyframes toast-in { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes toast-out { to { opacity:0; transform:translateY(8px); } }
+
+    /* ── Shake animation ─────────────────────────────────── */
+    @keyframes shake {
+      0%,100%{transform:translateX(0)}
+      20%{transform:translateX(-8px)}
+      40%{transform:translateX(8px)}
+      60%{transform:translateX(-5px)}
+      80%{transform:translateX(5px)}
+    }
+    .shake { animation: shake 0.38s var(--ease); }
+
+    /* ── Mobile ──────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      #sidebar {
+        position: fixed; bottom: 0; left: 0; right: 0; top: auto;
+        width: 100%; height: auto; z-index: 150;
+        padding: 8px 12px 12px; overflow-x: auto; overflow-y: hidden;
+        background: var(--glass-nav);
+        backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+        border-top: 1px solid var(--hairline);
+      }
+      .sidebar-inner {
+        flex-direction: row; padding: 4px;
+        background: transparent; border: none; box-shadow: none;
+        white-space: nowrap; gap: 6px;
+        border-radius: 0;
+      }
+      .sidebar-item {
+        flex-shrink: 0; padding: 8px 14px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+      }
+      .sidebar-item .s-label { display: none; }
+      .sidebar-item.active { background: var(--cta); color: var(--cta-text); }
+      #main { padding: 20px 16px 100px; }
+      .stat-grid { grid-template-columns: repeat(2, 1fr); }
+      .two-panel, .grade-grid, .song-grid { grid-template-columns: 1fr; }
+      .nav-title { display: none; }
+      #app { flex-direction: column; }
+    }
+
+    /* ── Scrollbar ───────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-3); }
+
+    /* ── Filter row ──────────────────────────────────────── */
+    .filter-row { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+    .filter-row .inp { max-width: 240px; }
+
+    /* ── Hidden sections ─────────────────────────────────── */
+    .section { display: none; }
+    .section.active { display: block; }
+
+    /* ── Small phone extras ──────────────────────────────── */
+    @media (max-width: 480px) {
+      #nav { padding: 0 14px; height: 52px; gap: 10px; }
+      .nav-logo { font-size: 13px; gap: 8px; }
+      .nav-logo-dot { width: 24px; height: 24px; font-size: 12px; }
+      .nav-actions .btn { padding: 5px 11px; font-size: 12px; }
+      #main { padding: 14px 12px 90px; }
+      .stat-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+      .stat-card { padding: 16px; }
+      .stat-val { font-size: 26px; }
+      .card { padding: 18px; }
+      .section-head h2 { font-size: 18px; }
+      .modal-box { padding: 22px 18px; }
+      .filter-row .inp { max-width: 100%; }
+      .grade-head { padding: 14px 16px 12px; }
+      .grade-body { padding: 12px 16px; }
+      .grade-foot { padding: 12px 16px; }
+      .panel-list-head { padding: 12px 16px; }
+      .list-item { padding: 12px 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <symbol id="ic-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+  <symbol id="ic-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+  <symbol id="ic-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></symbol>
+  <symbol id="ic-play" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></symbol>
+  <symbol id="ic-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+  <symbol id="ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></symbol>
+  <symbol id="ic-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></symbol>
+  <symbol id="ic-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="ic-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></symbol>
+  <symbol id="ic-music" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
+  <symbol id="ic-book" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></symbol>
+  <symbol id="ic-check-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></symbol>
+  <symbol id="ic-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></symbol>
+  <symbol id="ic-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></symbol>
+  <symbol id="ic-radio" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.73 4.67L21.3 3l-3.95-1.84a4 4 0 0 0-5.12 1.69L5 17"/><rect x="1" y="11" width="22" height="11" rx="2" ry="2"/><circle cx="11" cy="17" r="1"/><line x1="17" y1="14" x2="17" y2="20"/></symbol>
+  <symbol id="ic-task" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></symbol>
+</svg>
+
+<!-- ── Toast container ─────────────────────────────────── -->
+<div id="toast-container"></div>
+
+<!-- ── Password modal ──────────────────────────────────── -->
+<div class="modal-overlay" id="pw-modal">
+  <div class="modal-box">
+    <div style="font-size:36px;margin-bottom:12px;">🔐</div>
+    <h2>관리자 로그인</h2>
+    <p>샘플중학교 방송부 관리자 페이지입니다</p>
+    <div style="margin-bottom:10px;">
+      <input class="inp" type="password" id="pw-input" placeholder="비밀번호 입력" autocomplete="current-password" style="text-align:center;font-size:18px;letter-spacing:0.2em;">
+    </div>
+    <div id="pw-error" style="font-size:13px;color:var(--danger);min-height:20px;margin-bottom:10px;"></div>
+    <button class="btn primary" style="width:100%;justify-content:center;" onclick="checkPassword()">로그인</button>
+  </div>
+</div>
+
+<!-- ── Student picker modal ────────────────────────────── -->
+<div class="modal-overlay" id="picker-modal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 id="picker-title">학생 선택</h3>
+      <button class="icon-btn modal-close" onclick="closePicker()">
+        <svg width="17" height="17"><use href="#ic-close"/></svg>
+      </button>
+    </div>
+    <p style="font-size:13px;color:var(--text-3);margin-bottom:4px;">클릭하면 입력란에 추가됩니다</p>
+    <div class="student-pick-list" id="picker-list"></div>
+  </div>
+</div>
+
+<!-- ── Confirm modal ───────────────────────────────────── -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal-box">
+    <div class="modal-head">
+      <h3 id="confirm-title">확인</h3>
+    </div>
+    <p id="confirm-msg" style="font-size:14px;color:var(--text-2);"></p>
+    <div class="confirm-actions">
+      <button class="btn ghost" onclick="confirmResolve(false)">취소</button>
+      <button class="btn danger" onclick="confirmResolve(true)">삭제</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Nav ─────────────────────────────────────────────── -->
+<nav id="nav">
+  <a class="nav-logo" href="index.html" style="display:flex;align-items:center;gap:8px;text-decoration:none;">
+    <img src="../shared/broadcast-logo.svg" alt="로고" style="height:32px;width:auto;">
+    <span style="color:var(--text);font-weight:600;">GWBS</span>
+  </a>
+  <span class="nav-title">샘플중학교 방송부 관리자</span>
+  <div class="nav-actions">
+    <button class="icon-btn" id="dark-toggle" onclick="toggleDark()" title="다크모드 전환">
+      <svg width="17" height="17"><use href="#ic-moon"/></svg>
+    </button>
+    <button class="btn ghost sm" onclick="logout()">로그아웃</button>
+  </div>
+</nav>
+
+<!-- ── App shell ────────────────────────────────────────── -->
+<div id="app">
+  <aside id="sidebar">
+    <div class="sidebar-inner">
+      <div class="sidebar-item active" data-section="dashboard" onclick="gotoSection('dashboard')">
+        <span class="s-icon"><svg width="16" height="16"><use href="#ic-chart"/></svg></span><span class="s-label">대시보드</span>
+      </div>
+      <div class="sidebar-item" data-section="broadcasts" onclick="gotoSection('broadcasts')">
+        <span class="s-icon"><svg width="16" height="16"><use href="#ic-calendar"/></svg></span><span class="s-label">방송 일정</span>
+      </div>
+      <div class="sidebar-item" data-section="students" onclick="gotoSection('students')">
+        <span class="s-icon"><svg width="16" height="16"><use href="#ic-users"/></svg></span><span class="s-label">학생 관리</span>
+      </div>
+      <div class="sidebar-item" data-section="attendance" onclick="gotoSection('attendance')">
+        <span class="s-icon"><svg width="16" height="16"><use href="#ic-check-circle"/></svg></span><span class="s-label">출결 관리</span>
+      </div>
+      <div class="sidebar-item" data-section="songs" onclick="gotoSection('songs')">
+        <span class="s-icon"><svg width="16" height="16"><use href="#ic-music"/></svg></span><span class="s-label">신청곡</span>
+      </div>
+      <div class="sidebar-item" data-section="manuals" onclick="gotoSection('manuals')">
+        <span class="s-icon"><svg width="16" height="16"><use href="#ic-book"/></svg></span><span class="s-label">업무 매뉴얼</span>
+      </div>
+    </div>
+  </aside>
+
+  <main id="main">
+    <!-- ── 1. Dashboard ──────────────────────────────── -->
+    <section class="section active" id="sec-dashboard">
+      <div class="section-head">
+        <div>
+          <h2>대시보드</h2>
+        </div>
+        <button class="icon-btn" onclick="loadDashboard()" title="새로고침">
+          <svg width="17" height="17"><use href="#ic-refresh"/></svg>
+        </button>
+      </div>
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-icon"><svg width="22" height="22"><use href="#ic-calendar"/></svg></div>
+          <div class="stat-val" id="stat-broadcasts">–</div>
+          <div class="stat-label">총 방송일</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon"><svg width="22" height="22"><use href="#ic-users"/></svg></div>
+          <div class="stat-val" id="stat-students">–</div>
+          <div class="stat-label">총 학생 수</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon"><svg width="22" height="22"><use href="#ic-music"/></svg></div>
+          <div class="stat-val" id="stat-songs">–</div>
+          <div class="stat-label">대기 신청곡</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon"><svg width="22" height="22"><use href="#ic-alert"/></svg></div>
+          <div class="stat-val" id="stat-absent">–</div>
+          <div class="stat-label">결석 기록</div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:20px;">
+        <div style="margin-bottom:12px;">
+          <h3 style="font-size:1rem;margin:0 0 4px;">방송 관리 비밀번호</h3>
+          <div class="s-sub">메인 페이지에서 방송 일정 수정 시 사용하는 비밀번호</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:end;">
+          <div style="flex:1;">
+            <label class="lbl">비밀번호</label>
+            <input class="inp" type="text" id="sched-pw-input" placeholder="방송 관리 비밀번호">
+          </div>
+          <button class="btn primary" onclick="saveSchedPw()">저장</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 2. Broadcasts ─────────────────────────────── -->
+    <section class="section" id="sec-broadcasts">
+      <div class="section-head">
+        <div><h2>방송 일정 관리</h2></div>
+        <button class="btn ghost sm" onclick="clearBroadcastForm()"><svg width="13" height="13"><use href="#ic-plus"/></svg> 새 항목</button>
+      </div>
+      <div class="two-panel">
+        <div class="panel-list">
+          <div class="panel-list-head">방송 일정 목록</div>
+          <div class="panel-list-body" id="broadcast-list"></div>
+        </div>
+        <div class="panel-form" id="broadcast-form">
+          <div>
+            <label class="lbl">날짜</label>
+            <input class="inp" type="text" id="bc-date" placeholder="YYYY-MM-DD">
+          </div>
+          <div>
+            <label class="lbl">교시</label>
+            <select class="inp" id="bc-period">
+              <option value="아침방송">아침방송</option>
+              <option value="점심시간">점심시간</option>
+              <option value="1교시">1교시</option>
+              <option value="2교시">2교시</option>
+              <option value="3교시">3교시</option>
+              <option value="4교시">4교시</option>
+              <option value="5교시">5교시</option>
+              <option value="6교시">6교시</option>
+              <option value="7교시">7교시</option>
+            </select>
+          </div>
+          <div>
+            <label class="lbl">3학년 담당 (P3)</label>
+            <div class="form-row">
+              <input class="inp" type="text" id="bc-p3" placeholder="이름 (쉼표 구분)">
+              <button class="icon-btn" onclick="openPicker('3','bc-p3')" title="학생 선택">
+                <svg width="16" height="16"><use href="#ic-users"/></svg>
+              </button>
+            </div>
+          </div>
+          <div>
+            <label class="lbl">2학년 담당 (P2)</label>
+            <div class="form-row">
+              <input class="inp" type="text" id="bc-p2" placeholder="이름 (쉼표 구분)">
+              <button class="icon-btn" onclick="openPicker('2','bc-p2')" title="학생 선택">
+                <svg width="16" height="16"><use href="#ic-users"/></svg>
+              </button>
+            </div>
+          </div>
+          <div>
+            <label class="lbl">1학년 담당 (P1)</label>
+            <div class="form-row">
+              <input class="inp" type="text" id="bc-p1" placeholder="이름 (쉼표 구분)">
+              <button class="icon-btn" onclick="openPicker('1','bc-p1')" title="학생 선택">
+                <svg width="16" height="16"><use href="#ic-users"/></svg>
+              </button>
+            </div>
+          </div>
+          <div>
+            <label class="lbl">영상 URL (줄바꿈으로 구분)</label>
+            <textarea class="inp" id="bc-video" placeholder="YouTube/Drive/직접 URL, 줄바꿈으로 구분" rows="3"></textarea>
+          </div>
+          <div>
+            <label class="lbl">공지사항</label>
+            <input class="inp" type="text" id="bc-notice" placeholder="공지 내용">
+          </div>
+          <div class="form-actions">
+            <button class="btn primary" onclick="saveBroadcast()">저장</button>
+            <button class="btn danger" id="bc-del-btn" onclick="deleteBroadcast()" style="display:none;">삭제</button>
+            <button class="btn ghost" onclick="clearBroadcastForm()">새 항목</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 3. Students ───────────────────────────────── -->
+    <section class="section" id="sec-students">
+      <div class="section-head">
+        <div><h2>학생 관리</h2><div class="s-sub">학년별 방송부원 관리</div></div>
+      </div>
+      <div class="grade-grid">
+        <div class="grade-card">
+          <div class="grade-head">🎓 3학년</div>
+          <div class="grade-body"><div class="student-chips" id="chips-3"></div></div>
+          <div class="grade-foot">
+            <input class="inp" type="text" id="add-name-3" placeholder="이름 입력" onkeydown="if(event.key==='Enter')addStudent('3')">
+            <button class="btn primary sm" onclick="addStudent('3')">추가</button>
+          </div>
+        </div>
+        <div class="grade-card">
+          <div class="grade-head">🎓 2학년</div>
+          <div class="grade-body"><div class="student-chips" id="chips-2"></div></div>
+          <div class="grade-foot">
+            <input class="inp" type="text" id="add-name-2" placeholder="이름 입력" onkeydown="if(event.key==='Enter')addStudent('2')">
+            <button class="btn primary sm" onclick="addStudent('2')">추가</button>
+          </div>
+        </div>
+        <div class="grade-card">
+          <div class="grade-head">🎓 1학년</div>
+          <div class="grade-body"><div class="student-chips" id="chips-1"></div></div>
+          <div class="grade-foot">
+            <input class="inp" type="text" id="add-name-1" placeholder="이름 입력" onkeydown="if(event.key==='Enter')addStudent('1')">
+            <button class="btn primary sm" onclick="addStudent('1')">추가</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 4. Attendance ─────────────────────────────── -->
+    <section class="section" id="sec-attendance">
+      <div class="section-head">
+        <div><h2>출결 관리</h2><div class="s-sub">방송부원 출결 기록 조회</div></div>
+      </div>
+      <div class="filter-row">
+        <input class="inp" type="date" id="att-date-filter" oninput="filterAttendance()" placeholder="날짜 필터">
+        <button class="btn ghost sm" onclick="document.getElementById('att-date-filter').value='';filterAttendance()">초기화</button>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>날짜</th>
+                <th>교시</th>
+                <th>이름</th>
+                <th>결석여부</th>
+                <th>삭제</th>
+              </tr>
+            </thead>
+            <tbody id="att-tbody"></tbody>
+          </table>
+          <div class="empty-state" id="att-empty" style="display:none;">출결 기록이 없습니다</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 5. Songs ──────────────────────────────────── -->
+    <section class="section" id="sec-songs">
+      <div class="section-head">
+        <div><h2>신청곡 관리</h2><div class="s-sub">학생 신청곡 목록 관리</div></div>
+        <button class="btn danger sm" onclick="resetAllSongs()">전체 초기화</button>
+      </div>
+      <div class="card" style="margin-bottom:20px;">
+        <div style="display:grid;grid-template-columns:70px 1fr 1fr 2fr 1fr auto;gap:10px;align-items:end;">
+          <div>
+            <label class="lbl">학년</label>
+            <select class="inp" id="song-grade">
+              <option value="">-</option>
+              <option value="1">1학년</option>
+              <option value="2">2학년</option>
+              <option value="3">3학년</option>
+            </select>
+          </div>
+          <div>
+            <label class="lbl">반</label>
+            <input class="inp" type="text" id="song-class" placeholder="예: 2반">
+          </div>
+          <div>
+            <label class="lbl">이름</label>
+            <input class="inp" type="text" id="song-name" placeholder="학생 이름">
+          </div>
+          <div>
+            <label class="lbl">신청곡</label>
+            <input class="inp" type="text" id="song-title" placeholder="곡 제목">
+          </div>
+          <div>
+            <label class="lbl">가수</label>
+            <input class="inp" type="text" id="song-artist" placeholder="가수 이름">
+          </div>
+          <button class="btn primary" style="align-self:end;" onclick="addSong()">추가</button>
+        </div>
+      </div>
+      <div class="song-grid">
+        <div>
+          <div class="song-col-head">⏳ 대기 중</div>
+          <div id="songs-pending"></div>
+          <div class="empty-state" id="songs-pending-empty" style="display:none;">대기 중인 신청곡이 없습니다</div>
+        </div>
+        <div>
+          <div class="song-col-head">✅ 완료</div>
+          <div id="songs-done"></div>
+          <div class="empty-state" id="songs-done-empty" style="display:none;">완료된 신청곡이 없습니다</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 6. Manuals ────────────────────────────────── -->
+    <section class="section" id="sec-manuals">
+      <div class="section-head">
+        <div><h2>업무 매뉴얼 관리</h2><div class="s-sub">방송부 업무 매뉴얼 작성 및 관리</div></div>
+        <button class="btn ghost sm" onclick="clearManualForm()"><svg width="13" height="13"><use href="#ic-plus"/></svg> 새 항목</button>
+      </div>
+      <div class="two-panel">
+        <div class="panel-list">
+          <div class="panel-list-head">매뉴얼 목록</div>
+          <div class="panel-list-body" id="manual-list"></div>
+        </div>
+        <div class="panel-form">
+          <div>
+            <label class="lbl">대주제</label>
+            <input class="inp" type="text" id="m-main-title" placeholder="예: 방송 장비 운영">
+          </div>
+          <div>
+            <label class="lbl">대주제 설명</label>
+            <textarea class="inp" id="m-main-desc" placeholder="대주제에 대한 간단한 설명" rows="2"></textarea>
+          </div>
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+              <label class="lbl" style="margin-bottom:0;">소주제</label>
+              <button class="btn ghost sm" type="button" onclick="addSubItem({})"><svg width="13" height="13"><use href="#ic-plus"/></svg> 소주제 추가</button>
+            </div>
+            <div id="m-subitems" style="display:flex;flex-direction:column;gap:10px;"></div>
+          </div>
+          <div class="form-actions">
+            <button class="btn primary" onclick="saveManual()">저장</button>
+            <button class="btn danger" id="m-del-btn" onclick="deleteManual()" style="display:none;">삭제</button>
+            <button class="btn ghost" onclick="clearManualForm()">새 항목</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+// ── Firebase init ─────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyBni9HsSfoY_e9oQkW5HDAwypaEXMXQAOo",
+  authDomain: "gwbs-3ec22.firebaseapp.com",
+  projectId: "gwbs-3ec22",
+  storageBucket: "gwbs-3ec22.firebasestorage.app",
+  messagingSenderId: "589081885767",
+  appId: "1:589081885767:web:c44ad52ac51f5773ec0562"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// ── Dark mode ─────────────────────────────────────────────
+function toggleDark() {
+  document.body.classList.toggle('dark');
+  localStorage.setItem('gwbs_dark', document.body.classList.contains('dark') ? '1' : '0');
+}
+if (localStorage.getItem('gwbs_dark') === '1') {
+  document.body.classList.add('dark');
+}
+
+// ── Toast ─────────────────────────────────────────────────
+function showToast(message, type = 'info') {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `<span class="toast-dot"></span>${message}`;
+  c.appendChild(t);
+  setTimeout(() => {
+    t.classList.add('out');
+    setTimeout(() => t.remove(), 280);
+  }, 3000);
+}
+
+// ── Password ──────────────────────────────────────────────
+function checkAuth() {
+  if (sessionStorage.getItem('gwbs_auth') === '1') return;
+  document.getElementById('pw-modal').classList.add('open');
+  setTimeout(() => document.getElementById('pw-input').focus(), 100);
+}
+function checkPassword() {
+  const v = document.getElementById('pw-input').value;
+  if (v === 'demo') { // 이 견본에서는 checkAuth()를 호출하지 않으므로 이 화면 자체가 쓰이지 않는다
+    sessionStorage.setItem('gwbs_auth', '1');
+    document.getElementById('pw-modal').classList.remove('open');
+    initApp();
+  } else {
+    const inp = document.getElementById('pw-input');
+    inp.classList.remove('shake');
+    void inp.offsetWidth;
+    inp.classList.add('shake');
+    document.getElementById('pw-error').textContent = '비밀번호가 올바르지 않습니다';
+    showToast('비밀번호가 올바르지 않습니다', 'error');
+    inp.value = '';
+    inp.focus();
+  }
+}
+document.getElementById('pw-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') checkPassword();
+});
+// Prevent Escape closing the password modal
+document.getElementById('pw-modal').addEventListener('keydown', e => {
+  if (e.key === 'Escape') e.stopPropagation();
+});
+
+function logout() {
+  sessionStorage.removeItem('gwbs_auth');
+  location.href = 'index.html';
+}
+
+// ── Section navigation ────────────────────────────────────
+let currentSection = 'dashboard';
+const sectionUnsubscribers = {};
+
+function gotoSection(name) {
+  document.querySelectorAll('.sidebar-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.section === name);
+  });
+  document.querySelectorAll('.section').forEach(el => {
+    el.classList.toggle('active', el.id === `sec-${name}`);
+  });
+  currentSection = name;
+  loadSection(name);
+}
+
+function loadSection(name) {
+  switch(name) {
+    case 'dashboard': loadDashboard(); break;
+    case 'broadcasts': loadBroadcasts(); break;
+    case 'students': loadStudents(); break;
+    case 'attendance': loadAttendance(); break;
+    case 'songs': loadSongs(); break;
+    case 'manuals': loadManuals(); if (!selectedManualId) { document.getElementById('m-subitems').innerHTML=''; addSubItem({}); } break;
+  }
+}
+
+// ── Confirm modal ─────────────────────────────────────────
+let _confirmResolve = null;
+function showConfirm(title, msg) {
+  return new Promise(resolve => {
+    _confirmResolve = resolve;
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-msg').textContent = msg;
+    document.getElementById('confirm-modal').classList.add('open');
+  });
+}
+function confirmResolve(val) {
+  document.getElementById('confirm-modal').classList.remove('open');
+  if (_confirmResolve) { _confirmResolve(val); _confirmResolve = null; }
+}
+
+// ── Dashboard ─────────────────────────────────────────────
+async function loadDashboard() {
+  document.getElementById('stat-broadcasts').textContent = '…';
+  document.getElementById('stat-students').textContent = '…';
+  document.getElementById('stat-songs').textContent = '…';
+  document.getElementById('stat-absent').textContent = '…';
+  try {
+    const [bc, st, sg, at] = await Promise.all([
+      db.collection('broadcasts').get(),
+      db.collection('students').get(),
+      db.collection('songs').where('isDone','==',false).get(),
+      db.collection('attendance').where('absent','==',true).get()
+    ]);
+    document.getElementById('stat-broadcasts').textContent = bc.size;
+    document.getElementById('stat-students').textContent = st.size;
+    document.getElementById('stat-songs').textContent = sg.size;
+    document.getElementById('stat-absent').textContent = at.size;
+  } catch(e) {
+    showToast('대시보드 로딩 실패: ' + e.message, 'error');
+  }
+}
+
+// ── Broadcasts ────────────────────────────────────────────
+let broadcastDocs = [];
+let selectedBcDateKey = null;
+let selectedBcTaskId = null;
+
+async function loadBroadcasts() {
+  try {
+    const snap = await db.collection('broadcasts').orderBy('dateValue','desc').get();
+    broadcastDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderBroadcastList();
+  } catch(e) {
+    showToast('방송 일정 로딩 실패: ' + e.message, 'error');
+  }
+}
+
+function renderBroadcastList() {
+  const el = document.getElementById('broadcast-list');
+  if (!broadcastDocs.length) {
+    el.innerHTML = '<div class="empty-state">방송 일정이 없습니다</div>';
+    return;
+  }
+  el.innerHTML = broadcastDocs.map(doc => {
+    const tasks = doc.tasks || [];
+    const badges = tasks.map(t => `<span class="badge neutral">${t.period}</span>`).join('');
+    const isActive = selectedBcDateKey === doc.id;
+    return `<div class="list-item ${isActive ? 'active' : ''}" onclick="selectBroadcastDoc('${doc.id}')">
+      <div class="list-item-title">${doc.date || doc.id}</div>
+      <div class="list-item-sub">${badges || '<span style="color:var(--text-3);font-size:12px;">항목 없음</span>'}</div>
+    </div>`;
+  }).join('');
+}
+
+function selectBroadcastDoc(dateKey) {
+  selectedBcDateKey = dateKey;
+  selectedBcTaskId = null;
+  renderBroadcastList();
+  // Show tasks for this date as sub-items
+  const doc = broadcastDocs.find(d => d.id === dateKey);
+  if (!doc) return;
+  const tasks = doc.tasks || [];
+  if (tasks.length === 0) { clearBroadcastForm(); document.getElementById('bc-date').value = doc.date || dateKey.replace(/(\d{4})(\d{2})(\d{2})/,'$1-$2-$3'); return; }
+  // Load the first task
+  selectTask(dateKey, tasks[0].id);
+}
+
+function selectTask(dateKey, taskId) {
+  selectedBcDateKey = dateKey;
+  selectedBcTaskId = taskId;
+  const doc = broadcastDocs.find(d => d.id === dateKey);
+  if (!doc) return;
+  const task = (doc.tasks || []).find(t => t.id === taskId);
+  if (!task) return;
+  document.getElementById('bc-date').value = doc.date || '';
+  document.getElementById('bc-period').value = task.period || '아침방송';
+  document.getElementById('bc-p3').value = task.p3 || '';
+  document.getElementById('bc-p2').value = task.p2 || '';
+  document.getElementById('bc-p1').value = task.p1 || '';
+  document.getElementById('bc-video').value = (task.rawVideoUrl || []).join('\n');
+  document.getElementById('bc-notice').value = task.notice || '';
+  document.getElementById('bc-del-btn').style.display = '';
+  renderBroadcastList();
+}
+
+function clearBroadcastForm() {
+  selectedBcTaskId = null;
+  document.getElementById('bc-date').value = '';
+  document.getElementById('bc-period').value = '아침방송';
+  document.getElementById('bc-p3').value = '';
+  document.getElementById('bc-p2').value = '';
+  document.getElementById('bc-p1').value = '';
+  document.getElementById('bc-video').value = '';
+  document.getElementById('bc-notice').value = '';
+  document.getElementById('bc-del-btn').style.display = 'none';
+}
+
+async function saveBroadcast() {
+  const date = document.getElementById('bc-date').value.trim();
+  const period = document.getElementById('bc-period').value;
+  if (!date) { showToast('날짜를 입력해 주세요', 'warn'); return; }
+  const dateKey = date.replace(/-/g,'');
+  const taskId = `${dateKey}_${period}`;
+  const task = {
+    id: taskId, period,
+    p3: document.getElementById('bc-p3').value.trim(),
+    p2: document.getElementById('bc-p2').value.trim(),
+    p1: document.getElementById('bc-p1').value.trim(),
+    rawVideoUrl: document.getElementById('bc-video').value.split('\n').map(s=>s.trim()).filter(Boolean),
+    notice: document.getElementById('bc-notice').value.trim()
+  };
+  try {
+    const ref = db.collection('broadcasts').doc(dateKey);
+    const snap = await ref.get();
+    let tasks = [];
+    if (snap.exists) tasks = (snap.data().tasks || []).filter(t => t.id !== taskId);
+    tasks.push(task);
+    await ref.set({ date, dateValue: parseInt(dateKey), tasks }, { merge: true });
+    showToast('저장되었습니다', 'success');
+    selectedBcTaskId = taskId; selectedBcDateKey = dateKey;
+    await loadBroadcasts();
+    document.getElementById('bc-del-btn').style.display = '';
+  } catch(e) {
+    showToast('저장 실패: ' + e.message, 'error');
+  }
+}
+
+async function deleteBroadcast() {
+  if (!selectedBcDateKey || !selectedBcTaskId) return;
+  const ok = await showConfirm('항목 삭제', '이 방송 항목을 삭제하시겠습니까?');
+  if (!ok) return;
+  try {
+    const ref = db.collection('broadcasts').doc(selectedBcDateKey);
+    const snap = await ref.get();
+    if (!snap.exists) return;
+    const tasks = (snap.data().tasks || []).filter(t => t.id !== selectedBcTaskId);
+    if (tasks.length === 0) {
+      await ref.delete();
+    } else {
+      await ref.update({ tasks });
+    }
+    showToast('삭제되었습니다', 'success');
+    clearBroadcastForm();
+    selectedBcDateKey = null;
+    await loadBroadcasts();
+  } catch(e) {
+    showToast('삭제 실패: ' + e.message, 'error');
+  }
+}
+
+// ── Student picker ────────────────────────────────────────
+let pickerTargetField = null;
+let allStudents = {};
+
+async function openPicker(grade, fieldId) {
+  pickerTargetField = fieldId;
+  document.getElementById('picker-title').textContent = `${grade}학년 학생 선택`;
+  const list = document.getElementById('picker-list');
+  list.innerHTML = '<span style="color:var(--text-3);font-size:13px;">로딩 중...</span>';
+  document.getElementById('picker-modal').classList.add('open');
+  try {
+    const snap = await db.collection('students').where('grade','==',grade).get();
+    const students = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.name.localeCompare(b.name, 'ko'));
+    if (students.length === 0) {
+      list.innerHTML = '<span style="color:var(--text-3);font-size:13px;">등록된 학생이 없습니다</span>';
+      return;
+    }
+    list.innerHTML = students.map(s =>
+      `<div class="pick-chip" onclick="pickStudent('${s.name.replace(/'/g,"\\'")}')">
+        ${s.name}
+      </div>`
+    ).join('');
+  } catch(e) {
+    list.innerHTML = '<span style="color:var(--danger);font-size:13px;">로딩 실패</span>';
+  }
+}
+function pickStudent(name) {
+  const inp = document.getElementById(pickerTargetField);
+  if (!inp) return;
+  const cur = inp.value.trim();
+  inp.value = cur ? cur + ', ' + name : name;
+}
+function closePicker() {
+  document.getElementById('picker-modal').classList.remove('open');
+}
+
+// ── Students ──────────────────────────────────────────────
+const studentUnsubs = {};
+
+function loadStudents() {
+  ['1','2','3'].forEach(grade => {
+    if (studentUnsubs[grade]) return; // already listening
+    studentUnsubs[grade] = db.collection('students')
+      .where('grade','==',grade)
+      .onSnapshot(snap => {
+        const chips = document.getElementById(`chips-${grade}`);
+        if (!chips) return;
+        const docs = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.name.localeCompare(b.name, 'ko'));
+        chips.innerHTML = docs.map(s =>
+          `<div class="chip">
+            ${s.name}
+            <button class="icon-btn danger chip-del" onclick="deleteStudent('${s.id}')" title="삭제" style="width:20px;height:20px;">
+              <svg width="12" height="12"><use href="#ic-close"/></svg>
+            </button>
+          </div>`
+        ).join('') || '<span style="color:var(--text-3);font-size:13px;">학생 없음</span>';
+      }, e => {
+        showToast('학생 로딩 오류: ' + e.message, 'error');
+      });
+  });
+}
+
+async function addStudent(grade) {
+  const inp = document.getElementById(`add-name-${grade}`);
+  const name = inp.value.trim();
+  if (!name) { showToast('이름을 입력해 주세요', 'warn'); return; }
+  try {
+    await db.collection('students').add({ name, grade, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    inp.value = '';
+    showToast(`${name} 추가됨`, 'success');
+  } catch(e) {
+    showToast('추가 실패: ' + e.message, 'error');
+  }
+}
+
+async function deleteStudent(id) {
+  const ok = await showConfirm('학생 삭제', '이 학생을 목록에서 삭제하시겠습니까?');
+  if (!ok) return;
+  try {
+    await db.collection('students').doc(id).delete();
+    showToast('삭제되었습니다', 'success');
+  } catch(e) {
+    showToast('삭제 실패: ' + e.message, 'error');
+  }
+}
+
+// ── Attendance ────────────────────────────────────────────
+let attAll = [];
+
+function loadAttendance() {
+  if (sectionUnsubscribers['attendance']) return;
+  sectionUnsubscribers['attendance'] = db.collection('attendance')
+    .orderBy('updatedAt','desc')
+    .onSnapshot(snap => {
+      attAll = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      filterAttendance();
+    }, e => showToast('출결 로딩 오류: ' + e.message, 'error'));
+}
+
+function filterAttendance() {
+  const dateFilter = document.getElementById('att-date-filter').value;
+  let rows = attAll;
+  if (dateFilter) rows = rows.filter(r => (r.date || '').startsWith(dateFilter));
+  const tbody = document.getElementById('att-tbody');
+  const empty = document.getElementById('att-empty');
+  if (rows.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = '';
+    return;
+  }
+  empty.style.display = 'none';
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.date || '–'}</td>
+      <td>${r.period || '–'}</td>
+      <td style="font-weight:600;">${r.name || '–'}</td>
+      <td>${r.absent ? '<span class="badge danger">결석</span>' : '<span class="badge success">출석</span>'}</td>
+      <td><button class="btn danger sm" onclick="deleteAttendance('${r.id}')">삭제</button></td>
+    </tr>`).join('');
+}
+
+async function deleteAttendance(id) {
+  const ok = await showConfirm('기록 삭제', '이 출결 기록을 삭제하시겠습니까?');
+  if (!ok) return;
+  try {
+    await db.collection('attendance').doc(id).delete();
+    showToast('삭제 완료', 'success');
+  } catch(e) {
+    showToast('삭제 실패: ' + e.message, 'error');
+  }
+}
+
+// ── Songs ─────────────────────────────────────────────────
+function loadSongs() {
+  if (sectionUnsubscribers['songs']) return;
+  sectionUnsubscribers['songs'] = db.collection('songs')
+    .orderBy('createdAt','desc')
+    .onSnapshot(snap => {
+      const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderSongs(all);
+    }, e => showToast('신청곡 로딩 오류: ' + e.message, 'error'));
+}
+
+function renderSongs(all) {
+  const pending = all.filter(s => !s.isDone);
+  const done = all.filter(s => s.isDone);
+  const pendEl = document.getElementById('songs-pending');
+  const doneEl = document.getElementById('songs-done');
+  document.getElementById('songs-pending-empty').style.display = pending.length ? 'none' : '';
+  document.getElementById('songs-done-empty').style.display = done.length ? 'none' : '';
+  pendEl.innerHTML = pending.map(s => songItemHtml(s)).join('');
+  doneEl.innerHTML = done.map(s => songItemHtml(s)).join('');
+}
+
+function songItemHtml(s) {
+  return `<div class="song-item">
+    <div class="song-info">
+      <div class="song-title">${escHtml(s.song || '')}</div>
+      <div class="song-meta">${escHtml(s.classInfo || '')} · ${escHtml(s.name || '')}${s.artist ? ' · ' + escHtml(s.artist) : ''}</div>
+    </div>
+    <button class="btn sm ${s.isDone ? 'ghost' : 'primary'}" onclick="toggleSong('${s.id}',${s.isDone})" title="${s.isDone ? '대기로 되돌리기' : '완료 처리'}">
+      ${s.isDone ? '↩' : '✓'}
+    </button>
+    <button class="icon-btn danger" onclick="deleteSong('${s.id}')" title="삭제">
+      <svg width="15" height="15"><use href="#ic-close"/></svg>
+    </button>
+  </div>`;
+}
+
+async function addSong() {
+  const grade = document.getElementById('song-grade').value.trim();
+  const classInfo = document.getElementById('song-class').value.trim();
+  const name = document.getElementById('song-name').value.trim();
+  const song = document.getElementById('song-title').value.trim();
+  const artist = document.getElementById('song-artist').value.trim();
+  if (!song) { showToast('신청곡 제목을 입력해 주세요', 'warn'); return; }
+  try {
+    await db.collection('songs').add({ grade, classInfo, name, song, artist, isDone: false, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    document.getElementById('song-grade').value = '';
+    document.getElementById('song-class').value = '';
+    document.getElementById('song-name').value = '';
+    document.getElementById('song-title').value = '';
+    document.getElementById('song-artist').value = '';
+    showToast('신청곡 추가됨', 'success');
+  } catch(e) {
+    showToast('추가 실패: ' + e.message, 'error');
+  }
+}
+
+async function toggleSong(id, isDone) {
+  try {
+    await db.collection('songs').doc(id).update({ isDone: !isDone });
+  } catch(e) {
+    showToast('업데이트 실패: ' + e.message, 'error');
+  }
+}
+
+async function deleteSong(id) {
+  const ok = await showConfirm('신청곡 삭제', '이 신청곡을 삭제하시겠습니까?');
+  if (!ok) return;
+  try {
+    await db.collection('songs').doc(id).delete();
+    showToast('삭제되었습니다', 'success');
+  } catch(e) {
+    showToast('삭제 실패: ' + e.message, 'error');
+  }
+}
+
+async function resetAllSongs() {
+  const ok = await showConfirm('전체 초기화', '모든 신청곡을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.');
+  if (!ok) return;
+  try {
+    const snap = await db.collection('songs').get();
+    const batch = db.batch();
+    snap.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+    showToast('전체 초기화 완료', 'success');
+  } catch(e) {
+    showToast('초기화 실패: ' + e.message, 'error');
+  }
+}
+
+// ── Manuals ───────────────────────────────────────────────
+let manualDocs = [];
+let selectedManualId = null;
+let _subItemCtr = 0;
+
+function loadManuals() {
+  if (sectionUnsubscribers['manuals']) return;
+  sectionUnsubscribers['manuals'] = db.collection('manuals')
+    .orderBy('createdAt', 'asc')
+    .onSnapshot(snap => {
+      manualDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderManualList();
+    }, e => showToast('매뉴얼 로딩 오류: ' + e.message, 'error'));
+}
+
+function renderManualList() {
+  const el = document.getElementById('manual-list');
+  if (!manualDocs.length) { el.innerHTML = '<div class="empty-state">매뉴얼이 없습니다</div>'; return; }
+  el.innerHTML = manualDocs.map(m => `
+    <div class="list-item ${selectedManualId === m.id ? 'active' : ''}" onclick="selectManual('${m.id}')">
+      <div class="list-item-title">${escHtml(m.mainTitle || '(제목 없음)')}</div>
+      <div class="list-item-sub">${escHtml((m.subItems||[]).map(s=>s.subTitle).filter(Boolean).join(' · '))}</div>
+    </div>`).join('');
+}
+
+function addSubItem(data) {
+  data = data || {};
+  const container = document.getElementById('m-subitems');
+  const block = document.createElement('div');
+  block.className = 'subitem-block';
+  block.style.cssText = 'background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;';
+  block.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+      <input class="inp" type="text" placeholder="소주제 제목" style="flex:1;" value="${escHtml(data.subTitle||'')}">
+      <button class="icon-btn danger" type="button" style="width:28px;height:28px;flex-shrink:0;">
+        <svg width="14" height="14"><use href="#ic-close"/></svg>
+      </button>
+    </div>
+    <div class="steps-list" style="display:flex;flex-direction:column;gap:6px;"></div>
+    <button class="btn ghost sm" type="button" style="margin-top:8px;font-size:12px;"><svg width="13" height="13"><use href="#ic-plus"/></svg> 단계 추가</button>
+  `;
+  block.querySelector('.icon-btn.danger').addEventListener('click', () => block.remove());
+  const stepsList = block.querySelector('.steps-list');
+  block.querySelector('.btn.ghost').addEventListener('click', () => addStep(stepsList, ''));
+  (data.steps && data.steps.length ? data.steps : ['']).forEach(s => addStep(stepsList, s));
+  container.appendChild(block);
+}
+
+function addStep(stepsList, value) {
+  const row = document.createElement('div');
+  row.className = 'step-row';
+  row.style.cssText = 'display:flex;gap:6px;align-items:center;';
+  row.innerHTML = `
+    <input class="inp" type="text" placeholder="단계 내용을 입력하세요" style="flex:1;border-radius:var(--radius-sm);" value="${escHtml(value||'')}">
+    <button type="button" class="icon-btn danger" style="width:28px;height:28px;flex-shrink:0;">
+      <svg width="14" height="14"><use href="#ic-close"/></svg>
+    </button>
+  `;
+  row.querySelector('button').addEventListener('click', () => row.remove());
+  stepsList.appendChild(row);
+}
+
+function getSubItemsFromForm() {
+  return [...document.querySelectorAll('.subitem-block')].map(block => {
+    const subTitle = block.querySelector('input[type="text"]').value.trim();
+    const steps = [...block.querySelectorAll('.step-row input')].map(i => i.value.trim()).filter(Boolean);
+    return { subTitle, steps };
+  }).filter(si => si.subTitle || si.steps.length);
+}
+
+function selectManual(id) {
+  selectedManualId = id;
+  const m = manualDocs.find(m => m.id === id);
+  if (!m) return;
+  document.getElementById('m-main-title').value = m.mainTitle || '';
+  document.getElementById('m-main-desc').value = m.mainDesc || '';
+  document.getElementById('m-del-btn').style.display = '';
+  document.getElementById('m-subitems').innerHTML = '';
+  if (m.subItems && m.subItems.length) {
+    m.subItems.forEach(si => addSubItem(si));
+  } else if (m.subTitle || m.contents) {
+    // legacy format migration
+    addSubItem({ subTitle: m.subTitle || '', steps: (m.contents || '').split('\n').filter(Boolean) });
+  } else {
+    addSubItem({});
+  }
+  renderManualList();
+}
+
+function clearManualForm() {
+  selectedManualId = null;
+  document.getElementById('m-main-title').value = '';
+  document.getElementById('m-main-desc').value = '';
+  document.getElementById('m-subitems').innerHTML = '';
+  document.getElementById('m-del-btn').style.display = 'none';
+  addSubItem({});
+  renderManualList();
+}
+
+async function saveManual() {
+  const mainTitle = document.getElementById('m-main-title').value.trim();
+  const mainDesc  = document.getElementById('m-main-desc').value.trim();
+  if (!mainTitle) { showToast('대주제를 입력해 주세요', 'warn'); return; }
+  const subItems = getSubItemsFromForm();
+  try {
+    if (selectedManualId) {
+      await db.collection('manuals').doc(selectedManualId).update({ mainTitle, mainDesc, subItems });
+      showToast('수정되었습니다', 'success');
+    } else {
+      await db.collection('manuals').add({ mainTitle, mainDesc, subItems, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      showToast('저장되었습니다', 'success');
+    }
+  } catch(e) { showToast('저장 실패: ' + e.message, 'error'); }
+}
+
+async function deleteManual() {
+  if (!selectedManualId) return;
+  const ok = await showConfirm('매뉴얼 삭제', '이 매뉴얼 항목을 삭제하시겠습니까?');
+  if (!ok) return;
+  try {
+    await db.collection('manuals').doc(selectedManualId).delete();
+    showToast('삭제되었습니다', 'success');
+    clearManualForm();
+  } catch(e) { showToast('삭제 실패: ' + e.message, 'error'); }
+}
+
+// ── Utilities ─────────────────────────────────────────────
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Close modals on overlay click ─────────────────────────
+document.getElementById('picker-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closePicker();
+});
+document.getElementById('confirm-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) confirmResolve(false);
+});
+// Global Escape key handler (not for pw-modal)
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (document.getElementById('picker-modal').classList.contains('open')) closePicker();
+    if (document.getElementById('confirm-modal').classList.contains('open')) confirmResolve(false);
+  }
+});
+
+// ── SchedPw ───────────────────────────────────────────────
+async function loadSchedPw() {
+  try {
+    const doc = await db.collection('settings').doc('app').get();
+    if (doc.exists && doc.data().schedPw) {
+      document.getElementById('sched-pw-input').value = doc.data().schedPw;
+    }
+  } catch(e) { /* ignore */ }
+}
+
+async function saveSchedPw() {
+  const pw = document.getElementById('sched-pw-input').value.trim();
+  if (!pw) { showToast('비밀번호를 입력하세요', 'warn'); return; }
+  try {
+    await db.collection('settings').doc('app').set({ schedPw: pw }, { merge: true });
+    showToast('저장되었습니다', 'success');
+  } catch(e) {
+    showToast('저장 실패: ' + e.message, 'error');
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────
+function initApp() {
+  loadSection('dashboard');
+  loadSchedPw();
+}
+
+// 견본에서는 로그인 없이 바로 들어간다 (원본은 비밀번호로 잠겨 있음).
+initApp();
+</script>
+</body>
+</html>
