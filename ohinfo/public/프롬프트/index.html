@@ -35,26 +35,31 @@
 
     <!-- ══ STEP 1: 목적 ══ -->
     <section class="panel card active" id="panel-1">
-      <h2>이 웹앱을 만드는 목적이 무엇인가요?</h2>
-      <p class="hint">하나만 선택해주세요. 선택에 따라 프롬프트에 안내 문구가 자동으로 들어갑니다.</p>
+      <div class="panel-head-row">
+        <div>
+          <h2>이 웹앱을 만드는 목적이 무엇인가요?</h2>
+          <p class="hint">하나만 선택해주세요. 선택에 따라 프롬프트에 안내 문구가 자동으로 들어갑니다.</p>
+        </div>
+        <button class="btn ghost sm" type="button" onclick="fillExample()">✨ 예시로 채워보기</button>
+      </div>
 
       <div class="radio-group">
         <label class="radio-card">
-          <input type="radio" name="purpose" value="work">
+          <input type="radio" name="purpose" value="work" onchange="saveDraft()">
           <div class="radio-card-body">
             <div class="radio-card-title">업무 효율화</div>
             <div class="radio-card-desc">학교 업무를 자동화하고 효율적으로 해결하는 도구</div>
           </div>
         </label>
         <label class="radio-card">
-          <input type="radio" name="purpose" value="edu">
+          <input type="radio" name="purpose" value="edu" onchange="saveDraft()">
           <div class="radio-card-body">
             <div class="radio-card-title">수업·평가·기록 활용</div>
             <div class="radio-card-desc">교육 현장에서 실제로 사용할 도구</div>
           </div>
         </label>
         <label class="radio-card">
-          <input type="radio" name="purpose" value="personal">
+          <input type="radio" name="purpose" value="personal" onchange="saveDraft()">
           <div class="radio-card-body">
             <div class="radio-card-title">개인적 사용</div>
             <div class="radio-card-desc">내 취향대로 자유롭게</div>
@@ -76,7 +81,7 @@
 
       <div class="field-block">
         <label class="field-label" for="topic">앱 주제</label>
-        <input type="text" id="topic" class="inp" placeholder="예: 수업 집중용 타이머, 학생 출석 체크 앱">
+        <input type="text" id="topic" class="inp" placeholder="예: 수업 집중용 타이머, 학생 출석 체크 앱" oninput="saveDraft()">
         <p class="err" id="err-topic" hidden>앱 주제를 입력해주세요.</p>
       </div>
 
@@ -104,7 +109,7 @@
       </div>
 
       <div id="designCustom" class="design-mode">
-        <textarea id="designText" class="inp" rows="4" placeholder="원하는 디자인 스타일을 자유롭게 적어주세요. 예: 파스텔톤 카드 UI에 큼직한 버튼을 쓰고 싶어요."></textarea>
+        <textarea id="designText" class="inp" rows="4" placeholder="원하는 디자인 스타일을 자유롭게 적어주세요. 예: 파스텔톤 카드 UI에 큼직한 버튼을 쓰고 싶어요." oninput="saveDraft()"></textarea>
       </div>
 
       <div id="designPreset" class="design-mode" hidden>
@@ -127,6 +132,7 @@
       <textarea id="resultText" class="inp result-textarea" readonly></textarea>
 
       <div class="result-btns">
+        <button class="btn ghost" onclick="showStep(3)">이전 (수정하기)</button>
         <button class="btn accent" id="copyBtn" onclick="copyResult()">복사하기</button>
         <button class="btn ghost" onclick="resetAll()">다시 작성하기</button>
       </div>

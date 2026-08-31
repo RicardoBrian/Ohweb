@@ -52,6 +52,13 @@
 
 .panel h2 { font-size: 1.2rem; font-weight: 800; letter-spacing: -0.01em; margin: 0 0 6px; }
 .panel .hint { margin-bottom: 20px; }
+
+.panel-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.panel-head-row .btn { flex-shrink: 0; }
+
+.feature-card-actions { display: flex; align-items: center; gap: 6px; }
+.icon-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.icon-btn:disabled:hover { background: var(--glass); color: var(--sub); }
 .err { color: var(--danger); font-size: 0.82rem; font-weight: 600; margin: 8px 0 0; }
 
 /* ── Radio cards (목적 선택) ── */

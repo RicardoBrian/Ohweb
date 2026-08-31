@@ -67,23 +67,36 @@ function newFeature() {
 function addFeature() {
   state.features.push(newFeature());
   renderFeatures();
+  saveDraft();
 }
 
 function removeFeature(key) {
   state.features = state.features.filter((f) => f.key !== key);
   renderFeatures();
+  saveDraft();
+}
+
+function moveFeature(key, dir) {
+  const i = state.features.findIndex((f) => f.key === key);
+  const j = i + dir;
+  if (i < 0 || j < 0 || j >= state.features.length) return;
+  [state.features[i], state.features[j]] = [state.features[j], state.features[i]];
+  renderFeatures();
+  saveDraft();
 }
 
 function addStep(featureKey) {
   const f = state.features.find((x) => x.key === featureKey);
   if (f) f.steps.push('');
   renderFeatures();
+  saveDraft();
 }
 
 function removeStep(featureKey, idx) {
   const f = state.features.find((x) => x.key === featureKey);
   if (f) f.steps.splice(idx, 1);
   renderFeatures();
+  saveDraft();
 }
 
 function esc(s) {
@@ -101,7 +114,11 @@ function renderFeatures() {
     <div class="feature-card" data-key="${f.key}">
       <div class="feature-card-head">
         <span>기능 ${i + 1}</span>
-        <button class="icon-btn" type="button" title="기능 삭제" onclick="removeFeature('${f.key}')">✕</button>
+        <div class="feature-card-actions">
+          <button class="icon-btn" type="button" title="위로 이동" onclick="moveFeature('${f.key}', -1)" ${i === 0 ? 'disabled' : ''}>▲</button>
+          <button class="icon-btn" type="button" title="아래로 이동" onclick="moveFeature('${f.key}', 1)" ${i === state.features.length - 1 ? 'disabled' : ''}>▼</button>
+          <button class="icon-btn" type="button" title="기능 삭제" onclick="removeFeature('${f.key}')">✕</button>
+        </div>
       </div>
       <div class="feature-row">
         <label>기능 이름</label>
@@ -134,10 +151,12 @@ function renderFeatures() {
 function updateFeatureField(key, field, value) {
   const f = state.features.find((x) => x.key === key);
   if (f) f[field] = value;
+  saveDraft();
 }
 function updateStepField(key, idx, value) {
   const f = state.features.find((x) => x.key === key);
   if (f) f.steps[idx] = value;
+  saveDraft();
 }
 
 // ============================================================
@@ -150,6 +169,7 @@ function setDesignMode(mode) {
   document.getElementById('modeBtn-preset').classList.toggle('active', mode === 'preset');
   document.getElementById('designCustom').hidden = mode !== 'custom';
   document.getElementById('designPreset').hidden = mode !== 'preset';
+  saveDraft();
 }
 
 function renderPresets() {
@@ -166,6 +186,7 @@ function renderPresets() {
 function selectPreset(id) {
   state.selectedPreset = id;
   renderPresets();
+  saveDraft();
 }
 
 // ============================================================
@@ -322,7 +343,87 @@ function resetAll() {
   document.getElementById('err-topic').hidden = true;
   document.getElementById('err-features').hidden = true;
   document.getElementById('err-design').hidden = true;
+  clearDraft();
   showStep(1);
+}
+
+// ============================================================
+//  예시로 채워보기
+// ============================================================
+
+function fillExample() {
+  document.querySelector('input[name="purpose"][value="edu"]').checked = true;
+  document.getElementById('topic').value = '수업 집중용 타이머';
+
+  state.features = [{
+    key: 'f' + (++featureSeq),
+    name: '집중 타이머',
+    desc: '설정한 시간 동안 카운트다운하고, 시간이 끝나면 알림을 준다',
+    steps: [
+      '선생님이 분/초를 입력하고 시작 버튼을 누른다',
+      '화면에 남은 시간이 큰 숫자로 표시된다',
+      '시간이 끝나면 알림음이 울리고 화면이 깜빡인다',
+    ],
+  }];
+  renderFeatures();
+
+  state.selectedPreset = 'minimal';
+  setDesignMode('preset');
+  renderPresets();
+
+  toast('예시 데이터를 채웠습니다. 자유롭게 고쳐서 써보세요');
+  saveDraft();
+}
+
+// ============================================================
+//  임시 저장 (localStorage) — 새로고침해도 작성 중이던 내용 유지
+// ============================================================
+
+const DRAFT_KEY = 'promptgen_draft';
+
+function saveDraft() {
+  try {
+    const draft = {
+      purpose: getPurpose(),
+      topic: document.getElementById('topic').value,
+      features: state.features.map((f) => ({ name: f.name, desc: f.desc, steps: f.steps })),
+      designMode: state.designMode,
+      designText: document.getElementById('designText').value,
+      selectedPreset: state.selectedPreset,
+    };
+    localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+  } catch { /* localStorage를 못 쓰는 환경이면 임시 저장은 그냥 건너뛴다 */ }
+}
+
+function clearDraft() {
+  try { localStorage.removeItem(DRAFT_KEY); } catch {}
+}
+
+function loadDraft() {
+  let draft;
+  try { draft = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null'); } catch { draft = null; }
+  if (!draft) return false;
+
+  if (draft.purpose) {
+    const el = document.querySelector(`input[name="purpose"][value="${draft.purpose}"]`);
+    if (el) el.checked = true;
+  }
+  document.getElementById('topic').value = draft.topic || '';
+
+  if (Array.isArray(draft.features) && draft.features.length) {
+    state.features = draft.features.map((f) => ({
+      key: 'f' + (++featureSeq),
+      name: f.name || '',
+      desc: f.desc || '',
+      steps: Array.isArray(f.steps) && f.steps.length ? f.steps : [''],
+    }));
+  }
+
+  document.getElementById('designText').value = draft.designText || '';
+  state.selectedPreset = draft.selectedPreset || null;
+  setDesignMode(draft.designMode === 'preset' ? 'preset' : 'custom');
+
+  return true;
 }
 
 // ============================================================
@@ -342,6 +443,8 @@ darkToggleEl.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key
 //  초기화
 // ============================================================
 
-state.features.push(newFeature());
+if (!loadDraft()) {
+  state.features.push(newFeature());
+}
 renderFeatures();
 renderPresets();
