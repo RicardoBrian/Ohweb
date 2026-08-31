@@ -525,7 +525,7 @@ const UI = {
     mpErrCur:'현재 비밀번호가 맞지 않습니다.', mpErrShort:'새 비밀번호는 4자 이상이어야 합니다.', mpErrMatch:'새 비밀번호가 일치하지 않습니다.', mpOk:'저장되었습니다.',
     correct:'정답', wrong:'오답 (정답: ', testPass:'테스트케이스 통과', manualGrade:'수동 채점 필요',
     stdin:'표준 입력 (stdin)', stdinPlaceholder:'입력이 필요한 경우 입력 값을 넣어주세요.',
-    pyodideLoading:'Pyodide 로딩 중...', noOutput:'(출력 없음)',
+    pyodideLoading:'Pyodide 로딩 중...', pyodideRetry:'실행 환경 로딩 실패 · 다시 시도 ↻', noOutput:'(출력 없음)',
     gradeUnit:'학년', classUnit:'반',
     sortNew:'최신순', sortLike:'인기순',
   },
@@ -539,7 +539,7 @@ const UI = {
     mpErrCur:'当前密码不正确。', mpErrShort:'新密码至少需要4位。', mpErrMatch:'两次输入的新密码不一致。', mpOk:'已保存。',
     correct:'正确', wrong:'错误 (正确答案: ', testPass:'测试用例通过', manualGrade:'需要人工评分',
     stdin:'标准输入 (stdin)', stdinPlaceholder:'如需输入，请填写输入值。',
-    pyodideLoading:'Pyodide 加载中...', noOutput:'(无输出)',
+    pyodideLoading:'Pyodide 加载中...', pyodideRetry:'加载失败 · 重试 ↻', noOutput:'(无输出)',
     gradeUnit:'年级', classUnit:'班',
     sortNew:'最新', sortLike:'热门',
   },
@@ -553,7 +553,7 @@ const UI = {
     mpErrCur:'Неверный текущий пароль.', mpErrShort:'Новый пароль должен быть не менее 4 символов.', mpErrMatch:'Пароли не совпадают.', mpOk:'Сохранено.',
     correct:'Правильно', wrong:'Неверно (ответ: ', testPass:'тест-кейс пройден', manualGrade:'Требует проверки',
     stdin:'Стандартный ввод (stdin)', stdinPlaceholder:'Введите тестовые данные.',
-    pyodideLoading:'Загрузка Pyodide...', noOutput:'(нет вывода)',
+    pyodideLoading:'Загрузка Pyodide...', pyodideRetry:'Ошибка загрузки · Повторить ↻', noOutput:'(нет вывода)',
     gradeUnit:'кл.', classUnit:'гр.',
     sortNew:'Новые', sortLike:'Популярные',
   },
@@ -567,7 +567,7 @@ const UI = {
     mpErrCur:'Current password is incorrect.', mpErrShort:'New password must be at least 4 characters.', mpErrMatch:'Passwords do not match.', mpOk:'Saved.',
     correct:'Correct', wrong:'Wrong (answer: ', testPass:'test cases passed', manualGrade:'Manual grading required',
     stdin:'Standard Input (stdin)', stdinPlaceholder:'Enter test input values if needed.',
-    pyodideLoading:'Loading Pyodide...', noOutput:'(no output)',
+    pyodideLoading:'Loading Pyodide...', pyodideRetry:'Failed to load · Retry ↻', noOutput:'(no output)',
     gradeUnit:'', classUnit:'',
     sortNew:'Newest', sortLike:'Popular',
   },
@@ -648,6 +648,7 @@ async function loadMyExams() {
     const snap = await getDocs(collection(db, 'exam_assignments'));
     const assignments = snap.docs.map(d=>({id:d.id,...d.data()})).filter(a => {
       if (IS_MASTER) return true;
+      if (a.status !== 'ON') return false; // 선생님이 OFF로 내린 배정은 목록에서도 감춘다
       const gradeOk = !a.grade || _nv(String(a.grade)) === SESSION.grade;
       const clsOk   = !a.class || _nv(String(a.class)) === SESSION.cls;
       const schoolOk = !a.schoolName || a.schoolName === SESSION.schoolName;
@@ -893,19 +894,45 @@ function startExamUI() {
 }
 
 // ── Pyodide 로드 ──
+// 기존엔 스크립트 로드 실패(onerror 없음)나 loadPyodide() 자체가 멈추면
+// pyodideLoading이 true로 걸린 채 영원히 안 풀려서, "Pyodide 로딩 중..." 버튼이
+// disabled 상태로 굳고 재시도할 방법이 없었다(= "불러오기 안 됨" 신고의 원인).
+// 타임아웃 + onerror로 반드시 성공/실패가 갈리게 하고, 실패하면 버튼을 다시
+// 눌러 재시도할 수 있게 한다.
+function loadScriptWithTimeout(src, timeoutMs) {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = src;
+    const timer = setTimeout(() => { s.remove(); reject(new Error('script load timeout')); }, timeoutMs);
+    s.onload = () => { clearTimeout(timer); resolve(); };
+    s.onerror = () => { clearTimeout(timer); s.remove(); reject(new Error('script load failed')); };
+    document.head.appendChild(s);
+  });
+}
+function withTimeout(promise, ms) {
+  return Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))]);
+}
+function setRunButtonsState(state) {
+  document.querySelectorAll('.run-btn').forEach(b => {
+    if (state === 'ready') { b.disabled = false; b.innerText = UI[currentLang].run + ' ▶'; }
+    else if (state === 'error') { b.disabled = false; b.innerText = UI[currentLang].pyodideRetry; }
+    else { b.disabled = true; b.innerText = UI[currentLang].pyodideLoading; }
+  });
+}
 async function loadPyodide() {
   if (pyodide || pyodideLoading) return;
   pyodideLoading = true;
+  setRunButtonsState('loading');
   try {
-    const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js';
-    document.head.appendChild(s);
-    await new Promise(r => s.onload = r);
-    pyodide = await window.loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/' });
-    // 실행 버튼 활성화
-    document.querySelectorAll('.run-btn').forEach(b => b.disabled = false);
-  } catch(e) {
+    await loadScriptWithTimeout('https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js', 20000);
+    pyodide = await withTimeout(window.loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/' }), 45000);
     pyodideLoading = false;
+    setRunButtonsState('ready');
+  } catch(e) {
+    console.error('pyodide load failed:', e);
+    pyodideLoading = false;
+    setRunButtonsState('error');
   }
 }
 
@@ -1083,7 +1110,12 @@ window.runCode = async (idx) => {
   const cm = cmInstances[idx];
   const resultEl = document.getElementById(`runResult_${idx}`);
   const btn = document.getElementById(`runBtn_${idx}`);
-  if (!pyodide) { resultEl.style.display='block'; resultEl.className='run-result error'; resultEl.innerText=UI[currentLang].pyodideLoading; return; }
+  if (!pyodide) {
+    resultEl.style.display='block'; resultEl.className='run-result error';
+    resultEl.innerText = pyodideLoading ? UI[currentLang].pyodideLoading : UI[currentLang].pyodideRetry;
+    if (!pyodideLoading) loadPyodide(); // 이전 로딩이 실패했으면 버튼 클릭을 재시도 신호로 삼는다
+    return;
+  }
   const code = cm ? cm.getValue() : (document.getElementById(`code_${idx}`)?.value || '');
   const stdinVal = document.getElementById(`stdin_${idx}`)?.value || '';
   btn.innerText = UI[currentLang].running;
