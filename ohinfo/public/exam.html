@@ -993,33 +993,52 @@ function getDefaultCode(q, lang) {
 const typeLabels = { mc: { ko:'객관식', zh:'选择题', ru:'Тест', en:'MCQ' }, sa: { ko:'단답형', zh:'简答题', ru:'Ответ', en:'Short' }, code: { ko:'코딩', zh:'编程', ru:'Код', en:'Code' } };
 
 function initCodeEditors() {
+  // CodeMirror는 별도 CDN 스크립트(cdnjs)가 <script defer>로 로드되는데, 그
+  // 요청이 늦거나 막히면(느린 네트워크, 학교 방화벽 등) 전역 CodeMirror가 아직
+  // 없다. 이전엔 이 상태에서 questions.forEach 안에서 바로
+  // CodeMirror.fromTextArea(...)를 호출해 ReferenceError가 났고, forEach는
+  // 콜백이 예외를 던지면 그 자리에서 멈춰버려서(catch가 없으니 남은 문제까지
+  // 전부 초기화가 안 됨) 코드 문제가 있는 시험만 화면이 먹통처럼 보였다.
+  // 코드 에디터가 없어도 runCode/submitExam은 이미 일반 textarea의 값을
+  // 그대로 읽도록 폴백돼 있으니, 조용히 넘어가고 다음 로드 시도(재렌더링)를
+  // 기다리는 편이 안전하다.
+  if (typeof CodeMirror === 'undefined') {
+    console.error('CodeMirror script not ready yet — using plain textareas for now');
+    if (!initCodeEditors._retries) initCodeEditors._retries = 0;
+    if (initCodeEditors._retries < 10) { initCodeEditors._retries++; setTimeout(initCodeEditors, 500); }
+    return;
+  }
   questions.forEach((q, i) => {
     if (q.type !== 'code') return;
     const ta = document.getElementById(`code_${i}`);
     if (!ta || cmInstances[i]) return;
-    const cm = CodeMirror.fromTextArea(ta, {
-      mode: 'python',
-      lineNumbers: true,
-      indentUnit: 4,
-      tabSize: 4,
-      indentWithTabs: false,
-      autoCloseBrackets: true,
-      extraKeys: {
-        'Tab': cm => cm.execCommand('indentMore'),
-        'Shift-Tab': cm => cm.execCommand('indentLess'),
-        'Enter': (cm) => {
-          const cursor = cm.getCursor();
-          const line = cm.getLine(cursor.line);
-          const indent = line.match(/^(\s*)/)[1];
-          const extraIndent = line.trimEnd().endsWith(':') ? '    ' : '';
-          cm.replaceSelection('\n' + indent + extraIndent, 'end');
+    try {
+      const cm = CodeMirror.fromTextArea(ta, {
+        mode: 'python',
+        lineNumbers: true,
+        indentUnit: 4,
+        tabSize: 4,
+        indentWithTabs: false,
+        autoCloseBrackets: true,
+        extraKeys: {
+          'Tab': cm => cm.execCommand('indentMore'),
+          'Shift-Tab': cm => cm.execCommand('indentLess'),
+          'Enter': (cm) => {
+            const cursor = cm.getCursor();
+            const line = cm.getLine(cursor.line);
+            const indent = line.match(/^(\s*)/)[1];
+            const extraIndent = line.trimEnd().endsWith(':') ? '    ' : '';
+            cm.replaceSelection('\n' + indent + extraIndent, 'end');
+          }
         }
-      }
-    });
-    cm.on('change', () => saveCode(i, cm.getValue()));
-    cmInstances[i] = cm;
-    // restore saved answer
-    if (codeAnswers[i]?.code) cm.setValue(codeAnswers[i].code);
+      });
+      cm.on('change', () => saveCode(i, cm.getValue()));
+      cmInstances[i] = cm;
+      // restore saved answer
+      if (codeAnswers[i]?.code) cm.setValue(codeAnswers[i].code);
+    } catch (e) {
+      console.error('CodeMirror init failed for question', i, e);
+    }
   });
 }
 
