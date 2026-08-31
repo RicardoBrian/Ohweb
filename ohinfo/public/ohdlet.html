@@ -328,6 +328,27 @@
     .action-links a:hover { color: var(--text); }
     .action-links .del-link:hover { color: #ef4444; }
     .action-links .pin-link.is-pinned { color: var(--accent); }
+    .post-meta-left { display: flex; align-items: center; gap: 2px; }
+    .comment-btn { display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 3px 8px; border-radius: 50px; font-size: 0.8rem; color: var(--sub); transition: background 0.15s; user-select: none; }
+    .comment-btn:hover { background: var(--glass-strong); }
+    .comment-btn.open { color: var(--accent); }
+    .comment-panel { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-card); }
+    .comment-panel.open { display: block; }
+    .comment-list { margin-bottom: 8px; }
+    .comment-item { display: flex; gap: 8px; margin-bottom: 10px; }
+    .comment-avatar { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), #7c4dff); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 0.66rem; flex-shrink: 0; overflow: hidden; }
+    .comment-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .comment-body { flex: 1; min-width: 0; }
+    .comment-byline { font-size: 0.78rem; font-weight: 700; }
+    .comment-byline .num { color: var(--sub); font-weight: 600; }
+    .comment-text { font-size: 0.85rem; line-height: 1.5; white-space: pre-wrap; word-break: break-all; margin-top: 1px; }
+    .comment-time { font-size: 0.68rem; color: var(--sub); margin-top: 2px; }
+    .comment-empty { font-size: 0.8rem; color: var(--sub); padding: 4px 0 8px; }
+    .comment-form { display: flex; gap: 8px; }
+    .comment-input { flex: 1; padding: 8px 14px; border-radius: 50px; border: 1px solid var(--border-card); background: var(--glass); color: var(--text); font-family: inherit; font-size: 0.85rem; outline: none; }
+    .comment-input:focus { border-color: rgba(42,92,230,0.5); }
+    .comment-send { flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; border: none; background: #1d1d1f; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    body.dark .comment-send { background: #f5f5f7; color: #1d1d1f; }
     .post-byline { font-size: 0.7rem; color: var(--sub); opacity: 0.7; text-align: right; margin-top: 7px; }
 
     /* ── 스켈레톤 ── */
@@ -449,6 +470,7 @@
     <symbol id="ic-check" viewBox="0 0 24 24"><polyline points="5,13 9.5,17.5 19,6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="ic-heart" viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-9.6-9.3C.9 7.4 3 4 6.6 4c2 0 3.6 1.1 4.4 2.7C11.8 5.1 13.4 4 15.4 4 19 4 21.1 7.4 19.6 11.2 17.5 15.9 12 20.5 12 20.5Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
     <symbol id="ic-pin" viewBox="0 0 24 24"><path d="M12 2.5a5.5 5.5 0 0 1 5.5 5.5c0 3.8-5.5 13.5-5.5 13.5S6.5 11.8 6.5 8A5.5 5.5 0 0 1 12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="8" r="2" fill="currentColor"/></symbol>
+    <symbol id="ic-send" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   </defs>
 </svg>
 
@@ -1312,14 +1334,20 @@
         ${p.message ? `<div class="post-msg">${fmtMsg(p.message)}</div>` : (!p.subject ? `<div class="post-msg" style="color:var(--sub);font-style:italic;">(내용 없음)</div>` : '')}
         ${buildSlider(p.imgs, p.id)}
         <div class="post-meta">
-          <div class="like-area ${hasLiked?'voted':''}" onclick="toggleLikeUI('${p.id}',this)">
-            <span><svg width="14" height="14"><use href="#ic-heart"/></svg></span><span class="like-count" style="font-weight:700;">${p.likes}</span>
+          <div class="post-meta-left">
+            <div class="like-area ${hasLiked?'voted':''}" onclick="toggleLikeUI('${p.id}',this)">
+              <span><svg width="14" height="14"><use href="#ic-heart"/></svg></span><span class="like-count" style="font-weight:700;">${p.likes}</span>
+            </div>
+            <div class="comment-btn" id="cbtn_${p.id}" onclick="toggleComments('${p.id}')">
+              <svg width="14" height="14"><use href="#ic-chat"/></svg><span class="comment-count" id="ccount_${p.id}">${p.commentCount||0}</span>
+            </div>
           </div>
           <div class="action-links">
             <a class="pin-link ${p.pinned?'is-pinned':''}" onclick="handlePinClick('${p.id}')">${uiText[currentLang]?.pin||uiText.ko.pin}</a>
             ${!p._readonly && String(p.studentId)===String(SESSION.id) ? `<a onclick="handleEditClick('${p.id}')">${uiText[currentLang]?.edit||uiText.ko.edit}</a><a class="del-link" onclick="openDelete('${p.id}')">${uiText[currentLang]?.del||uiText.ko.del}</a>` : ''}
           </div>
         </div>
+        <div class="comment-panel" id="cpanel_${p.id}"></div>
         <div class="post-byline">${p.photoUrl ? `<img src="${p.photoUrl}" style="width:18px;height:18px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:5px;">` : ''}${p.name}(${p.num}) · ${p.time}</div>
       </div>`;
     });
@@ -1367,6 +1395,78 @@
       updateDoc(doc(db, 'posts', id), { likes: increment(1) }).catch(e => console.error('like+:', e));
     }
   }
+
+  // ── 댓글 ──
+  function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  const _commentsCache = {}; // postId → 댓글 배열(펼친 적 있으면 캐시, 새로고침 없이 다시 펼칠 때 재사용)
+
+  function renderCommentList(postId, comments, photoMap) {
+    const listHtml = comments.length ? comments.map(c => {
+      const photo = photoMap[String(c.studentId)] || '';
+      return `<div class="comment-item">
+        <div class="comment-avatar">${photo ? `<img src="${photo}">` : escHtml((c.name||'?')[0])}</div>
+        <div class="comment-body">
+          <div class="comment-byline">${escHtml(c.name||'')}<span class="num"> (${escHtml(c.num||'')})</span></div>
+          <div class="comment-text">${escHtml(c.text)}</div>
+          <div class="comment-time">${c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString() : ''}</div>
+        </div>
+      </div>`;
+    }).join('') : `<div class="comment-empty">아직 댓글이 없습니다.</div>`;
+    return `
+      <div class="comment-list" id="clist_${postId}">${listHtml}</div>
+      <div class="comment-form">
+        <input class="comment-input" id="cinput_${postId}" placeholder="댓글을 입력하세요..." maxlength="500" onkeydown="if(event.key==='Enter')submitComment('${postId}')">
+        <button class="comment-send" onclick="submitComment('${postId}')"><svg width="15" height="15"><use href="#ic-send"/></svg></button>
+      </div>`;
+  }
+
+  window.toggleComments = async (postId) => {
+    const panel = document.getElementById('cpanel_' + postId);
+    const btn = document.getElementById('cbtn_' + postId);
+    if (!panel) return;
+    const opening = !panel.classList.contains('open');
+    panel.classList.toggle('open', opening);
+    btn?.classList.toggle('open', opening);
+    if (!opening) return;
+    if (_commentsCache[postId]) { panel.innerHTML = renderCommentList(postId, _commentsCache[postId].comments, _commentsCache[postId].photoMap); return; }
+    panel.innerHTML = `<div class="comment-empty">불러오는 중...</div>`;
+    try {
+      const snap = await getDocs(query(collection(db, 'posts', postId, 'comments'), orderBy('createdAt', 'asc')));
+      const comments = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const photoMap = await fetchPhotoMap(comments.map(c => c.studentId));
+      _commentsCache[postId] = { comments, photoMap };
+      panel.innerHTML = renderCommentList(postId, comments, photoMap);
+    } catch (e) {
+      panel.innerHTML = `<div class="comment-empty" style="color:#ef4444;">오류: ${escHtml(e.message)}</div>`;
+    }
+  };
+
+  window.submitComment = async (postId) => {
+    const input = document.getElementById('cinput_' + postId);
+    const text = (input?.value || '').trim();
+    if (!text) return;
+    input.disabled = true;
+    try {
+      const comment = { studentId: SESSION.id, name: SESSION.name, num: SESSION.num, text, createdAt: serverTimestamp() };
+      const ref = await addDoc(collection(db, 'posts', postId, 'comments'), comment);
+      await updateDoc(doc(db, 'posts', postId), { commentCount: increment(1) });
+      // 서버 타임스탬프가 아직 반영 안 된 값이지만(클라 로컬 시간으로 즉시 표시),
+      // 다음에 패널을 다시 열면 실제 저장된 값으로 다시 불러온다.
+      const local = { ...comment, id: ref.id, createdAt: { toDate: () => new Date() } };
+      const cache = _commentsCache[postId] || { comments: [], photoMap: {} };
+      cache.comments.push(local);
+      cache.photoMap[String(SESSION.id)] = _mpStudent.photoUrl || '';
+      _commentsCache[postId] = cache;
+      const panel = document.getElementById('cpanel_' + postId);
+      if (panel) panel.innerHTML = renderCommentList(postId, cache.comments, cache.photoMap);
+      const countEl = document.getElementById('ccount_' + postId);
+      if (countEl) countEl.innerText = String((parseInt(countEl.innerText) || 0) + 1);
+      document.getElementById('cinput_' + postId)?.focus(); // renderCommentList가 새 input을 그려서 빈 채로 이미 활성화돼 있다
+    } catch (e) {
+      alert('댓글 등록 오류: ' + e.message);
+      input.disabled = false;
+    }
+  };
 
   async function handlePinClick(postId) {
     const pw = await askPassword(uiText[currentLang]?.admPw||uiText.ko.admPw);

@@ -52,6 +52,9 @@ service cloud.firestore {
     // 학생이 직접 쓰는 데이터 — 학생 인증(Phase 2) 전까지는 기존과 동일하게 열어둠
     match /students/{id}               { allow read, write: if true; }
     match /posts/{id}                  { allow read, write: if true; }
+    // 댓글(posts/{id}/comments/{commentId})도 posts 규칙이 자동으로 상속하지
+    // 않는다 — qna_threads/messages와 같은 이유로 별도로 열어야 한다.
+    match /posts/{id}/{document=**}    { allow read, write: if true; }
     // qna_threads 자체 문서뿐 아니라 실제 질문/답변이 쓰이는 하위 컬렉션
     // (qna_threads/{학생ID}/messages/{msgId})까지 열어야 한다 — 규칙은
     // 하위 컬렉션에 자동으로 상속되지 않아서, 이걸 빠뜨리면 스레드 문서는
