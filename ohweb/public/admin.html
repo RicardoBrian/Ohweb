@@ -2490,26 +2490,50 @@
     showLoading(true);
     try {
       const qSnap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId)));
-      const missing = qSnap.docs.filter(d => !d.data().titleEn);
+      // titleEn 하나만으로 "번역 있음"을 판단하지 않는다 — 언어별 API 호출이 개별
+      // 실패할 수 있어서(Promise.all), 예전엔 titleEn만 있고 optionsZh 등은 비어있는
+      // 반쯤 번역된 문제가 "완료"로 오인되어 영영 다시 안 걸렸다.
+      const isIncomplete = d => {
+        const q = d.data();
+        if (!q.titleEn || !q.titleZh || !q.titleRu) return true;
+        if (q.type === 'mc' && (q.options||[]).length) {
+          return !q.optionsEn?.length || !q.optionsZh?.length || !q.optionsRu?.length;
+        }
+        return false;
+      };
+      const missing = qSnap.docs.filter(isIncomplete);
       if (!missing.length) { toast('모든 문제에 번역이 있습니다.', 'success'); showLoading(false); return; }
+      let done = 0, failed = 0;
       for (const qDoc of missing) {
         const q = qDoc.data();
         const toTr = [q.title, q.content].filter(Boolean);
         const optsKo = q.type === 'mc' ? (q.options || []) : [];
         const allTexts = [...toTr, ...optsKo];
         if (!allTexts.length) continue;
+        // 언어 하나가 실패해도 나머지 언어/나머지 문제는 계속 진행한다 —
+        // 이전엔 Promise.all 실패가 for 루프 밖 try/catch까지 뚫고 올라가서
+        // 배치 전체가 중간에 멈췄다(=오래된 시험들이 계속 미번역으로 남던 원인).
         const update = {};
         const langCodes = [['zh-cn','Zh'],['ru','Ru'],['en','En']];
-        await Promise.all(langCodes.map(async ([code, cap]) => {
-          const res = await translateTexts(allTexts, code);
+        const settled = await Promise.allSettled(langCodes.map(([code]) => translateTexts(allTexts, code)));
+        let ok = false;
+        langCodes.forEach(([, cap], i) => {
+          if (settled[i].status !== 'fulfilled') return;
+          ok = true;
+          const res = settled[i].value;
           let idx = 0;
           if (q.title) update['title'+cap] = res[idx++] || '';
           if (q.content) update['content'+cap] = res[idx++] || '';
           if (optsKo.length) update['options'+cap] = res.slice(idx);
-        }));
-        await updateDoc(doc(db,'exam_questions',qDoc.id), update);
+        });
+        if (Object.keys(update).length) {
+          try { await updateDoc(doc(db,'exam_questions',qDoc.id), update); if (ok) done++; }
+          catch(e) { failed++; console.error('exam question translate save failed:', qDoc.id, e); }
+        } else {
+          failed++;
+        }
       }
-      toast(`${missing.length}개 문제 번역 완료`, 'success');
+      toast(failed ? `${done}개 완료, ${failed}개 실패(다시 시도해주세요)` : `${done}개 문제 번역 완료`, failed ? 'error' : 'success');
       await loadQList(examId);
     } catch(e) { toast('번역 오류: '+e.message, 'error'); }
     showLoading(false);

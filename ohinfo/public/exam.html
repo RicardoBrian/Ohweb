@@ -511,8 +511,7 @@ let alertCount = 0;
 let timerInterval = null;
 let remainSec = 0;
 let submitted = false;
-let pyodide = null;
-let pyodideLoading = false;
+let codeRunning = false; // /api/run-python 호출 중 여부 (버튼 중복 클릭 방지용)
 
 const UI = {
   ko: {
@@ -525,7 +524,7 @@ const UI = {
     mpErrCur:'현재 비밀번호가 맞지 않습니다.', mpErrShort:'새 비밀번호는 4자 이상이어야 합니다.', mpErrMatch:'새 비밀번호가 일치하지 않습니다.', mpOk:'저장되었습니다.',
     correct:'정답', wrong:'오답 (정답: ', testPass:'테스트케이스 통과', manualGrade:'수동 채점 필요',
     stdin:'표준 입력 (stdin)', stdinPlaceholder:'입력이 필요한 경우 입력 값을 넣어주세요.',
-    pyodideLoading:'Pyodide 로딩 중...', noOutput:'(출력 없음)',
+    noOutput:'(출력 없음)', runErr:'실행 오류: ',
     gradeUnit:'학년', classUnit:'반',
     sortNew:'최신순', sortLike:'인기순',
   },
@@ -539,7 +538,7 @@ const UI = {
     mpErrCur:'当前密码不正确。', mpErrShort:'新密码至少需要4位。', mpErrMatch:'两次输入的新密码不一致。', mpOk:'已保存。',
     correct:'正确', wrong:'错误 (正确答案: ', testPass:'测试用例通过', manualGrade:'需要人工评分',
     stdin:'标准输入 (stdin)', stdinPlaceholder:'如需输入，请填写输入值。',
-    pyodideLoading:'Pyodide 加载中...', noOutput:'(无输出)',
+    noOutput:'(无输出)', runErr:'运行错误: ',
     gradeUnit:'年级', classUnit:'班',
     sortNew:'最新', sortLike:'热门',
   },
@@ -553,7 +552,7 @@ const UI = {
     mpErrCur:'Неверный текущий пароль.', mpErrShort:'Новый пароль должен быть не менее 4 символов.', mpErrMatch:'Пароли не совпадают.', mpOk:'Сохранено.',
     correct:'Правильно', wrong:'Неверно (ответ: ', testPass:'тест-кейс пройден', manualGrade:'Требует проверки',
     stdin:'Стандартный ввод (stdin)', stdinPlaceholder:'Введите тестовые данные.',
-    pyodideLoading:'Загрузка Pyodide...', noOutput:'(нет вывода)',
+    noOutput:'(нет вывода)', runErr:'Ошибка выполнения: ',
     gradeUnit:'кл.', classUnit:'гр.',
     sortNew:'Новые', sortLike:'Популярные',
   },
@@ -567,7 +566,7 @@ const UI = {
     mpErrCur:'Current password is incorrect.', mpErrShort:'New password must be at least 4 characters.', mpErrMatch:'Passwords do not match.', mpOk:'Saved.',
     correct:'Correct', wrong:'Wrong (answer: ', testPass:'test cases passed', manualGrade:'Manual grading required',
     stdin:'Standard Input (stdin)', stdinPlaceholder:'Enter test input values if needed.',
-    pyodideLoading:'Loading Pyodide...', noOutput:'(no output)',
+    noOutput:'(no output)', runErr:'Run error: ',
     gradeUnit:'', classUnit:'',
     sortNew:'Newest', sortLike:'Popular',
   },
@@ -648,6 +647,7 @@ async function loadMyExams() {
     const snap = await getDocs(collection(db, 'exam_assignments'));
     const assignments = snap.docs.map(d=>({id:d.id,...d.data()})).filter(a => {
       if (IS_MASTER) return true;
+      if (a.status !== 'ON') return false; // 선생님이 OFF로 내린 배정은 목록에서도 감춘다
       const gradeOk = !a.grade || _nv(String(a.grade)) === SESSION.grade;
       const clsOk   = !a.class || _nv(String(a.class)) === SESSION.cls;
       const schoolOk = !a.schoolName || a.schoolName === SESSION.schoolName;
@@ -888,25 +888,25 @@ function startExamUI() {
   renderQuestions();
   if (currentAssignment.duration > 0) startTimer(currentAssignment.duration * 60);
   updateProgress();
-  // 코딩 문제 있으면 Pyodide 로드
-  if (questions.some(q => q.type === 'code')) loadPyodide();
 }
 
-// ── Pyodide 로드 ──
-async function loadPyodide() {
-  if (pyodide || pyodideLoading) return;
-  pyodideLoading = true;
-  try {
-    const s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js';
-    document.head.appendChild(s);
-    await new Promise(r => s.onload = r);
-    pyodide = await window.loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/' });
-    // 실행 버튼 활성화
-    document.querySelectorAll('.run-btn').forEach(b => b.disabled = false);
-  } catch(e) {
-    pyodideLoading = false;
-  }
+// ── 코드 실행 (서버 위임) ──
+// 원래는 Pyodide(브라우저 안에서 CPython 전체를 웹어셈블리로 돌리는 방식)를
+// 썼는데, 자체 호스팅까지 해봐도 "실행" 누르는 순간(=웹어셈블리 인스턴스화
+// 시점) 컴퓨터에서 탭이 통째로 죽는 사례가 반복됐다 — 특정 기기가 그 정도
+// 무게의 웹어셈블리를 못 버틴다는 뜻이라 브라우저 쪽에서는 근본적으로 고칠
+// 수 없었다. 그래서 실행 자체를 서버(/api/run-python, Piston API 위임)로
+// 옮겼다. 학생 브라우저는 코드 텍스트 하나를 보내고 결과만 받으면 되니
+// 기기 성능·브라우저 종류와 완전히 무관해진다.
+async function runPythonRemote(code, stdin) {
+  const res = await fetch('/api/run-python', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, stdin }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
+  return data; // { stdout, stderr, exitCode, signal, timedOut }
 }
 
 // ── 문제 렌더링 ──
@@ -966,33 +966,52 @@ function getDefaultCode(q, lang) {
 const typeLabels = { mc: { ko:'객관식', zh:'选择题', ru:'Тест', en:'MCQ' }, sa: { ko:'단답형', zh:'简答题', ru:'Ответ', en:'Short' }, code: { ko:'코딩', zh:'编程', ru:'Код', en:'Code' } };
 
 function initCodeEditors() {
+  // CodeMirror는 별도 CDN 스크립트(cdnjs)가 <script defer>로 로드되는데, 그
+  // 요청이 늦거나 막히면(느린 네트워크, 학교 방화벽 등) 전역 CodeMirror가 아직
+  // 없다. 이전엔 이 상태에서 questions.forEach 안에서 바로
+  // CodeMirror.fromTextArea(...)를 호출해 ReferenceError가 났고, forEach는
+  // 콜백이 예외를 던지면 그 자리에서 멈춰버려서(catch가 없으니 남은 문제까지
+  // 전부 초기화가 안 됨) 코드 문제가 있는 시험만 화면이 먹통처럼 보였다.
+  // 코드 에디터가 없어도 runCode/submitExam은 이미 일반 textarea의 값을
+  // 그대로 읽도록 폴백돼 있으니, 조용히 넘어가고 다음 로드 시도(재렌더링)를
+  // 기다리는 편이 안전하다.
+  if (typeof CodeMirror === 'undefined') {
+    console.error('CodeMirror script not ready yet — using plain textareas for now');
+    if (!initCodeEditors._retries) initCodeEditors._retries = 0;
+    if (initCodeEditors._retries < 10) { initCodeEditors._retries++; setTimeout(initCodeEditors, 500); }
+    return;
+  }
   questions.forEach((q, i) => {
     if (q.type !== 'code') return;
     const ta = document.getElementById(`code_${i}`);
     if (!ta || cmInstances[i]) return;
-    const cm = CodeMirror.fromTextArea(ta, {
-      mode: 'python',
-      lineNumbers: true,
-      indentUnit: 4,
-      tabSize: 4,
-      indentWithTabs: false,
-      autoCloseBrackets: true,
-      extraKeys: {
-        'Tab': cm => cm.execCommand('indentMore'),
-        'Shift-Tab': cm => cm.execCommand('indentLess'),
-        'Enter': (cm) => {
-          const cursor = cm.getCursor();
-          const line = cm.getLine(cursor.line);
-          const indent = line.match(/^(\s*)/)[1];
-          const extraIndent = line.trimEnd().endsWith(':') ? '    ' : '';
-          cm.replaceSelection('\n' + indent + extraIndent, 'end');
+    try {
+      const cm = CodeMirror.fromTextArea(ta, {
+        mode: 'python',
+        lineNumbers: true,
+        indentUnit: 4,
+        tabSize: 4,
+        indentWithTabs: false,
+        autoCloseBrackets: true,
+        extraKeys: {
+          'Tab': cm => cm.execCommand('indentMore'),
+          'Shift-Tab': cm => cm.execCommand('indentLess'),
+          'Enter': (cm) => {
+            const cursor = cm.getCursor();
+            const line = cm.getLine(cursor.line);
+            const indent = line.match(/^(\s*)/)[1];
+            const extraIndent = line.trimEnd().endsWith(':') ? '    ' : '';
+            cm.replaceSelection('\n' + indent + extraIndent, 'end');
+          }
         }
-      }
-    });
-    cm.on('change', () => saveCode(i, cm.getValue()));
-    cmInstances[i] = cm;
-    // restore saved answer
-    if (codeAnswers[i]?.code) cm.setValue(codeAnswers[i].code);
+      });
+      cm.on('change', () => saveCode(i, cm.getValue()));
+      cmInstances[i] = cm;
+      // restore saved answer
+      if (codeAnswers[i]?.code) cm.setValue(codeAnswers[i].code);
+    } catch (e) {
+      console.error('CodeMirror init failed for question', i, e);
+    }
   });
 }
 
@@ -1032,8 +1051,8 @@ function renderQuestion(q, i) {
         <label>${UI[currentLang].stdin}</label>
         <textarea class="stdin-input" id="stdin_${i}" placeholder="${UI[currentLang].stdinPlaceholder}" rows="2"></textarea>
       </div>
-      <button class="btn run-btn" id="runBtn_${i}" style="margin-top:8px;" onclick="runCode(${i})" ${pyodide?'':'disabled'}>
-        ${pyodide ? UI[currentLang].run + ' ▶' : UI[currentLang].pyodideLoading}
+      <button class="btn run-btn" id="runBtn_${i}" style="margin-top:8px;" onclick="runCode(${i})">
+        ${UI[currentLang].run} ▶
       </button>
       <div id="runResult_${i}" class="run-result" style="display:none;"></div>
     `;
@@ -1078,37 +1097,35 @@ function updateProgress() {
   document.getElementById('progressFill').style.width = pct + '%';
 }
 
-// ── 코드 실행 ──
+// ── 코드 실행 (서버에서 돌린다 — 위 runPythonRemote 설명 참고) ──
 window.runCode = async (idx) => {
+  if (codeRunning) return;
   const cm = cmInstances[idx];
   const resultEl = document.getElementById(`runResult_${idx}`);
   const btn = document.getElementById(`runBtn_${idx}`);
-  if (!pyodide) { resultEl.style.display='block'; resultEl.className='run-result error'; resultEl.innerText=UI[currentLang].pyodideLoading; return; }
   const code = cm ? cm.getValue() : (document.getElementById(`code_${idx}`)?.value || '');
   const stdinVal = document.getElementById(`stdin_${idx}`)?.value || '';
+  codeRunning = true;
   btn.innerText = UI[currentLang].running;
   btn.disabled = true;
   resultEl.style.display = 'block';
   resultEl.className = 'run-result';
   resultEl.innerText = UI[currentLang].running;
   try {
-    pyodide.runPython(`
-import sys, io as _io
-_buf = _io.StringIO()
-sys.stdout = _buf
-sys.stdin = _io.StringIO(${JSON.stringify(stdinVal)})
-`);
-    await pyodide.runPythonAsync(code);
-    pyodide.runPython(`sys.stdout = sys.__stdout__\nsys.stdin = sys.__stdin__`);
-    const output = pyodide.runPython(`_buf.getvalue()`);
-    resultEl.className = 'run-result ok';
-    resultEl.innerText = output || UI[currentLang].noOutput;
+    const { stdout, stderr, timedOut } = await runPythonRemote(code, stdinVal);
+    if (stderr) {
+      resultEl.className = 'run-result error';
+      resultEl.innerText = timedOut ? (stdout || '') + '\n' + UI[currentLang].runErr + 'timeout' : stderr;
+    } else {
+      resultEl.className = 'run-result ok';
+      resultEl.innerText = stdout || UI[currentLang].noOutput;
+    }
     saveCode(idx, code);
   } catch(e) {
-    try { pyodide.runPython(`import sys; sys.stdout = sys.__stdout__; sys.stdin = sys.__stdin__`); } catch(e2) {}
     resultEl.className = 'run-result error';
-    resultEl.innerText = String(e);
+    resultEl.innerText = UI[currentLang].runErr + e.message;
   }
+  codeRunning = false;
   btn.innerText = UI[currentLang].run + ' ▶';
   btn.disabled = false;
 };
@@ -1162,28 +1179,15 @@ window.submitExam = async (isAuto = false) => {
         const cm = cmInstances[i];
         const code = cm ? cm.getValue() : (codeAnswers[i]?.code || '');
         value = code;
-        // 테스트케이스 실행
-        if (pyodide && q.testCases?.length) {
+        // 테스트케이스 실행 (서버 위임 — runPythonRemote 설명 참고)
+        if (code.trim() && q.testCases?.length) {
           let passCount = 0;
+          const normalize = s => String(s||'').replace(/\r\n/g,'\n').trimEnd();
           for (const tc of q.testCases) {
             try {
-              const inputData = String(tc.input || '');
-              const testCode = `
-import sys, io as _io
-_buf = _io.StringIO()
-_in = _io.StringIO(${JSON.stringify(inputData)})
-sys.stdout = _buf
-sys.stdin = _in
-${code}
-sys.stdout = sys.__stdout__
-sys.stdin = sys.__stdin__
-_result = _buf.getvalue()
-`;
-              pyodide.runPython(testCode);
-              const result = String(pyodide.runPython('_result'));
-              const normalize = s => String(s||'').replace(/\r\n/g,'\n').trimEnd();
-              if (normalize(result) === normalize(tc.expected)) passCount++;
-            } catch(e) {}
+              const { stdout } = await runPythonRemote(code, String(tc.input || ''));
+              if (normalize(stdout) === normalize(tc.expected)) passCount++;
+            } catch(e) { /* 이 케이스만 실패 처리, 나머지 케이스는 계속 채점 */ }
           }
           const ratio = passCount / q.testCases.length;
           score = Math.round((q.points || 0) * ratio);
