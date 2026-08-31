@@ -32,11 +32,18 @@ const json = (body, status = 200) =>
     headers: { 'Content-Type': 'application/json', ...CORS },
   });
 
+// setTimeout을 그냥 Promise.race에 걸면, 원래 promise가 먼저 끝나도 타이머는
+// 계속 남아있다가 나중에 fire된다. Cloudflare Workers는 요청 처리가 끝난
+// 뒤(응답을 이미 반환한 뒤)에 비동기 콜백이 실행되는 걸 허용하지 않아서 —
+// 이 타이머가 늦게 fire되면 "asynchronous I/O ... can only be performed while
+// handling a request" 같은 내부 오류로 이어지고, 이게 클라이언트한테는 우리
+// JSON이 아니라 플랫폼이 만든 맨 502 Bad Gateway로 보인다(우리 쪽 try/catch를
+// 아예 안 거치니 에러 메시지도 못 붙는다 — 신고된 "HTTP 502"만 뜨고 상세 이유가
+// 안 보이던 이유). 어느 쪽이 이기든 반드시 타이머를 정리한다.
 function withTimeout(promise, ms) {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)),
-  ]);
+  let timer;
+  const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('timeout')), ms); });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
 // Piston은 language+정확한 version을 요구한다. 하드코딩한 버전이 나중에
