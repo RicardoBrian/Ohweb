@@ -279,17 +279,21 @@ function renderExistingFeatureNotes() {
     el.innerHTML = '<div class="empty-features">수정할 기존 기능이 없습니다.</div>';
     return;
   }
-  el.innerHTML = feats.map((f) => `
+  el.innerHTML = feats.map((f) => {
+    const steps = f.steps.map((s) => s.trim()).filter(Boolean);
+    return `
     <div class="existing-feature-card">
       <div class="existing-feature-locked">
         <div class="existing-feature-name">${esc(f.name)}</div>
         <div class="existing-feature-desc">${esc(f.desc || '(설명 없음)')}</div>
+        ${steps.length ? `<ol class="existing-feature-steps">${steps.map((s) => `<li>${esc(s)}</li>`).join('')}</ol>` : ''}
       </div>
-      <label>이 기능을 이렇게 수정해주세요 (수정하지 않으려면 비워두세요)</label>
+      <label>이 기능을 이렇게 수정해주세요 (수정하지 않으려면 비워두세요. 특정 단계를 콕 집어 얘기하려면 "2번째 단계를 ~로 바꿔주세요"처럼 적어도 됩니다)</label>
       <textarea class="inp" rows="2" placeholder="예: 시작 버튼을 누르면 3초 카운트다운 후 시작하게 해주세요"
         oninput="updateExistingNote('${f.key}', this.value)">${esc(reviseState.existingNotes[f.key] || '')}</textarea>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function updateExistingNote(key, value) {
@@ -505,7 +509,14 @@ function generateRevisePrompt() {
   if (notes.length) {
     lines.push('다음 기존 기능을 수정해주세요:');
     notes.forEach(({ f, note }) => {
-      lines.push(`- ${f.name} (기존: ${f.desc || '설명 없음'}): ${note}`);
+      lines.push(`- ${f.name}`);
+      lines.push(`  기존 설명: ${f.desc || '(설명 없음)'}`);
+      const steps = f.steps.map((s) => s.trim()).filter(Boolean);
+      if (steps.length) {
+        lines.push('  기존 작동 단계:');
+        steps.forEach((s, i) => lines.push(`    ${i + 1}. ${s}`));
+      }
+      lines.push(`  수정 요청: ${note}`);
     });
     lines.push('');
   }

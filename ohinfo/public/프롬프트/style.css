@@ -180,6 +180,8 @@ textarea.inp { resize: vertical; }
 }
 .existing-feature-name { font-weight: 700; font-size: 0.92rem; color: var(--text-2); }
 .existing-feature-desc { font-size: 0.82rem; color: var(--text-3); margin-top: 2px; }
+.existing-feature-steps { margin: 8px 0 0; padding-left: 18px; font-size: 0.8rem; color: var(--text-3); }
+.existing-feature-steps li { margin-bottom: 2px; }
 .existing-feature-card label { display: block; font-size: 0.78rem; color: var(--sub); margin-bottom: 6px; }
 
 @media (max-width: 480px) {
