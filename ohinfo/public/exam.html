@@ -513,6 +513,7 @@ let remainSec = 0;
 let submitted = false;
 let pyodide = null;
 let pyodideLoading = false;
+let pyodideEverFailed = false;
 
 const UI = {
   ko: {
@@ -889,8 +890,12 @@ function startExamUI() {
   renderQuestions();
   if (currentAssignment.duration > 0) startTimer(currentAssignment.duration * 60);
   updateProgress();
-  // 코딩 문제 있으면 Pyodide 로드
-  if (questions.some(q => q.type === 'code')) loadPyodide();
+  // Pyodide는 여기서 미리 불러오지 않는다 — 수십MB짜리 웹어셈블리를 시험
+  // 진입 즉시 통째로 로드/컴파일하면 저사양 기기(학교 크롬북 등)에서 메모리를
+  // 다 잡아먹고 탭 자체가 죽어버릴 수 있다(JS 에러가 아니라 렌더러 프로세스가
+  // 죽는 크래시라 콘솔에 아무 로그도 안 남고 개발자 도구도 못 연다). 코드
+  // 문제를 읽기만 하거나 실행 없이 제출하는 학생은 아예 이 비용을 안 치르게,
+  // 학생이 "실행" 버튼을 처음 누르는 시점에만 runCode()가 지연 로드한다.
 }
 
 // ── Pyodide 로드 ──
@@ -932,6 +937,7 @@ async function loadPyodide() {
   } catch(e) {
     console.error('pyodide load failed:', e);
     pyodideLoading = false;
+    pyodideEverFailed = true;
     setRunButtonsState('error');
   }
 }
@@ -1078,8 +1084,8 @@ function renderQuestion(q, i) {
         <label>${UI[currentLang].stdin}</label>
         <textarea class="stdin-input" id="stdin_${i}" placeholder="${UI[currentLang].stdinPlaceholder}" rows="2"></textarea>
       </div>
-      <button class="btn run-btn" id="runBtn_${i}" style="margin-top:8px;" onclick="runCode(${i})" ${pyodide?'':'disabled'}>
-        ${pyodide ? UI[currentLang].run + ' ▶' : UI[currentLang].pyodideLoading}
+      <button class="btn run-btn" id="runBtn_${i}" style="margin-top:8px;" onclick="runCode(${i})" ${pyodideLoading?'disabled':''}>
+        ${pyodideLoading ? UI[currentLang].pyodideLoading : UI[currentLang].run + ' ▶'}
       </button>
       <div id="runResult_${i}" class="run-result" style="display:none;"></div>
     `;
@@ -1131,8 +1137,9 @@ window.runCode = async (idx) => {
   const btn = document.getElementById(`runBtn_${idx}`);
   if (!pyodide) {
     resultEl.style.display='block'; resultEl.className='run-result error';
-    resultEl.innerText = pyodideLoading ? UI[currentLang].pyodideLoading : UI[currentLang].pyodideRetry;
-    if (!pyodideLoading) loadPyodide(); // 이전 로딩이 실패했으면 버튼 클릭을 재시도 신호로 삼는다
+    // "처음 실행" 클릭이면 로딩중 문구, 예전에 실패해서 다시 누른 거면 재시도 문구
+    resultEl.innerText = pyodideLoading ? UI[currentLang].pyodideLoading : (pyodideEverFailed ? UI[currentLang].pyodideRetry : UI[currentLang].pyodideLoading);
+    if (!pyodideLoading) loadPyodide(); // 처음 클릭한 시점에 그때서야 로드 시작(지연 로딩)
     return;
   }
   const code = cm ? cm.getValue() : (document.getElementById(`code_${idx}`)?.value || '');
