@@ -339,13 +339,15 @@
     .comment-avatar { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), #7c4dff); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 0.66rem; flex-shrink: 0; overflow: hidden; }
     .comment-avatar img { width: 100%; height: 100%; object-fit: cover; }
     .comment-body { flex: 1; min-width: 0; }
-    .comment-byline { font-size: 0.78rem; font-weight: 700; }
+    .comment-byline { font-size: 0.78rem; font-weight: 700; display: flex; align-items: baseline; gap: 4px; }
     .comment-byline .num { color: var(--sub); font-weight: 600; }
+    .comment-del { margin-left: auto; flex-shrink: 0; font-size: 0.72rem; font-weight: 600; color: var(--sub); cursor: pointer; opacity: 0.7; }
+    .comment-del:hover { color: #ef4444; opacity: 1; }
     .comment-text { font-size: 0.85rem; line-height: 1.5; white-space: pre-wrap; word-break: break-all; margin-top: 1px; }
     .comment-time { font-size: 0.68rem; color: var(--sub); margin-top: 2px; }
     .comment-empty { font-size: 0.8rem; color: var(--sub); padding: 4px 0 8px; }
-    .comment-form { display: flex; gap: 8px; }
-    .comment-input { flex: 1; padding: 8px 14px; border-radius: 50px; border: 1px solid var(--border-card); background: var(--glass); color: var(--text); font-family: inherit; font-size: 0.85rem; outline: none; }
+    .comment-form { display: flex; gap: 8px; min-width: 0; }
+    .comment-input { flex: 1; min-width: 0; padding: 8px 14px; border-radius: 50px; border: 1px solid var(--border-card); background: var(--glass); color: var(--text); font-family: inherit; font-size: 0.85rem; outline: none; }
     .comment-input:focus { border-color: rgba(42,92,230,0.5); }
     .comment-send { flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; border: none; background: #1d1d1f; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
     body.dark .comment-send { background: #f5f5f7; color: #1d1d1f; }
@@ -1403,10 +1405,11 @@
   function renderCommentList(postId, comments, photoMap) {
     const listHtml = comments.length ? comments.map(c => {
       const photo = photoMap[String(c.studentId)] || '';
+      const isMine = String(c.studentId) === String(SESSION.id);
       return `<div class="comment-item">
         <div class="comment-avatar">${photo ? `<img src="${photo}">` : escHtml((c.name||'?')[0])}</div>
         <div class="comment-body">
-          <div class="comment-byline">${escHtml(c.name||'')}<span class="num"> (${escHtml(c.num||'')})</span></div>
+          <div class="comment-byline">${escHtml(c.name||'')}<span class="num"> (${escHtml(c.num||'')})</span>${isMine ? `<span class="comment-del" onclick="deleteComment('${postId}','${c.id}')">삭제</span>` : ''}</div>
           <div class="comment-text">${escHtml(c.text)}</div>
           <div class="comment-time">${c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString() : ''}</div>
         </div>
@@ -1465,6 +1468,22 @@
     } catch (e) {
       alert('댓글 등록 오류: ' + e.message);
       input.disabled = false;
+    }
+  };
+
+  window.deleteComment = async (postId, commentId) => {
+    if (!confirm('댓글을 삭제할까요?')) return;
+    try {
+      await deleteDoc(doc(db, 'posts', postId, 'comments', commentId));
+      await updateDoc(doc(db, 'posts', postId), { commentCount: increment(-1) });
+      const cache = _commentsCache[postId];
+      if (cache) cache.comments = cache.comments.filter(c => c.id !== commentId);
+      const panel = document.getElementById('cpanel_' + postId);
+      if (panel) panel.innerHTML = renderCommentList(postId, cache?.comments || [], cache?.photoMap || {});
+      const countEl = document.getElementById('ccount_' + postId);
+      if (countEl) countEl.innerText = String(Math.max(0, (parseInt(countEl.innerText) || 1) - 1));
+    } catch (e) {
+      alert('댓글 삭제 오류: ' + e.message);
     }
   };
 
