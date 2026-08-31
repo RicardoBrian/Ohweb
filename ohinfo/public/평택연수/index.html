@@ -42,6 +42,12 @@
     .card-tag { align-self: flex-start; font-size: 0.68rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; letter-spacing: 0.02em; }
     .card-tag.live { background: rgba(34,197,94,0.14); color: #16a34a; }
     .card-tag.soon { background: var(--glass); color: var(--text-3); border: 1px solid var(--border-card); }
+    .card-tag.real { background: rgba(0,113,227,0.14); color: var(--accent); }
+
+    .section { margin-top: 40px; }
+    .section:first-of-type { margin-top: 0; }
+    .section-title { font-size: 1.15rem; font-weight: 800; letter-spacing: -0.01em; margin: 0 0 4px; }
+    .section-desc { font-size: 0.84rem; color: var(--sub); margin: 0 0 16px; }
   </style>
 </head>
 <body>
@@ -58,73 +64,89 @@
     <div class="hero">
       <h1>바이브코딩 연수 견본 사이트</h1>
       <p>버튼을 눌러 각 웹앱을 직접 체험해 보세요. 로그인 없이 바로 써볼 수 있고,<br>모든 데이터는 이 브라우저에만(localStorage) 저장되며 서버로 전송되지 않습니다.</p>
-      <p class="note">※ 실제 학교 운영 사이트가 아닌 개인정보·인증을 제거한 시연용 사본입니다.</p>
+      <p class="note">※ "학교 정보 사이트"를 제외한 나머지는 실제 운영 사이트가 아닌, 개인정보·인증을 제거한 시연용 사본입니다.</p>
     </div>
 
-    <div class="grid">
-      <a href="timer/" class="card live">
-        <div class="card-icon">⏱️</div>
-        <div class="card-title">수업 타이머</div>
-        <div class="card-desc">수업 활동 시간을 재고, 종료 시 알림음을 울려주는 타이머. 전체화면·다크모드 지원.</div>
-        <span class="card-tag live">체험 가능</span>
-      </a>
+    <section class="section">
+      <h2 class="section-title">업무 효율화</h2>
+      <p class="section-desc">학교 업무를 자동화하고 효율적으로 해결하는 도구</p>
+      <div class="grid">
+        <a href="seatchange/" class="card live">
+          <div class="card-icon">💺</div>
+          <div class="card-title">자리 바꾸기</div>
+          <div class="card-desc">교실 모양대로 책상을 배치하고, 짝 금지·직전 자리 회피 같은 규칙에 맞게 자동으로 자리를 바꿔주는 도구.</div>
+          <span class="card-tag live">체험 가능</span>
+        </a>
 
-      <a href="seatchange/" class="card live">
-        <div class="card-icon">💺</div>
-        <div class="card-title">자리 바꾸기</div>
-        <div class="card-desc">교실 모양대로 책상을 배치하고, 짝 금지·직전 자리 회피 같은 규칙에 맞게 자동으로 자리를 바꿔주는 도구.</div>
-        <span class="card-tag live">체험 가능</span>
-      </a>
+        <a href="shortener/" class="card live">
+          <div class="card-icon">🔗</div>
+          <div class="card-title">단축 URL</div>
+          <div class="card-desc">긴 주소를 짧은 링크로 바꿔주는 도구. 학생 배포용 링크 관리에 유용.</div>
+          <span class="card-tag live">체험 가능</span>
+        </a>
 
-      <a href="shortener/" class="card live">
-        <div class="card-icon">🔗</div>
-        <div class="card-title">단축 URL</div>
-        <div class="card-desc">긴 주소를 짧은 링크로 바꿔주는 도구. 학생 배포용 링크 관리에 유용.</div>
-        <span class="card-tag live">체험 가능</span>
-      </a>
+        <a href="broadcast/" class="card live">
+          <div class="card-icon">📻</div>
+          <div class="card-title">방송부 관리</div>
+          <div class="card-desc">방송 일정, 출석, 신청곡, 업무 매뉴얼을 관리하고 송출을 요청합니다. 교사가 직접 영상을 업로드하면, 방송부 학생들이 확인하면서 직접 방송을 송출하는 방식입니다.</div>
+          <span class="card-tag live">체험 가능</span>
+        </a>
 
-      <a href="settle/" class="card live">
-        <div class="card-icon">🧾</div>
-        <div class="card-title">모둠/회비 정산</div>
-        <div class="card-desc">지출과 송금을 기록하고, 최소 송금 경로로 자동 정산해주는 계산기. 봉사·모둠활동 회비 관리에 유용.</div>
-        <span class="card-tag live">체험 가능</span>
-      </a>
+        <a href="volunteer/" class="card live">
+          <div class="card-icon">🤝</div>
+          <div class="card-title">봉사활동 관리</div>
+          <div class="card-desc">봉사활동 담당교사와 담임교사가 학생 봉사시간을 등록·수정하고, 학기말에 담임이 생활기록부에 기록할 때 직접 확인할 수 있습니다.</div>
+          <span class="card-tag live">체험 가능</span>
+        </a>
+      </div>
+    </section>
 
-      <a href="admin/" class="card live">
-        <div class="card-icon">🗂️</div>
-        <div class="card-title">관리자 대시보드 (ohweb)</div>
-        <div class="card-desc">학교·학생·학급을 등록하고 시험을 출제·채점하는 관리자 화면. 실제 운영 도구를 견본 데이터로 그대로 눌러볼 수 있습니다.</div>
-        <span class="card-tag live">체험 가능</span>
-      </a>
+    <section class="section">
+      <h2 class="section-title">수업·평가·기록 활용</h2>
+      <p class="section-desc">교육 현장에서 실제로 사용할 도구</p>
+      <div class="grid">
+        <a href="timer/" class="card live">
+          <div class="card-icon">⏱️</div>
+          <div class="card-title">수업 타이머</div>
+          <div class="card-desc">수업 활동 시간을 재고, 종료 시 알림음을 울려주는 타이머. 전체화면·다크모드 지원.</div>
+          <span class="card-tag live">체험 가능</span>
+        </a>
 
-      <a href="broadcast/" class="card live">
-        <div class="card-icon">📻</div>
-        <div class="card-title">방송부 관리 (GWBS)</div>
-        <div class="card-desc">방송 일정·출석·신청곡·업무 매뉴얼을 관리하는 방송부 도구. 학생용 신청곡 페이지도 함께 체험할 수 있습니다.</div>
-        <span class="card-tag live">체험 가능</span>
-      </a>
+        <a href="admin/" class="card live">
+          <div class="card-icon">🗂️</div>
+          <div class="card-title">관리자 대시보드</div>
+          <div class="card-desc">학교·학생·학급을 등록하고 시험을 출제·채점하는 관리자 화면. 실제 운영 도구를 견본 데이터로 그대로 눌러볼 수 있습니다.</div>
+          <span class="card-tag live">체험 가능</span>
+        </a>
 
-      <a href="volunteer/" class="card live">
-        <div class="card-icon">🤝</div>
-        <div class="card-title">봉사활동 관리 (GWVS)</div>
-        <div class="card-desc">학생 봉사시간을 등록·수정하고 변경 이력을 자동으로 남기는 관리 도구.</div>
-        <span class="card-tag live">체험 가능</span>
-      </a>
+        <a href="../index.html" class="card live">
+          <div class="card-icon">🏫</div>
+          <div class="card-title">학교 정보 사이트</div>
+          <div class="card-desc">공지·설문/신청서·Q&amp;A·시험 안내 등을 모아둔 학생용 학교 홈페이지. 이건 견본이 아니라 실제 운영 중인 사이트입니다 — 연수용 계정으로 로그인해서 둘러보세요.</div>
+          <span class="card-tag real">실제 사이트</span>
+        </a>
+      </div>
+    </section>
 
-      <a href="travel/" class="card live">
-        <div class="card-icon">✈️</div>
-        <div class="card-title">여행 플래너 (OHtravel)</div>
-        <div class="card-desc">장기 여행 일정·교통편·숙소·경비를 한 곳에서 관리하는 도구. 관리자 설정 비밀번호는 "demo"입니다.</div>
-        <span class="card-tag live">체험 가능</span>
-      </a>
+    <section class="section">
+      <h2 class="section-title">개인적 사용</h2>
+      <p class="section-desc">내 취향대로 자유롭게</p>
+      <div class="grid">
+        <a href="settle/" class="card live">
+          <div class="card-icon">🧾</div>
+          <div class="card-title">모임 정산</div>
+          <div class="card-desc">지출과 송금을 기록하고, 최소 송금 경로로 자동 정산해주는 계산기. 봉사·모둠활동 회비 관리에도 유용.</div>
+          <span class="card-tag live">체험 가능</span>
+        </a>
 
-      <a href="#" class="card soon">
-        <div class="card-icon">🏫</div>
-        <div class="card-title">학교 정보 사이트 (ohinfo)</div>
-        <div class="card-desc">아직 견본화 전입니다. ohinfo에 실제로 있는 기능(홈, 설문/신청서, Q&amp;A, 시험 안내 등) 중 어떤 걸 먼저 만들지 정한 뒤 채울 예정입니다.</div>
-        <span class="card-tag soon">준비 중</span>
-      </a>
-    </div>
+        <a href="travel/" class="card live">
+          <div class="card-icon">✈️</div>
+          <div class="card-title">여행 플래너</div>
+          <div class="card-desc">장기 여행 일정·교통편·숙소·경비를 한 곳에서 관리하는 도구. 관리자 설정 비밀번호는 "demo"입니다.</div>
+          <span class="card-tag live">체험 가능</span>
+        </a>
+      </div>
+    </section>
   </main>
 
   <script>
