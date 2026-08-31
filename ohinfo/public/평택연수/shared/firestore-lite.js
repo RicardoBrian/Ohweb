@@ -99,6 +99,29 @@ function makeDocSnap(id, raw) {
   return { id, exists: () => true, data: () => reviveTimestamps(raw) };
 }
 
+const listeners = new Map(); // `${ns}::${path}` -> Set(callback)
+function listenerKey(ns, path) { return `${ns}::${path}`; }
+function notify(ns, path) {
+  const set = listeners.get(listenerKey(ns, path));
+  if (!set) return;
+  for (const cb of set) cb(buildQuerySnap(ns, path, []));
+}
+function buildQuerySnap(ns, path, constraints) {
+  const store = loadStore(ns);
+  const bucket = store[path] || {};
+  const docs = Object.entries(bucket).map(([id, raw]) => makeDocSnap(id, raw));
+  return { docs, empty: docs.length === 0, size: docs.length, forEach: (fn) => docs.forEach(fn) };
+}
+
+/** onSnapshot(collectionRef, cb) — 이 견본이 쓰는 만큼만: 쿼리 조건 없이 컬렉션 전체를 구독. */
+export function onSnapshot(colRef, cb) {
+  const key = listenerKey(colRef.ns, colRef.path);
+  if (!listeners.has(key)) listeners.set(key, new Set());
+  listeners.get(key).add(cb);
+  cb(buildQuerySnap(colRef.ns, colRef.path, []));
+  return () => listeners.get(key)?.delete(cb);
+}
+
 export async function getDocs(target) {
   const isQuery = !!target.__query;
   const col = isQuery ? target.col : target;
@@ -137,6 +160,7 @@ export async function addDoc(colRef, data) {
   const id = newId();
   bucket[id] = resolveTimestamps(data);
   saveStore(colRef.ns, store);
+  notify(colRef.ns, colRef.path);
   return { __doc: true, ns: colRef.ns, collectionPath: colRef.path, id };
 }
 
@@ -146,6 +170,7 @@ export async function setDoc(ref, data, opts = {}) {
   const resolved = resolveTimestamps(data);
   bucket[ref.id] = opts.merge ? { ...(bucket[ref.id] || {}), ...resolved } : resolved;
   saveStore(ref.ns, store);
+  notify(ref.ns, ref.collectionPath);
 }
 
 export async function updateDoc(ref, data) {
@@ -160,12 +185,13 @@ export async function updateDoc(ref, data) {
   }
   bucket[ref.id] = current;
   saveStore(ref.ns, store);
+  notify(ref.ns, ref.collectionPath);
 }
 
 export async function deleteDoc(ref) {
   const store = loadStore(ref.ns);
   const bucket = store[ref.collectionPath];
-  if (bucket && ref.id in bucket) { delete bucket[ref.id]; saveStore(ref.ns, store); }
+  if (bucket && ref.id in bucket) { delete bucket[ref.id]; saveStore(ref.ns, store); notify(ref.ns, ref.collectionPath); }
 }
 
 export function writeBatch(db) {
