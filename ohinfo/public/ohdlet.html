@@ -1408,7 +1408,25 @@
       </div>`;
   }
 
+  // render()/renderColumnBoard()는 항상 #display.innerHTML을 통째로 다시
+  // 쓰는데, 칼럼형에서 학생이 "+"로 작성 폼을 어느 칼럼 안에 열어둔
+  // 상태라면 그 폼(#postForm)이 지금 #display의 후손이 된다 — 이 상태로
+  // innerHTML을 갈아치우면 폼 DOM 자체가 통째로 사라져 버려서, 그 뒤로는
+  // cancelEdit()/submitPost() 등 #postForm을 찾는 모든 코드가
+  // "Cannot read properties of null (reading 'reset')"로 죽는다.
+  // manualRefresh()는 render() 호출 전에 폼을 안전한 곳으로 옮겨두지만,
+  // setSort()/setLanguage()처럼 render()를 직접 부르는 경로는 그 안전장치를
+  //안 거치므로, render() 진입점 자체에서 매번 대피시킨다.
+  function evacuateComposeForm() {
+    const display = document.getElementById('display');
+    const formCard = document.getElementById('postForm')?.closest('.form-card');
+    if (display && formCard && display.contains(formCard)) {
+      document.getElementById('composeHolder').appendChild(formCard);
+    }
+  }
+
   function render(ex, posts, isFiltered) {
+    evacuateComposeForm();
     if (currentClassMeta.boardLayout === 'columns') return renderColumnBoard(ex, posts, isFiltered);
     const display = document.getElementById('display');
     display.classList.remove('col-board');
@@ -1698,7 +1716,7 @@
         });
       }
       await manualRefresh();
-      document.getElementById('postForm').reset(); fillSession(); cancelEdit();
+      cancelEdit(); // 폼 reset·필드 정리 전부 여기서 처리 (아래 fillSession도 포함)
       setTimeout(() => { const first = document.querySelector('.grid-board .post-card:not(.teacher-card)'); if (first) first.scrollIntoView({behavior:'smooth',block:'center'}); }, 150);
     } catch(err) { alert(err.message); document.getElementById('subBtn').disabled = false; }
     toggleLoading(false);
@@ -1730,7 +1748,7 @@
       document.querySelector('.board-sidebar').scrollIntoView({behavior:'smooth',block:'start'});
     }
   }
-  function cancelEdit(){document.getElementById('postForm').reset();fillSession();setHidden('f_mode','add');setHidden('f_postId','');imgList=[];updatePreview();document.getElementById('subBtn').innerText=uiText[currentLang]?.submit||uiText.ko.submit;document.getElementById('subBtn').disabled=false;document.getElementById('cancelEditBtn').classList.add('hidden');if(currentClassMeta.boardLayout==='columns'){const holder=document.getElementById('composeHolder');const card=document.getElementById('postForm').closest('.form-card');if(holder&&card)holder.appendChild(card);}}
+  function cancelEdit(){const pf=document.getElementById('postForm');if(!pf)return;pf.reset();fillSession();setHidden('f_mode','add');setHidden('f_postId','');imgList=[];updatePreview();document.getElementById('subBtn').innerText=uiText[currentLang]?.submit||uiText.ko.submit;document.getElementById('subBtn').disabled=false;document.getElementById('cancelEditBtn').classList.add('hidden');if(currentClassMeta.boardLayout==='columns'){const holder=document.getElementById('composeHolder');const card=pf.closest('.form-card');if(holder&&card)holder.appendChild(card);}}
 
   async function openDelete(id) {
     if (!confirm(uiText[currentLang]?.admDelConfirm||uiText.ko.admDelConfirm)) return;
