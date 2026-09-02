@@ -236,7 +236,7 @@
          사이드바 자체 스크롤에 맡긴다. */
       .sidebar-desc { font-size: 0.85rem; color: var(--sub); line-height: 1.6; margin-top: 6px; white-space: pre-line; }
       .sidebar-desc.collapsed { display: none; }
-      .board-desc { font-size: 0.88rem; color: var(--sub); margin-top: 4px; line-height: 1.5; }
+      .board-desc { font-size: 0.88rem; color: var(--sub); margin-top: 4px; line-height: 1.5; white-space: pre-line; }
       .sidebar-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
       .board-header-mobile { display: none; }
     }
@@ -275,7 +275,7 @@
       .sidebar-meta { display: none; }
       .board-header-mobile { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding: 20px 0 14px; flex-wrap: wrap; }
       .board-title { font-size: 1.5rem; font-weight: 800; line-height: 1.2; }
-      .board-desc { font-size: 0.88rem; color: var(--sub); margin-top: 4px; }
+      .board-desc { font-size: 0.88rem; color: var(--sub); margin-top: 4px; white-space: pre-line; }
     }
 
     @media (max-width: 600px) {
@@ -330,7 +330,7 @@
 
     .post-sub { font-size: 0.97rem; font-weight: 700; margin-bottom: 5px; white-space: pre-wrap; word-break: break-all; line-height: 1.45; }
     .post-msg { font-size: 0.87rem; color: var(--sub); white-space: pre-wrap; word-break: break-all; line-height: 1.7; }
-    .post-msg a { color: var(--accent); text-decoration: underline; }
+    .post-msg a, #boardDesc a, #sidebarDesc a, #sidebarNoticeText a { color: var(--accent); text-decoration: underline; }
 
     /* ── 슬라이더 ── */
     .img-slider { position: relative; margin-top: 12px; border-radius: var(--radius-sm); overflow: hidden; background: var(--glass); }
@@ -1308,9 +1308,9 @@
       const desc = cls['desc'+sfx] || cls.desc || '';
       const title = cls['name'+sfx] || cls.name || classTitle;
       document.getElementById('boardTitle').innerText = title;
-      document.getElementById('boardDesc').innerText = desc;
+      document.getElementById('boardDesc').innerHTML = fmtMsg(desc);
       document.getElementById('sidebarTitle').innerText = title;
-      document.getElementById('sidebarDesc').innerText = desc;
+      document.getElementById('sidebarDesc').innerHTML = fmtMsg(desc);
       const wrap = document.getElementById('sidebarDescWrap');
       wrap.style.display = desc.trim() ? '' : 'none';
 
@@ -1320,7 +1320,7 @@
       const isColumns = currentClassMeta.boardLayout === 'columns';
       document.getElementById('sidebarFormSlot').classList.toggle('hidden', isColumns);
       document.getElementById('sidebarNoticeCard').classList.toggle('hidden', !isColumns || !example.trim());
-      document.getElementById('sidebarNoticeText').innerText = example;
+      document.getElementById('sidebarNoticeText').innerHTML = fmtMsg(example);
       // 폼은 appendChild로 위치만 옮겨다니므로(복제 아님) 현재 어디 붙어있든
       // (사이드바/대기 장소/특정 칼럼 안) 실제 노드를 그대로 찾아 옮기면 된다.
       const formCard = document.getElementById('postForm').closest('.form-card');
