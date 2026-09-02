@@ -204,7 +204,7 @@
     @media (min-width: 1024px) {
       .board-layout {
         display: grid;
-        grid-template-columns: var(--sidebar-w) 1fr;
+        grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
         gap: 0;
         padding: 0 32px 60px;
         align-items: start;
@@ -219,6 +219,7 @@
       }
       .board-sidebar::-webkit-scrollbar { display: none; }
       .board-main {
+        min-width: 0;
         padding: 28px 0 60px 32px;
         border-left: 1px solid var(--border-card);
         min-height: calc(100vh - var(--nav-h));
@@ -229,7 +230,11 @@
       .sidebar-desc-toggle:hover .sidebar-desc-arrow { color: var(--text); }
       .sidebar-desc-arrow { font-size: 0.7rem; color: var(--sub); transition: transform 0.2s; flex-shrink: 0; margin-left: 6px; }
       .sidebar-desc-arrow.open { transform: rotate(180deg); }
-      .sidebar-desc { font-size: 0.85rem; color: var(--sub); line-height: 1.6; max-height: 120px; overflow-y: auto; overflow-x: hidden; scrollbar-width: thin; margin-top: 6px; padding-right: 2px; white-space: pre-line; }
+      /* 안 그래도 사이드바 자체가 sticky+overflow-y:auto라, 설명에 또 자체
+         스크롤(고정 120px)을 걸면 "작은 상자 안에서 또 스크롤"하게 돼서 한
+         눈에 안 들어온다. 높이를 내용에 맞게 늘어나게 두고, 정말 길 때는
+         사이드바 자체 스크롤에 맡긴다. */
+      .sidebar-desc { font-size: 0.85rem; color: var(--sub); line-height: 1.6; margin-top: 6px; white-space: pre-line; }
       .sidebar-desc.collapsed { display: none; }
       .board-desc { font-size: 0.88rem; color: var(--sub); margin-top: 4px; line-height: 1.5; }
       .sidebar-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
@@ -250,6 +255,16 @@
     .col-board-count { font-size: 0.7rem; font-weight: 700; color: var(--sub); background: var(--glass-strong); border-radius: 50px; padding: 2px 9px; flex-shrink: 0; }
     .col-board-body { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
     .col-board-empty { font-size: 0.78rem; color: var(--sub); text-align: center; padding: 18px 0; }
+    .col-board-add {
+      width: 22px; height: 22px; border-radius: 50%; border: none; cursor: pointer;
+      background: #1d1d1f; color: #fff; font-size: 0.95rem; line-height: 1;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      transition: opacity 0.15s;
+    }
+    body.dark .col-board-add { background: #f5f5f7; color: #1d1d1f; }
+    .col-board-add:hover { opacity: 0.8; }
+    .col-compose-anchor:empty { display: none; }
+    .col-compose-anchor .form-card { margin-bottom: 12px; }
     @media (max-width: 600px) { .col-board-col { flex-basis: 220px; width: 220px; } }
 
     @media (max-width: 1023px) {
@@ -615,27 +630,37 @@
           <button class="icon-action" title="새로고침" onclick="manualRefresh()"><svg width="17" height="17"><use href="#ic-refresh"/></svg></button>
         </div>
 
-        <!-- 글쓰기 폼 (양쪽 공통) -->
-        <div class="form-card">
-          <form id="postForm" onsubmit="submitPost(event)">
-            <div class="form-row hidden">
-              <input class="inp ru-target" id="p_num" placeholder="번호">
-              <input class="inp ru-target" id="p_name" placeholder="이름">
-              <input class="inp" id="p_pw_display" type="password" placeholder="비번">
-            </div>
-            <select class="inp hidden" id="p_column" style="margin-bottom:7px;"><option value="">칼럼 선택</option></select>
-            <input class="inp ru-target" id="p_sub" placeholder="제목" required style="margin-bottom:7px;">
-            <textarea class="inp ru-target" id="p_msg" rows="4" placeholder="내용" required style="margin-bottom:9px;"></textarea>
-            <div class="upload-box" id="ui-upload-label" onclick="document.getElementById('fileInput').click()">
-              이미지 첨부 (클릭 또는 Ctrl+V, 최대 4장)
-              <div id="previewArea" class="preview-container"></div>
-            </div>
-            <input type="file" id="fileInput" class="hidden" accept="image/*" multiple onchange="handleFiles(this.files)">
-            <button id="subBtn" type="submit" class="btn accent full">게시물 등록</button>
-            <button id="cancelEditBtn" type="button" class="btn full hidden" style="margin-top:7px;" onclick="cancelEdit()">취소</button>
-
-          </form>
+        <!-- 자유형(메이슨리)일 때만 여기 보임 — 칼럼형은 각 칼럼 안 + 버튼으로 작성 -->
+        <div id="sidebarFormSlot">
+          <div class="form-card">
+            <form id="postForm" onsubmit="submitPost(event)">
+              <div class="form-row hidden">
+                <input class="inp ru-target" id="p_num" placeholder="번호">
+                <input class="inp ru-target" id="p_name" placeholder="이름">
+                <input class="inp" id="p_pw_display" type="password" placeholder="비번">
+              </div>
+              <input type="hidden" id="p_column">
+              <input class="inp ru-target" id="p_sub" placeholder="제목" required style="margin-bottom:7px;">
+              <textarea class="inp ru-target" id="p_msg" rows="4" placeholder="내용" required style="margin-bottom:9px;"></textarea>
+              <div class="upload-box" id="ui-upload-label" onclick="document.getElementById('fileInput').click()">
+                이미지 첨부 (클릭 또는 Ctrl+V, 최대 4장)
+                <div id="previewArea" class="preview-container"></div>
+              </div>
+              <input type="file" id="fileInput" class="hidden" accept="image/*" multiple onchange="handleFiles(this.files)">
+              <button id="subBtn" type="submit" class="btn accent full">게시물 등록</button>
+              <button id="cancelEditBtn" type="button" class="btn full hidden" style="margin-top:7px;" onclick="cancelEdit()">취소</button>
+            </form>
+          </div>
         </div>
+
+        <!-- 칼럼형일 때만 여기 보임 — 원래 작성 폼 자리에 선생님 안내를 대신 표시 -->
+        <div id="sidebarNoticeCard" class="form-card hidden">
+          <div style="font-size:0.72rem;font-weight:700;color:var(--sub);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:8px;">선생님 안내</div>
+          <div id="sidebarNoticeText" style="font-size:0.9rem;line-height:1.6;white-space:pre-line;"></div>
+        </div>
+
+        <!-- 칼럼형 작성 폼의 대기 장소(어느 칼럼도 안 열려 있을 때) -->
+        <div id="composeHolder" class="hidden"></div>
 
         <div style="text-align:center;padding:4px 0 8px;">
           <button class="btn ghost" style="font-size:0.8rem;" onclick="goHome()">← 처음으로</button>
@@ -1268,15 +1293,7 @@
         boardLayout: cls.boardLayout === 'columns' ? 'columns' : 'grid',
         columns: Array.isArray(cls.columns) ? cls.columns : [],
       };
-      const colSel = document.getElementById('p_column');
-      if (currentClassMeta.boardLayout === 'columns') {
-        colSel.classList.remove('hidden');
-        colSel.innerHTML = '<option value="">칼럼 선택</option>' +
-          currentClassMeta.columns.map(c => `<option value="${escHtml(c).replace(/"/g,'&quot;')}">${escHtml(c)}</option>`).join('');
-      } else {
-        colSel.classList.add('hidden');
-        colSel.value = '';
-      }
+      document.getElementById('p_column').value = '';
 
       // 게시물 조회 (boardKey 없는 옛 게시글은 이름만으로 계속 노출 — 하위호환)
       const postsSnap = await getDocs(query(collection(db, 'posts'), where('classTitle', '==', classTitle)));
@@ -1296,6 +1313,23 @@
       document.getElementById('sidebarDesc').innerText = desc;
       const wrap = document.getElementById('sidebarDescWrap');
       wrap.style.display = desc.trim() ? '' : 'none';
+
+      // 칼럼형: 사이드바 작성 폼 자리에는 선생님 안내를 대신 보여주고(칼럼
+      // 안에 안내가 끼어 방해되던 문제 해결), 실제 글쓰기 폼은 각 칼럼의 +
+      // 버튼을 눌렀을 때만 그 칼럼 안으로 옮겨 붙는다(openColumnCompose).
+      const isColumns = currentClassMeta.boardLayout === 'columns';
+      document.getElementById('sidebarFormSlot').classList.toggle('hidden', isColumns);
+      document.getElementById('sidebarNoticeCard').classList.toggle('hidden', !isColumns || !example.trim());
+      document.getElementById('sidebarNoticeText').innerText = example;
+      // 폼은 appendChild로 위치만 옮겨다니므로(복제 아님) 현재 어디 붙어있든
+      // (사이드바/대기 장소/특정 칼럼 안) 실제 노드를 그대로 찾아 옮기면 된다.
+      const formCard = document.getElementById('postForm').closest('.form-card');
+      if (isColumns) {
+        document.getElementById('composeHolder').appendChild(formCard); // 새로고침 시 열려있던 인라인 폼은 일단 접어 정리
+        cancelEdit();
+      } else {
+        document.getElementById('sidebarFormSlot').appendChild(formCard);
+      }
       const photoMap = await fetchPhotoMap(rawPosts.map(p => p.studentId));
       currentPosts = rawPosts.map(p => ({
         ...p,
@@ -1326,6 +1360,11 @@
   function layoutMasonry() {
     const display = document.getElementById('display');
     if (!display) return;
+    // 칼럼형 게시판일 땐 손대면 안 된다 — 여기서 그냥 진행하면 display를
+    // 통째로 비우고 카드를 메이슨리 열(.m-col)로 재배치해버려서, 창 크기를
+    // 조절할 때마다(리사이즈 → scheduleRelayout) 칼럼 헤더/구조가 통째로
+    // 사라지고 자유형처럼 뒤섞이는 문제가 있었다.
+    if (currentClassMeta.boardLayout === 'columns') return;
     const cards = [...display.querySelectorAll('.post-card')];
     if (!cards.length) return;
     const cols = colCountFor(display.clientWidth || window.innerWidth);
@@ -1402,8 +1441,6 @@
     const display = document.getElementById('display');
     display.classList.add('col-board');
     document.getElementById('teacherNotice').innerHTML = '';
-    const noticeLabel = uiText[currentLang]?.teacher_notice || '선생님 안내';
-    const noticeHtml = (ex && !isFiltered) ? `<div class="post-card teacher-card"><div class="post-sub">${noticeLabel}</div><div class="post-msg">${fmtMsg(ex)}</div></div>` : '';
     const cols = currentClassMeta.columns.length ? currentClassMeta.columns : ['전체'];
     const buckets = new Map(cols.map(c => [c, []]));
     const others = [];
@@ -1411,22 +1448,45 @@
       if (p.column && buckets.has(p.column)) buckets.get(p.column).push(p);
       else others.push(p);
     });
-    const colHtml = (name, list, extraHead) => `
+    // colId는 DOM id/onclick 인자용 — 칼럼명에 따옴표·특수문자가 있어도 안전하게
+    const colHtml = (name, list, colId) => `
       <div class="col-board-col">
-        <div class="col-board-header"><span>${escHtml(name)}</span><span class="col-board-count">${list.length}</span></div>
+        <div class="col-board-header">
+          <span>${escHtml(name)}</span>
+          <span style="display:flex;align-items:center;gap:6px;">
+            <span class="col-board-count">${list.length}</span>
+            ${colId !== null ? `<button class="col-board-add" title="이 칼럼에 글쓰기" onclick="openColumnCompose('${colId}')">+</button>` : ''}
+          </span>
+        </div>
         <div class="col-board-body">
-          ${extraHead || ''}
-          ${list.length ? list.map(postCardHtml).join('') : (extraHead ? '' : `<div class="col-board-empty">${uiText[currentLang]?.noPost||uiText.ko.noPost}</div>`)}
+          <div class="col-compose-anchor" id="composeAnchor_${colId}"></div>
+          ${list.length ? list.map(postCardHtml).join('') : `<div class="col-board-empty">${uiText[currentLang]?.noPost||uiText.ko.noPost}</div>`}
         </div>
       </div>`;
-    let html = cols.map((name, i) => colHtml(name, buckets.get(name), i === 0 ? noticeHtml : '')).join('');
-    if (others.length) html += colHtml('기타', others);
+    let html = cols.map((name, i) => colHtml(name, buckets.get(name), String(i))).join('');
+    if (others.length) html += colHtml('기타', others, null);
     display.innerHTML = html;
     display.querySelectorAll('img').forEach(img => { if (!img.complete) img.addEventListener('load', () => {}, { once: true }); });
     requestAnimationFrame(() => requestAnimationFrame(() => {
       display.querySelectorAll('.post-card').forEach(c => c.classList.add('visible'));
     }));
   }
+
+  // 칼럼 안 + 버튼 → 그 칼럼의 앵커 자리로 실제 작성 폼(#postForm)을 그대로
+  // 옮겨 붙인다(복제가 아니라 DOM 이동이라 이미지 업로드·번역 등 기존 로직을
+  // 그대로 재사용). colId는 currentClassMeta.columns의 인덱스(문자열).
+  window.openColumnCompose = (colId) => {
+    cancelEdit();
+    const colName = currentClassMeta.columns[Number(colId)];
+    if (colName === undefined) return;
+    const anchor = document.getElementById('composeAnchor_' + colId);
+    const formCard = document.getElementById('postForm').closest('.form-card');
+    if (!anchor || !formCard) return;
+    anchor.appendChild(formCard);
+    setHidden('p_column', colName);
+    document.getElementById('cancelEditBtn').classList.remove('hidden'); // 인라인 작성 취소(접기)용
+    document.getElementById('p_sub').focus();
+  };
 
   function buildSlider(imgs, pid) {
     if (!imgs||!imgs.length) return '';
@@ -1653,14 +1713,24 @@
     document.getElementById('p_num').value = post.num;
     document.getElementById('p_sub').value = post['sub'+sfx] || '';
     document.getElementById('p_msg').value = post['msg'+sfx] || '';
-    if (currentClassMeta.boardLayout === 'columns') document.getElementById('p_column').value = post.column || '';
     imgList = Array.isArray(post.imgs) ? [...post.imgs] : [];
     updatePreview();
     document.getElementById('subBtn').innerText = uiText[currentLang]?.edit_finish||uiText.ko.edit_finish;
     document.getElementById('cancelEditBtn').classList.remove('hidden');
-    document.querySelector('.board-sidebar').scrollIntoView({behavior:'smooth',block:'start'});
+    if (currentClassMeta.boardLayout === 'columns') {
+      // 칼럼형: 사이드바엔 폼이 없으니(선생님 안내가 대신 있음) 그 글이
+      // 속한 칼럼(삭제된 칼럼이면 "기타") 안으로 폼을 옮겨 붙인다.
+      document.getElementById('p_column').value = post.column || '';
+      const idx = currentClassMeta.columns.indexOf(post.column);
+      const anchor = document.getElementById('composeAnchor_' + (idx >= 0 ? idx : 'null'));
+      const formCard = document.getElementById('postForm').closest('.form-card');
+      if (anchor && formCard) anchor.appendChild(formCard);
+      anchor?.scrollIntoView({behavior:'smooth',block:'center'});
+    } else {
+      document.querySelector('.board-sidebar').scrollIntoView({behavior:'smooth',block:'start'});
+    }
   }
-  function cancelEdit(){document.getElementById('postForm').reset();fillSession();setHidden('f_mode','add');setHidden('f_postId','');imgList=[];updatePreview();document.getElementById('subBtn').innerText=uiText[currentLang]?.submit||uiText.ko.submit;document.getElementById('subBtn').disabled=false;document.getElementById('cancelEditBtn').classList.add('hidden');}
+  function cancelEdit(){document.getElementById('postForm').reset();fillSession();setHidden('f_mode','add');setHidden('f_postId','');imgList=[];updatePreview();document.getElementById('subBtn').innerText=uiText[currentLang]?.submit||uiText.ko.submit;document.getElementById('subBtn').disabled=false;document.getElementById('cancelEditBtn').classList.add('hidden');if(currentClassMeta.boardLayout==='columns'){const holder=document.getElementById('composeHolder');const card=document.getElementById('postForm').closest('.form-card');if(holder&&card)holder.appendChild(card);}}
 
   async function openDelete(id) {
     if (!confirm(uiText[currentLang]?.admDelConfirm||uiText.ko.admDelConfirm)) return;
