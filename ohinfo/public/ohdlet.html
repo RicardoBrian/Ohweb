@@ -239,6 +239,19 @@
     .grid-board { display: flex; gap: 16px; align-items: flex-start; }
     .m-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
 
+    /* 패들릿식 칼럼형 게시판 */
+    .grid-board.col-board { overflow-x: auto; padding-bottom: 10px; align-items: stretch; }
+    .col-board-col {
+      flex: 0 0 260px; width: 260px; min-width: 0;
+      background: var(--glass); border: 1px solid var(--border-card); border-radius: var(--radius);
+      padding: 12px; display: flex; flex-direction: column;
+    }
+    .col-board-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 800; font-size: 0.92rem; padding: 2px 4px 10px; }
+    .col-board-count { font-size: 0.7rem; font-weight: 700; color: var(--sub); background: var(--glass-strong); border-radius: 50px; padding: 2px 9px; flex-shrink: 0; }
+    .col-board-body { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+    .col-board-empty { font-size: 0.78rem; color: var(--sub); text-align: center; padding: 18px 0; }
+    @media (max-width: 600px) { .col-board-col { flex-basis: 220px; width: 220px; } }
+
     @media (max-width: 1023px) {
       .board-sidebar { padding: 20px 0 0; }
       .board-main { padding: 0; }
@@ -610,6 +623,7 @@
               <input class="inp ru-target" id="p_name" placeholder="이름">
               <input class="inp" id="p_pw_display" type="password" placeholder="비번">
             </div>
+            <select class="inp hidden" id="p_column" style="margin-bottom:7px;"><option value="">칼럼 선택</option></select>
             <input class="inp ru-target" id="p_sub" placeholder="제목" required style="margin-bottom:7px;">
             <textarea class="inp ru-target" id="p_msg" rows="4" placeholder="내용" required style="margin-bottom:9px;"></textarea>
             <div class="upload-box" id="ui-upload-label" onclick="document.getElementById('fileInput').click()">
@@ -847,6 +861,7 @@
   let imgList = [];
   let currentPosts = [];
   let currentExample = '';
+  let currentClassMeta = { boardLayout: 'grid', columns: [] }; // 패들릿식 칼럼형 게시판 지원용
   let currentSort = 'new';
   let pwResolveCallback = null;
   let modalImgList = [];
@@ -1249,6 +1264,19 @@
         cls = candidates[0] || clsSnap.docs[0].data();
       }
       currentBoardKey = cls.name ? classBoardKey(cls) : '';
+      currentClassMeta = {
+        boardLayout: cls.boardLayout === 'columns' ? 'columns' : 'grid',
+        columns: Array.isArray(cls.columns) ? cls.columns : [],
+      };
+      const colSel = document.getElementById('p_column');
+      if (currentClassMeta.boardLayout === 'columns') {
+        colSel.classList.remove('hidden');
+        colSel.innerHTML = '<option value="">칼럼 선택</option>' +
+          currentClassMeta.columns.map(c => `<option value="${escHtml(c).replace(/"/g,'&quot;')}">${escHtml(c)}</option>`).join('');
+      } else {
+        colSel.classList.add('hidden');
+        colSel.value = '';
+      }
 
       // 게시물 조회 (boardKey 없는 옛 게시글은 이름만으로 계속 노출 — 하위호환)
       const postsSnap = await getDocs(query(collection(db, 'posts'), where('classTitle', '==', classTitle)));
@@ -1314,23 +1342,10 @@
   function scheduleRelayout() { clearTimeout(_relayoutT); _relayoutT = setTimeout(layoutMasonry, 120); }
   window.addEventListener('resize', scheduleRelayout);
 
-  function render(ex, posts, isFiltered) {
-    const display = document.getElementById('display');
-    document.getElementById('teacherNotice').innerHTML = '';   // 별도 배너 미사용
-    const noticeLabel = uiText[currentLang]?.teacher_notice || '선생님 안내';
-    let html = '';
-    // 선생님 안내를 그리드 카드 1개로 편입 (다른 게시물과 동일 취급)
-    if (ex && !isFiltered) {
-      html += `<div class="post-card teacher-card"><div class="post-sub">${noticeLabel}</div><div class="post-msg">${fmtMsg(ex)}</div></div>`;
-    }
-    if (!posts.length && !(ex && !isFiltered)) {
-      display.innerHTML = `<div style="text-align:center;padding:48px 0;color:var(--sub);font-size:0.92rem;">${uiText[currentLang]?.noPost||uiText.ko.noPost}</div>`;
-      return;
-    }
-    posts.forEach((p) => {
-      const hasLiked = localStorage.getItem('voted_'+p.id);
-      const _srch = [p.subject,p.subKo,p.message,p.msgKo,p.name].filter(Boolean).join(' ').replace(/"/g,'&quot;');
-      html += `<div class="post-card ${p.pinned?'pinned-card':''}" data-id="${p.id}" data-search="${_srch}">
+  function postCardHtml(p) {
+    const hasLiked = localStorage.getItem('voted_'+p.id);
+    const _srch = [p.subject,p.subKo,p.message,p.msgKo,p.name].filter(Boolean).join(' ').replace(/"/g,'&quot;');
+    return `<div class="post-card ${p.pinned?'pinned-card':''}" data-id="${p.id}" data-search="${_srch}">
         ${p.pinned ? '<div class="pin-badge"><svg width="11" height="11"><use href="#ic-pin"/></svg> 고정</div>' : ''}
         ${p.subject ? `<div class="post-sub">${p.subject}</div>` : ''}
         ${p.message ? `<div class="post-msg">${fmtMsg(p.message)}</div>` : (!p.subject ? `<div class="post-msg" style="color:var(--sub);font-style:italic;">(내용 없음)</div>` : '')}
@@ -1352,11 +1367,62 @@
         <div class="comment-panel" id="cpanel_${p.id}"></div>
         <div class="post-byline">${p.photoUrl ? `<img src="${p.photoUrl}" style="width:18px;height:18px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:5px;">` : ''}${p.name}(${p.num}) · ${p.time}</div>
       </div>`;
-    });
+  }
+
+  function render(ex, posts, isFiltered) {
+    if (currentClassMeta.boardLayout === 'columns') return renderColumnBoard(ex, posts, isFiltered);
+    const display = document.getElementById('display');
+    display.classList.remove('col-board');
+    document.getElementById('teacherNotice').innerHTML = '';   // 별도 배너 미사용
+    const noticeLabel = uiText[currentLang]?.teacher_notice || '선생님 안내';
+    let html = '';
+    // 선생님 안내를 그리드 카드 1개로 편입 (다른 게시물과 동일 취급)
+    if (ex && !isFiltered) {
+      html += `<div class="post-card teacher-card"><div class="post-sub">${noticeLabel}</div><div class="post-msg">${fmtMsg(ex)}</div></div>`;
+    }
+    if (!posts.length && !(ex && !isFiltered)) {
+      display.innerHTML = `<div style="text-align:center;padding:48px 0;color:var(--sub);font-size:0.92rem;">${uiText[currentLang]?.noPost||uiText.ko.noPost}</div>`;
+      return;
+    }
+    posts.forEach((p) => { html += postCardHtml(p); });
     display.innerHTML = html;
     layoutMasonry();
     // 이미지 로드되며 높이가 바뀌면 다시 배치
     display.querySelectorAll('img').forEach(img => { if (!img.complete) img.addEventListener('load', scheduleRelayout, { once: true }); });
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      display.querySelectorAll('.post-card').forEach(c => c.classList.add('visible'));
+    }));
+  }
+
+  // 패들릿식 칼럼형 게시판 — 수업이 admin에서 "칼럼형"으로 설정돼 있으면
+  // 자유 배치 메이슨리 대신 관리자가 정의한 칼럼(예: 과학/사회/영어)별로
+  // 게시글을 나눠 보여준다. 칼럼에 안 맞는(옛 자유형 시절 글이나 삭제된
+  // 칼럼을 참조하는) 글은 "기타" 칼럼으로 몰아서 유실 없이 보여준다.
+  function renderColumnBoard(ex, posts, isFiltered) {
+    const display = document.getElementById('display');
+    display.classList.add('col-board');
+    document.getElementById('teacherNotice').innerHTML = '';
+    const noticeLabel = uiText[currentLang]?.teacher_notice || '선생님 안내';
+    const noticeHtml = (ex && !isFiltered) ? `<div class="post-card teacher-card"><div class="post-sub">${noticeLabel}</div><div class="post-msg">${fmtMsg(ex)}</div></div>` : '';
+    const cols = currentClassMeta.columns.length ? currentClassMeta.columns : ['전체'];
+    const buckets = new Map(cols.map(c => [c, []]));
+    const others = [];
+    posts.forEach(p => {
+      if (p.column && buckets.has(p.column)) buckets.get(p.column).push(p);
+      else others.push(p);
+    });
+    const colHtml = (name, list, extraHead) => `
+      <div class="col-board-col">
+        <div class="col-board-header"><span>${escHtml(name)}</span><span class="col-board-count">${list.length}</span></div>
+        <div class="col-board-body">
+          ${extraHead || ''}
+          ${list.length ? list.map(postCardHtml).join('') : (extraHead ? '' : `<div class="col-board-empty">${uiText[currentLang]?.noPost||uiText.ko.noPost}</div>`)}
+        </div>
+      </div>`;
+    let html = cols.map((name, i) => colHtml(name, buckets.get(name), i === 0 ? noticeHtml : '')).join('');
+    if (others.length) html += colHtml('기타', others);
+    display.innerHTML = html;
+    display.querySelectorAll('img').forEach(img => { if (!img.complete) img.addEventListener('load', () => {}, { once: true }); });
     requestAnimationFrame(() => requestAnimationFrame(() => {
       display.querySelectorAll('.post-card').forEach(c => c.classList.add('visible'));
     }));
@@ -1513,6 +1579,12 @@
     const sub = document.getElementById('p_sub').value;
     const msg = document.getElementById('p_msg').value;
     const srcLang = currentLang;
+    const column = document.getElementById('p_column').value;
+    if (currentClassMeta.boardLayout === 'columns' && !column) {
+      alert('칼럼을 선택하세요.');
+      toggleLoading(false); document.getElementById('subBtn').disabled = false;
+      return;
+    }
 
     try {
       // 모든 언어로 번역 (실패해도 저장은 계속)
@@ -1540,7 +1612,8 @@
           subZh: subZhFinal, msgZh: msgZhFinal,
           subRu: subRuFinal, msgRu: msgRuFinal,
           subEn: subEnFinal, msgEn: msgEnFinal,
-          imgs: imgList
+          imgs: imgList,
+          ...(currentClassMeta.boardLayout === 'columns' ? { column } : {})
         });
       } else {
         await addDoc(collection(db, 'posts'), {
@@ -1557,6 +1630,7 @@
           subRu: subRuFinal, msgRu: msgRuFinal,
           subEn: subEnFinal, msgEn: msgEnFinal,
           imgs: imgList,
+          column: currentClassMeta.boardLayout === 'columns' ? column : '',
           likes: 0,
           pinned: false,
           deleted: false,
@@ -1579,6 +1653,7 @@
     document.getElementById('p_num').value = post.num;
     document.getElementById('p_sub').value = post['sub'+sfx] || '';
     document.getElementById('p_msg').value = post['msg'+sfx] || '';
+    if (currentClassMeta.boardLayout === 'columns') document.getElementById('p_column').value = post.column || '';
     imgList = Array.isArray(post.imgs) ? [...post.imgs] : [];
     updatePreview();
     document.getElementById('subBtn').innerText = uiText[currentLang]?.edit_finish||uiText.ko.edit_finish;

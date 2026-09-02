@@ -650,6 +650,20 @@
           <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">공지 팝업 (입장 시 표시)</label>
           <textarea class="inp" id="adm_popup" rows="2" placeholder="비워두면 미표시" style="width:100%;resize:vertical;"></textarea>
         </div>
+        <div style="grid-column:1/-1;">
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">게시판 형태</label>
+          <div style="display:flex;gap:14px;margin-bottom:8px;">
+            <label style="display:flex;align-items:center;gap:5px;font-size:0.85rem;font-weight:600;cursor:pointer;">
+              <input type="radio" name="adm_layout" value="grid" checked onchange="onAdmLayoutChange()"> 자유형 (기존 방식)
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:0.85rem;font-weight:600;cursor:pointer;">
+              <input type="radio" name="adm_layout" value="columns" onchange="onAdmLayoutChange()"> 칼럼형 (패들릿 스타일)
+            </label>
+          </div>
+          <div id="adm_columns_wrap" class="hidden">
+            <textarea class="inp" id="adm_columns" rows="4" placeholder="칼럼 이름을 한 줄에 하나씩 입력&#10;예)&#10;과학&#10;사회&#10;영어" style="width:100%;resize:vertical;"></textarea>
+          </div>
+        </div>
       </div>
       <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:6px;">배정할 학급</label>
       <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr auto;gap:8px;margin-bottom:10px;align-items:end;">
@@ -1689,14 +1703,24 @@
     }
   };
 
+  window.onAdmLayoutChange = () => {
+    const v = document.querySelector('input[name="adm_layout"]:checked')?.value || 'grid';
+    document.getElementById('adm_columns_wrap').classList.toggle('hidden', v !== 'columns');
+  };
+
   window.saveAdminClass = async () => {
     const id = document.getElementById('adm_docId').value;
     const name = document.getElementById('adm_name').value.trim();
     const desc = document.getElementById('adm_desc').value;
     const ex = document.getElementById('adm_ex').value;
     const popup = document.getElementById('adm_popup').value;
+    const boardLayout = document.querySelector('input[name="adm_layout"]:checked')?.value || 'grid';
+    const columns = boardLayout === 'columns'
+      ? document.getElementById('adm_columns').value.split('\n').map(s => s.trim()).filter(Boolean)
+      : [];
 
     if (!name) { toast('수업명을 입력하세요.', 'error'); return; }
+    if (boardLayout === 'columns' && !columns.length) { toast('칼럼형은 칼럼을 1개 이상 입력하세요.', 'error'); return; }
 
     showLoading(true);
     try {
@@ -1711,7 +1735,7 @@
         if (gradeRaw !== '전체' && !groupRaw) { toast('반을 선택하세요 (반은 "전체" 가능).', 'error'); showLoading(false); return; }
         const grade = gradeRaw === '전체' ? '' : nv(gradeRaw);
         const group = (gradeRaw === '전체' || groupRaw === '전체') ? '' : nv(groupRaw);
-        await updateDoc(doc(db, 'classes', id), { name, schoolName: school, grade, group, desc, ex, popup, ...tr });
+        await updateDoc(doc(db, 'classes', id), { name, schoolName: school, grade, group, desc, ex, popup, boardLayout, columns, ...tr });
         toast('수정되었습니다.', 'success');
       } else {
         // 저장 — 담아둔 모든 학급에 일괄 배정
@@ -1720,7 +1744,7 @@
         _pending.forEach(p => {
           const ref = doc(collection(db, 'classes'));
           batch.set(ref, {
-            name, schoolName: p.school, grade: p.grade, group: p.group, desc, ex, popup, ...tr,
+            name, schoolName: p.school, grade: p.grade, group: p.group, desc, ex, popup, boardLayout, columns, ...tr,
             status: 'ON', createdAt: serverTimestamp()
           });
         });
@@ -1746,6 +1770,10 @@
     document.getElementById('adm_desc').value = c.desc||'';
     document.getElementById('adm_ex').value = c.ex||'';
     document.getElementById('adm_popup').value = c.popup||'';
+    const layout = c.boardLayout === 'columns' ? 'columns' : 'grid';
+    document.querySelector(`input[name="adm_layout"][value="${layout}"]`).checked = true;
+    document.getElementById('adm_columns').value = (c.columns||[]).join('\n');
+    onAdmLayoutChange();
     _pending = []; renderPending();   // 수정은 단일 문서라 담기 목록 미사용
     // 드롭다운 구성 후 값 지정 (기존 수업은 학교 없으면 관산중학교로)
     await buildPaddletDropdowns();
@@ -1784,6 +1812,9 @@
     document.getElementById('adm_popup').value='';
     document.getElementById('adm_grade').value='';
     document.getElementById('adm_class').value='';
+    document.querySelector('input[name="adm_layout"][value="grid"]').checked = true;
+    document.getElementById('adm_columns').value='';
+    onAdmLayoutChange();
     _pending = [];
     renderPending();
     document.getElementById('adm_edit_info').style.display='none';
