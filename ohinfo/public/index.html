@@ -591,7 +591,7 @@
   async function loadSchools() {
     try {
       const snap = await getDocs(collection(db, 'students'));
-      _students = snap.docs.map(d => d.data());
+      _students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       const schools = [...new Set(_students.map(s => s.schoolName).filter(Boolean))].sort();
       ['loginSchool','joinSchool'].forEach(id => {
         const sel = document.getElementById(id);
@@ -621,16 +621,14 @@
     sel.innerHTML = `<option value="">${t.selectNum}</option>`;
     if (!schoolName || !grade || !cls) return;
     try {
-      const snap = await getDocs(collection(db, 'students'));
-      snap.docs
-        .filter(d => { const s = d.data(); return s.schoolName === schoolName && nv(s.grade)===nv(grade) && nv(s.class)===nv(cls); })
+      _students
+        .filter(s => s.schoolName === schoolName && nv(s.grade)===nv(grade) && nv(s.class)===nv(cls))
         .slice()
-        .sort((a,b) => (parseInt(a.data().number)||0) - (parseInt(b.data().number)||0))
-        .forEach(d => {
-          const { number } = d.data();
+        .sort((a,b) => (parseInt(a.number)||0) - (parseInt(b.number)||0))
+        .forEach(s => {
           const opt = document.createElement('option');
-          opt.value = number;
-          opt.innerText = `${number}번`;
+          opt.value = s.number;
+          opt.innerText = `${s.number}번`;
           sel.appendChild(opt);
         });
     } catch(e) { /* 빈 목록 유지 */ }
@@ -665,15 +663,13 @@
     if (!number)     { err.innerText = t.errNumSelect; return; }
     load(true);
     try {
-      const snap = await getDocs(collection(db, 'students'));
-      const match = snap.docs.find(d => {
-        const s = d.data();
+      const match = _students.find(s => {
         return s.schoolName === schoolName && nv(s.grade) === nv(grade) && nv(s.class) === nv(cls) && String(s.number) === String(number);
       });
       if (!match) { err.innerText = t.errNotFound; load(false); return; }
-      const data = match.data();
+      const { id: matchId, ...data } = match;
       try {
-        await loginStudent(match.id, data, pw);
+        await loginStudent(matchId, data, pw);
       } catch (ae) {
         if (ae instanceof AuthError && ae.code === 'not-registered') err.innerText = t.errNotReg;
         else if (ae instanceof AuthError && ae.code === 'wrong-password') { err.innerText = t.errWrongPw; document.getElementById('loginPw').value = ''; }
@@ -681,7 +677,7 @@
         load(false);
         return;
       }
-      saveSession({ id: match.id, ...data });
+      saveSession({ id: matchId, ...data });
       window.location.href = 'home.html';
     } catch(e) { err.innerText = '오류: ' + e.message; }
     load(false);
@@ -702,15 +698,13 @@
     if (!name)       { err.innerText = t.errNameReq; return; }
     load(true);
     try {
-      const snap = await getDocs(collection(db, 'students'));
-      const match = snap.docs.find(d => {
-        const s = d.data();
+      const match = _students.find(s => {
         return s.schoolName === schoolName && nv(s.grade) === nv(grade) && nv(s.class) === nv(cls) && String(s.number) === String(number) && s.name === name;
       });
       if (!match) { err.innerText = t.errNoMatch; load(false); return; }
-      const data = match.data();
+      const { id: matchId, ...data } = match;
       if (data.registered) { err.innerText = t.errAlready; load(false); return; }
-      foundStudentId = match.id;
+      foundStudentId = matchId;
       foundStudent = data;
       document.getElementById('badgeAvatar').innerText = name[0];
       document.getElementById('badgeName').innerText = `${name} (${number}번)`;
