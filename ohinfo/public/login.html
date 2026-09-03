@@ -118,6 +118,7 @@ const T = {
     gradeOpt: n => n + '학년', clsOpt: n => n + '반',
     errSchool:'학교 이름을 입력하세요.', errNum:'번호를 선택하세요.', errPw:'비밀번호를 입력하세요.',
     errNotFound:'학생 정보를 찾을 수 없습니다.', errNotReg:'아직 등록되지 않은 계정입니다.', errWrongPw:'비밀번호가 맞지 않습니다.',
+    errLocked:'비밀번호를 5회 이상 틀려 계정이 잠겼습니다.\n선생님(관리자)에게 문의하세요.',
     loading:'확인 중...', ok:'로그인' },
   zh: { title:'登录', sub:'请登录以参与问卷', notice:'登录后将跳转至问卷页面',
     school:'学校名', schoolPh:'输入学校名称', grade:'年级', cls:'班', num:'学号', numOpt:'选择',
@@ -125,6 +126,7 @@ const T = {
     gradeOpt: n => n + '年级', clsOpt: n => n + '班',
     errSchool:'请输入学校名称。', errNum:'请选择学号。', errPw:'请输入密码。',
     errNotFound:'未找到学生信息。', errNotReg:'账号尚未注册。', errWrongPw:'密码错误。',
+    errLocked:'密码错误已达5次，账号已被锁定。\n请联系老师（管理员）。',
     loading:'验证中...', ok:'登录' },
   ru: { title:'Вход', sub:'Войдите, чтобы пройти опрос', notice:'После входа вы будете перенаправлены на опрос',
     school:'Школа', schoolPh:'Введите название школы', grade:'Класс', cls:'Группа', num:'Номер', numOpt:'Выбрать',
@@ -132,6 +134,7 @@ const T = {
     gradeOpt: n => n + ' кл.', clsOpt: n => n + ' гр.',
     errSchool:'Введите название школы.', errNum:'Выберите номер.', errPw:'Введите пароль.',
     errNotFound:'Ученик не найден.', errNotReg:'Аккаунт не зарегистрирован.', errWrongPw:'Неверный пароль.',
+    errLocked:'Учётная запись заблокирована после 5 неверных попыток.\nОбратитесь к учителю (администратору).',
     loading:'Проверка...', ok:'Войти' },
   en: { title:'Login', sub:'Sign in to participate in the survey', notice:'You will be redirected to the survey after login',
     school:'School', schoolPh:'Enter school name', grade:'Grade', cls:'Class', num:'Number', numOpt:'Select',
@@ -139,6 +142,7 @@ const T = {
     gradeOpt: n => 'Grade ' + n, clsOpt: n => 'Class ' + n,
     errSchool:'Please enter your school name.', errNum:'Please select your number.', errPw:'Please enter your password.',
     errNotFound:'Student not found.', errNotReg:'Account not registered yet.', errWrongPw:'Incorrect password.',
+    errLocked:'This account is locked after 5 incorrect attempts.\nPlease contact your teacher (admin).',
     loading:'Checking...', ok:'Login' },
 };
 
@@ -262,6 +266,7 @@ window.doLogin = async () => {
       await loginStudent(match.id, data, pw);
     } catch (ae) {
       if (ae instanceof AuthError && ae.code === 'not-registered') errEl.textContent = t.errNotReg;
+      else if (ae instanceof AuthError && ae.code === 'locked') errEl.textContent = t.errLocked;
       else if (ae instanceof AuthError && ae.code === 'wrong-password') { errEl.textContent = t.errWrongPw; document.getElementById('loginPw').value = ''; }
       else errEl.textContent = '오류: ' + ae.message;
       btn.disabled = false; btn.textContent = t.ok;

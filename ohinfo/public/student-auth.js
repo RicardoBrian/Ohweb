@@ -14,7 +14,30 @@ import {
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
   updatePassword, EmailAuthProvider, reauthenticateWithCredential,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { doc, updateDoc, deleteField } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { doc, updateDoc, deleteField, increment, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+// 비밀번호를 5회 이상 틀리면 계정을 잠근다(locked:true) — 무차별 대입 시도
+// 방어용. 잠긴 계정은 admin.html(학생 관리)에서만 풀 수 있다 — 학생 쪽
+// 클라이언트가 스스로 못 푸는 건 Firestore 규칙(ohweb-firestore.rules,
+// students/{id})이 강제한다: 로그인 안 된 상태의 쓰기는 failedAttempts를
+// 늘리거나 locked를 true로 세팅하는 것만 허용하고, 낮추거나 false로
+// 되돌리는 건 인증된 본인(로그인 성공 후)이나 관리자만 가능하다.
+const MAX_FAILED_LOGIN_ATTEMPTS = 5;
+
+async function recordFailedLogin(studentDocId, currentFailedAttempts) {
+  const next = (currentFailedAttempts || 0) + 1;
+  const updates = { failedAttempts: increment(1) };
+  if (next >= MAX_FAILED_LOGIN_ATTEMPTS) {
+    updates.locked = true;
+    updates.lockedAt = serverTimestamp();
+  }
+  try {
+    await updateDoc(doc(db, 'students', studentDocId), updates);
+  } catch (e) {
+    // 카운트 기록이 실패해도(오프라인 등) 로그인 자체는 이미 아래에서
+    // wrong-password로 막힌다 — 카운트만 못 늘어날 뿐.
+  }
+}
 
 const EMAIL_SUFFIX = '@ohinfo.local';
 const emailFor = id => `${id}${EMAIL_SUFFIX}`;
@@ -37,19 +60,24 @@ export class AuthError extends Error {
 
 export async function loginStudent(studentDocId, data, pw) {
   if (!data.registered) throw new AuthError('not-registered');
+  if (data.locked) throw new AuthError('locked');
 
   try {
     await signInWithEmailAndPassword(auth, emailFor(studentDocId), padPassword(pw));
+    if (data.failedAttempts) await updateDoc(doc(db, 'students', studentDocId), { failedAttempts: 0 });
     return;
   } catch (e) {
     // 계정이 아직 없거나(미전환) 비밀번호가 틀렸을 수 있음 — 아래에서 판별
   }
 
   // 이미 전환된 계정인데 위에서 실패했다면 password 필드가 없으니 여기서 걸러진다.
-  if (data.password === undefined || data.password !== pw) throw new AuthError('wrong-password');
+  if (data.password === undefined || data.password !== pw) {
+    await recordFailedLogin(studentDocId, data.failedAttempts);
+    throw new AuthError('wrong-password');
+  }
 
   await createUserWithEmailAndPassword(auth, emailFor(studentDocId), padPassword(pw));
-  await updateDoc(doc(db, 'students', studentDocId), { password: deleteField() });
+  await updateDoc(doc(db, 'students', studentDocId), { password: deleteField(), failedAttempts: 0 });
 }
 
 // 신규 가입 — Firestore엔 password를 아예 쓰지 않는다.

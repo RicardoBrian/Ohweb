@@ -49,8 +49,31 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // 학생이 직접 쓰는 데이터 — 학생 인증(Phase 2) 전까지는 기존과 동일하게 열어둠
-    match /students/{id}               { allow read, write: if true; }
+    // 학생이 직접 쓰는 데이터 — 학생 인증(Phase 2) 전까지는 기존과 동일하게 열어둠.
+    // 단, 로그인 5회 실패 잠금(failedAttempts/locked)만은 예외 — 학생 계정
+    // 자체가 Firestore write 권한을 열어두고 있어서, 이 필드까지 그대로
+    // 열어두면 학생(또는 봇)이 스스로 잠금을 풀어버릴 수 있다. 그래서:
+    //   - 관리자(isAdmin)는 언제나 전부 가능 — admin.html의 잠금 해제 버튼.
+    //   - 로그인에 "성공해서" 그 학생 본인으로 인증된 상태(student-auth.js의
+    //     emailFor(id) 계정)면 자기 실패 카운트를 0으로 리셋하는 것도 가능.
+    //   - 그 외(=아직 로그인 전, 비밀번호를 틀려서 카운트를 올리는 그 순간)는
+    //     failedAttempts/locked/lockedAt 필드만 건드릴 수 있고, failedAttempts를
+    //     낮추거나 locked를 true→false로 되돌리는 건 막는다 — recordFailedLogin
+    //     (student-auth.js)이 늘리기만/잠그기만 하도록 쓰여 있는 것과 대응.
+    function isOwnStudentAuth(id) {
+      return request.auth != null && request.auth.token.email == id + '@ohinfo.local';
+    }
+    function lockFieldsOnlyAndNotLoosened() {
+      let before = resource.data;
+      let after = request.resource.data;
+      return after.diff(before).affectedKeys().hasOnly(['failedAttempts', 'locked', 'lockedAt'])
+        && after.get('failedAttempts', 0) >= before.get('failedAttempts', 0)
+        && (before.get('locked', false) == false || after.get('locked', false) == true);
+    }
+    match /students/{id} {
+      allow read, create, delete: if true;
+      allow update: if isAdmin() || isOwnStudentAuth(id) || lockFieldsOnlyAndNotLoosened();
+    }
     match /posts/{id}                  { allow read, write: if true; }
     // 댓글(posts/{id}/comments/{commentId})도 posts 규칙이 자동으로 상속하지
     // 않는다 — qna_threads/messages와 같은 이유로 별도로 열어야 한다.
