@@ -778,15 +778,46 @@
     return c.group === SESSION.group;
   }
   // 게시글 작성자들의 프로필 사진을 한 번에 조회 (studentId → photoUrl).
-  // 게시글마다 학생 문서를 따로 읽지 않도록 10명씩 묶어서(문서ID 'in' 쿼리 한도) 조회한다.
+  // 사진은 거의 안 바뀌므로 localStorage에 캐싱해서, 새로고침할 때마다
+  // 같은 학생 사진을 또 읽지 않게 한다 — 캐시에 없거나 만료된(하루 지난)
+  // ID만 10명씩 묶어서(문서ID 'in' 쿼리 한도) Firestore에서 조회한다.
+  const PHOTO_CACHE_KEY = 'ohdlet_photo_cache_v1';
+  const PHOTO_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+  function loadPhotoCache() {
+    try { return JSON.parse(localStorage.getItem(PHOTO_CACHE_KEY) || '{}'); } catch { return {}; }
+  }
+  function savePhotoCache(cache) {
+    try { localStorage.setItem(PHOTO_CACHE_KEY, JSON.stringify(cache)); } catch { /* 저장 공간 부족 등은 무시 — 캐싱 없이도 정상 동작 */ }
+  }
   async function fetchPhotoMap(studentIds) {
-    const map = {};
+    const cache = loadPhotoCache();
+    const now = Date.now();
     const ids = [...new Set(studentIds.filter(Boolean).map(String))];
-    for (let i = 0; i < ids.length; i += 10) {
-      const batch = ids.slice(i, i + 10);
+    const map = {};
+    const toFetch = [];
+    ids.forEach(id => {
+      const entry = cache[id];
+      if (entry && (now - entry.t) < PHOTO_CACHE_TTL_MS) {
+        if (entry.u) map[id] = entry.u;
+      } else {
+        toFetch.push(id);
+      }
+    });
+    let dirty = false;
+    for (let i = 0; i < toFetch.length; i += 10) {
+      const batch = toFetch.slice(i, i + 10);
       const snap = await getDocs(query(collection(db, 'students'), where(documentId(), 'in', batch)));
-      snap.docs.forEach(d => { const u = d.data().photoUrl; if (u) map[d.id] = u; });
+      const found = new Set();
+      snap.docs.forEach(d => {
+        const u = d.data().photoUrl || null;
+        found.add(d.id);
+        cache[d.id] = { u, t: now };
+        if (u) map[d.id] = u;
+      });
+      batch.forEach(id => { if (!found.has(id)) cache[id] = { u: null, t: now }; });
+      dirty = true;
     }
+    if (dirty) savePhotoCache(cache);
     return map;
   }
 
@@ -875,6 +906,13 @@
       Object.assign(_mpStudent, updates);
       saveSession(_mpStudent);
       renderAvatar(document.getElementById('navAvatar'), _mpStudent);
+      // 방금 바꾼 내 사진은 캐시 만료(24시간)를 기다리지 않고 바로 반영 —
+      // 안 그러면 내가 쓴 글에서 내 사진이 옛날 캐시로 하루 동안 안 바뀐 것처럼 보인다.
+      if (updates.photoUrl) {
+        const cache = loadPhotoCache();
+        cache[String(_mpStudent.id)] = { u: updates.photoUrl, t: Date.now() };
+        savePhotoCache(cache);
+      }
       msgEl.className='modal-msg ok'; msgEl.innerText=_t.mpOk;
       setTimeout(() => closeMyPage(), 1300);
     } catch(e) { msgEl.className='modal-msg err'; msgEl.innerText=e.message; }
