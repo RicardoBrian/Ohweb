@@ -821,6 +821,81 @@
     return map;
   }
 
+  // 게시글 목록 캐시 — 액션(글쓰기/삭제/댓글/좋아요/새로고침버튼/언어전환/
+  // 수업입장) 하나마다 그 반 게시글 전체를 매번 다시 읽던 걸(활발한 수업
+  // 시간대에 읽기가 크게 증폭되는 원인으로 확인됨) localStorage 캐시 +
+  // 증분 조회로 바꾼다. 이 반을 이 브라우저에서 처음 보면(캐시 없음)
+  // 지금처럼 전체를 한 번 읽고, 그 다음부턴 "마지막으로 본 시점 이후
+  // updatedAt이 바뀐 글"만 읽어서 캐시에 합친다 — 새 글/수정/삭제표시/
+  // 좋아요/댓글수 변경 전부 posts 문서 쓰기마다 updatedAt을 같이 찍어서
+  // 이 증분 조회에 걸리게 해뒀다.
+  //
+  // classTitle == 이랑 updatedAt > 를 같이 쓰는 쿼리라 Firestore 복합
+  // 인덱스(posts: classTitle Asc + updatedAt Asc)가 필요하다. 인덱스가
+  // 아직 없거나 어떤 이유로든 증분 조회가 실패하면 예외 없이 전체
+  // 재조회로 대체한다 — 이 캐싱은 어디까지나 최적화일 뿐, 실패해도
+  // 게시판은 그대로 떠야 한다.
+  function postsCacheKey(boardKey) { return 'ohdlet_posts_v1__' + encodeURIComponent(boardKey || ''); }
+  function loadPostsCache(boardKey) {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(postsCacheKey(boardKey)) || 'null');
+      if (!parsed || typeof parsed.lastSync !== 'number' || !parsed.posts) return null;
+      return parsed;
+    } catch { return null; }
+  }
+  function savePostsCache(boardKey, cache) {
+    try { localStorage.setItem(postsCacheKey(boardKey), JSON.stringify(cache)); }
+    catch { /* 이미지 포함 글이 많아 저장 공간이 부족한 경우 등은 무시 — 캐싱 없이도 정상 동작 */ }
+  }
+  function mapPostDoc(d) {
+    const raw = d.data();
+    return {
+      ...raw,
+      id: d.id,
+      imgs: Array.isArray(raw.imgs) ? raw.imgs : [],
+      createdAt: raw.createdAt?.toDate?.()?.toISOString() || '',
+      updatedAt: raw.updatedAt?.toDate?.()?.toISOString() || '',
+    };
+  }
+  function docWatermark(d) {
+    const raw = d.data();
+    return raw.updatedAt?.toMillis?.() ?? raw.createdAt?.toMillis?.() ?? 0;
+  }
+  async function loadClassPosts(classTitle, boardKey) {
+    const cacheKey = boardKey || ('classTitle:' + classTitle);
+    const cache = loadPostsCache(cacheKey);
+    if (cache) {
+      try {
+        const incSnap = await getDocs(query(
+          collection(db, 'posts'),
+          where('classTitle', '==', classTitle),
+          where('updatedAt', '>', new Date(cache.lastSync))
+        ));
+        let watermark = cache.lastSync;
+        incSnap.docs.forEach(d => {
+          cache.posts[d.id] = mapPostDoc(d);
+          const ts = docWatermark(d);
+          if (ts > watermark) watermark = ts;
+        });
+        cache.lastSync = watermark;
+        savePostsCache(cacheKey, cache);
+        return Object.values(cache.posts);
+      } catch (e) {
+        // 인덱스 없음 등 — 아래에서 전체 재조회로 대체
+      }
+    }
+    const fullSnap = await getDocs(query(collection(db, 'posts'), where('classTitle', '==', classTitle)));
+    const postsMap = {};
+    let watermark = 0;
+    fullSnap.docs.forEach(d => {
+      postsMap[d.id] = mapPostDoc(d);
+      const ts = docWatermark(d);
+      if (ts > watermark) watermark = ts;
+    });
+    savePostsCache(cacheKey, { lastSync: watermark || Date.now(), posts: postsMap });
+    return Object.values(postsMap);
+  }
+
   function classBoardKey(c) {
     const g = c.grade || '', grp = c.group || '';
     return `${c.name||''}__${c.schoolName||''}${g?('__g'+g):''}${grp?('__c'+grp):''}`;
@@ -1334,9 +1409,8 @@
       document.getElementById('p_column').value = '';
 
       // 게시물 조회 (boardKey 없는 옛 게시글은 이름만으로 계속 노출 — 하위호환)
-      const postsSnap = await getDocs(query(collection(db, 'posts'), where('classTitle', '==', classTitle)));
-      const rawPosts = postsSnap.docs
-        .map(d => ({ ...d.data(), id: d.id, imgs: Array.isArray(d.data().imgs) ? d.data().imgs : [], createdAt: d.data().createdAt?.toDate?.()?.toISOString() || '' }))
+      const allPosts = await loadClassPosts(classTitle, currentBoardKey);
+      const rawPosts = allPosts
         .filter(p => !p.deleted && (!p.boardKey || p.boardKey === currentBoardKey));
       // 클라이언트 정렬: pinned desc, createdAt desc
       rawPosts.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (b.createdAt > a.createdAt ? 1 : -1));
@@ -1571,12 +1645,12 @@
       cnt.innerText = Math.max(0, cur - 1);
       el.classList.remove('voted');
       localStorage.removeItem('voted_'+id);
-      updateDoc(doc(db, 'posts', id), { likes: increment(-1) }).catch(e => console.error('like-:', e));
+      updateDoc(doc(db, 'posts', id), { likes: increment(-1), updatedAt: serverTimestamp() }).catch(e => console.error('like-:', e));
     } else {
       cnt.innerText = cur + 1;
       el.classList.add('voted');
       localStorage.setItem('voted_'+id, '1');
-      updateDoc(doc(db, 'posts', id), { likes: increment(1) }).catch(e => console.error('like+:', e));
+      updateDoc(doc(db, 'posts', id), { likes: increment(1), updatedAt: serverTimestamp() }).catch(e => console.error('like+:', e));
     }
   }
 
@@ -1634,7 +1708,7 @@
     try {
       const comment = { studentId: SESSION.id, name: SESSION.name, num: SESSION.num, text, createdAt: serverTimestamp() };
       const ref = await addDoc(collection(db, 'posts', postId, 'comments'), comment);
-      await updateDoc(doc(db, 'posts', postId), { commentCount: increment(1) });
+      await updateDoc(doc(db, 'posts', postId), { commentCount: increment(1), updatedAt: serverTimestamp() });
       // 서버 타임스탬프가 아직 반영 안 된 값이지만(클라 로컬 시간으로 즉시 표시),
       // 다음에 패널을 다시 열면 실제 저장된 값으로 다시 불러온다.
       const local = { ...comment, id: ref.id, createdAt: { toDate: () => new Date() } };
@@ -1657,7 +1731,7 @@
     if (!confirm('댓글을 삭제할까요?')) return;
     try {
       await deleteDoc(doc(db, 'posts', postId, 'comments', commentId));
-      await updateDoc(doc(db, 'posts', postId), { commentCount: increment(-1) });
+      await updateDoc(doc(db, 'posts', postId), { commentCount: increment(-1), updatedAt: serverTimestamp() });
       const cache = _commentsCache[postId];
       if (cache) cache.comments = cache.comments.filter(c => c.id !== commentId);
       const panel = document.getElementById('cpanel_' + postId);
@@ -1676,7 +1750,7 @@
     if (!post) return;
     const isPinned = !post.pinned;
     try {
-      await updateDoc(doc(db, 'posts', postId), { pinned: isPinned });
+      await updateDoc(doc(db, 'posts', postId), { pinned: isPinned, updatedAt: serverTimestamp() });
       post.pinned = isPinned;
       render(currentExample, sortedPosts());
     } catch(err) { alert(err.message); }
@@ -1729,6 +1803,7 @@
           subRu: subRuFinal, msgRu: msgRuFinal,
           subEn: subEnFinal, msgEn: msgEnFinal,
           imgs: imgList,
+          updatedAt: serverTimestamp(),
           ...(currentClassMeta.boardLayout === 'columns' ? { column } : {})
         });
       } else {
@@ -1750,7 +1825,8 @@
           likes: 0,
           pinned: false,
           deleted: false,
-          createdAt: serverTimestamp()
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
         });
       }
       await manualRefresh();
@@ -1792,7 +1868,7 @@
     if (!confirm(uiText[currentLang]?.admDelConfirm||uiText.ko.admDelConfirm)) return;
     toggleLoading(true);
     try {
-      await updateDoc(doc(db, 'posts', id), { deleted: true });
+      await updateDoc(doc(db, 'posts', id), { deleted: true, updatedAt: serverTimestamp() });
       await manualRefresh();
     } catch(e) { alert(e.message); }
     toggleLoading(false);
