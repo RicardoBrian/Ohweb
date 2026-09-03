@@ -9,7 +9,17 @@ const app = document.getElementById('app');
 const publicBase = 'https://kakainfo.com';
 
 const CODE_RE = /^[\p{L}\p{N}_-]{2,32}$/u;
-const RESERVED = new Set(['api', 'admin', 'login', 'logout', 'favicon.ico', 'style.css', 'app.js', 'firebase-config.js', 'admin-auth.js', '견본', '프롬프트']);
+// 실제 정적 파일/폴더 이름뿐 아니라, 봇·스캐너가 흔히 찔러보는 경로도
+// 미리 막는다 — 어차피 우리가 쓸 일 없는 이름이니 코드로 만들 수 없게
+// 해두면, kakainfo.com/functions/[[code]].js가 그런 요청은 Firestore
+// 조회 없이 즉시 걸러내는 예약어 목록과도 그대로 맞아떨어진다(둘 다 이
+// 목록을 같이 유지해야 함).
+const RESERVED = new Set([
+  'api', 'admin', 'login', 'logout', 'favicon.ico', 'style.css', 'app.js', 'firebase-config.js', 'admin-auth.js', '견본', '프롬프트',
+  'wp-admin', 'wp-login', 'wp-content', 'wp-includes', 'wp-json', 'xmlrpc', 'graphql', 'phpmyadmin',
+  'config', 'backup', 'env', 'robots', 'sitemap', 'ads', 'author', 'feed', 'rss', 'license', 'readme',
+  'setup', 'install', 'test', 'debug', 'console', 'server-status', 'actuator', 'swagger',
+]);
 
 function escapeHtml(str) {
   return str.replace(/[&<>"']/g, (c) => ({

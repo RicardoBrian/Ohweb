@@ -62,6 +62,16 @@ const PROJECT_ID = 'ohweb-93062';
 // 한다 — 여기서 더 느슨하면 봇 노이즈를 못 거르고, 더 빡빡하면 정상 코드를
 // 오탐으로 걸러 버린다.
 const CODE_RE = /^[\p{L}\p{N}_-]{2,32}$/u;
+// ohshrt/public/app.js의 RESERVED와 반드시 같이 유지한다 — 저긴 "이 이름으로
+// 코드를 못 만들게" 막고, 여긴 "그러니 이 이름으로 온 요청은 Firestore에
+// 물어볼 필요도 없다"로 그 보장을 활용한다. CODE_RE만으로는 못 거르는
+// 순수 영단어형 봇 프로브(admin, wp-json, graphql 등)가 여기서 걸린다.
+const RESERVED = new Set([
+  'api', 'admin', 'login', 'logout', 'favicon.ico', 'style.css', 'app.js', 'firebase-config.js', 'admin-auth.js', '견본', '프롬프트',
+  'wp-admin', 'wp-login', 'wp-content', 'wp-includes', 'wp-json', 'xmlrpc', 'graphql', 'phpmyadmin',
+  'config', 'backup', 'env', 'robots', 'sitemap', 'ads', 'author', 'feed', 'rss', 'license', 'readme',
+  'setup', 'install', 'test', 'debug', 'console', 'server-status', 'actuator', 'swagger',
+]);
 const CACHE_TTL_SECONDS = 300;
 
 function withNoStore(res) {
@@ -89,6 +99,8 @@ export async function onRequest(context) {
     // 코드 형식에 안 맞으면(봇이 찔러보는 무작위 경로 등) Firestore를 아예
     // 안 읽는다 — 이게 무료 읽기 한도를 지키는 가장 큰 방어선이다.
     if (!CODE_RE.test(code)) return next();
+    // 형식은 맞지만(순수 영단어) 절대 실제 코드일 수 없는 예약어도 조회 없이 차단.
+    if (RESERVED.has(code.toLowerCase())) return next();
 
     // 성공한 조회는 Cache API에 잠깐 캐싱해서, 같은 코드가 반복 조회돼도
     // Firestore 읽기를 매번 새로 쓰지 않는다. 실패/미존재는 절대 캐싱하지
