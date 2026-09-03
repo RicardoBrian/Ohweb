@@ -27,9 +27,24 @@
  * 조회는 Firestore REST API를 그냥 fetch로 친다 — Admin SDK도 API 키도 필요
  * 없다. short_links/{code} 개별 문서는 규칙상 누구나 get 할 수 있다(레포 루트의
  * ohweb-firestore.rules).
+ *
+ * ⚠ 캐싱 주의: 링크를 막 만든 직후라 아직 전파 전이거나 일시적으로 조회가
+ * 실패해서 next()로 넘어간 경우, Cloudflare 엣지가 그 "홈으로 폴백" 응답을
+ * 그 코드 경로에 대해 캐싱해버리면 — 이후 문서가 실제로 만들어져도 캐시가
+ * 안 풀릴 때까지 계속 kakainfo.com 홈으로만 수렴하는 것처럼 보인다. 이게
+ * "분명 고쳤는데 자꾸 다시 kakainfo.com으로 간다"는 반복 신고의 유력한
+ * 원인이라, 이 함수가 관여하는 모든 응답(성공 리다이렉트/폴백 둘 다)에
+ * Cache-Control: no-store를 강제로 붙인다. Firestore 조회 자체도
+ * cache:'no-store'로 요청해서 Workers 런타임의 fetch 캐시까지 배제한다.
  */
 
 const PROJECT_ID = 'ohweb-93062';
+
+function withNoStore(res) {
+  const out = new Response(res.body, res);
+  out.headers.set('Cache-Control', 'no-store');
+  return out;
+}
 
 export async function onRequest(context) {
   const { next, request } = context;
@@ -48,16 +63,16 @@ export async function onRequest(context) {
     if (code.includes('.')) return next();
 
     const url = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/short_links/${encodeURIComponent(code)}`;
-    const r = await fetch(url);
-    if (!r.ok) return next();
+    const r = await fetch(url, { cache: 'no-store' });
+    if (!r.ok) return withNoStore(await next());
 
     const data = await r.json();
     const target = data?.fields?.url?.stringValue;
-    if (!target) return next();
+    if (!target) return withNoStore(await next());
 
-    return Response.redirect(target, 302);
+    return new Response(null, { status: 302, headers: { Location: target, 'Cache-Control': 'no-store' } });
   } catch {
     // 단축 링크 조회가 어떤 이유로 실패하든 평소의 사이트가 그대로 떠야 한다.
-    return next();
+    try { return withNoStore(await next()); } catch { return next(); }
   }
 }
