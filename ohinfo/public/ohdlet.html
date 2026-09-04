@@ -244,16 +244,23 @@
     .grid-board { display: flex; gap: 16px; align-items: flex-start; }
     .m-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
 
-    /* 패들릿식 칼럼형 게시판 */
-    .grid-board.col-board { overflow-x: auto; padding-bottom: 10px; align-items: stretch; }
+    /* 패들릿식 칼럼형 게시판 — 칼럼 하나가 글이 많다고 계속 늘어나면(예전
+       방식) 그 칼럼끼리 전환하는 가로 스크롤바가 페이지 맨 아래로 밀려나
+       버리고, align-items:stretch 때문에 글 적은 칼럼도 제일 긴 칼럼
+       높이만큼 억지로 늘어나 안에 빈 여백만 커진다. 그래서 칼럼 높이를
+       화면 기준으로 고정해두고, 넘치는 글은 칼럼 "안"에서만 세로로
+       스크롤되게 한다 — 칼럼 전환용 가로 스크롤바가 항상 화면에 보이는
+       고정 위치에 있고, 짧은 칼럼도 자기 내용만큼만 높이를 차지한다. */
+    .grid-board.col-board { overflow-x: auto; padding-bottom: 10px; align-items: flex-start; }
     .col-board-col {
       flex: 0 0 260px; width: 260px; min-width: 0;
+      max-height: calc(100vh - 260px); min-height: 280px;
       background: var(--glass); border: 1px solid var(--border-card); border-radius: var(--radius);
       padding: 12px; display: flex; flex-direction: column;
     }
-    .col-board-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 800; font-size: 0.92rem; padding: 2px 4px 10px; }
+    .col-board-header { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 800; font-size: 0.92rem; padding: 2px 4px 10px; }
     .col-board-count { font-size: 0.7rem; font-weight: 700; color: var(--sub); background: var(--glass-strong); border-radius: 50px; padding: 2px 9px; flex-shrink: 0; }
-    .col-board-body { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+    .col-board-body { display: flex; flex-direction: column; gap: 12px; min-width: 0; flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 4px; }
     .col-board-empty { font-size: 0.78rem; color: var(--sub); text-align: center; padding: 18px 0; }
     .col-board-add {
       width: 22px; height: 22px; border-radius: 50%; border: none; cursor: pointer;
