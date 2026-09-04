@@ -66,9 +66,9 @@ function renderLogin(errorMessage = '') {
   app.innerHTML = `
     <div class="login-wrap">
       <div class="login-card">
-        <p class="brand">oh sh.rt</p>
+        <p class="brand">OHshrt</p>
         <p class="brand-sub">계속하려면 로그인하세요</p>
-        <button class="btn btn-primary" id="loginBtn">Google로 로그인</button>
+        <button class="btn accent" id="loginBtn">Google로 로그인</button>
         <p class="error-msg" id="loginError">${errorMessage ? escapeHtml(errorMessage) : ''}</p>
       </div>
     </div>
@@ -93,8 +93,11 @@ function renderLogin(errorMessage = '') {
 async function renderDashboard() {
   app.innerHTML = `
     <div class="topbar">
-      <p class="brand">oh sh.rt</p>
-      <button class="btn btn-ghost" id="logoutBtn" style="width:auto;padding:8px 16px;font-size:13px;">로그아웃</button>
+      <p class="brand">OHshrt</p>
+      <div class="topbar-actions">
+        <div class="dark-toggle" onclick="toggleDark()" title="다크모드"></div>
+        <button class="btn ghost sm" id="logoutBtn">로그아웃</button>
+      </div>
     </div>
     <div class="dashboard">
       <div class="create-card">
@@ -103,15 +106,15 @@ async function renderDashboard() {
           <div class="form-row">
             <div class="field">
               <label for="url">원본 URL</label>
-              <input type="url" id="url" name="url" placeholder="https://example.com/very/long/path" required />
+              <input type="url" id="url" name="url" class="inp" placeholder="https://example.com/very/long/path" required />
             </div>
             <div class="field small">
               <label for="alias">커스텀 코드 (선택)</label>
-              <input type="text" id="alias" name="alias" placeholder="비워두면 자동생성" maxlength="32" />
+              <input type="text" id="alias" name="alias" class="inp" placeholder="비워두면 자동생성" maxlength="32" />
             </div>
           </div>
           <div class="form-actions">
-            <button type="submit" class="btn btn-primary" id="createBtn">단축하기</button>
+            <button type="submit" class="btn accent" id="createBtn">단축하기</button>
           </div>
           <p class="error-msg" id="createError"></p>
         </form>
@@ -236,6 +239,12 @@ async function loadLinks() {
     listEl.innerHTML = `<div class="empty-state">불러오기에 실패했습니다: ${escapeHtml(err.message)}</div>`;
   }
 }
+
+window.toggleDark = () => {
+  document.body.classList.toggle('dark');
+  localStorage.setItem('dark', document.body.classList.contains('dark') ? '1' : '0');
+};
+if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
 
 async function init() {
   await window.AdminAuth.ready;
