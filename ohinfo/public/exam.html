@@ -803,10 +803,14 @@ async function startExamFromAs(asDoc, errEl) {
   if (!questions.length) { if(errEl) errEl.innerText = '시험 문제가 없습니다.'; showLoading(false); return; }
   currentAssignment = { asId: asDoc.id, ...asData };
   currentExam = { id: examSnap.id, ...examSnap.data() };
+  // 새로고침/재접속 등으로 이미 진행 중이던 시험에 재입장하는 경우, 이탈
+  // 횟수를 무조건 0으로 되돌리면 안 된다 — 그전까지 감지된 이탈이 사라져
+  // 부정행위 감지가 무력화된다. 기존 progress 문서에 값이 있으면 이어받는다.
+  alertCount = (progSnap.exists() && progSnap.data().alertCount) || 0;
   await setDoc(progRef, {
     examId: asData.examId, asId: asDoc.id,
     studentId: SESSION.id, name: SESSION.name, grade: SESSION.grade, class: SESSION.cls, num: SESSION.num,
-    status: 'started', alertCount: 0, startTime: serverTimestamp()
+    status: 'started', alertCount, startTime: serverTimestamp()
   }, { merge: true });
   showLoading(false);
   startExamUI();
@@ -885,6 +889,8 @@ function startExamUI() {
   document.getElementById('step2').classList.remove('hidden');
   document.getElementById('examTitle').innerText = currentExam.title || '';
   document.getElementById('examSubInfo').innerText = `${SESSION.grade}학년 ${SESSION.cls}반 · ${SESSION.name} · ${questions.length}문항`;
+  const alertCountEl = document.getElementById('alertCount');
+  if (alertCountEl) alertCountEl.innerText = alertCount;
   renderQuestions();
   if (currentAssignment.duration > 0) startTimer(currentAssignment.duration * 60);
   updateProgress();
