@@ -8,6 +8,9 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
   <link rel="stylesheet" href="theme.css">
+  <!-- 마스터 계정의 "엑셀로 내보내기" 버튼에서만 쓴다(SheetJS). defer라
+       일반 학생 페이지 로드/렌더링엔 영향 없다. -->
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     :root { --sidebar-w: 300px; }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -295,7 +298,7 @@
     @media (max-width: 500px) { .form-row { grid-template-columns: 1fr 1fr; } .form-row > *:last-child { grid-column: span 2; } }
 
     /* ── 툴바 ── */
-    .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; }
+    .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
     .search-wrap { position: relative; flex: 1; }
     .search-wrap .inp { padding-left: 38px; border-radius: 50px; }
     .search-icon { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--sub); font-size: 0.9rem; pointer-events: none; }
@@ -508,6 +511,7 @@
     <symbol id="ic-heart" viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-9.6-9.3C.9 7.4 3 4 6.6 4c2 0 3.6 1.1 4.4 2.7C11.8 5.1 13.4 4 15.4 4 19 4 21.1 7.4 19.6 11.2 17.5 15.9 12 20.5 12 20.5Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
     <symbol id="ic-pin" viewBox="0 0 24 24"><path d="M12 2.5a5.5 5.5 0 0 1 5.5 5.5c0 3.8-5.5 13.5-5.5 13.5S6.5 11.8 6.5 8A5.5 5.5 0 0 1 12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="8" r="2" fill="currentColor"/></symbol>
     <symbol id="ic-send" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-download" viewBox="0 0 24 24"><line x1="12" y1="4" x2="12" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="7,10 12,15 17,10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><line x1="5" y1="19" x2="19" y2="19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
   </defs>
 </svg>
 
@@ -685,6 +689,7 @@
             <button id="sortNew" class="active" onclick="setSort('new')">최신순</button>
             <button id="sortLike" onclick="setSort('like')">인기순</button>
           </div>
+          <button id="exportBtn" class="btn ghost sm hidden" onclick="exportToExcel()" style="white-space:nowrap;"><svg width="14" height="14" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-download"/></svg>엑셀로 내보내기</button>
         </div>
         <div id="teacherNotice"></div>
         <div id="display" class="grid-board"></div>
@@ -773,6 +778,7 @@
     num: String(_st?.number || '')
   };
   const IS_MASTER = !!_st?.isMaster;
+  document.getElementById('exportBtn')?.classList.toggle('hidden', !IS_MASTER);
   // 수업의 학교 매칭: 학교 정보 없는 기존 수업은 '관산중학교' 소속으로 간주
   const _classSchoolOk = c => IS_MASTER || (c.schoolName || '관산중학교') === SESSION.schoolName;
   // 배정 범위: group까지 지정하면 그 반만, grade만 지정하면 그 학년 전체, 둘 다 없으면 학교 전체
@@ -1465,6 +1471,30 @@
 
   function setSort(type) { currentSort = type; document.getElementById('sortNew').classList.toggle('active', type==='new'); document.getElementById('sortLike').classList.toggle('active', type==='like'); render(currentExample, sortedPosts()); }
   function sortedPosts() { const p = [...currentPosts]; if (currentSort === 'like') p.sort((a,b) => (b.pinned?1:0)-(a.pinned?1:0) || b.likes-a.likes); return p; }
+
+  // ── 마스터 전용: 현재 보고 있는 반 게시글을 엑셀로 내보내기 ──
+  window.exportToExcel = () => {
+    if (typeof XLSX === 'undefined') { alert('엑셀 내보내기 기능을 불러오지 못했습니다. 인터넷 연결을 확인하고 새로고침 후 다시 시도해주세요.'); return; }
+    if (!currentPosts.length) { alert('내보낼 게시글이 없습니다.'); return; }
+    const isColumns = currentClassMeta.boardLayout === 'columns';
+    const rows = currentPosts.map(p => ({
+      번호: p.num || '',
+      이름: p.name || '',
+      ...(isColumns ? { 칼럼: p.column || '' } : {}),
+      제목: p.subject || '',
+      내용: p.message || '',
+      좋아요: p.likes || 0,
+      댓글수: p.commentCount || 0,
+      작성일시: p.createdAt ? new Date(p.createdAt).toLocaleString('ko-KR') : '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '게시글');
+    const title = (document.getElementById('boardTitle')?.innerText || '게시판').trim() || '게시판';
+    const safeTitle = title.replace(/[\\/:*?"<>|]/g, '_');
+    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    XLSX.writeFile(wb, `${safeTitle}_게시글_${dateStr}.xlsx`);
+  };
   function filterPosts() {
     const q = document.getElementById('searchInput').value.trim().toLowerCase();
     document.querySelectorAll('#display .post-card:not(.teacher-card)').forEach(card => {
