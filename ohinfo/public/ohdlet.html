@@ -247,23 +247,34 @@
     .grid-board { display: flex; gap: 16px; align-items: flex-start; }
     .m-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
 
-    /* 패들릿식 칼럼형 게시판 — 칼럼 하나가 글이 많다고 계속 늘어나면(예전
-       방식) 그 칼럼끼리 전환하는 가로 스크롤바가 페이지 맨 아래로 밀려나
-       버리고, align-items:stretch 때문에 글 적은 칼럼도 제일 긴 칼럼
-       높이만큼 억지로 늘어나 안에 빈 여백만 커진다. 그래서 칼럼 높이를
-       화면 기준으로 고정해두고, 넘치는 글은 칼럼 "안"에서만 세로로
-       스크롤되게 한다 — 칼럼 전환용 가로 스크롤바가 항상 화면에 보이는
-       고정 위치에 있고, 짧은 칼럼도 자기 내용만큼만 높이를 차지한다. */
-    .grid-board.col-board { overflow-x: auto; padding-bottom: 10px; align-items: flex-start; }
-    .col-board-col {
-      flex: 0 0 260px; width: 260px; min-width: 0;
+    /* 패들릿식 칼럼형 게시판 — 칼럼마다 따로 스크롤 다는 게 아니라, 칼럼
+       전체를 담은 이 영역 하나에 세로 스크롤을 걸어서 모든 칼럼이 "같이"
+       스크롤되게 한다(패들릿 실제 동작과 동일). 높이를 화면 기준으로
+       가둬두고(overflow-y:auto) overscroll-behavior:contain으로 스크롤이
+       바닥/끝에 닿아도 뒤에 있는 페이지 메인 스크롤로 안 새어나가게 막는다
+       — 칼럼 전환용 가로 스크롤바도 항상 이 영역 바로 아래, 화면에 보이는
+       고정 위치에 있다. */
+    .grid-board.col-board {
+      overflow: auto; overscroll-behavior: contain;
       max-height: calc(100vh - 260px); min-height: 280px;
+      padding-bottom: 10px; align-items: flex-start;
+    }
+    .col-board-col {
+      /* 칼럼이 몇 개 안 될 때 화면 오른쪽에 빈 공간이 크게 남지 않도록,
+         칼럼 수가 화면에 다 들어올 땐 넓게 채우고(flex-grow), 칼럼이
+         많아져 260px 밑으로 내려가야 할 상황이면 그 밑으로는 안 줄고
+         가로 스크롤로 넘어간다(min-width가 바닥을 잡아줌). */
+      flex: 1 1 260px; min-width: 260px; max-width: 420px;
       background: var(--glass); border: 1px solid var(--border-card); border-radius: var(--radius);
       padding: 12px; display: flex; flex-direction: column;
     }
-    .col-board-header { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 800; font-size: 0.92rem; padding: 2px 4px 10px; }
+    .col-board-header {
+      position: sticky; top: 0; z-index: 2; margin: -12px -12px 0; padding: 12px 16px 10px;
+      background: var(--glass); border-radius: var(--radius) var(--radius) 0 0;
+      display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 800; font-size: 0.92rem;
+    }
     .col-board-count { font-size: 0.7rem; font-weight: 700; color: var(--sub); background: var(--glass-strong); border-radius: 50px; padding: 2px 9px; flex-shrink: 0; }
-    .col-board-body { display: flex; flex-direction: column; gap: 12px; min-width: 0; flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 4px; }
+    .col-board-body { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
     .col-board-empty { font-size: 0.78rem; color: var(--sub); text-align: center; padding: 18px 0; }
     .col-board-add {
       width: 22px; height: 22px; border-radius: 50%; border: none; cursor: pointer;
@@ -275,7 +286,7 @@
     .col-board-add:hover { opacity: 0.8; }
     .col-compose-anchor:empty { display: none; }
     .col-compose-anchor .form-card { margin-bottom: 12px; }
-    @media (max-width: 600px) { .col-board-col { flex-basis: 220px; width: 220px; } }
+    @media (max-width: 600px) { .col-board-col { flex-basis: 220px; min-width: 220px; } }
 
     @media (max-width: 1023px) {
       .board-sidebar { padding: 20px 0 0; }
@@ -1472,28 +1483,53 @@
   function setSort(type) { currentSort = type; document.getElementById('sortNew').classList.toggle('active', type==='new'); document.getElementById('sortLike').classList.toggle('active', type==='like'); render(currentExample, sortedPosts()); }
   function sortedPosts() { const p = [...currentPosts]; if (currentSort === 'like') p.sort((a,b) => (b.pinned?1:0)-(a.pinned?1:0) || b.likes-a.likes); return p; }
 
-  // ── 마스터 전용: 현재 보고 있는 반 게시글을 엑셀로 내보내기 ──
-  window.exportToExcel = () => {
+  // ── 마스터 전용: 현재 보고 있는 반 게시글(+댓글)을 엑셀로 내보내기 ──
+  window.exportToExcel = async () => {
     if (typeof XLSX === 'undefined') { alert('엑셀 내보내기 기능을 불러오지 못했습니다. 인터넷 연결을 확인하고 새로고침 후 다시 시도해주세요.'); return; }
     if (!currentPosts.length) { alert('내보낼 게시글이 없습니다.'); return; }
-    const isColumns = currentClassMeta.boardLayout === 'columns';
-    const rows = currentPosts.map(p => ({
-      번호: p.num || '',
-      이름: p.name || '',
-      ...(isColumns ? { 칼럼: p.column || '' } : {}),
-      제목: p.subject || '',
-      내용: p.message || '',
-      좋아요: p.likes || 0,
-      댓글수: p.commentCount || 0,
-      작성일시: p.createdAt ? new Date(p.createdAt).toLocaleString('ko-KR') : '',
-    }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '게시글');
-    const title = (document.getElementById('boardTitle')?.innerText || '게시판').trim() || '게시판';
-    const safeTitle = title.replace(/[\\/:*?"<>|]/g, '_');
-    const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    XLSX.writeFile(wb, `${safeTitle}_게시글_${dateStr}.xlsx`);
+    toggleLoading(true);
+    try {
+      const isColumns = currentClassMeta.boardLayout === 'columns';
+      const postRows = currentPosts.map(p => ({
+        번호: p.num || '',
+        이름: p.name || '',
+        ...(isColumns ? { 칼럼: p.column || '' } : {}),
+        제목: p.subject || '',
+        내용: p.message || '',
+        좋아요: p.likes || 0,
+        댓글수: p.commentCount || 0,
+        작성일시: p.createdAt ? new Date(p.createdAt).toLocaleString('ko-KR') : '',
+      }));
+
+      // 댓글이 달린 게시글만 서브컬렉션을 조회해 댓글 시트에 같이 담는다.
+      const withComments = currentPosts.filter(p => (p.commentCount || 0) > 0);
+      const commentGroups = await Promise.all(withComments.map(async p => {
+        try {
+          const snap = await getDocs(query(collection(db, 'posts', p.id, 'comments'), orderBy('createdAt', 'asc')));
+          return snap.docs.map(d => {
+            const c = d.data();
+            return {
+              게시글번호: p.num || '', 게시글작성자: p.name || '', 게시글제목: p.subject || '',
+              댓글작성자: c.name ? `${c.name}(${c.num || ''})` : '',
+              댓글내용: c.text || '',
+              작성일시: c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString('ko-KR') : '',
+            };
+          });
+        } catch (e) { return []; } // 이 게시글 댓글만 건너뛰고 나머지는 계속 진행
+      }));
+      const commentRows = commentGroups.flat();
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(postRows), '게시글');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(commentRows.length ? commentRows : [{ 안내: '댓글 없음' }]), '댓글');
+      const title = (document.getElementById('boardTitle')?.innerText || '게시판').trim() || '게시판';
+      const safeTitle = title.replace(/[\\/:*?"<>|]/g, '_');
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      XLSX.writeFile(wb, `${safeTitle}_게시글_${dateStr}.xlsx`);
+    } catch (e) {
+      alert('엑셀 내보내기 중 오류: ' + e.message);
+    }
+    toggleLoading(false);
   };
   function filterPosts() {
     const q = document.getElementById('searchInput').value.trim().toLowerCase();
