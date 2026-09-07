@@ -294,21 +294,30 @@
     }
     .col-board-header { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 800; font-size: 1.15rem; padding: 2px 2px 10px; }
     .col-board-count { font-size: 0.7rem; font-weight: 700; color: var(--sub); background: var(--glass-strong); border-radius: 50px; padding: 2px 9px; flex-shrink: 0; }
-    /* 스크롤 자체는 필요(칼럼별로 유지)하지만, 평소엔 안 보이다가 그
-       칼럼에 커서를 올렸을 때만 얇게 겹쳐 나오게 해서 글 너비를 스크롤바
-       폭만큼 뺏기지 않게 한다. 트랙 자체는 늘 최소 폭만 차지하고(2px),
-       thumb는 hover/focus 전엔 투명 — 레이아웃이 흔들리지 않으면서
-       "평소엔 없다가 커서 올리면 겹쳐 나오는" 느낌을 준다. */
+    /* 스크롤은 필요하지만(칼럼별 유지), 평소엔 완전히 안 보이다가 그
+       칼럼에 커서를 올렸을 때만 글 위에 반투명하게 "겹쳐서" 뜨게 한다 —
+       네이티브 스크롤바는 폭을 항상 차지해서(얇게 줄여도 최소 몇 px는
+       고정 예약됨) 이 느낌을 낼 수 없어서, 네이티브 스크롤바는 아예
+       숨기고(scrollbar-width:none, ::-webkit-scrollbar 숨김) 그 자리에
+       JS(updateColScrollbars)로 위치·크기를 계산하는 가짜 스크롤바
+       (.col-scrollbar-thumb, position:absolute)를 얹었다. 글 너비를
+       전혀 뺏지 않고, hover 전엔 opacity:0이라 자리 차지 자체가 없다. */
     .col-board-body {
       display: flex; flex-direction: column; gap: 12px; min-width: 0;
-      flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 2px;
+      flex: 1 1 auto; min-height: 0; overflow-y: auto;
       scrollbar-width: none;
     }
-    .col-board-body:hover, .col-board-body:focus-within { scrollbar-width: thin; scrollbar-color: var(--border-card) transparent; }
-    .col-board-body::-webkit-scrollbar { width: 5px; }
-    .col-board-body::-webkit-scrollbar-thumb { background: transparent; border-radius: 10px; }
-    .col-board-body:hover::-webkit-scrollbar-thumb, .col-board-body:focus-within::-webkit-scrollbar-thumb { background: var(--border-card); }
-    .col-board-body::-webkit-scrollbar-track { background: transparent; }
+    .col-board-body::-webkit-scrollbar { display: none; }
+    .col-scroll-wrap { position: relative; flex: 1 1 auto; min-height: 0; display: flex; }
+    .col-scrollbar {
+      position: absolute; top: 0; right: 1px; bottom: 0; width: 5px;
+      pointer-events: none; opacity: 0; transition: opacity 0.15s var(--ease);
+    }
+    .col-scroll-wrap:hover .col-scrollbar { opacity: 1; }
+    .col-scrollbar-thumb {
+      position: absolute; left: 0; right: 0; border-radius: 3px;
+      background: rgba(120, 128, 145, 0.5);
+    }
     .col-board-empty { font-size: 0.78rem; color: var(--sub); text-align: center; padding: 18px 0; }
     .col-board-add {
       width: 22px; height: 22px; border-radius: 50%; border: none; cursor: pointer;
@@ -1588,7 +1597,7 @@
     // 통째로 비우고 카드를 메이슨리 열(.m-col)로 재배치해버려서, 창 크기를
     // 조절할 때마다(리사이즈 → scheduleRelayout) 칼럼 헤더/구조가 통째로
     // 사라지고 자유형처럼 뒤섞이는 문제가 있었다.
-    if (currentClassMeta.boardLayout === 'columns') return;
+    if (currentClassMeta.boardLayout === 'columns') { updateAllColScrollbars(); return; }
     const cards = [...display.querySelectorAll('.post-card')];
     if (!cards.length) return;
     const cols = colCountFor(display.clientWidth || window.innerWidth);
@@ -1700,9 +1709,12 @@
             ${colId !== null ? `<button class="col-board-add" title="이 칼럼에 글쓰기" onclick="openColumnCompose('${colId}')">+</button>` : ''}
           </span>
         </div>
-        <div class="col-board-body">
-          <div class="col-compose-anchor" id="composeAnchor_${colId}"></div>
-          ${list.length ? list.map(postCardHtml).join('') : `<div class="col-board-empty">${uiText[currentLang]?.noPost||uiText.ko.noPost}</div>`}
+        <div class="col-scroll-wrap">
+          <div class="col-board-body">
+            <div class="col-compose-anchor" id="composeAnchor_${colId}"></div>
+            ${list.length ? list.map(postCardHtml).join('') : `<div class="col-board-empty">${uiText[currentLang]?.noPost||uiText.ko.noPost}</div>`}
+          </div>
+          <div class="col-scrollbar"><div class="col-scrollbar-thumb"></div></div>
         </div>
       </div>`;
     let html = cols.map((name, i) => colHtml(name, buckets.get(name), String(i))).join('');
@@ -1712,7 +1724,34 @@
     requestAnimationFrame(() => requestAnimationFrame(() => {
       display.querySelectorAll('.post-card').forEach(c => c.classList.add('visible'));
     }));
+    updateAllColScrollbars();
   }
+
+  // 칼럼형 게시판의 "가짜" 스크롤바(.col-scrollbar-thumb) 위치·크기 계산.
+  // 네이티브 스크롤바를 숨기고(CSS) 이 thumb로 대신 그려서, 평소엔 완전히
+  // 안 보이다가 그 칼럼에 커서를 올렸을 때만(CSS :hover) 반투명하게 글
+  // 위에 겹쳐 뜨게 한다.
+  function updateColScrollbar(bodyEl) {
+    const wrap = bodyEl.closest('.col-scroll-wrap');
+    const thumb = wrap?.querySelector('.col-scrollbar-thumb');
+    if (!thumb) return;
+    const { scrollTop, scrollHeight, clientHeight } = bodyEl;
+    if (scrollHeight <= clientHeight + 1) { thumb.style.display = 'none'; return; }
+    thumb.style.display = '';
+    const thumbHeight = Math.max(24, (clientHeight / scrollHeight) * clientHeight);
+    const maxTop = clientHeight - thumbHeight;
+    const top = maxTop <= 0 ? 0 : (scrollTop / (scrollHeight - clientHeight)) * maxTop;
+    thumb.style.height = thumbHeight + 'px';
+    thumb.style.top = top + 'px';
+  }
+  function updateAllColScrollbars() {
+    document.querySelectorAll('.col-board-body').forEach(updateColScrollbar);
+  }
+  // scroll 이벤트는 버블링되지 않으므로, 매 렌더마다 각 칼럼에 리스너를
+  // 새로 다는 대신 캡처 단계에서 #display 하나로 위임해 잡는다.
+  document.getElementById('display')?.addEventListener('scroll', e => {
+    if (e.target.classList?.contains('col-board-body')) updateColScrollbar(e.target);
+  }, true);
 
   // 칼럼 안 + 버튼 → 그 칼럼의 앵커 자리로 실제 작성 폼(#postForm)을 그대로
   // 옮겨 붙인다(복제가 아니라 DOM 이동이라 이미지 업로드·번역 등 기존 로직을
