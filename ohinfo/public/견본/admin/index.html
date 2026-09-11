@@ -649,6 +649,20 @@
           <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">공지 팝업 (입장 시 표시)</label>
           <textarea class="inp" id="adm_popup" rows="2" placeholder="비워두면 미표시" style="width:100%;resize:vertical;"></textarea>
         </div>
+        <div style="grid-column:1/-1;">
+          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">게시판 형태</label>
+          <div style="display:flex;gap:14px;margin-bottom:8px;">
+            <label style="display:flex;align-items:center;gap:5px;font-size:0.85rem;font-weight:600;cursor:pointer;">
+              <input type="radio" name="adm_layout" value="grid" checked onchange="onAdmLayoutChange()"> 자유형 (기존 방식)
+            </label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:0.85rem;font-weight:600;cursor:pointer;">
+              <input type="radio" name="adm_layout" value="columns" onchange="onAdmLayoutChange()"> 칼럼형 (패들릿 스타일)
+            </label>
+          </div>
+          <div id="adm_columns_wrap" class="hidden">
+            <textarea class="inp" id="adm_columns" rows="4" placeholder="칼럼 이름을 한 줄에 하나씩 입력&#10;예)&#10;과학&#10;사회&#10;영어" style="width:100%;resize:vertical;"></textarea>
+          </div>
+        </div>
       </div>
       <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:6px;">배정할 학급</label>
       <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr auto;gap:8px;margin-bottom:10px;align-items:end;">
@@ -1344,8 +1358,10 @@
                 <td style="font-weight:700;">${s.name||''}</td>
                 <td>${s.registered
                   ? '<span style="font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(34,197,94,0.15);color:#16a34a;">등록</span>'
-                  : '<span style="font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(120,120,120,0.12);color:var(--sub);">미등록</span>'}</td>
+                  : '<span style="font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(120,120,120,0.12);color:var(--sub);">미등록</span>'}
+                  ${s.locked ? '<span style="margin-left:4px;font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(239,68,68,0.15);color:#dc2626;">잠김</span>' : ''}</td>
                 <td style="white-space:nowrap;">
+                  ${s.locked ? `<button class="icon-action" title="잠금 해제" onclick="unlockStudent('${s.id}')"><svg width="16" height="16"><use href="#ic-unlock"/></svg></button>` : ''}
                   <button class="icon-action" title="수정" onclick="editStudent('${s.id}')"><svg width="16" height="16"><use href="#ic-edit"/></svg></button>
                   <button class="icon-action danger" title="삭제" onclick="deleteStudent('${s.id}','${(s.name||'').replace(/'/g,"\\'")}')"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
                 </td>
@@ -1387,6 +1403,18 @@
       if (s) { s.name = name; s.password = pw || null; s.registered = !!pw; s.isMaster = isMaster || false; }
       closeStudentEdit();
       toast('저장되었습니다.', 'success');
+      renderStudents();
+    } catch (e) { toast('오류: ' + e.message, 'error'); }
+    showLoading(false);
+  };
+
+  window.unlockStudent = async (id) => {
+    showLoading(true);
+    try {
+      await updateDoc(doc(db, 'students', id), { locked: false, failedAttempts: 0 });
+      const s = allStudents.find(x => x.id === id);
+      if (s) { s.locked = false; s.failedAttempts = 0; }
+      toast('잠금이 해제되었습니다.', 'success');
       renderStudents();
     } catch (e) { toast('오류: ' + e.message, 'error'); }
     showLoading(false);
@@ -1700,14 +1728,24 @@
     }
   };
 
+  window.onAdmLayoutChange = () => {
+    const v = document.querySelector('input[name="adm_layout"]:checked')?.value || 'grid';
+    document.getElementById('adm_columns_wrap').classList.toggle('hidden', v !== 'columns');
+  };
+
   window.saveAdminClass = async () => {
     const id = document.getElementById('adm_docId').value;
     const name = document.getElementById('adm_name').value.trim();
     const desc = document.getElementById('adm_desc').value;
     const ex = document.getElementById('adm_ex').value;
     const popup = document.getElementById('adm_popup').value;
+    const boardLayout = document.querySelector('input[name="adm_layout"]:checked')?.value || 'grid';
+    const columns = boardLayout === 'columns'
+      ? document.getElementById('adm_columns').value.split('\n').map(s => s.trim()).filter(Boolean)
+      : [];
 
     if (!name) { toast('수업명을 입력하세요.', 'error'); return; }
+    if (boardLayout === 'columns' && !columns.length) { toast('칼럼형은 칼럼을 1개 이상 입력하세요.', 'error'); return; }
 
     showLoading(true);
     try {
@@ -1722,7 +1760,7 @@
         if (gradeRaw !== '전체' && !groupRaw) { toast('반을 선택하세요 (반은 "전체" 가능).', 'error'); showLoading(false); return; }
         const grade = gradeRaw === '전체' ? '' : nv(gradeRaw);
         const group = (gradeRaw === '전체' || groupRaw === '전체') ? '' : nv(groupRaw);
-        await updateDoc(doc(db, 'classes', id), { name, schoolName: school, grade, group, desc, ex, popup, ...tr });
+        await updateDoc(doc(db, 'classes', id), { name, schoolName: school, grade, group, desc, ex, popup, boardLayout, columns, ...tr });
         toast('수정되었습니다.', 'success');
       } else {
         // 저장 — 담아둔 모든 학급에 일괄 배정
@@ -1731,7 +1769,7 @@
         _pending.forEach(p => {
           const ref = doc(collection(db, 'classes'));
           batch.set(ref, {
-            name, schoolName: p.school, grade: p.grade, group: p.group, desc, ex, popup, ...tr,
+            name, schoolName: p.school, grade: p.grade, group: p.group, desc, ex, popup, boardLayout, columns, ...tr,
             status: 'ON', createdAt: serverTimestamp()
           });
         });
@@ -1757,6 +1795,10 @@
     document.getElementById('adm_desc').value = c.desc||'';
     document.getElementById('adm_ex').value = c.ex||'';
     document.getElementById('adm_popup').value = c.popup||'';
+    const layout = c.boardLayout === 'columns' ? 'columns' : 'grid';
+    document.querySelector(`input[name="adm_layout"][value="${layout}"]`).checked = true;
+    document.getElementById('adm_columns').value = (c.columns||[]).join('\n');
+    onAdmLayoutChange();
     _pending = []; renderPending();   // 수정은 단일 문서라 담기 목록 미사용
     // 드롭다운 구성 후 값 지정 (기존 수업은 학교 없으면 관산중학교로)
     await buildPaddletDropdowns();
@@ -1795,6 +1837,9 @@
     document.getElementById('adm_popup').value='';
     document.getElementById('adm_grade').value='';
     document.getElementById('adm_class').value='';
+    document.querySelector('input[name="adm_layout"][value="grid"]').checked = true;
+    document.getElementById('adm_columns').value='';
+    onAdmLayoutChange();
     _pending = [];
     renderPending();
     document.getElementById('adm_edit_info').style.display='none';
@@ -2501,26 +2546,50 @@
     showLoading(true);
     try {
       const qSnap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId)));
-      const missing = qSnap.docs.filter(d => !d.data().titleEn);
+      // titleEn 하나만으로 "번역 있음"을 판단하지 않는다 — 언어별 API 호출이 개별
+      // 실패할 수 있어서(Promise.all), 예전엔 titleEn만 있고 optionsZh 등은 비어있는
+      // 반쯤 번역된 문제가 "완료"로 오인되어 영영 다시 안 걸렸다.
+      const isIncomplete = d => {
+        const q = d.data();
+        if (!q.titleEn || !q.titleZh || !q.titleRu) return true;
+        if (q.type === 'mc' && (q.options||[]).length) {
+          return !q.optionsEn?.length || !q.optionsZh?.length || !q.optionsRu?.length;
+        }
+        return false;
+      };
+      const missing = qSnap.docs.filter(isIncomplete);
       if (!missing.length) { toast('모든 문제에 번역이 있습니다.', 'success'); showLoading(false); return; }
+      let done = 0, failed = 0;
       for (const qDoc of missing) {
         const q = qDoc.data();
         const toTr = [q.title, q.content].filter(Boolean);
         const optsKo = q.type === 'mc' ? (q.options || []) : [];
         const allTexts = [...toTr, ...optsKo];
         if (!allTexts.length) continue;
+        // 언어 하나가 실패해도 나머지 언어/나머지 문제는 계속 진행한다 —
+        // 이전엔 Promise.all 실패가 for 루프 밖 try/catch까지 뚫고 올라가서
+        // 배치 전체가 중간에 멈췄다(=오래된 시험들이 계속 미번역으로 남던 원인).
         const update = {};
         const langCodes = [['zh-cn','Zh'],['ru','Ru'],['en','En']];
-        await Promise.all(langCodes.map(async ([code, cap]) => {
-          const res = await translateTexts(allTexts, code);
+        const settled = await Promise.allSettled(langCodes.map(([code]) => translateTexts(allTexts, code)));
+        let ok = false;
+        langCodes.forEach(([, cap], i) => {
+          if (settled[i].status !== 'fulfilled') return;
+          ok = true;
+          const res = settled[i].value;
           let idx = 0;
           if (q.title) update['title'+cap] = res[idx++] || '';
           if (q.content) update['content'+cap] = res[idx++] || '';
           if (optsKo.length) update['options'+cap] = res.slice(idx);
-        }));
-        await updateDoc(doc(db,'exam_questions',qDoc.id), update);
+        });
+        if (Object.keys(update).length) {
+          try { await updateDoc(doc(db,'exam_questions',qDoc.id), update); if (ok) done++; }
+          catch(e) { failed++; console.error('exam question translate save failed:', qDoc.id, e); }
+        } else {
+          failed++;
+        }
       }
-      toast(`${missing.length}개 문제 번역 완료`, 'success');
+      toast(failed ? `${done}개 완료, ${failed}개 실패(다시 시도해주세요)` : `${done}개 문제 번역 완료`, failed ? 'error' : 'success');
       await loadQList(examId);
     } catch(e) { toast('번역 오류: '+e.message, 'error'); }
     showLoading(false);

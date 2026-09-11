@@ -9,7 +9,12 @@ const STORE_KEY = 'ohshrt.demo.links';
 const publicBase = 'https://kakainfo.com';
 
 const CODE_RE = /^[\p{L}\p{N}_-]{2,32}$/u;
-const RESERVED = new Set(['api', 'admin', 'login', 'logout', 'favicon.ico', 'style.css', 'app.js']);
+const RESERVED = new Set([
+  'api', 'admin', 'login', 'logout', 'favicon.ico', 'style.css', 'app.js', 'firebase-config.js', 'admin-auth.js', '견본', '프롬프트',
+  'wp-admin', 'wp-login', 'wp-content', 'wp-includes', 'wp-json', 'xmlrpc', 'graphql', 'phpmyadmin',
+  'config', 'backup', 'env', 'robots', 'sitemap', 'ads', 'author', 'feed', 'rss', 'license', 'readme',
+  'setup', 'install', 'test', 'debug', 'console', 'server-status', 'actuator', 'swagger',
+]);
 
 function loadLinksStore() {
   try {
@@ -30,7 +35,8 @@ function escapeHtml(str) {
 
 function formatDate(ts) {
   if (!ts) return '';
-  return new Date(ts).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 }
 
 function isValidUrl(value) {
@@ -65,7 +71,10 @@ function showToast(message, type = 'success') {
 async function renderDashboard() {
   app.innerHTML = `
     <div class="topbar">
-      <p class="brand">oh sh.rt <span style="opacity:.6;font-weight:500;">(견본)</span></p>
+      <p class="brand">OHshrt <span style="opacity:.6;font-weight:500;">(견본)</span></p>
+      <div class="topbar-actions">
+        <div class="dark-toggle" onclick="toggleDark()" title="다크모드"></div>
+      </div>
     </div>
     <div class="dashboard">
       <div class="create-card">
@@ -74,15 +83,15 @@ async function renderDashboard() {
           <div class="form-row">
             <div class="field">
               <label for="url">원본 URL</label>
-              <input type="url" id="url" name="url" placeholder="https://example.com/very/long/path" required />
+              <input type="url" id="url" name="url" class="inp" placeholder="https://example.com/very/long/path" required />
             </div>
             <div class="field small">
               <label for="alias">커스텀 코드 (선택)</label>
-              <input type="text" id="alias" name="alias" placeholder="비워두면 자동생성" maxlength="32" />
+              <input type="text" id="alias" name="alias" class="inp" placeholder="비워두면 자동생성" maxlength="32" />
             </div>
           </div>
           <div class="form-actions">
-            <button type="submit" class="btn btn-primary" id="createBtn">단축하기</button>
+            <button type="submit" class="btn accent" id="createBtn">단축하기</button>
           </div>
           <p class="error-msg" id="createError"></p>
         </form>
@@ -196,5 +205,11 @@ async function loadLinks() {
     listEl.innerHTML = `<div class="empty-state">불러오기에 실패했습니다: ${escapeHtml(err.message)}</div>`;
   }
 }
+
+window.toggleDark = () => {
+  document.body.classList.toggle('dark');
+  localStorage.setItem('dark', document.body.classList.contains('dark') ? '1' : '0');
+};
+if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
 
 renderDashboard();
