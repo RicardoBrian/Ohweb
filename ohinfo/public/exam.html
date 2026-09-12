@@ -523,6 +523,7 @@ const UI = {
     mpTitle:'마이페이지', mpPhotoBtn:'사진 변경', mpPwLabel:'비밀번호 변경', mpCurPw:'현재 비밀번호', mpNewPw:'새 비밀번호 (4자 이상)', mpNewPw2:'새 비밀번호 확인', mpSave:'저장',
     mpErrCur:'현재 비밀번호가 맞지 않습니다.', mpErrShort:'새 비밀번호는 4자 이상이어야 합니다.', mpErrMatch:'새 비밀번호가 일치하지 않습니다.', mpOk:'저장되었습니다.',
     correct:'정답', wrong:'오답 (정답: ', testPass:'테스트케이스 통과', manualGrade:'수동 채점 필요',
+    pendingResultMsg:'제출이 완료되었습니다.\n서술형 문항은 선생님이 채점한 후 최종 점수를 확인할 수 있어요.',
     stdin:'표준 입력 (stdin)', stdinPlaceholder:'입력이 필요한 경우 입력 값을 넣어주세요.',
     noOutput:'(출력 없음)', runErr:'실행 오류: ',
     gradeUnit:'학년', classUnit:'반',
@@ -537,6 +538,7 @@ const UI = {
     mpTitle:'我的页面', mpPhotoBtn:'更换照片', mpPwLabel:'修改密码', mpCurPw:'当前密码', mpNewPw:'新密码 (至少4位)', mpNewPw2:'确认新密码', mpSave:'保存',
     mpErrCur:'当前密码不正确。', mpErrShort:'新密码至少需要4位。', mpErrMatch:'两次输入的新密码不一致。', mpOk:'已保存。',
     correct:'正确', wrong:'错误 (正确答案: ', testPass:'测试用例通过', manualGrade:'需要人工评分',
+    pendingResultMsg:'提交成功。\n论述题由老师批改后即可查看最终成绩。',
     stdin:'标准输入 (stdin)', stdinPlaceholder:'如需输入，请填写输入值。',
     noOutput:'(无输出)', runErr:'运行错误: ',
     gradeUnit:'年级', classUnit:'班',
@@ -551,6 +553,7 @@ const UI = {
     mpTitle:'Мой профиль', mpPhotoBtn:'Сменить фото', mpPwLabel:'Сменить пароль', mpCurPw:'Текущий пароль', mpNewPw:'Новый пароль (мин. 4)', mpNewPw2:'Подтвердить пароль', mpSave:'Сохранить',
     mpErrCur:'Неверный текущий пароль.', mpErrShort:'Новый пароль должен быть не менее 4 символов.', mpErrMatch:'Пароли не совпадают.', mpOk:'Сохранено.',
     correct:'Правильно', wrong:'Неверно (ответ: ', testPass:'тест-кейс пройден', manualGrade:'Требует проверки',
+    pendingResultMsg:'Отправка завершена.\nОкончательный балл будет доступен после проверки эссе учителем.',
     stdin:'Стандартный ввод (stdin)', stdinPlaceholder:'Введите тестовые данные.',
     noOutput:'(нет вывода)', runErr:'Ошибка выполнения: ',
     gradeUnit:'кл.', classUnit:'гр.',
@@ -565,6 +568,7 @@ const UI = {
     mpTitle:'My Page', mpPhotoBtn:'Change Photo', mpPwLabel:'Change Password', mpCurPw:'Current password', mpNewPw:'New password (min. 4)', mpNewPw2:'Confirm new password', mpSave:'Save',
     mpErrCur:'Current password is incorrect.', mpErrShort:'New password must be at least 4 characters.', mpErrMatch:'Passwords do not match.', mpOk:'Saved.',
     correct:'Correct', wrong:'Wrong (answer: ', testPass:'test cases passed', manualGrade:'Manual grading required',
+    pendingResultMsg:'Submission complete.\nYour final score will be available after your teacher grades the essay question(s).',
     stdin:'Standard Input (stdin)', stdinPlaceholder:'Enter test input values if needed.',
     noOutput:'(no output)', runErr:'Run error: ',
     gradeUnit:'', classUnit:'',
@@ -722,7 +726,7 @@ window.showMyResult = async (asId) => {
     showLoading(false);
     // Reuse showResult
     const resultItems = items.map(r=>({
-      qIdx: r.qIdx||0, title: r.title||`Q${(r.qIdx||0)+1}`,
+      qIdx: r.qIdx||0, type: r.type, title: r.title||`Q${(r.qIdx||0)+1}`,
       value: r.value||'', score: r.score||0, maxScore: r.maxScore||0, feedback: r.feedback||''
     }));
     showResult(prog.totalScore||0, prog.totalPoints||0, resultItems);
@@ -936,6 +940,10 @@ function renderQuestions() {
       const saved = answers[i]?.value || '';
       const el = document.getElementById(`sa_${i}`);
       if (el) el.value = saved;
+    } else if (q.type === 'essay') {
+      const saved = answers[i]?.value || '';
+      const el = document.getElementById(`essay_${i}`);
+      if (el) el.value = saved;
     } else if (q.type === 'code') {
       const saved = codeAnswers[i]?.code || getDefaultCode(q, currentLang);
       const el = document.getElementById(`code_${i}`);
@@ -972,7 +980,7 @@ function getDefaultCode(q, lang) {
   return q.boilerplate || '';
 }
 
-const typeLabels = { mc: { ko:'객관식', zh:'选择题', ru:'Тест', en:'MCQ' }, sa: { ko:'단답형', zh:'简答题', ru:'Ответ', en:'Short' }, code: { ko:'코딩', zh:'编程', ru:'Код', en:'Code' } };
+const typeLabels = { mc: { ko:'객관식', zh:'选择题', ru:'Тест', en:'MCQ' }, sa: { ko:'단답형', zh:'简答题', ru:'Ответ', en:'Short' }, essay: { ko:'서술형', zh:'论述题', ru:'Эссе', en:'Essay' }, code: { ko:'코딩', zh:'编程', ru:'Код', en:'Code' } };
 
 function initCodeEditors() {
   // CodeMirror는 별도 CDN 스크립트(cdnjs)가 <script defer>로 로드되는데, 그
@@ -1043,6 +1051,10 @@ function renderQuestion(q, i) {
     ).join('') + `</div>`;
   } else if (q.type === 'sa') {
     body = `<textarea class="inp sa-input" id="sa_${i}" rows="3" placeholder="${currentLang==='zh'?'请输入答案...':currentLang==='ru'?'Введите ответ...':currentLang==='en'?'Enter your answer...':'답을 입력하세요...'}" oninput="saveSA(${i},this.value)"></textarea>`;
+  } else if (q.type === 'essay') {
+    // 서술형은 정답을 미리 정해둘 수 없어 자동채점을 안 한다(제출 시 항상
+    // "채점 대기중"으로 처리) — 선생님이 admin.html에서 직접 점수를 매긴다.
+    body = `<textarea class="inp sa-input" id="essay_${i}" rows="8" placeholder="${currentLang==='zh'?'请输入答案...':currentLang==='ru'?'Введите ответ...':currentLang==='en'?'Enter your answer...':'답을 입력하세요...'}" oninput="saveSA(${i},this.value)"></textarea>`;
   } else if (q.type === 'code') {
     const tcHtml = (q.inEx || q.outEx) ? `<div class="tc-box">
       ${q.inDesc ? `<div class="tc-row"><span class="tc-label">${currentLang==='zh'?'输入说明':currentLang==='ru'?'Ввод':currentLang==='en'?'Input format':'입력 형식'}</span><span>${q.inDesc}</span></div>` : ''}
@@ -1099,7 +1111,7 @@ function updateProgress() {
   let filled = 0;
   questions.forEach((q, i) => {
     if (q.type === 'mc' && answers[i]?.value !== undefined) filled++;
-    else if (q.type === 'sa' && answers[i]?.value?.trim()) filled++;
+    else if ((q.type === 'sa' || q.type === 'essay') && answers[i]?.value?.trim()) filled++;
     else if (q.type === 'code' && codeAnswers[i]?.code?.trim()) filled++;
   });
   const pct = questions.length ? (filled / questions.length * 100) : 0;
@@ -1145,7 +1157,7 @@ window.submitExam = async (isAuto = false) => {
   if (!isAuto) {
     const unanswered = questions.filter((q, i) => {
       if (q.type === 'mc') return answers[i]?.value === undefined;
-      if (q.type === 'sa') return !answers[i]?.value?.trim();
+      if (q.type === 'sa' || q.type === 'essay') return !answers[i]?.value?.trim();
       if (q.type === 'code') return !codeAnswers[i]?.code?.trim();
       return false;
     });
@@ -1184,6 +1196,13 @@ window.submitExam = async (isAuto = false) => {
         if (value && value.toLowerCase() === correct.toLowerCase()) { score = q.points || 0; feedback = UI[currentLang].correct; }
         else { feedback = `${UI[currentLang].wrong}${correct})`; }
 
+      } else if (q.type === 'essay') {
+        // 서술형은 정답이 하나로 정해져 있지 않아 자동채점을 하지 않는다 —
+        // 점수는 항상 0으로 저장해두고(선생님이 admin.html에서 직접 채점),
+        // "오답"처럼 보이지 않게 중립적인 문구만 남긴다.
+        value = answers[i]?.value?.trim() || '';
+        feedback = UI[currentLang].manualGrade;
+
       } else if (q.type === 'code') {
         const cm = cmInstances[i];
         const code = cm ? cm.getValue() : (codeAnswers[i]?.code || '');
@@ -1207,7 +1226,7 @@ window.submitExam = async (isAuto = false) => {
       }
 
       totalScore += score;
-      resultItems.push({ qIdx: i, title: getQTitle(q), value, score, maxScore: q.points||0, feedback });
+      resultItems.push({ qIdx: i, type: q.type, title: getQTitle(q), value, score, maxScore: q.points||0, feedback });
 
       // results에 저장
       await addDoc(collection(db, 'exam_results'), {
@@ -1215,7 +1234,7 @@ window.submitExam = async (isAuto = false) => {
         examId: currentAssignment.examId,
         studentId: SESSION.id, name: SESSION.name,
         grade: SESSION.grade, class: SESSION.cls, num: SESSION.num,
-        lang: currentLang, qIdx: i,
+        lang: currentLang, qIdx: i, type: q.type,
         value, score, maxScore: q.points||0, feedback,
         createdAt: serverTimestamp()
       });
@@ -1229,13 +1248,32 @@ window.submitExam = async (isAuto = false) => {
     }, { merge: true });
 
     showLoading(false);
-    showResult(totalScore, totalPoints, resultItems);
+    // 서술형(선생님이 나중에 직접 채점)이 하나라도 있으면, 아직 최종 점수가
+    // 아닌 걸 학생이 "틀렸다"고 오해하지 않도록 점수/정오답 화면 자체를
+    // 안 보여주고 제출 확인 화면만 띄운다.
+    if (questions.some(q => q.type === 'essay')) showPendingResult();
+    else showResult(totalScore, totalPoints, resultItems);
   } catch(e) {
     showLoading(false);
     alert(UI[currentLang].submitErr + e.message);
     submitted = false;
   }
 };
+
+// 서술형이 포함된 시험 제출 직후 — 아직 최종 점수가 아니므로 정오답/점수
+// 화면 대신 제출 확인만 보여준다. 최종 점수는 선생님이 admin.html에서
+// 채점을 마친 뒤에 확인할 수 있다.
+function showPendingResult() {
+  ['step0','step1','step2'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
+  document.getElementById('step3').classList.remove('hidden');
+  document.getElementById('timerBadge').classList.add('hidden');
+  const t = UI[currentLang];
+  document.getElementById('resultScore').innerText = '';
+  document.getElementById('resultTotal').innerText = '';
+  document.getElementById('resultEmoji').innerHTML = '<svg width="46" height="46"><use href="#ic-check"/></svg>';
+  document.getElementById('resultDetails').innerHTML = `<div style="text-align:center;padding:20px 10px;color:var(--sub);font-size:0.95rem;line-height:1.7;white-space:pre-line;">${t.pendingResultMsg}</div>`;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 
 function showResult(score, total, items) {
   ['step0','step1','step2'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
