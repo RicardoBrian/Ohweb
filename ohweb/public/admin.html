@@ -788,8 +788,18 @@
              자동채점 대상이 아니며 항상 선생님이 수동으로 채점한다(admin.html의
              "채점" 모달, code 타입과 같은 처리). -->
         <div id="qf_essay" class="hidden">
-          <div style="font-size:0.82rem;color:var(--sub);background:var(--glass);border:1px solid var(--border-card);border-radius:10px;padding:10px 14px;">
+          <div style="font-size:0.82rem;color:var(--sub);background:var(--glass);border:1px solid var(--border-card);border-radius:10px;padding:10px 14px;margin-bottom:12px;">
             서술형은 정답을 미리 정해두지 않습니다. 학생 제출 후 "시험 결과" 화면의 채점 기능으로 직접 점수를 매겨야 합니다.
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>
+              <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">최소 글자수 <span style="font-weight:400;font-size:0.75rem;">(선택)</span></label>
+              <input class="inp" id="q_essayMin" type="number" min="0" placeholder="제한 없음">
+            </div>
+            <div>
+              <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">최대 글자수 <span style="font-weight:400;font-size:0.75rem;">(선택)</span></label>
+              <input class="inp" id="q_essayMax" type="number" min="1" placeholder="제한 없음">
+            </div>
           </div>
         </div>
 
@@ -1014,7 +1024,7 @@
   import { db } from './firebase-config.js';
   import {
     collection, addDoc, getDocs, deleteDoc, doc,
-    query, where, orderBy, setDoc, getDoc, serverTimestamp, writeBatch, updateDoc
+    query, where, orderBy, setDoc, getDoc, serverTimestamp, writeBatch, updateDoc, deleteField
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
   // 인증 확인
@@ -2058,6 +2068,17 @@
       data.answer = String(parseInt(document.getElementById('q_answer_mc').value) || 0);
     } else if (type === 'sa') {
       data.answer = document.getElementById('q_answer_sa').value.trim();
+    } else if (type === 'essay') {
+      const minLen = parseInt(document.getElementById('q_essayMin').value);
+      const maxLen = parseInt(document.getElementById('q_essayMax').value);
+      // 수정 중 글자수 제한을 지웠을 수도 있으니(예: 50자 이상 → 제한없음),
+      // 기존 문제 수정일 땐 deleteField()로 실제로 지운다 — 그냥 안 보내면
+      // updateDoc은 병합만 하므로 예전 값이 그대로 남는다. 새 문제 생성 시엔
+      // deleteField()를 쓸 수 없어서(생성 문서엔 무효) 아예 필드를 안 넣는다.
+      if (minLen > 0) data.minLen = minLen;
+      else if (docId) data.minLen = deleteField();
+      if (maxLen > 0) data.maxLen = maxLen;
+      else if (docId) data.maxLen = deleteField();
     } else if (type === 'code') {
       data.inDesc = document.getElementById('q_inDesc').value.trim();
       data.outDesc = document.getElementById('q_outDesc').value.trim();
@@ -2117,6 +2138,9 @@
       document.getElementById('q_answer_mc').value = q.answer||'0';
     } else if (q.type === 'sa') {
       document.getElementById('q_answer_sa').value = q.answer||'';
+    } else if (q.type === 'essay') {
+      document.getElementById('q_essayMin').value = q.minLen||'';
+      document.getElementById('q_essayMax').value = q.maxLen||'';
     } else if (q.type === 'code') {
       document.getElementById('q_inDesc').value = q.inDesc||'';
       document.getElementById('q_outDesc').value = q.outDesc||'';
@@ -2151,7 +2175,7 @@
   };
 
   window.resetQForm = () => {
-    ['q_docId','q_title','q_content','q_imageUrl','q_options','q_answer_sa','q_inDesc','q_outDesc','q_inEx','q_outEx','q_boilerplate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['q_docId','q_title','q_content','q_imageUrl','q_options','q_answer_sa','q_essayMin','q_essayMax','q_inDesc','q_outDesc','q_inEx','q_outEx','q_boilerplate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('q_answer_mc').innerHTML = '<option value="0">선택지를 먼저 입력하세요</option>';
     renderTestCases([]);
     document.getElementById('q_points').value='10';

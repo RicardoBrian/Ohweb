@@ -133,6 +133,8 @@
 
     /* 단답형 */
     .sa-input { margin-top: 4px; }
+    .essay-counter { font-size: 0.78rem; color: var(--sub); text-align: right; margin-top: 6px; }
+    .essay-counter.under-min { color: #ef4444; font-weight: 700; }
 
     /* 코딩 */
     .code-editor {
@@ -944,6 +946,7 @@ function renderQuestions() {
       const saved = answers[i]?.value || '';
       const el = document.getElementById(`essay_${i}`);
       if (el) el.value = saved;
+      updateEssayCounter(i);
     } else if (q.type === 'code') {
       const saved = codeAnswers[i]?.code || getDefaultCode(q, currentLang);
       const el = document.getElementById(`code_${i}`);
@@ -1054,7 +1057,20 @@ function renderQuestion(q, i) {
   } else if (q.type === 'essay') {
     // 서술형은 정답을 미리 정해둘 수 없어 자동채점을 안 한다(제출 시 항상
     // "채점 대기중"으로 처리) — 선생님이 admin.html에서 직접 점수를 매긴다.
-    body = `<textarea class="inp sa-input" id="essay_${i}" rows="8" placeholder="${currentLang==='zh'?'请输入答案...':currentLang==='ru'?'Введите ответ...':currentLang==='en'?'Enter your answer...':'답을 입력하세요...'}" oninput="saveSA(${i},this.value)"></textarea>`;
+    // 최소/최대 글자수는 선생님이 문제별로 지정할 수 있다(admin.html) —
+    // 최대는 maxlength로 아예 못 넘게 막고, 최소는 실시간 카운터로 미달
+    // 표시만 하고(입력 자체를 막을 수 없으니) 제출 시 미답으로 취급한다.
+    const minLen = q.minLen || 0;
+    const maxLen = q.maxLen || 0;
+    const charUnit = currentLang==='zh' ? '字' : currentLang==='ru' ? ' симв.' : currentLang==='en' ? ' chars' : '자';
+    const limitHint = [
+      minLen ? (currentLang==='zh'?`最少${minLen}字`:currentLang==='ru'?`мин. ${minLen}`:currentLang==='en'?`min ${minLen}`:`최소 ${minLen}자`) : '',
+      maxLen ? (currentLang==='zh'?`最多${maxLen}字`:currentLang==='ru'?`макс. ${maxLen}`:currentLang==='en'?`max ${maxLen}`:`최대 ${maxLen}자`) : '',
+    ].filter(Boolean).join(' · ');
+    body = `
+      <textarea class="inp sa-input" id="essay_${i}" rows="8" ${maxLen?`maxlength="${maxLen}"`:''} placeholder="${currentLang==='zh'?'请输入答案...':currentLang==='ru'?'Введите ответ...':currentLang==='en'?'Enter your answer...':'답을 입력하세요...'}" oninput="saveSA(${i},this.value);updateEssayCounter(${i})"></textarea>
+      <div class="essay-counter" id="essayCounter_${i}" data-min="${minLen}"><span class="essay-counter-num">0</span>${charUnit}${limitHint?` · ${limitHint}`:''}</div>
+    `;
   } else if (q.type === 'code') {
     const tcHtml = (q.inEx || q.outEx) ? `<div class="tc-box">
       ${q.inDesc ? `<div class="tc-row"><span class="tc-label">${currentLang==='zh'?'输入说明':currentLang==='ru'?'Ввод':currentLang==='en'?'Input format':'입력 형식'}</span><span>${q.inDesc}</span></div>` : ''}
@@ -1105,6 +1121,16 @@ window.selectMC = (idx, optIdx) => {
 };
 
 window.saveSA = (idx, val) => { answers[idx] = { value: val, lang: currentLang }; updateProgress(); };
+window.updateEssayCounter = (idx) => {
+  const el = document.getElementById(`essay_${idx}`);
+  const counter = document.getElementById(`essayCounter_${idx}`);
+  if (!el || !counter) return;
+  const len = el.value.length;
+  const numEl = counter.querySelector('.essay-counter-num');
+  if (numEl) numEl.textContent = len;
+  const min = parseInt(counter.dataset.min) || 0;
+  counter.classList.toggle('under-min', min > 0 && len < min);
+};
 window.saveCode = (idx, val) => { codeAnswers[idx] = { code: val, lang: 'python' }; updateProgress(); };
 
 function updateProgress() {
@@ -1157,7 +1183,11 @@ window.submitExam = async (isAuto = false) => {
   if (!isAuto) {
     const unanswered = questions.filter((q, i) => {
       if (q.type === 'mc') return answers[i]?.value === undefined;
-      if (q.type === 'sa' || q.type === 'essay') return !answers[i]?.value?.trim();
+      if (q.type === 'sa') return !answers[i]?.value?.trim();
+      if (q.type === 'essay') {
+        const val = answers[i]?.value?.trim() || '';
+        return !val || (q.minLen > 0 && val.length < q.minLen);
+      }
       if (q.type === 'code') return !codeAnswers[i]?.code?.trim();
       return false;
     });
