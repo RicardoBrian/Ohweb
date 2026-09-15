@@ -510,6 +510,7 @@ let answers = {};     // qIdx → { value, lang }
 let codeAnswers = {}; // qIdx → { code, lang }
 const cmInstances = {};
 let alertCount = 0;
+let leaveRawCount = 0; // 이탈 총 횟수(첫 1회 포함) — 새로고침으로 첫 1회 무료패스를 반복 악용하지 못하도록 별도 저장
 let timerInterval = null;
 let remainSec = 0;
 let submitted = false;
@@ -738,11 +739,14 @@ window.showMyResult = async (asId) => {
 // ── 탭 이탈 감지 (탭 전환/최소화 + 창이 안 가려져도 포커스만 빠져나가는 경우까지) ──
 // blur와 visibilitychange가 같은 이탈에 대해 동시에 발생할 수 있으므로
 // isAway 플래그로 한 번의 이탈은 한 번만 카운트한다.
+// 첫 1회는 실수로 볼 수 있으니 봐주고, 2회째 이탈부터 부정행위(alertCount)로 집계한다.
 let isAway = false;
 function handleLeave() {
   if (isAway || submitted || questions.length === 0) return;
   isAway = true;
-  alertCount++;
+  leaveRawCount++;
+  if (leaveRawCount <= 1) return; // 첫 1회는 카운트하지 않고 넘어감
+  alertCount = leaveRawCount - 1;
   document.getElementById('alertCount').innerText = alertCount;
   updateAlertCount();
   showAlertBanner();
@@ -767,7 +771,7 @@ async function updateAlertCount() {
   if (!currentAssignment) return;
   try {
     const ref = doc(db, 'exam_progress', `${currentAssignment.asId}_${SESSION.id}`);
-    await setDoc(ref, { alertCount }, { merge: true });
+    await setDoc(ref, { alertCount, leaveRawCount }, { merge: true });
   } catch(e) {}
 }
 
@@ -823,10 +827,11 @@ async function startExamFromAs(asDoc, errEl) {
   // 횟수를 무조건 0으로 되돌리면 안 된다 — 그전까지 감지된 이탈이 사라져
   // 부정행위 감지가 무력화된다. 기존 progress 문서에 값이 있으면 이어받는다.
   alertCount = (progSnap.exists() && progSnap.data().alertCount) || 0;
+  leaveRawCount = (progSnap.exists() && progSnap.data().leaveRawCount) || 0;
   await setDoc(progRef, {
     examId: asData.examId, asId: asDoc.id,
     studentId: SESSION.id, name: SESSION.name, grade: SESSION.grade, class: SESSION.cls, num: SESSION.num,
-    status: 'started', alertCount, startTime: serverTimestamp()
+    status: 'started', alertCount, leaveRawCount, startTime: serverTimestamp()
   }, { merge: true });
   showLoading(false);
   startExamUI();
@@ -1284,7 +1289,7 @@ window.submitExam = async (isAuto = false) => {
     const progRef = doc(db, 'exam_progress', `${currentAssignment.asId}_${SESSION.id}`);
     await setDoc(progRef, {
       status: 'submitted', totalScore, totalPoints,
-      alertCount, submitTime: serverTimestamp()
+      alertCount, leaveRawCount, submitTime: serverTimestamp()
     }, { merge: true });
 
     showLoading(false);
