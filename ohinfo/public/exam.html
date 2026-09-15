@@ -735,15 +735,25 @@ window.showMyResult = async (asId) => {
   } catch(e) { alert(UI[currentLang].errPrefix+e.message); showLoading(false); }
 };
 
-// ── 탭 이탈 감지 ──
+// ── 탭 이탈 감지 (탭 전환/최소화 + 창이 안 가려져도 포커스만 빠져나가는 경우까지) ──
+// blur와 visibilitychange가 같은 이탈에 대해 동시에 발생할 수 있으므로
+// isAway 플래그로 한 번의 이탈은 한 번만 카운트한다.
+let isAway = false;
+function handleLeave() {
+  if (isAway || submitted || questions.length === 0) return;
+  isAway = true;
+  alertCount++;
+  document.getElementById('alertCount').innerText = alertCount;
+  updateAlertCount();
+  showAlertBanner();
+}
+function handleReturn() { isAway = false; }
+
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden && !submitted && questions.length > 0) {
-    alertCount++;
-    document.getElementById('alertCount').innerText = alertCount;
-    updateAlertCount();
-    showAlertBanner();
-  }
+  if (document.hidden) handleLeave(); else handleReturn();
 });
+window.addEventListener('blur', handleLeave);
+window.addEventListener('focus', handleReturn);
 
 function showAlertBanner() {
   const b = document.getElementById('alertBanner');
