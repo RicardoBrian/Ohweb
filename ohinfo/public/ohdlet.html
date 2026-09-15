@@ -1473,7 +1473,7 @@
         boardLayout: cls.boardLayout === 'columns' ? 'columns' : 'grid',
         columns: Array.isArray(cls.columns) ? cls.columns : [],
       };
-      document.getElementById('p_column').value = '';
+      setHidden('p_column', '');
 
       // 게시물 조회 (boardKey 없는 옛 게시글은 이름만으로 계속 노출 — 하위호환)
       const allPosts = await loadClassPosts(classTitle, currentBoardKey);
@@ -1920,7 +1920,7 @@
     const sub = document.getElementById('p_sub').value;
     const msg = document.getElementById('p_msg').value;
     const srcLang = currentLang;
-    const column = document.getElementById('p_column').value;
+    const column = document.getElementById('p_column')?.value || '';
     if (currentClassMeta.boardLayout === 'columns' && !column) {
       alert('칼럼을 선택하세요.');
       toggleLoading(false); document.getElementById('subBtn').disabled = false;
@@ -2003,10 +2003,10 @@
     if (currentClassMeta.boardLayout === 'columns') {
       // 칼럼형: 사이드바엔 폼이 없으니(선생님 안내가 대신 있음) 그 글이
       // 속한 칼럼(삭제된 칼럼이면 "기타") 안으로 폼을 옮겨 붙인다.
-      document.getElementById('p_column').value = post.column || '';
+      setHidden('p_column', post.column || '');
       const idx = currentClassMeta.columns.indexOf(post.column);
       const anchor = document.getElementById('composeAnchor_' + (idx >= 0 ? idx : 'null'));
-      const formCard = document.getElementById('postForm').closest('.form-card');
+      const formCard = document.getElementById('postForm')?.closest('.form-card');
       if (anchor && formCard) anchor.appendChild(formCard);
       anchor?.scrollIntoView({behavior:'smooth',block:'center'});
     } else {
