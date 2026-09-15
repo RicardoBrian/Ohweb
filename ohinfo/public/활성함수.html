@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>활성화 함수 시각화 — OHinfo</title>
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="theme.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); line-height: 1.6; }
+  .hidden { display: none !important; }
+
+  .nav {
+    position: sticky; top: 0; z-index: 200;
+    background: var(--glass-nav); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.35), var(--shadow);
+    padding: 0 16px; height: var(--nav-h);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .nav-back {
+    width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border-card);
+    background: var(--glass); color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center;
+    backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--highlight); flex-shrink: 0; font-size: 1.1rem; text-decoration: none;
+  }
+  .nav-title { font-weight: 800; font-size: 0.98rem; flex: 1; }
+  .nav-sub { font-size: 0.72rem; color: var(--sub); font-weight: 600; }
+  .dark-toggle { margin-left: auto; }
+
+  .page {
+    max-width: 880px; margin: 0 auto; padding: 22px 16px 60px;
+    display: flex; flex-direction: column; gap: 18px;
+  }
+
+  .card {
+    background: var(--glass); border-radius: var(--radius); padding: 20px;
+  }
+
+  /* ---- function tabs ---- */
+  .fn-tabs {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+  }
+  .fn-tab {
+    font-family: inherit; cursor: pointer; border-radius: var(--radius-sm);
+    border: 1px solid var(--border-card); background: var(--glass);
+    backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+    box-shadow: var(--highlight);
+    padding: 12px 6px; text-align: center; transition: 0.2s var(--ease);
+    color: var(--text-2); font-weight: 700;
+  }
+  .fn-tab .fn-name { display: block; font-size: 0.86rem; }
+  .fn-tab .fn-formula { display: block; font-size: 0.68rem; font-weight: 500; color: var(--text-3); margin-top: 2px; }
+  .fn-tab:hover { background: var(--glass-strong); }
+  .fn-tab.active {
+    background: var(--accent-grad); color: #fff; border-color: transparent;
+    box-shadow: var(--shadow-md);
+  }
+  .fn-tab.active .fn-formula { color: rgba(255,255,255,0.85); }
+  @media (max-width: 560px) {
+    .fn-tabs { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* ---- input row ---- */
+  .input-row {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  }
+  .input-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 200px; }
+  .input-label { font-size: 0.78rem; font-weight: 700; color: var(--text-2); }
+  .input-number {
+    width: 100%; padding: 12px 14px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border-card); background: var(--glass-strong);
+    backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+    color: var(--text); font-family: inherit; font-size: 1.05rem; font-weight: 700; outline: none;
+    box-shadow: var(--highlight);
+  }
+  .input-number:focus { box-shadow: 0 0 0 4px var(--accent-light); }
+  .input-range { flex: 1; min-width: 200px; accent-color: var(--accent); }
+
+  .result-row {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding-top: 4px; flex-wrap: wrap;
+  }
+  .result-formula { font-size: 0.85rem; color: var(--text-2); font-weight: 600; }
+  .result-value {
+    font-size: 1.6rem; font-weight: 900; color: var(--accent); letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---- graph ---- */
+  .graph-wrap { position: relative; }
+  svg.graph { width: 100%; height: auto; display: block; }
+  .grid-line { stroke: var(--hairline); stroke-width: 1; }
+  .axis-line { stroke: var(--text-3); stroke-width: 1.2; }
+  .fn-curve { fill: none; stroke: var(--accent); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+  .fn-point { fill: var(--accent); stroke: var(--bg-elevated); stroke-width: 2.5; }
+  .fn-guide { stroke: var(--accent); stroke-width: 1; stroke-dasharray: 4 4; opacity: 0.55; }
+  .axis-label { fill: var(--text-3); font-size: 11px; font-family: inherit; }
+  .fn-tag {
+    fill: var(--text); font-size: 12px; font-weight: 800; font-family: inherit;
+  }
+
+  .info {
+    font-size: 0.8rem; color: var(--text-2); line-height: 1.7;
+  }
+  .info b { color: var(--text); }
+</style>
+</head>
+<body>
+
+<svg class="hidden" aria-hidden="true">
+  <symbol id="ic-back" viewBox="0 0 24 24"><path d="M18 12H5M10 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<header class="nav">
+  <a class="nav-back" href="home.html" title="뒤로"><svg width="17" height="17"><use href="#ic-back"/></svg></a>
+  <div>
+    <div class="nav-title">활성화 함수 시각화</div>
+    <div class="nav-sub">Activation Function Visualizer</div>
+  </div>
+  <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
+</header>
+
+<main class="page">
+
+  <section class="card">
+    <div class="fn-tabs" id="fnTabs"></div>
+  </section>
+
+  <section class="card">
+    <div class="input-row">
+      <div class="input-group">
+        <label class="input-label" for="xInput">입력값 x</label>
+        <input class="input-number" type="number" id="xInput" value="0" step="0.1">
+      </div>
+    </div>
+    <div style="margin-top:12px;">
+      <input class="input-range" type="range" id="xRange" min="-10" max="10" step="0.1" value="0">
+    </div>
+    <div class="result-row">
+      <div class="result-formula" id="resultFormula"></div>
+      <div class="result-value" id="resultValue">0.0000</div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="graph-wrap">
+      <svg class="graph" id="graphSvg" viewBox="0 0 640 360" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+  </section>
+
+  <section class="card info" id="infoBox"></section>
+
+</main>
+
+<script>
+const FUNCS = {
+  relu: {
+    name: 'ReLU',
+    formula: 'f(x) = max(0, x)',
+    domain: [-10, 10],
+    range: [-1, 10],
+    fn: x => Math.max(0, x),
+    info: 'x가 0보다 크면 그대로, 0 이하이면 0을 출력합니다. 계산이 간단하고 학습이 빨라 가장 널리 쓰이는 활성화 함수이지만, 입력이 계속 음수이면 뉴런이 죽어버리는 "죽은 ReLU" 문제가 생길 수 있습니다.'
+  },
+  sigmoid: {
+    name: 'Sigmoid',
+    formula: 'f(x) = 1 / (1 + e⁻ˣ)',
+    domain: [-10, 10],
+    range: [-0.1, 1.1],
+    fn: x => 1 / (1 + Math.exp(-x)),
+    info: '출력을 0과 1 사이로 눌러 담아 확률처럼 해석할 수 있습니다. 이진 분류의 출력층에 자주 쓰이지만, 입력값이 아주 크거나 작으면 기울기가 0에 가까워지는 기울기 소실 문제가 있습니다.'
+  },
+  leakyrelu: {
+    name: 'Leaky ReLU',
+    formula: 'f(x) = x (x>0), 0.1x (x≤0)',
+    domain: [-10, 10],
+    range: [-1.5, 10],
+    fn: x => x > 0 ? x : 0.1 * x,
+    info: 'ReLU와 비슷하지만 음수 구간에서도 작은 기울기(여기서는 0.1)를 남겨 두어, 죽은 ReLU 문제를 완화합니다. 계산 비용이 낮으면서도 ReLU의 약점을 보완한 형태입니다.'
+  },
+  tanh: {
+    name: 'Tanh',
+    formula: 'f(x) = (eˣ − e⁻ˣ) / (eˣ + e⁻ˣ)',
+    domain: [-10, 10],
+    range: [-1.2, 1.2],
+    fn: x => Math.tanh(x),
+    info: '하이퍼볼릭탄젠트 함수로, 출력을 -1과 1 사이로 눌러 담습니다. Sigmoid와 달리 평균이 0에 가까워 학습에 유리하지만, 마찬가지로 양 끝에서 기울기 소실이 발생할 수 있습니다.'
+  }
+};
+
+let current = 'relu';
+
+const tabsEl = document.getElementById('fnTabs');
+Object.keys(FUNCS).forEach(key => {
+  const f = FUNCS[key];
+  const btn = document.createElement('button');
+  btn.className = 'fn-tab';
+  btn.dataset.key = key;
+  btn.innerHTML = `<span class="fn-name">${f.name}</span><span class="fn-formula">${f.formula}</span>`;
+  btn.onclick = () => { current = key; refresh(); };
+  tabsEl.appendChild(btn);
+});
+
+const xInput = document.getElementById('xInput');
+const xRange = document.getElementById('xRange');
+const resultValue = document.getElementById('resultValue');
+const resultFormula = document.getElementById('resultFormula');
+const infoBox = document.getElementById('infoBox');
+const svg = document.getElementById('graphSvg');
+
+const W = 640, H = 360, PAD = 40;
+
+function syncInputs(val) {
+  xInput.value = val;
+  xRange.value = Math.min(10, Math.max(-10, val));
+}
+
+xInput.addEventListener('input', () => {
+  const v = parseFloat(xInput.value);
+  if (!isNaN(v)) { xRange.value = Math.min(10, Math.max(-10, v)); refresh(); }
+});
+xRange.addEventListener('input', () => {
+  xInput.value = xRange.value;
+  refresh();
+});
+
+function drawGraph(f, x) {
+  const [dxMin, dxMax] = f.domain;
+  const [ryMin, ryMax] = f.range;
+
+  const toSvgX = vx => PAD + (vx - dxMin) / (dxMax - dxMin) * (W - PAD * 2);
+  const toSvgY = vy => H - PAD - (vy - ryMin) / (ryMax - ryMin) * (H - PAD * 2);
+
+  let parts = [];
+
+  // grid
+  for (let gx = Math.ceil(dxMin / 2) * 2; gx <= dxMax; gx += 2) {
+    parts.push(`<line class="grid-line" x1="${toSvgX(gx)}" y1="${PAD}" x2="${toSvgX(gx)}" y2="${H - PAD}"/>`);
+  }
+  const yStep = (ryMax - ryMin) / 6;
+  for (let i = 0; i <= 6; i++) {
+    const gy = ryMin + yStep * i;
+    parts.push(`<line class="grid-line" x1="${PAD}" y1="${toSvgY(gy)}" x2="${W - PAD}" y2="${toSvgY(gy)}"/>`);
+  }
+
+  // axes (x=0, y=0)
+  if (0 >= dxMin && 0 <= dxMax) parts.push(`<line class="axis-line" x1="${toSvgX(0)}" y1="${PAD}" x2="${toSvgX(0)}" y2="${H - PAD}"/>`);
+  if (0 >= ryMin && 0 <= ryMax) parts.push(`<line class="axis-line" x1="${PAD}" y1="${toSvgY(0)}" x2="${W - PAD}" y2="${toSvgY(0)}"/>`);
+
+  // axis labels
+  parts.push(`<text class="axis-label" x="${W - PAD}" y="${toSvgY(0) - 8}" text-anchor="end">x</text>`);
+  parts.push(`<text class="axis-label" x="${toSvgX(0) + 8}" y="${PAD + 4}" text-anchor="start">y</text>`);
+  parts.push(`<text class="axis-label" x="${toSvgX(dxMin)}" y="${H - PAD + 18}">${dxMin}</text>`);
+  parts.push(`<text class="axis-label" x="${toSvgX(dxMax)}" y="${H - PAD + 18}" text-anchor="end">${dxMax}</text>`);
+  parts.push(`<text class="axis-label" x="${PAD - 8}" y="${toSvgY(ryMin)}" text-anchor="end">${ryMin.toFixed(1)}</text>`);
+  parts.push(`<text class="axis-label" x="${PAD - 8}" y="${toSvgY(ryMax) + 10}" text-anchor="end">${ryMax.toFixed(1)}</text>`);
+
+  // curve
+  const N = 200;
+  let d = '';
+  for (let i = 0; i <= N; i++) {
+    const vx = dxMin + (dxMax - dxMin) * i / N;
+    const vy = f.fn(vx);
+    const sx = toSvgX(vx), sy = toSvgY(Math.min(ryMax, Math.max(ryMin, vy)));
+    d += (i === 0 ? 'M' : 'L') + sx.toFixed(2) + ' ' + sy.toFixed(2) + ' ';
+  }
+  parts.push(`<path class="fn-curve" d="${d}"/>`);
+
+  // current point + guides
+  const cx = Math.min(dxMax, Math.max(dxMin, x));
+  const cy = f.fn(cx);
+  const cySvg = Math.min(ryMax, Math.max(ryMin, cy));
+  const px = toSvgX(cx), py = toSvgY(cySvg);
+  parts.push(`<line class="fn-guide" x1="${px}" y1="${py}" x2="${px}" y2="${H - PAD}"/>`);
+  parts.push(`<line class="fn-guide" x1="${PAD}" y1="${py}" x2="${px}" y2="${py}"/>`);
+  parts.push(`<circle class="fn-point" cx="${px}" cy="${py}" r="6"/>`);
+
+  svg.innerHTML = parts.join('');
+}
+
+function refresh() {
+  document.querySelectorAll('.fn-tab').forEach(b => b.classList.toggle('active', b.dataset.key === current));
+  const f = FUNCS[current];
+  const x = parseFloat(xInput.value) || 0;
+  const y = f.fn(x);
+
+  resultFormula.textContent = f.formula;
+  resultValue.textContent = 'f(' + x + ') = ' + y.toFixed(4);
+  infoBox.innerHTML = `<b>${f.name}</b> — ${f.info}`;
+
+  drawGraph(f, x);
+}
+
+refresh();
+
+window.toggleDark = () => {
+  document.body.classList.toggle('dark');
+  localStorage.setItem('dark', document.body.classList.contains('dark') ? '1' : '0');
+};
+if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
+</script>
+
+</body>
+</html>
