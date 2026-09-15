@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>활성화 함수 시각화 — OHinfo</title>
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="theme.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); line-height: 1.6; }
+  .hidden { display: none !important; }
+
+  .nav {
+    position: sticky; top: 0; z-index: 200;
+    background: var(--glass-nav); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+    border-bottom: 1px solid var(--border);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.35), var(--shadow);
+    padding: 0 16px; height: var(--nav-h);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .nav-back {
+    width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border-card);
+    background: var(--glass); color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center;
+    backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--highlight); flex-shrink: 0; font-size: 1.1rem; text-decoration: none;
+  }
+  .nav-title { font-weight: 800; font-size: 0.98rem; flex: 1; }
+  .nav-sub { font-size: 0.72rem; color: var(--sub); font-weight: 600; }
+  .dark-toggle { margin-left: auto; }
+
+  .page {
+    max-width: 880px; margin: 0 auto; padding: 22px 16px 60px;
+    display: flex; flex-direction: column; gap: 18px;
+  }
+
+  .card {
+    background: var(--glass); border-radius: var(--radius); padding: 20px;
+  }
+  .card-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px;
+  }
+  .card-head-title { font-size: 0.8rem; font-weight: 800; color: var(--text-2); }
+
+  /* ---- compare toggle ---- */
+  .compare-toggle {
+    display: flex; align-items: center; gap: 8px; font-size: 0.78rem; font-weight: 700; color: var(--text-2);
+    cursor: pointer; user-select: none;
+  }
+  .compare-switch {
+    width: 38px; height: 22px; border-radius: 50px; background: var(--glass-strong);
+    border: 1px solid var(--border-card); position: relative; transition: 0.2s var(--ease); flex-shrink: 0;
+    box-shadow: var(--highlight);
+  }
+  .compare-switch::after {
+    content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.25); transition: transform 0.2s var(--ease);
+  }
+  .compare-toggle.on .compare-switch { background: var(--accent); border-color: transparent; }
+  .compare-toggle.on .compare-switch::after { transform: translateX(16px); }
+
+  /* ---- function tabs ---- */
+  .fn-tabs {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+  }
+  .fn-tab {
+    font-family: inherit; cursor: pointer; border-radius: var(--radius-sm);
+    border: 1px solid var(--border-card); background: var(--glass);
+    backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+    box-shadow: var(--highlight);
+    padding: 12px 6px; text-align: center; transition: 0.2s var(--ease);
+    color: var(--text-2); font-weight: 700;
+  }
+  .fn-tab .fn-name { display: flex; align-items: center; justify-content: center; gap: 5px; font-size: 0.86rem; }
+  .fn-tab .fn-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .fn-tab .fn-formula { display: block; font-size: 0.66rem; font-weight: 500; color: var(--text-3); margin-top: 3px; }
+  .fn-tab .fn-range { display: block; font-size: 0.66rem; font-weight: 700; color: var(--text-3); margin-top: 4px; }
+  .fn-tab:hover { background: var(--glass-strong); }
+  .fn-tab.active {
+    background: var(--accent-grad); color: #fff; border-color: transparent;
+    box-shadow: var(--shadow-md);
+  }
+  .fn-tab.active .fn-formula, .fn-tab.active .fn-range { color: rgba(255,255,255,0.85); }
+  @media (max-width: 560px) {
+    .fn-tabs { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* ---- alpha control (leaky relu) ---- */
+  .alpha-row {
+    display: flex; align-items: center; gap: 12px; margin-top: 14px;
+    padding-top: 14px; border-top: 1px dashed var(--border-card);
+  }
+  .alpha-row label { font-size: 0.78rem; font-weight: 700; color: var(--text-2); flex-shrink: 0; }
+  .alpha-row input[type="range"] { flex: 1; accent-color: var(--accent); }
+  .alpha-val { font-size: 0.85rem; font-weight: 800; color: var(--accent); min-width: 42px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ---- input row ---- */
+  .input-row {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  }
+  .input-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 200px; }
+  .input-label { font-size: 0.78rem; font-weight: 700; color: var(--text-2); }
+  .input-number {
+    width: 100%; padding: 12px 14px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border-card); background: var(--glass-strong);
+    backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+    color: var(--text); font-family: inherit; font-size: 1.05rem; font-weight: 700; outline: none;
+    box-shadow: var(--highlight);
+  }
+  .input-number:focus { box-shadow: 0 0 0 4px var(--accent-light); }
+  .input-range { flex: 1; min-width: 200px; accent-color: var(--accent); height: 28px; touch-action: pan-y; }
+
+  .result-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-top: 14px;
+  }
+  .result-box {
+    background: var(--glass-strong); border: 1px solid var(--border-card); border-radius: var(--radius-sm);
+    padding: 12px 14px;
+  }
+  .result-label { font-size: 0.7rem; font-weight: 700; color: var(--text-3); margin-bottom: 4px; }
+  .result-formula { font-size: 0.74rem; color: var(--text-2); font-weight: 600; margin-bottom: 2px; }
+  .result-value {
+    font-size: 1.4rem; font-weight: 900; color: var(--accent); letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .result-value.deriv { color: var(--text); font-size: 1.2rem; }
+  @media (max-width: 480px) {
+    .result-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ---- graph ---- */
+  .graph-wrap { position: relative; touch-action: none; cursor: crosshair; }
+  svg.graph { width: 100%; height: auto; display: block; }
+  .grid-line { stroke: var(--hairline); stroke-width: 1; }
+  .axis-line { stroke: var(--text-3); stroke-width: 1.2; }
+  .fn-curve { fill: none; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+  .fn-curve.dim { opacity: 0.28; stroke-width: 2; }
+  .fn-point { stroke: var(--bg-elevated); stroke-width: 2.5; transition: cx 0.18s var(--ease), cy 0.18s var(--ease); }
+  .fn-guide { stroke-width: 1; stroke-dasharray: 4 4; opacity: 0.55; transition: x1 0.18s var(--ease), x2 0.18s var(--ease), y1 0.18s var(--ease), y2 0.18s var(--ease); }
+  .axis-label { fill: var(--text-3); font-size: 11px; font-family: inherit; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-top: 12px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 0.75rem; font-weight: 700; color: var(--text-2); }
+  .legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+  .info {
+    font-size: 0.8rem; color: var(--text-2); line-height: 1.7;
+  }
+  .info b { color: var(--text); }
+</style>
+</head>
+<body>
+
+<svg class="hidden" aria-hidden="true">
+  <symbol id="ic-back" viewBox="0 0 24 24"><path d="M18 12H5M10 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<header class="nav">
+  <a class="nav-back" href="home.html" title="뒤로"><svg width="17" height="17"><use href="#ic-back"/></svg></a>
+  <div>
+    <div class="nav-title">활성화 함수 시각화</div>
+    <div class="nav-sub">Activation Function Visualizer</div>
+  </div>
+  <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
+</header>
+
+<main class="page">
+
+  <section class="card">
+    <div class="card-head">
+      <div class="card-head-title">함수 선택</div>
+      <div class="compare-toggle" id="compareToggle"><span class="compare-switch"></span>비교 모드</div>
+    </div>
+    <div class="fn-tabs" id="fnTabs"></div>
+    <div class="alpha-row hidden" id="alphaRow">
+      <label for="alphaRange">기울기 α</label>
+      <input type="range" id="alphaRange" min="0" max="0.5" step="0.01" value="0.1">
+      <span class="alpha-val" id="alphaVal">0.10</span>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="input-row">
+      <div class="input-group">
+        <label class="input-label" for="xInput">입력값 x</label>
+        <input class="input-number" type="number" id="xInput" value="0" step="0.1">
+      </div>
+    </div>
+    <div style="margin-top:12px;">
+      <input class="input-range" type="range" id="xRange" min="-10" max="10" step="0.1" value="0">
+    </div>
+    <div class="result-grid">
+      <div class="result-box">
+        <div class="result-label">함수값 f(x)</div>
+        <div class="result-formula" id="resultFormula"></div>
+        <div class="result-value" id="resultValue">0.0000</div>
+      </div>
+      <div class="result-box">
+        <div class="result-label">도함수(기울기) f′(x)</div>
+        <div class="result-formula" id="derivFormula"></div>
+        <div class="result-value deriv" id="derivValue">0.0000</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="graph-wrap">
+      <svg class="graph" id="graphSvg" viewBox="0 0 640 360" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+    <div class="legend hidden" id="legend"></div>
+  </section>
+
+  <section class="card info" id="infoBox"></section>
+
+</main>
+
+<script>
+const DECIMALS = 4; // 결과값 소수점 자릿수 — 학습지 정답과 통일
+
+function fmt(n) { return n.toFixed(DECIMALS); }
+
+const FUNCS = {
+  relu: {
+    name: 'ReLU',
+    color: '#0071e3',
+    formula: 'f(x) = max(0, x)',
+    derivFormula: "f'(x) = 1 (x>0), 0 (x≤0)",
+    rangeLabel: '0 ~ ∞',
+    domain: [-10, 10],
+    fn: x => Math.max(0, x),
+    deriv: x => x > 0 ? 1 : 0,
+    info: 'x가 0보다 크면 그대로, 0 이하이면 0을 출력합니다. 계산이 간단하고 학습이 빨라 가장 널리 쓰이는 활성화 함수이지만, 입력이 계속 음수이면 뉴런이 죽어버리는 "죽은 ReLU" 문제가 생길 수 있습니다.'
+  },
+  sigmoid: {
+    name: 'Sigmoid',
+    color: '#ff9f0a',
+    formula: 'f(x) = 1 / (1 + e⁻ˣ)',
+    derivFormula: "f'(x) = f(x)·(1 − f(x))",
+    rangeLabel: '0 ~ 1',
+    domain: [-10, 10],
+    fn: x => 1 / (1 + Math.exp(-x)),
+    deriv: x => { const s = 1 / (1 + Math.exp(-x)); return s * (1 - s); },
+    info: '출력을 0과 1 사이로 눌러 담아 확률처럼 해석할 수 있습니다. 이진 분류의 출력층에 자주 쓰이지만, 입력값이 아주 크거나 작으면 기울기가 0에 가까워지는 기울기 소실 문제가 있습니다.'
+  },
+  leakyrelu: {
+    name: 'Leaky ReLU',
+    color: '#34c759',
+    formula: 'f(x) = x (x>0), αx (x≤0)',
+    derivFormula: "f'(x) = 1 (x>0), α (x≤0)",
+    rangeLabel: '-∞ ~ ∞',
+    domain: [-10, 10],
+    alpha: 0.1,
+    fn: (x, a) => x > 0 ? x : (a ?? 0.1) * x,
+    deriv: (x, a) => x > 0 ? 1 : (a ?? 0.1),
+    info: 'ReLU와 비슷하지만 음수 구간에서도 작은 기울기(α, 기본값 0.1)를 남겨 두어, 죽은 ReLU 문제를 완화합니다. 계산 비용이 낮으면서도 ReLU의 약점을 보완한 형태입니다.'
+  },
+  tanh: {
+    name: 'Tanh',
+    color: '#af52de',
+    formula: 'f(x) = (eˣ − e⁻ˣ) / (eˣ + e⁻ˣ)',
+    derivFormula: "f'(x) = 1 − f(x)²",
+    rangeLabel: '-1 ~ 1',
+    domain: [-10, 10],
+    fn: x => Math.tanh(x),
+    deriv: x => 1 - Math.tanh(x) ** 2,
+    info: '하이퍼볼릭탄젠트 함수로, 출력을 -1과 1 사이로 눌러 담습니다. Sigmoid와 달리 평균이 0에 가까워 학습에 유리하지만, 마찬가지로 양 끝에서 기울기 소실이 발생할 수 있습니다.'
+  }
+};
+
+let current = 'relu';
+let compareMode = false;
+
+const tabsEl = document.getElementById('fnTabs');
+Object.keys(FUNCS).forEach(key => {
+  const f = FUNCS[key];
+  const btn = document.createElement('button');
+  btn.className = 'fn-tab';
+  btn.dataset.key = key;
+  btn.innerHTML = `<span class="fn-name"><span class="fn-dot" style="background:${f.color}"></span>${f.name}</span>` +
+                   `<span class="fn-formula">${f.formula}</span>` +
+                   `<span class="fn-range">범위 ${f.rangeLabel}</span>`;
+  btn.onclick = () => { current = key; refresh(); };
+  tabsEl.appendChild(btn);
+});
+
+const compareToggle = document.getElementById('compareToggle');
+compareToggle.onclick = () => {
+  compareMode = !compareMode;
+  compareToggle.classList.toggle('on', compareMode);
+  document.getElementById('legend').classList.toggle('hidden', !compareMode);
+  refresh();
+};
+
+const xInput = document.getElementById('xInput');
+const xRange = document.getElementById('xRange');
+const alphaRow = document.getElementById('alphaRow');
+const alphaRange = document.getElementById('alphaRange');
+const alphaVal = document.getElementById('alphaVal');
+const resultValue = document.getElementById('resultValue');
+const resultFormula = document.getElementById('resultFormula');
+const derivValue = document.getElementById('derivValue');
+const derivFormula = document.getElementById('derivFormula');
+const infoBox = document.getElementById('infoBox');
+const legendEl = document.getElementById('legend');
+const svg = document.getElementById('graphSvg');
+
+const W = 640, H = 360, PAD = 40;
+
+function callFn(f, x) { return f.fn(x, f.alpha); }
+function callDeriv(f, x) { return f.deriv(x, f.alpha); }
+
+function computeRange(f) {
+  const [dxMin, dxMax] = f.domain;
+  let lo = Infinity, hi = -Infinity;
+  for (let i = 0; i <= 100; i++) {
+    const vx = dxMin + (dxMax - dxMin) * i / 100;
+    const vy = callFn(f, vx);
+    if (vy < lo) lo = vy;
+    if (vy > hi) hi = vy;
+  }
+  const pad = Math.max((hi - lo) * 0.12, 0.15);
+  return [lo - pad, hi + pad];
+}
+
+xInput.addEventListener('input', () => {
+  const v = parseFloat(xInput.value);
+  if (!isNaN(v)) { xRange.value = Math.min(10, Math.max(-10, v)); refresh(); }
+});
+xRange.addEventListener('input', () => {
+  xInput.value = xRange.value;
+  refresh();
+});
+alphaRange.addEventListener('input', () => {
+  FUNCS.leakyrelu.alpha = parseFloat(alphaRange.value);
+  alphaVal.textContent = FUNCS.leakyrelu.alpha.toFixed(2);
+  refresh();
+});
+
+function setX(v) {
+  v = Math.round(v * 100) / 100;
+  v = Math.min(10, Math.max(-10, v));
+  xInput.value = v;
+  xRange.value = v;
+  refresh();
+}
+
+// 그래프를 직접 드래그/터치해서 x값 조절
+function pointerToX(evt) {
+  const rect = svg.getBoundingClientRect();
+  const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+  const svgX = (clientX - rect.left) / rect.width * W;
+  const [dxMin, dxMax] = FUNCS[current].domain;
+  const frac = (svgX - PAD) / (W - PAD * 2);
+  return dxMin + frac * (dxMax - dxMin);
+}
+let dragging = false;
+const graphWrap = document.querySelector('.graph-wrap');
+graphWrap.addEventListener('pointerdown', e => { dragging = true; setX(pointerToX(e)); graphWrap.setPointerCapture(e.pointerId); });
+graphWrap.addEventListener('pointermove', e => { if (dragging) setX(pointerToX(e)); });
+graphWrap.addEventListener('pointerup', () => dragging = false);
+graphWrap.addEventListener('pointercancel', () => dragging = false);
+
+function buildCurvePath(f, toSvgX, toSvgY, ryMin, ryMax) {
+  const [dxMin, dxMax] = f.domain;
+  const N = 200;
+  let d = '';
+  for (let i = 0; i <= N; i++) {
+    const vx = dxMin + (dxMax - dxMin) * i / N;
+    const vy = callFn(f, vx);
+    const sx = toSvgX(vx), sy = toSvgY(Math.min(ryMax, Math.max(ryMin, vy)));
+    d += (i === 0 ? 'M' : 'L') + sx.toFixed(2) + ' ' + sy.toFixed(2) + ' ';
+  }
+  return d;
+}
+
+function drawGraph(x) {
+  const f = FUNCS[current];
+  const [dxMin, dxMax] = f.domain;
+  const funcsToPlot = compareMode ? Object.keys(FUNCS) : [current];
+
+  // 비교 모드에서는 모든 함수가 겹치도록 공통 y범위 사용
+  let ryMin, ryMax;
+  if (compareMode) {
+    const ranges = Object.keys(FUNCS).map(k => computeRange(FUNCS[k]));
+    ryMin = Math.min(...ranges.map(r => r[0]));
+    ryMax = Math.max(...ranges.map(r => r[1]));
+  } else {
+    [ryMin, ryMax] = computeRange(f);
+  }
+
+  const toSvgX = vx => PAD + (vx - dxMin) / (dxMax - dxMin) * (W - PAD * 2);
+  const toSvgY = vy => H - PAD - (vy - ryMin) / (ryMax - ryMin) * (H - PAD * 2);
+
+  let parts = [];
+
+  for (let gx = Math.ceil(dxMin / 2) * 2; gx <= dxMax; gx += 2) {
+    parts.push(`<line class="grid-line" x1="${toSvgX(gx)}" y1="${PAD}" x2="${toSvgX(gx)}" y2="${H - PAD}"/>`);
+  }
+  const yStep = (ryMax - ryMin) / 6;
+  for (let i = 0; i <= 6; i++) {
+    const gy = ryMin + yStep * i;
+    parts.push(`<line class="grid-line" x1="${PAD}" y1="${toSvgY(gy)}" x2="${W - PAD}" y2="${toSvgY(gy)}"/>`);
+  }
+
+  if (0 >= dxMin && 0 <= dxMax) parts.push(`<line class="axis-line" x1="${toSvgX(0)}" y1="${PAD}" x2="${toSvgX(0)}" y2="${H - PAD}"/>`);
+  if (0 >= ryMin && 0 <= ryMax) parts.push(`<line class="axis-line" x1="${PAD}" y1="${toSvgY(0)}" x2="${W - PAD}" y2="${toSvgY(0)}"/>`);
+
+  parts.push(`<text class="axis-label" x="${toSvgX(dxMin)}" y="${H - PAD + 18}">${dxMin}</text>`);
+  parts.push(`<text class="axis-label" x="${toSvgX(dxMax)}" y="${H - PAD + 18}" text-anchor="end">${dxMax}</text>`);
+  parts.push(`<text class="axis-label" x="${PAD - 8}" y="${toSvgY(ryMin)}" text-anchor="end">${ryMin.toFixed(1)}</text>`);
+  parts.push(`<text class="axis-label" x="${PAD - 8}" y="${toSvgY(ryMax) + 10}" text-anchor="end">${ryMax.toFixed(1)}</text>`);
+
+  funcsToPlot.forEach(key => {
+    const ff = FUNCS[key];
+    const dim = compareMode && key !== current;
+    const d = buildCurvePath(ff, toSvgX, toSvgY, ryMin, ryMax);
+    parts.push(`<path class="fn-curve${dim ? ' dim' : ''}" style="stroke:${ff.color}" d="${d}"/>`);
+  });
+
+  const cx = Math.min(dxMax, Math.max(dxMin, x));
+  const cy = callFn(f, cx);
+  const cySvg = Math.min(ryMax, Math.max(ryMin, cy));
+  const px = toSvgX(cx), py = toSvgY(cySvg);
+
+  parts.push(`<line class="fn-guide" id="guideV" style="stroke:${f.color}" x1="${px}" y1="${py}" x2="${px}" y2="${H - PAD}"/>`);
+  parts.push(`<line class="fn-guide" id="guideH" style="stroke:${f.color}" x1="${PAD}" y1="${py}" x2="${px}" y2="${py}"/>`);
+  parts.push(`<circle class="fn-point" id="pointDot" style="fill:${f.color}" cx="${px}" cy="${py}" r="6"/>`);
+
+  svg.innerHTML = parts.join('');
+
+  if (compareMode) {
+    legendEl.innerHTML = Object.keys(FUNCS).map(key => {
+      const ff = FUNCS[key];
+      return `<span class="legend-item"><span class="legend-dot" style="background:${ff.color}"></span>${ff.name}</span>`;
+    }).join('');
+  }
+}
+
+function refresh() {
+  document.querySelectorAll('.fn-tab').forEach(b => b.classList.toggle('active', b.dataset.key === current));
+
+  const f = FUNCS[current];
+  alphaRow.classList.toggle('hidden', current !== 'leakyrelu');
+  if (current === 'leakyrelu') {
+    alphaRange.value = f.alpha;
+    alphaVal.textContent = f.alpha.toFixed(2);
+  }
+
+  const x = parseFloat(xInput.value) || 0;
+  const y = callFn(f, x);
+  const dy = callDeriv(f, x);
+
+  resultFormula.textContent = f.formula;
+  resultValue.textContent = 'f(' + x + ') = ' + fmt(y);
+  derivFormula.textContent = f.derivFormula;
+  derivValue.textContent = fmt(dy);
+  infoBox.innerHTML = `<b>${f.name}</b> (출력 범위 ${f.rangeLabel}) — ${f.info}`;
+
+  drawGraph(x);
+}
+
+refresh();
+
+window.toggleDark = () => {
+  document.body.classList.toggle('dark');
+  localStorage.setItem('dark', document.body.classList.contains('dark') ? '1' : '0');
+};
+if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
+</script>
+
+</body>
+</html>
