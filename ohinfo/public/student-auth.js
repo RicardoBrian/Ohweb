@@ -76,7 +76,22 @@ export async function loginStudent(studentDocId, data, pw) {
     throw new AuthError('wrong-password');
   }
 
-  await createUserWithEmailAndPassword(auth, emailFor(studentDocId), padPassword(pw));
+  try {
+    await createUserWithEmailAndPassword(auth, emailFor(studentDocId), padPassword(pw));
+  } catch (e) {
+    // Auth 계정이 이미 있는데(예: 관리자가 어드민에서 비밀번호를 재설정함)
+    // Firestore의 레거시 password 필드가 미처 안 지워진 경우 여기로 온다.
+    // 위 signIn이 실패했다는 건 지금 Auth 비밀번호가 이 pw가 아니라는
+    // 뜻이므로 그냥 wrong-password로 처리한다. (password 필드 자체를 여기서
+    // 지우고 싶어도 아직 미인증 상태라 Firestore 규칙상 못 지운다 —
+    // students/{id}의 미인증 쓰기는 failedAttempts/locked/lockedAt만 허용됨.
+    // 어차피 이 낡은 필드는 이후 로그인엔 영향 없으므로 그냥 둔다.)
+    if (e.code === 'auth/email-already-in-use') {
+      await recordFailedLogin(studentDocId, data.failedAttempts);
+      throw new AuthError('wrong-password');
+    }
+    throw e;
+  }
   await updateDoc(doc(db, 'students', studentDocId), { password: deleteField(), failedAttempts: 0 });
 }
 
