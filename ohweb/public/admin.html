@@ -1021,7 +1021,7 @@
 </script>
 
 <script type="module">
-  import { db } from './firebase-config.js';
+  import { db, auth } from './firebase-config.js';
   import {
     collection, addDoc, getDocs, deleteDoc, doc,
     query, where, orderBy, setDoc, getDoc, serverTimestamp, writeBatch, updateDoc, deleteField
@@ -1402,14 +1402,27 @@
     if (!name) { toast('이름을 입력하세요.', 'error'); return; }
     showLoading(true);
     try {
+      const existing = allStudents.find(x => x.id === id);
+      // 비밀번호를 입력했으면 Firestore 필드가 아니라 실제 Firebase Auth
+      // 계정 비밀번호를 바꾼다 — 이전엔 Firestore 필드만 바꿔서 학생이
+      // 로그인할 때 안 먹혔다(심지어 auth/email-already-in-use로 깨짐).
+      if (pw) {
+        const idToken = await auth.currentUser.getIdToken();
+        const res = await fetch('/api/reset-student-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ studentDocId: id, newPassword: pw, idToken }),
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) throw new Error(data.error || '비밀번호 설정 실패');
+      }
       await updateDoc(doc(db, 'students', id), {
         name,
-        password: pw || null,
-        registered: !!pw,
+        password: deleteField(),
+        registered: pw ? true : !!existing?.registered,
         isMaster: isMaster || false
       });
-      const s = allStudents.find(x => x.id === id);
-      if (s) { s.name = name; s.password = pw || null; s.registered = !!pw; s.isMaster = isMaster || false; }
+      if (existing) { existing.name = name; existing.password = null; existing.registered = pw ? true : !!existing.registered; existing.isMaster = isMaster || false; }
       closeStudentEdit();
       toast('저장되었습니다.', 'success');
       renderStudents();
