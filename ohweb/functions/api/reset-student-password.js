@@ -172,25 +172,44 @@ async function handle(request, env) {
     return json({ error: e.message }, 403);
   }
 
-  // 키 확인은 관리자 인증 뒤에 한다 — 그래야 "이름을 잘못 적었는지"를
-  // 관리자에게만 보여주고 진단할 수 있다. 값은 절대 내보내지 않고, 이
-  // 배포에 들어와 있는 환경변수 "이름"만 알려준다.
-  const saJson = env.FIREBASE_SERVICE_ACCOUNT_KEY;
-  if (!saJson) {
-    const names = Object.keys(env || {}).filter(k => typeof env[k] === 'string').sort();
+  // 키 확인은 관리자 인증 뒤에 한다 — 그래야 설정이 뭐가 틀렸는지를
+  // 관리자에게만 보여주고 진단할 수 있다. 값 자체는 절대 내보내지 않는다.
+  //
+  // "변수가 없다"와 "변수는 있는데 값이 비었다"를 반드시 구분해야 한다.
+  // Cloudflare의 Secret은 저장하고 나면 값이 가려지는데, 이름을 고치려고
+  // 편집하면 값 칸이 빈 채로 다시 저장되기 쉽다. 그러면 변수는 목록에
+  // 보이는데 함수에서는 빈 문자열로 들어온다 — 예전 진단은 이 둘을 똑같이
+  // "없음"으로 보고해서 한참을 엉뚱한 데서 헤맸다.
+  const saRaw = env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  const declared = Object.prototype.hasOwnProperty.call(env || {}, 'FIREBASE_SERVICE_ACCOUNT_KEY');
+  if (!saRaw || !String(saRaw).trim()) {
+    const names = Object.keys(env || {}).sort();
     return json({
-      error: 'FIREBASE_SERVICE_ACCOUNT_KEY가 이 배포에 없습니다.',
-      detail: names.length
-        ? `현재 이 배포에 들어와 있는 환경변수: ${names.join(', ')} — 이름이 정확히 FIREBASE_SERVICE_ACCOUNT_KEY인지, Production 환경에 넣었는지, 넣은 뒤 재배포했는지 확인해 주세요.`
-        : '이 배포에는 환경변수가 하나도 없습니다. Cloudflare Pages의 ohweb 프로젝트 → Settings → Environment variables에서 Production으로 추가한 뒤 재배포해야 합니다.',
+      error: declared
+        ? 'FIREBASE_SERVICE_ACCOUNT_KEY는 등록돼 있는데 값이 비어 있습니다.'
+        : 'FIREBASE_SERVICE_ACCOUNT_KEY가 이 배포에 없습니다.',
+      detail: declared
+        ? 'Cloudflare에서 Secret은 저장 후 값이 가려지기 때문에, 편집하면 값이 빈 채로 저장되기 쉽습니다. 변수를 지우고 새로 추가하면서 서비스 계정 JSON 전체를 다시 붙여넣은 뒤 재배포해 주세요.'
+        : `현재 이 배포의 환경변수: ${names.join(', ') || '(없음)'} — Production 환경에 추가했는지, 추가한 뒤 재배포했는지 확인해 주세요.`,
     }, 500);
   }
 
   let serviceAccount;
   try {
-    serviceAccount = JSON.parse(saJson);
+    serviceAccount = JSON.parse(saRaw);
   } catch {
-    return json({ error: 'FIREBASE_SERVICE_ACCOUNT_KEY가 올바른 JSON이 아닙니다.' }, 500);
+    return json({
+      error: 'FIREBASE_SERVICE_ACCOUNT_KEY가 올바른 JSON이 아닙니다.',
+      detail: `값의 길이는 ${String(saRaw).length}자입니다. 붙여넣다가 잘렸을 수 있습니다 — { 로 시작해 } 로 끝나는 JSON 전체여야 합니다.`,
+    }, 500);
+  }
+  // 잘린 JSON은 파싱은 되면서 정작 필요한 필드가 없을 수 있다.
+  const missingFields = ['private_key', 'client_email', 'project_id'].filter(k => !serviceAccount[k]);
+  if (missingFields.length) {
+    return json({
+      error: '서비스 계정 키에 필요한 항목이 없습니다.',
+      detail: `없는 항목: ${missingFields.join(', ')} — Firebase 콘솔에서 받은 JSON 파일 전체를 그대로 넣었는지 확인해 주세요.`,
+    }, 500);
   }
 
   const email = `${studentDocId}${EMAIL_SUFFIX}`;
