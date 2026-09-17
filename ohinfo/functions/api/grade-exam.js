@@ -275,12 +275,17 @@ async function handle(request, env) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
   if (request.method !== 'POST') return json({ error: 'Method Not Allowed' }, 405);
 
+  // 학생에게 내부 설정 얘기를 해도 소용없으니 화면엔 행동 안내만 띄우고,
+  // 원인은 Cloudflare 로그에 남긴다. "변수가 없다"와 "변수는 있는데 값이
+  // 비었다"는 반드시 구분한다 — Cloudflare의 Secret은 저장 후 값이 가려져서
+  // 편집하면 값이 빈 채로 저장되기 쉽고, 그러면 변수 목록에는 멀쩡히
+  // 보이면서 함수에서는 빈 문자열로 들어온다.
   const saJson = env.FIREBASE_SERVICE_ACCOUNT_KEY;
-  if (!saJson) {
-    // 학생에게 내부 설정 얘기를 해도 소용없으니, 화면엔 행동 안내만 띄우고
-    // 원인은 Cloudflare 로그에 남긴다.
-    console.error('grade-exam: FIREBASE_SERVICE_ACCOUNT_KEY가 ohinfo 배포에 없습니다.',
-      '현재 환경변수:', Object.keys(env || {}).join(', ') || '(없음)');
+  if (!saJson || !String(saJson).trim()) {
+    const declared = Object.prototype.hasOwnProperty.call(env || {}, 'FIREBASE_SERVICE_ACCOUNT_KEY');
+    console.error('grade-exam:', declared
+      ? 'FIREBASE_SERVICE_ACCOUNT_KEY는 ohinfo 배포에 등록돼 있는데 값이 비어 있습니다. 변수를 지우고 새로 추가하면서 서비스 계정 JSON 전체를 다시 붙여넣은 뒤 재배포해 주세요.'
+      : `FIREBASE_SERVICE_ACCOUNT_KEY가 ohinfo 배포에 없습니다. 현재 환경변수: ${Object.keys(env || {}).join(', ') || '(없음)'}`);
     return json({ error: '채점 기능이 아직 준비되지 않았습니다. 선생님께 문의해 주세요.' }, 500);
   }
 
@@ -301,7 +306,16 @@ async function handle(request, env) {
 
   let sa;
   try { sa = JSON.parse(saJson); }
-  catch { return json({ error: 'FIREBASE_SERVICE_ACCOUNT_KEY가 올바른 JSON이 아닙니다.' }, 500); }
+  catch {
+    console.error('grade-exam: FIREBASE_SERVICE_ACCOUNT_KEY가 올바른 JSON이 아닙니다.',
+      `값의 길이 ${String(saJson).length}자 — 붙여넣다가 잘렸을 수 있습니다.`);
+    return json({ error: '채점 기능이 아직 준비되지 않았습니다. 선생님께 문의해 주세요.' }, 500);
+  }
+  const missingKeyFields = ['private_key', 'client_email', 'project_id'].filter(k => !sa[k]);
+  if (missingKeyFields.length) {
+    console.error('grade-exam: 서비스 계정 키에 필요한 항목이 없습니다 —', missingKeyFields.join(', '));
+    return json({ error: '채점 기능이 아직 준비되지 않았습니다. 선생님께 문의해 주세요.' }, 500);
+  }
 
   try {
     const db = makeDb(sa.project_id, await getAccessToken(sa));

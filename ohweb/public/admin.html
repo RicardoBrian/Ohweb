@@ -318,8 +318,11 @@
     .toast {
       position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(80px);
       background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
-      border: 1px solid var(--border); border-radius: 50px;
+      border: 1px solid var(--border); border-radius: 20px;
       padding: 12px 24px; font-size: 0.88rem; font-weight: 700;
+      /* 설정 오류 안내처럼 두 줄 이상인 메시지도 읽히게 — 한 줄짜리는
+         그대로 알약 모양으로 보인다. */
+      white-space: pre-line; max-width: min(92vw, 560px); line-height: 1.5; text-align: center;
       box-shadow: var(--highlight), var(--shadow-md);
       z-index: 9999; transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
       white-space: nowrap;
@@ -1086,13 +1089,14 @@
     return out;
   }
 
-  function toast(msg, type = '') {
+  // ms: 읽는 데 오래 걸리는 안내(설정이 뭐가 틀렸는지 같은 것)는 길게 띄운다.
+  function toast(msg, type = '', ms = 2800) {
     const el = document.getElementById('toast');
     el.className = `toast ${type}`;
     el.innerText = msg;
     el.classList.add('show');
     clearTimeout(el._t);
-    el._t = setTimeout(() => el.classList.remove('show'), 2800);
+    el._t = setTimeout(() => el.classList.remove('show'), ms);
   }
 
   function confirmDialog(title, msg, cb) {
@@ -1422,9 +1426,12 @@
         });
         const data = await res.json();
         if (!res.ok || data.error) {
-          // 원인 진단용 상세는 콘솔로 — 토스트에 넣기엔 길다.
+          // 설정이 틀렸을 때의 상세는 화면에도 띄운다 — 매번 개발자 도구를
+          // 열어 콘솔을 봐야 원인을 알 수 있으면 안내가 아니다.
           if (data.detail) console.error('reset-student-password:', data.detail);
-          throw new Error(data.error || '비밀번호 설정 실패');
+          const e = new Error(data.error || '비밀번호 설정 실패');
+          e.detail = data.detail;
+          throw e;
         }
       }
       await updateDoc(doc(db, 'students', id), {
@@ -1437,7 +1444,9 @@
       closeStudentEdit();
       toast('저장되었습니다.', 'success');
       renderStudents();
-    } catch (e) { toast('오류: ' + e.message, 'error'); }
+    } catch (e) {
+      toast(e.detail ? `${e.message}\n${e.detail}` : '오류: ' + e.message, 'error', e.detail ? 9000 : 2800);
+    }
     showLoading(false);
   };
 
