@@ -13,10 +13,15 @@
  * — 예전엔 exam_results가 완전 개방이라 학생이 자기 점수를 임의로
  * 써넣을 수 있었다.
  *
- * 필요한 Cloudflare 환경변수(Secret, Production/Preview 둘 다):
- *   FIREBASE_SERVICE_ACCOUNT_KEY — 서비스 계정 JSON 전체.
- *   ※ ohweb 프로젝트와 별개다. 이 파일은 ohinfo 프로젝트에 배포되므로
- *     ohinfo 쪽에도 같은 이름으로 따로 등록해야 한다.
+ * 필요한 Cloudflare 환경변수 — Pages 프로젝트 `ohinfo`:
+ *   FIREBASE_SERVICE_ACCOUNT_KEY (Secret) = 서비스 계정 JSON 전체.
+ *   ※ ohweb에 넣은 것과 값은 같아도 되지만, Pages 프로젝트가 다르므로
+ *     ohinfo에도 따로 등록해야 한다. 한쪽만 넣으면 그쪽 기능만 된다.
+ *
+ *   걸리기 쉬운 것: 이름 오타, Production/Preview 구분, 그리고 값을 넣은
+ *   뒤 재배포해야 적용된다는 점(환경변수는 배포 시점에 묶인다).
+ *   키가 없으면 여기서는 학생 화면에 안내만 띄우고 원인은 Cloudflare
+ *   로그에 남긴다 — 학생에게 내부 설정을 알려도 소용없다.
  *
  * ohweb/functions/api/reset-student-password.js와 JWT 서명·토큰 발급
  * 코드가 겹치는데, 둘은 서로 다른 Pages 프로젝트라 모듈을 공유할 수 없어

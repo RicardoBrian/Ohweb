@@ -77,6 +77,35 @@ curl -X POST https://admin.kakainfo.com/api/translate \
 `public/` 안이 아니라 바깥(현재 위치)에 둔 게 맞는지, Pages 빌드 로그에
 `Compiled Worker` 줄이 있는지부터 본다.
 
+## 4-1. 환경변수(Secret) — 프로젝트별로 따로 넣어야 한다
+
+| 프로젝트 | 변수명 | 값 | 쓰는 곳 |
+|---|---|---|---|
+| `ohweb` | `GOOGLE_TRANSLATE_KEY` | Google Cloud Translation API 키 | `/api/translate` |
+| `ohweb` | `FIREBASE_SERVICE_ACCOUNT_KEY` | 서비스 계정 JSON 전체 | `/api/reset-student-password` (학생 비밀번호 재설정) |
+| `ohinfo` | `GOOGLE_TRANSLATE_KEY` | 위와 같은 값 | `/api/translate` |
+| `ohinfo` | `FIREBASE_SERVICE_ACCOUNT_KEY` | 위와 같은 값 | `/api/grade-exam` (시험 채점) |
+
+**서비스 계정 키는 두 프로젝트에 같은 값을 넣으면 된다.** Pages 프로젝트가
+다르면 환경변수도 따로 관리되므로, 한쪽만 넣으면 그쪽 기능만 동작한다.
+
+키 발급: Firebase 콘솔 → 프로젝트 설정(⚙) → 서비스 계정 → "새 비공개 키 생성".
+키 **삭제**는 Firebase 콘솔에 없다 — Google Cloud 콘솔 → IAM 및 관리자 →
+서비스 계정 → 해당 계정 → 키 탭에서 지운다.
+
+### 매번 걸리는 것 세 가지
+
+1. **이름 오타.** 한 글자만 달라도 함수에서는 그냥 "없음"으로 보인다.
+2. **Production / Preview는 별개다.** 커스텀 도메인(admin.kakainfo.com 등)은
+   Production이다. Preview에만 넣으면 실제 사이트에서는 안 붙는다.
+3. **넣은 뒤 재배포해야 적용된다.** 환경변수는 배포 시점에 묶여서, 이미 떠
+   있는 배포에는 소급되지 않는다. Deployments 탭 → 맨 위 배포 →
+   Retry deployment, 또는 새 커밋 푸시.
+
+`/api/reset-student-password`는 키가 없을 때 관리자에게 현재 배포에 들어와
+있는 환경변수 **이름 목록**을 돌려준다(값은 안 준다). 위 셋 중 뭐가 틀렸는지
+브라우저 콘솔에서 바로 확인할 수 있다.
+
 ## 5. 이전 순서
 
 라이브 서비스를 깨지 않으려면 도메인 전환을 마지막에 한다.

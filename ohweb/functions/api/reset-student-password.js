@@ -15,12 +15,22 @@
  * Web Crypto(RS256 서명)만으로 구현했다 — 이렇게 하면 nodejs_compat 플래그
  * 없이도 그대로 동작한다.
  *
- * 필요한 Cloudflare 환경변수(Secret, Production/Preview 둘 다):
- *   FIREBASE_SERVICE_ACCOUNT_KEY — Firebase 콘솔 → 프로젝트 설정 →
- *     서비스 계정 → "새 비공개 키 생성"으로 받은 JSON 파일의 전체 내용을
- *     그대로 문자열 값으로 붙여넣는다. 이 키는 학생 Auth 계정을 마음대로
- *     만들고 비밀번호를 바꿀 수 있는 강력한 권한이므로 절대 이 레포에는
- *     커밋하지 않는다.
+ * 필요한 Cloudflare 환경변수 — Pages 프로젝트 `ohweb`:
+ *   FIREBASE_SERVICE_ACCOUNT_KEY (Secret) = 서비스 계정 JSON 전체.
+ *     Firebase 콘솔 → 프로젝트 설정 → 서비스 계정 → "새 비공개 키 생성".
+ *     이 키는 학생 Auth 계정을 마음대로 만들고 비밀번호를 바꿀 수 있으므로
+ *     절대 이 레포에 커밋하지 않는다.
+ *
+ *   걸리기 쉬운 것 세 가지:
+ *   1) 이름이 한 글자라도 다르면 안 붙는다(대소문자·앞뒤 공백 포함).
+ *   2) Production과 Preview가 따로다. admin.kakainfo.com은 Production이다.
+ *   3) 값을 넣은 뒤 반드시 재배포해야 적용된다 — 환경변수는 배포 시점에
+ *      묶이므로 이미 떠 있는 배포에는 소급되지 않는다. Deployments 탭에서
+ *      Retry deployment를 누르거나 새 커밋을 푸시한다.
+ *
+ *   키가 없으면 이 엔드포인트는 관리자에게 현재 배포에 들어와 있는
+ *   환경변수 "이름" 목록을 돌려준다(값은 안 준다) — 위 셋 중 뭐가
+ *   틀렸는지 바로 보라고 넣어둔 진단이다.
  *
  * 호출부는 admin.html의 saveStudentEdit()에서 붙인다.
  */
