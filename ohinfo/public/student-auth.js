@@ -64,12 +64,28 @@ export async function loginStudent(studentDocId, data, pw) {
 
   try {
     await signInWithEmailAndPassword(auth, emailFor(studentDocId), padPassword(pw));
-    if (data.failedAttempts) await updateDoc(doc(db, 'students', studentDocId), { failedAttempts: 0 });
-    return;
   } catch (e) {
     // 계정이 아직 없거나(미전환) 비밀번호가 틀렸을 수 있음 — 아래에서 판별
+    return await loginFallback(studentDocId, data, pw);
   }
 
+  // 여기 왔으면 비밀번호는 맞은 것이다. 실패 카운터 리셋은 부가 작업일 뿐이라
+  // 실패해도 로그인을 막으면 안 된다 — 예전엔 이 updateDoc이 같은 try 안에
+  // 있어서, 규칙에 막혀 throw되면 아래 "비밀번호 틀림" 경로로 떨어졌다.
+  // 그래서 한 번이라도 비밀번호를 틀린 학생은(failedAttempts > 0) 그 뒤로
+  // 올바른 비밀번호를 넣어도 영영 로그인이 안 됐다.
+  if (data.failedAttempts) {
+    try {
+      await updateDoc(doc(db, 'students', studentDocId), { failedAttempts: 0 });
+    } catch (e) {
+      console.error('failedAttempts 리셋 실패(로그인은 정상):', e);
+    }
+  }
+}
+
+// Auth 로그인이 실패했을 때의 경로 — 아직 Auth로 전환되지 않은 옛 계정이면
+// Firestore의 평문 password로 한 번만 검증하고 그 자리에서 전환한다.
+async function loginFallback(studentDocId, data, pw) {
   // 이미 전환된 계정인데 위에서 실패했다면 password 필드가 없으니 여기서 걸러진다.
   if (data.password === undefined || data.password !== pw) {
     await recordFailedLogin(studentDocId, data.failedAttempts);

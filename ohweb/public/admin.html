@@ -858,7 +858,10 @@
       <div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
           <h2 style="margin:0;"><span class="icon"><svg width="18" height="18"><use href="#ic-doc"/></svg></span> 문제 목록</h2>
-          <button class="icon-action" title="번역 보완" onclick="fixMissingTranslations()"><svg width="17" height="17"><use href="#ic-globe"/></svg></button>
+          <div style="display:flex;gap:6px;">
+            <button class="btn ghost sm" title="예전 문항의 정답을 학생이 못 읽는 곳(exam_answers)으로 옮깁니다" onclick="migrateAnswers()">정답 분리</button>
+            <button class="icon-action" title="번역 보완" onclick="fixMissingTranslations()"><svg width="17" height="17"><use href="#ic-globe"/></svg></button>
+          </div>
         </div>
         <div style="margin-bottom:12px;">
           <select class="inp" id="qlist_examId" style="width:100%;" onchange="loadQList()">
@@ -1983,6 +1986,52 @@
   let _testCases = [];
   let _qCache = {};
 
+  // ── 정답 분리 ──
+  // 정답(answer)과 테스트케이스(testCases)는 exam_questions가 아니라
+  // exam_answers/{문항ID}에 따로 둔다. exam_questions는 학생도 읽어야 해서
+  // 공개인데, 거기에 정답이 같이 들어있으면 학생이 브라우저 콘솔에서
+  // Firestore를 직접 읽어 시험 전에 정답을 전부 볼 수 있었다. 채점은
+  // ohinfo의 /api/grade-exam이 서비스 계정으로 정답을 읽어서 한다.
+  // 관리자는 규칙상 exam_answers를 읽을 수 있으므로, 편집 화면에서는
+  // attachAnswers()로 다시 합쳐서 예전과 똑같이 보여준다.
+  const ANSWER_KEYS = ['answer', 'testCases'];
+
+  async function saveQuestionDoc(docId, data, extraOnCreate) {
+    const qFields = { ...data };
+    const key = {};
+    ANSWER_KEYS.forEach(k => { if (k in qFields) { key[k] = qFields[k]; delete qFields[k]; } });
+
+    let id = docId;
+    if (id) {
+      // 예전 문항에 남아있는 평문 정답 필드도 이 참에 지운다.
+      const strip = {};
+      ANSWER_KEYS.forEach(k => { strip[k] = deleteField(); });
+      await updateDoc(doc(db, 'exam_questions', id), { ...qFields, ...strip });
+    } else {
+      id = (await addDoc(collection(db, 'exam_questions'), { ...qFields, ...(extraOnCreate || {}) })).id;
+    }
+    // merge를 쓰지 않는다 — 문항 유형을 바꿨을 때(예: 코딩→객관식) 이전
+    // 유형의 testCases가 남아 채점에 끼어드는 걸 막으려면 매번 통째로 덮어써야 한다.
+    await setDoc(doc(db, 'exam_answers', id), {
+      examId: data.examId || '',
+      answer: key.answer ?? '',
+      testCases: key.testCases ?? [],
+    });
+    return id;
+  }
+
+  async function deleteQuestionDoc(id) {
+    await deleteDoc(doc(db, 'exam_questions', id));
+    try { await deleteDoc(doc(db, 'exam_answers', id)); } catch (e) { /* 정답 문서가 없을 수도 있다 */ }
+  }
+
+  async function attachAnswers(questions) {
+    const keys = await Promise.all(questions.map(async q => {
+      try { return await getDoc(doc(db, 'exam_answers', q.id)); } catch (e) { return null; }
+    }));
+    return questions.map((q, i) => (keys[i] && keys[i].exists()) ? { ...q, ...keys[i].data() } : q);
+  }
+
   const renderTestCases = (tcs) => {
     _testCases = tcs || [];
     const el = document.getElementById('q_tcList');
@@ -2034,7 +2083,8 @@
       // composite index 없을 때 fallback
       snap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId)));
     }
-    const qs = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.order||0)-(b.order||0));
+    const qsRaw = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.order||0)-(b.order||0));
+    const qs = await attachAnswers(qsRaw);
     _qCache = {};
     qs.forEach(q => { _qCache[q.id] = q; });
     if (!qs.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-help"/></svg></div>문제가 없습니다.</div>'; return; }
@@ -2120,8 +2170,7 @@
     }
     showLoading(true);
     try {
-      if (docId) await updateDoc(doc(db,'exam_questions',docId), data);
-      else await addDoc(collection(db,'exam_questions'), { ...data, createdAt: serverTimestamp() });
+      await saveQuestionDoc(docId, data, { createdAt: serverTimestamp() });
       toast('저장되었습니다.', 'success');
       const savedExamId = examId;
       resetQForm();
@@ -2171,7 +2220,7 @@
   window.deleteQuestion = (id) => {
     confirmDialog('문제 삭제', '이 문제를 삭제하시겠습니까?', async () => {
       showLoading(true);
-      await deleteDoc(doc(db,'exam_questions',id));
+      await deleteQuestionDoc(id);
       await loadQList();
       showLoading(false);
     });
@@ -2416,7 +2465,10 @@
       let qSnap;
       try { qSnap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId), orderBy('order','asc'))); }
       catch(e) { qSnap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId))); }
-      const questions = qSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.order||0)-(b.order||0));
+      // 채점/검토 화면은 정답을 보여줘야 하므로 exam_answers를 다시 합친다.
+      const questions = await attachAnswers(
+        qSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.order||0)-(b.order||0))
+      );
       const typeLabel = { mc:'객관식', sa:'주관식', essay:'서술형', code:'코딩' };
 
       const pages = [];
@@ -2575,6 +2627,44 @@
       await loadResults();
     } catch(e) { toast('저장 오류: '+e.message, 'error'); }
     showLoading(false);
+  };
+
+  // ── 정답 분리 마이그레이션 ──
+  // 예전 문항은 정답이 exam_questions 안에 들어있다(= 학생이 읽을 수 있다).
+  // 전체 시험의 문항을 훑어서 정답을 exam_answers로 옮기고 원본 필드를 지운다.
+  // 반드시 "복사 먼저, 삭제 나중" 순서다 — 중간에 실패해도 정답이 사라지지 않는다.
+  window.migrateAnswers = () => {
+    confirmDialog('정답 분리', '모든 시험의 문항에서 정답을 학생이 읽을 수 없는 곳으로 옮깁니다.\n시험 채점에 필요한 작업이며, 여러 번 실행해도 안전합니다.', async () => {
+      showLoading(true);
+      try {
+        const snap = await getDocs(collection(db, 'exam_questions'));
+        const targets = snap.docs.filter(d => {
+          const q = d.data();
+          return q.answer !== undefined || q.testCases !== undefined;
+        });
+        if (!targets.length) { toast('이미 모두 분리되어 있습니다.', 'success'); showLoading(false); return; }
+
+        let done = 0, failed = 0;
+        for (const d of targets) {
+          const q = d.data();
+          try {
+            await setDoc(doc(db, 'exam_answers', d.id), {
+              examId: q.examId || '',
+              answer: q.answer ?? '',
+              testCases: q.testCases ?? [],
+            });
+            await updateDoc(doc(db, 'exam_questions', d.id), {
+              answer: deleteField(), testCases: deleteField(),
+            });
+            done++;
+          } catch (e) { failed++; console.error('migrateAnswers', d.id, e); }
+        }
+        toast(failed ? `${done}개 완료, ${failed}개 실패` : `${done}개 문항의 정답을 분리했습니다.`, failed ? 'error' : 'success');
+        const sel = document.getElementById('qlist_examId')?.value;
+        if (sel) await loadQList(sel);
+      } catch (e) { toast('오류: ' + e.message, 'error'); }
+      showLoading(false);
+    });
   };
 
   // ── 누락 번역 보완 ──
@@ -2745,7 +2835,7 @@
     for (const exDoc of exSnap.docs) {
       const examId = exDoc.id;
       const qSnap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId)));
-      for (const qd of qSnap.docs) await deleteDoc(qd.ref);
+      for (const qd of qSnap.docs) await deleteQuestionDoc(qd.id);
       const asSnap = await getDocs(query(collection(db,'exam_assignments'), where('examId','==',examId)));
       for (const asDoc of asSnap.docs) {
         const asId = asDoc.id;
@@ -2794,8 +2884,8 @@
       } else {
         data.answer = q.answer;
       }
-      const qRef = await addDoc(collection(db,'exam_questions'), data);
-      newQuestions.push({ id: qRef.id, ...data });
+      const qId = await saveQuestionDoc(null, data);
+      newQuestions.push({ id: qId, ...data });
     }
 
     // 결과를 담을 레거시 전용 배정(assignment) 하나 생성
