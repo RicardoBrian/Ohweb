@@ -1421,7 +1421,11 @@
           body: JSON.stringify({ studentDocId: id, newPassword: pw, idToken }),
         });
         const data = await res.json();
-        if (!res.ok || data.error) throw new Error(data.error || '비밀번호 설정 실패');
+        if (!res.ok || data.error) {
+          // 원인 진단용 상세는 콘솔로 — 토스트에 넣기엔 길다.
+          if (data.detail) console.error('reset-student-password:', data.detail);
+          throw new Error(data.error || '비밀번호 설정 실패');
+        }
       }
       await updateDoc(doc(db, 'students', id), {
         name,
