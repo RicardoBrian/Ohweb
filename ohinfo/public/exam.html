@@ -1294,7 +1294,9 @@ window.submitExam = async (isAuto = false) => {
     // 서술형(선생님이 나중에 직접 채점)이 하나라도 있으면, 아직 최종 점수가
     // 아닌 걸 학생이 "틀렸다"고 오해하지 않도록 점수/정오답 화면 자체를
     // 안 보여주고 제출 확인 화면만 띄운다.
-    if (questions.some(q => q.type === 'essay')) showPendingResult();
+    // 서술형·단답형은 선생님이 직접 채점하므로, 하나라도 있으면 아직 최종
+    // 점수가 아니다 — 학생이 "틀렸다"고 오해하지 않게 점수 화면을 안 띄운다.
+    if (questions.some(q => q.type === 'essay' || q.type === 'sa')) showPendingResult();
     else showResult(totalScore, totalPoints, resultItems);
   } catch(e) {
     showLoading(false);
