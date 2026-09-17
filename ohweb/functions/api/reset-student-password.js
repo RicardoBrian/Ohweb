@@ -260,6 +260,6 @@ export async function onRequest({ request, env }) {
     // 스택을 응답에 실어 보내면 내부 구조가 노출되고, 200으로 내보내면
     // 호출부가 실패를 성공으로 오해한다. 상세는 Cloudflare 로그에만 남긴다.
     console.error('reset-student-password uncaught:', e);
-    return json({ error: '비밀번호 재설정 중 서버 오류가 발생했습니다.' }, 500);
+    return withCors(json({ error: '비밀번호 재설정 중 서버 오류가 발생했습니다.' }, 500), request);
   }
 }

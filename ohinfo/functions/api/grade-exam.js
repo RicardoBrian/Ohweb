@@ -430,6 +430,6 @@ export async function onRequest({ request, env }) {
     return withCors(await handle(request, env), request);
   } catch (e) {
     console.error('grade-exam uncaught:', e);
-    return json({ error: '채점 서버 오류가 발생했습니다.' }, 500);
+    return withCors(json({ error: '채점 서버 오류가 발생했습니다.' }, 500), request);
   }
 }

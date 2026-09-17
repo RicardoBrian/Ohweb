@@ -127,6 +127,6 @@ export async function onRequest({ request, env }) {
     // 스택을 응답에 실어 보내면 내부 구조가 노출되고, 200으로 내보내면
     // 호출부가 실패를 성공으로 오해한다. 상세는 Cloudflare 로그에만 남긴다.
     console.error('translate uncaught:', e);
-    return json({ error: '번역 서버에 문제가 발생했습니다.' }, 500);
+    return withCors(json({ error: '번역 서버에 문제가 발생했습니다.' }, 500), request);
   }
 }
