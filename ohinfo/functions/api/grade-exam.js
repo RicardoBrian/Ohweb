@@ -271,7 +271,13 @@ async function handle(request, env) {
   if (request.method !== 'POST') return json({ error: 'Method Not Allowed' }, 405);
 
   const saJson = env.FIREBASE_SERVICE_ACCOUNT_KEY;
-  if (!saJson) return json({ error: 'FIREBASE_SERVICE_ACCOUNT_KEY not configured' }, 500);
+  if (!saJson) {
+    // 학생에게 내부 설정 얘기를 해도 소용없으니, 화면엔 행동 안내만 띄우고
+    // 원인은 Cloudflare 로그에 남긴다.
+    console.error('grade-exam: FIREBASE_SERVICE_ACCOUNT_KEY가 ohinfo 배포에 없습니다.',
+      '현재 환경변수:', Object.keys(env || {}).join(', ') || '(없음)');
+    return json({ error: '채점 기능이 아직 준비되지 않았습니다. 선생님께 문의해 주세요.' }, 500);
+  }
 
   let body;
   try { body = await request.json(); }

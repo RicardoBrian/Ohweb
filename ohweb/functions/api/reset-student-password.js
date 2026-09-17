@@ -142,9 +142,6 @@ async function handle(request, env) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
   if (request.method !== 'POST') return json({ error: 'Method Not Allowed' }, 405);
 
-  const saJson = env.FIREBASE_SERVICE_ACCOUNT_KEY;
-  if (!saJson) return json({ error: 'FIREBASE_SERVICE_ACCOUNT_KEY not configured' }, 500);
-
   let body;
   try {
     body = await request.json();
@@ -163,6 +160,20 @@ async function handle(request, env) {
     await verifyAdminIdToken(idToken);
   } catch (e) {
     return json({ error: e.message }, 403);
+  }
+
+  // 키 확인은 관리자 인증 뒤에 한다 — 그래야 "이름을 잘못 적었는지"를
+  // 관리자에게만 보여주고 진단할 수 있다. 값은 절대 내보내지 않고, 이
+  // 배포에 들어와 있는 환경변수 "이름"만 알려준다.
+  const saJson = env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  if (!saJson) {
+    const names = Object.keys(env || {}).filter(k => typeof env[k] === 'string').sort();
+    return json({
+      error: 'FIREBASE_SERVICE_ACCOUNT_KEY가 이 배포에 없습니다.',
+      detail: names.length
+        ? `현재 이 배포에 들어와 있는 환경변수: ${names.join(', ')} — 이름이 정확히 FIREBASE_SERVICE_ACCOUNT_KEY인지, Production 환경에 넣었는지, 넣은 뒤 재배포했는지 확인해 주세요.`
+        : '이 배포에는 환경변수가 하나도 없습니다. Cloudflare Pages의 ohweb 프로젝트 → Settings → Environment variables에서 Production으로 추가한 뒤 재배포해야 합니다.',
+    }, 500);
   }
 
   let serviceAccount;
