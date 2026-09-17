@@ -312,7 +312,7 @@ async function handle(request, env) {
     // 제출을 막고 원인을 알린다(admin의 "정답 분리 마이그레이션" 미실행).
     const missing = questions
       .map((q, i) => ({ q, key: answerDocs[i] }))
-      .filter(({ q, key }) => (q.type === 'mc' || q.type === 'sa' || q.type === 'code') && !key);
+      .filter(({ q, key }) => (q.type === 'mc' || q.type === 'code') && !key);
     if (missing.length) {
       return json({
         error: '채점 기준이 준비되지 않았습니다. 선생님께 문의해 주세요.',
@@ -341,14 +341,11 @@ async function handle(request, env) {
         if (value !== '' && value === correct) { score = points; feedback = 'correct'; }
         else { feedback = `wrong:${correct}`; }
 
-      } else if (q.type === 'sa') {
-        value = value.trim();
-        const correct = String(key.answer || '').trim();
-        if (value && value.toLowerCase() === correct.toLowerCase()) { score = points; feedback = 'correct'; }
-        else { feedback = `wrong:${correct}`; }
-
-      } else if (q.type === 'essay') {
-        // 서술형은 자동 채점하지 않는다 — 선생님이 admin에서 직접 채점.
+      } else if (q.type === 'sa' || q.type === 'essay') {
+        // 서술형과 단답형은 자동 채점하지 않는다 — 선생님이 admin에서 직접
+        // 채점한다. 단답형은 예전엔 정답과 문자열을 그대로 비교했는데,
+        // "서울"과 "서울시"와 "서울 "을 전부 다른 답으로 처리해서 맞은
+        // 답이 오답으로 찍히는 일이 잦았다. 사람이 보는 편이 맞다.
         value = value.trim();
         feedback = 'manual';
 

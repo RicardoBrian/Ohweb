@@ -733,7 +733,7 @@
         <input type="hidden" id="q_docId">
         <div style="margin-bottom:12px;">
           <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">대상 시험</label>
-          <select class="inp" id="q_examId" style="width:100%;" onchange="loadQList()">
+          <select class="inp" id="q_examId" style="width:100%;" onchange="onQFormExamChange(this.value)">
             <option value="">시험을 선택하세요</option>
           </select>
         </div>
@@ -865,7 +865,7 @@
           </div>
         </div>
         <div style="margin-bottom:12px;">
-          <select class="inp" id="qlist_examId" style="width:100%;" onchange="loadQList()">
+          <select class="inp" id="qlist_examId" style="width:100%;" onchange="loadQList(this.value)">
             <option value="">시험을 선택하세요</option>
           </select>
         </div>
@@ -2072,12 +2072,26 @@
     document.getElementById('qf_code').classList.toggle('hidden', type !== 'code');
   };
 
+  // 편집 폼의 "대상 시험"(q_examId)을 바꿨을 때. 기존 문항을 편집하는
+  // 중이라면 목록은 건드리지 않는다 — 그 문항을 다른 시험으로 옮기려는
+  // 중일 뿐, 목록 필터까지 따라갈 이유가 없다.
+  window.onQFormExamChange = (value) => {
+    if (document.getElementById('q_docId')?.value) return;
+    loadQList(value);
+  };
+
   window.loadQList = async (forceId) => {
     // forceId 우선, 없으면 qlist_examId, 없으면 q_examId
     const examId = forceId || document.getElementById('qlist_examId')?.value || document.getElementById('q_examId')?.value;
     if (!examId) return;
-    const a = document.getElementById('q_examId'); if (a) a.value = examId;
     const b = document.getElementById('qlist_examId'); if (b) b.value = examId;
+    // 폼의 대상 시험은 새 문항을 만들 때만 목록에 맞춰준다. 예전엔 무조건
+    // 덮어써서 두 가지가 망가져 있었다 — 폼에서 대상 시험을 고르면 목록
+    // 필터의 옛 값으로 즉시 되돌아가서 새로고침 전에는 바꿀 수가 없었고,
+    // 반대로 편집 중에 목록 필터를 바꾸면 폼의 대상 시험까지 같이 바뀌어
+    // 저장할 때 문항이 엉뚱한 시험으로 옮겨갔다.
+    const editingId = document.getElementById('q_docId')?.value;
+    if (!editingId) { const a = document.getElementById('q_examId'); if (a) a.value = examId; }
     const el = document.getElementById('qList');
     try {
     let snap;
@@ -2562,7 +2576,9 @@
       const name = progData.name || progDocId.split('_')[1] || progDocId;
 
       const typeLabel = { mc:'객관식', sa:'주관식', essay:'서술형', code:'코딩' };
-      const autoScore = { mc: true, sa: true, essay: false, code: false };
+      // 단답형(sa)은 자동 채점에서 뺐다 — 문자열 그대로 비교하느라 맞은 답이
+      // 오답으로 찍히는 일이 잦았다. 서술형과 같이 여기서 직접 채점한다.
+      const autoScore = { mc: true, sa: false, essay: false, code: false };
 
       inner.innerHTML = `
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
