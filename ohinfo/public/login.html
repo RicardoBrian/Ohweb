@@ -217,10 +217,13 @@ window.onLoginClassChange = () => {
   const nums=_distinct(_students.filter(s=>(!school||(s.schoolName||'').trim()===school)&&(!grade||_nv(s.grade)===_nv(grade))&&(!cls||_nv(s.class)===_nv(cls))).map(s=>String(s.number)));
   _setOpts(document.getElementById('loginNumber'), nums, t.numOpt||'선택');
 };
-(async function loadStudentsForLogin(){
+// 예전엔 여기서 문서 ID를 버려서(d.data()만 저장) 로그인 버튼을 누를 때
+// 같은 컬렉션을 한 번 더 받아와야 했다 — 한 화면에서 전체 조회 두 번.
+// ID를 같이 들고 있으면 로그인 시 재조회가 필요 없다.
+const _studentsReady = (async function loadStudentsForLogin(){
   try {
     const snap = await getDocs(collection(db,'students'));
-    _students = snap.docs.map(d=>d.data());
+    _students = snap.docs.map(d=>({ id: d.id, ...d.data() }));
   } catch(e){ console.error('load students:', e); }
   rebuildLoginDropdowns();
 })();
@@ -256,18 +259,16 @@ window.doLogin = async () => {
   btn.disabled = true;
   btn.textContent = t.loading;
   try {
-    const snap = await getDocs(collection(db, 'students'));
-    const match = snap.docs.find(d => {
-      const s = d.data();
-      return s.schoolName === schoolName
-        && nv(s.grade) === nv(grade)
-        && nv(s.class) === nv(cls)
-        && String(s.number) === String(number);
-    });
+    await _studentsReady;   // 드롭다운용으로 이미 받아둔 목록을 그대로 쓴다
+    const match = _students.find(s =>
+      s.schoolName === schoolName
+      && nv(s.grade) === nv(grade)
+      && nv(s.class) === nv(cls)
+      && String(s.number) === String(number));
     if (!match) { errEl.textContent = t.errNotFound; btn.disabled = false; btn.textContent = t.ok; return; }
-    const data = match.data();
+    const { id: matchId, ...data } = match;
     try {
-      await loginStudent(match.id, data, pw);
+      await loginStudent(matchId, data, pw);
     } catch (ae) {
       if (ae instanceof AuthError && ae.code === 'not-registered') errEl.textContent = t.errNotReg;
       else if (ae instanceof AuthError && ae.code === 'locked') errEl.textContent = t.errLocked;
@@ -277,7 +278,7 @@ window.doLogin = async () => {
       return;
     }
 
-    saveSession({ id: match.id, ...data });
+    saveSession({ id: matchId, ...data });
     const dest = sessionStorage.getItem('ohinfo_redirect');
     if (dest) { sessionStorage.removeItem('ohinfo_redirect'); location.href = dest; }
     else { location.href = 'home.html'; }

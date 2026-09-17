@@ -403,11 +403,14 @@
 <script type="module">
   import { db } from './firebase-config.js';
   import { doc, getDoc, updateDoc, collection, query, where, orderBy, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-  import { saveSession, loadSession, clearSession } from './session.js';
+  import { saveSession, loadSession, clearSession, verifyStudentAuth } from './session.js';
   import { changeStudentPassword, AuthError } from './student-auth.js';
 
   const student = loadSession();
   if (!student) { window.location.href = 'index.html'; }
+  // localStorage 세션은 브라우저에서 고칠 수 있다 — 실제 로그인 계정과
+  // 맞는지 뒤이어 확인하고, 안 맞으면 로그인 화면으로 돌려보낸다.
+  verifyStudentAuth(student);
 
   window.toggleDark = () => {
     document.body.classList.toggle('dark');

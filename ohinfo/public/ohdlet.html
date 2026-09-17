@@ -816,13 +816,16 @@
     collection, query, where, orderBy, getDocs, documentId,
     addDoc, updateDoc, deleteDoc, doc, serverTimestamp, increment, onSnapshot
   } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-  import { saveSession, loadSession, clearSession } from './session.js';
+  import { saveSession, loadSession, clearSession, verifyStudentAuth } from './session.js';
   import { changeStudentPassword, AuthError } from './student-auth.js';
   import { escHtml, fmtMsg, safePhotoUrl } from './escape.js';
 
   // ── 세션 체크 ──
   const _st = loadSession();
   if (!_st) { window.location.href = 'index.html'; }
+  // localStorage 세션은 브라우저에서 고칠 수 있다 — 실제 로그인 계정과
+  // 맞는지 뒤이어 확인하고, 안 맞으면 로그인 화면으로 돌려보낸다.
+  verifyStudentAuth(_st);
   const _nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
   const SESSION = {
     id: _st?.id || '',

@@ -209,7 +209,7 @@
 import { db } from './firebase-config.js';
 import { doc, getDoc, addDoc, updateDoc, collection, query, where, getDocs, serverTimestamp, increment }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { loadSession, clearSession } from './session.js';
+import { loadSession, clearSession, verifyStudentAuth } from './session.js';
 
 // ── i18n ──
 const T = {
@@ -405,6 +405,9 @@ window.toggleUserMenu = () => { document.getElementById('userDropdown').classLis
 
 // ── session ──
 function getSession() { return loadSession(); }
+// localStorage 세션은 브라우저에서 고칠 수 있다 — 실제 로그인 계정과
+// 맞는지 뒤이어 확인하고, 안 맞으면 로그인 화면으로 돌려보낸다.
+if (getSession()) verifyStudentAuth(getSession());
 
 function renderNavUser(s) {
   if (!s) return;

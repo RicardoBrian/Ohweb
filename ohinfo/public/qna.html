@@ -149,11 +149,14 @@ import { db } from './firebase-config.js';
 import {
   doc, getDoc, setDoc, updateDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { loadSession } from './session.js';
+import { loadSession, verifyStudentAuth } from './session.js';
 import { escHtml as esc } from './escape.js';
 
 const student = loadSession();
 if (!student) { window.location.href = 'index.html'; throw new Error('no session'); }
+// localStorage 세션은 브라우저에서 고칠 수 있다 — 실제 로그인 계정과
+// 맞는지 뒤이어 확인하고, 안 맞으면 로그인 화면으로 돌려보낸다.
+verifyStudentAuth(student);
 const lang = localStorage.getItem('ohinfo_lang') || 'ko';
 if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
 
