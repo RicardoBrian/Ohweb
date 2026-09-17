@@ -399,7 +399,7 @@
 <a class="qna-fab" href="qna.html"><svg width="24" height="24"><use href="#ic-chat"/></svg><span class="badge" id="qnaBadge"></span><span class="qna-tip">정보 관련 질문이나 웹사이트 버그가 있으면 알려주세요.</span></a>
 
 <script type="module">
-import { db } from './firebase-config.js';
+import { db, auth } from './firebase-config.js';
 import {
   collection, addDoc, getDocs, getDoc, doc,
   query, where, orderBy, setDoc, updateDoc, serverTimestamp, Timestamp, onSnapshot
@@ -525,6 +525,7 @@ const UI = {
     mpTitle:'마이페이지', mpPhotoBtn:'사진 변경', mpPwLabel:'비밀번호 변경', mpCurPw:'현재 비밀번호', mpNewPw:'새 비밀번호 (4자 이상)', mpNewPw2:'새 비밀번호 확인', mpSave:'저장',
     mpErrCur:'현재 비밀번호가 맞지 않습니다.', mpErrShort:'새 비밀번호는 4자 이상이어야 합니다.', mpErrMatch:'새 비밀번호가 일치하지 않습니다.', mpOk:'저장되었습니다.',
     correct:'정답', wrong:'오답 (정답: ', testPass:'테스트케이스 통과', manualGrade:'수동 채점 필요',
+    sessionExpired:'로그인이 만료되었습니다. 다시 로그인한 뒤 제출해 주세요.',
     pendingResultMsg:'제출이 완료되었습니다.\n서술형 문항은 선생님이 채점한 후 최종 점수를 확인할 수 있어요.',
     stdin:'표준 입력 (stdin)', stdinPlaceholder:'입력이 필요한 경우 입력 값을 넣어주세요.',
     noOutput:'(출력 없음)', runErr:'실행 오류: ',
@@ -540,6 +541,7 @@ const UI = {
     mpTitle:'我的页面', mpPhotoBtn:'更换照片', mpPwLabel:'修改密码', mpCurPw:'当前密码', mpNewPw:'新密码 (至少4位)', mpNewPw2:'确认新密码', mpSave:'保存',
     mpErrCur:'当前密码不正确。', mpErrShort:'新密码至少需要4位。', mpErrMatch:'两次输入的新密码不一致。', mpOk:'已保存。',
     correct:'正确', wrong:'错误 (正确答案: ', testPass:'测试用例通过', manualGrade:'需要人工评分',
+    sessionExpired:'登录已过期，请重新登录后提交。',
     pendingResultMsg:'提交成功。\n论述题由老师批改后即可查看最终成绩。',
     stdin:'标准输入 (stdin)', stdinPlaceholder:'如需输入，请填写输入值。',
     noOutput:'(无输出)', runErr:'运行错误: ',
@@ -555,6 +557,7 @@ const UI = {
     mpTitle:'Мой профиль', mpPhotoBtn:'Сменить фото', mpPwLabel:'Сменить пароль', mpCurPw:'Текущий пароль', mpNewPw:'Новый пароль (мин. 4)', mpNewPw2:'Подтвердить пароль', mpSave:'Сохранить',
     mpErrCur:'Неверный текущий пароль.', mpErrShort:'Новый пароль должен быть не менее 4 символов.', mpErrMatch:'Пароли не совпадают.', mpOk:'Сохранено.',
     correct:'Правильно', wrong:'Неверно (ответ: ', testPass:'тест-кейс пройден', manualGrade:'Требует проверки',
+    sessionExpired:'Сессия истекла. Войдите снова и отправьте работу.',
     pendingResultMsg:'Отправка завершена.\nОкончательный балл будет доступен после проверки эссе учителем.',
     stdin:'Стандартный ввод (stdin)', stdinPlaceholder:'Введите тестовые данные.',
     noOutput:'(нет вывода)', runErr:'Ошибка выполнения: ',
@@ -570,6 +573,7 @@ const UI = {
     mpTitle:'My Page', mpPhotoBtn:'Change Photo', mpPwLabel:'Change Password', mpCurPw:'Current password', mpNewPw:'New password (min. 4)', mpNewPw2:'Confirm new password', mpSave:'Save',
     mpErrCur:'Current password is incorrect.', mpErrShort:'New password must be at least 4 characters.', mpErrMatch:'Passwords do not match.', mpOk:'Saved.',
     correct:'Correct', wrong:'Wrong (answer: ', testPass:'test cases passed', manualGrade:'Manual grading required',
+    sessionExpired:'Your login has expired. Please sign in again and submit.',
     pendingResultMsg:'Submission complete.\nYour final score will be available after your teacher grades the essay question(s).',
     stdin:'Standard Input (stdin)', stdinPlaceholder:'Enter test input values if needed.',
     noOutput:'(no output)', runErr:'Run error: ',
@@ -729,7 +733,8 @@ window.showMyResult = async (asId) => {
     // Reuse showResult
     const resultItems = items.map(r=>({
       qIdx: r.qIdx||0, type: r.type, title: r.title||`Q${(r.qIdx||0)+1}`,
-      value: r.value||'', score: r.score||0, maxScore: r.maxScore||0, feedback: r.feedback||''
+      value: r.value||'', score: r.score||0, maxScore: r.maxScore||0,
+      feedback: localizeFeedback(r.feedback, { type: r.type })
     }));
     showResult(prog.totalScore||0, prog.totalPoints||0, resultItems);
   } catch(e) { alert(UI[currentLang].errPrefix+e.message); showLoading(false); }
@@ -975,6 +980,27 @@ function getQTitle(q) {
   if (currentLang === 'en' && q.titleEn) return q.titleEn;
   return q.title || '';
 }
+// 채점이 서버로 넘어가면서 피드백은 언어 중립적인 코드로 돌아온다
+// (correct / wrong:정답 / manual / cases:3/5) — 서버는 UI 번역표를 모르기
+// 때문이다. 화면에 뿌리기 직전에 현재 언어로 바꾼다. 이 변경 전에 저장된
+// 결과는 이미 번역된 문장이라 코드에 안 걸리고 그대로 통과한다.
+function localizeFeedback(code, q) {
+  const t = UI[currentLang];
+  const s = String(code || '');
+  if (!s) return '';
+  if (s === 'correct') return t.correct;
+  if (s === 'manual') return t.manualGrade;
+  if (s.startsWith('cases:')) return `${s.slice(6)} ${t.testPass}`;
+  if (s.startsWith('wrong:')) {
+    const correct = s.slice(6);
+    if (q && q.type === 'mc') {
+      const n = parseInt(correct, 10);
+      return `${t.wrong}${Number.isNaN(n) ? correct : String.fromCharCode(9312 + n)})`;
+    }
+    return `${t.wrong}${correct})`;
+  }
+  return s;
+}
 function getQContent(q) {
   if (currentLang === 'zh' && q.contentZh) return q.contentZh;
   if (currentLang === 'ru' && q.contentRu) return q.contentRu;
@@ -1215,80 +1241,51 @@ window.submitExam = async (isAuto = false) => {
   showLoading(true);
 
   try {
-    // 채점
-    let totalScore = 0;
-    let totalPoints = 0;
-    const resultItems = [];
-
-    for (let i = 0; i < questions.length; i++) {
-      const q = questions[i];
-      totalPoints += (q.points || 0);
-      let score = 0;
-      let feedback = '';
-      let value = '';
-
-      if (q.type === 'mc') {
-        value = answers[i]?.value !== undefined ? String(answers[i].value) : '';
-        const correct = String(q.answer ?? '');
-        if (value !== '' && value === correct) { score = q.points || 0; feedback = UI[currentLang].correct; }
-        else { feedback = `${UI[currentLang].wrong}${String.fromCharCode(9312 + parseInt(correct))})`; }
-
-      } else if (q.type === 'sa') {
-        value = answers[i]?.value?.trim() || '';
-        const correct = String(q.answer || '').trim();
-        if (value && value.toLowerCase() === correct.toLowerCase()) { score = q.points || 0; feedback = UI[currentLang].correct; }
-        else { feedback = `${UI[currentLang].wrong}${correct})`; }
-
-      } else if (q.type === 'essay') {
-        // 서술형은 정답이 하나로 정해져 있지 않아 자동채점을 하지 않는다 —
-        // 점수는 항상 0으로 저장해두고(선생님이 admin.html에서 직접 채점),
-        // "오답"처럼 보이지 않게 중립적인 문구만 남긴다.
-        value = answers[i]?.value?.trim() || '';
-        feedback = UI[currentLang].manualGrade;
-
-      } else if (q.type === 'code') {
+    // 채점은 서버(/api/grade-exam)에서 한다. 예전엔 여기서 직접 채점했는데,
+    // 그러려면 정답이 학생 브라우저까지 내려와 있어야 했고 exam_questions가
+    // 공개 읽기라 시험 전에 콘솔에서 정답을 전부 볼 수 있었다. 이제 정답은
+    // exam_answers(관리자 전용)에만 있고, 여기서는 답안만 모아서 보낸다.
+    const payload = questions.map((q, i) => {
+      if (q.type === 'code') {
         const cm = cmInstances[i];
-        const code = cm ? cm.getValue() : (codeAnswers[i]?.code || '');
-        value = code;
-        // 테스트케이스 실행 (서버 위임 — runPythonRemote 설명 참고)
-        if (code.trim() && q.testCases?.length) {
-          let passCount = 0;
-          const normalize = s => String(s||'').replace(/\r\n/g,'\n').trimEnd();
-          for (const tc of q.testCases) {
-            try {
-              const { stdout } = await runPythonRemote(code, String(tc.input || ''));
-              if (normalize(stdout) === normalize(tc.expected)) passCount++;
-            } catch(e) { /* 이 케이스만 실패 처리, 나머지 케이스는 계속 채점 */ }
-          }
-          const ratio = passCount / q.testCases.length;
-          score = Math.round((q.points || 0) * ratio);
-          feedback = `${passCount}/${q.testCases.length} ${UI[currentLang].testPass}`;
-        } else {
-          feedback = UI[currentLang].manualGrade;
-        }
+        return { qIdx: i, value: cm ? cm.getValue() : (codeAnswers[i]?.code || '') };
       }
+      return { qIdx: i, value: answers[i]?.value ?? '' };
+    });
 
-      totalScore += score;
-      resultItems.push({ qIdx: i, type: q.type, title: getQTitle(q), value, score, maxScore: q.points||0, feedback });
-
-      // results에 저장
-      await addDoc(collection(db, 'exam_results'), {
+    // 서버가 "이 답안이 이 학생 것"임을 확인할 수 있어야 한다 — localStorage
+    // 세션은 브라우저에서 고칠 수 있으므로 Firebase Auth 토큰을 같이 보낸다.
+    const user = auth.currentUser;
+    if (!user) throw new Error(UI[currentLang].sessionExpired);
+    const res = await fetch('/api/grade-exam', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        idToken: await user.getIdToken(),
+        studentDocId: SESSION.id,
         asId: currentAssignment.asId,
-        examId: currentAssignment.examId,
-        studentId: SESSION.id, name: SESSION.name,
-        grade: SESSION.grade, class: SESSION.cls, num: SESSION.num,
-        lang: currentLang, qIdx: i, type: q.type,
-        value, score, maxScore: q.points||0, feedback,
-        createdAt: serverTimestamp()
-      });
+        answers: payload,
+        lang: currentLang,
+      }),
+    });
+    const graded = await res.json().catch(() => ({}));
+    if (!res.ok || graded.error) {
+      if (graded.detail) console.error('grade-exam:', graded.detail);
+      throw new Error(graded.error || `채점 요청 실패 (HTTP ${res.status})`);
     }
 
-    // progress 업데이트
-    const progRef = doc(db, 'exam_progress', `${currentAssignment.asId}_${SESSION.id}`);
-    await setDoc(progRef, {
-      status: 'submitted', totalScore, totalPoints,
-      alertCount, submitTime: serverTimestamp()
-    }, { merge: true });
+    const totalScore = graded.totalScore || 0;
+    const totalPoints = graded.totalPoints || 0;
+    const resultItems = (graded.items || []).map(r => ({
+      qIdx: r.qIdx || 0,
+      type: r.type,
+      title: r.title || getQTitle(questions[r.qIdx] || {}),
+      value: r.value || '',
+      score: r.score || 0,
+      maxScore: r.maxScore || 0,
+      feedback: localizeFeedback(r.feedback, questions[r.qIdx]),
+    }));
+    // exam_results와 exam_progress(점수·제출상태)는 서버가 이미 기록했다.
 
     showLoading(false);
     // 서술형(선생님이 나중에 직접 채점)이 하나라도 있으면, 아직 최종 점수가
