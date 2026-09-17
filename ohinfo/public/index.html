@@ -422,6 +422,7 @@
       errNotReg: '회원가입이 필요합니다.\n회원가입 탭을 이용하세요.',
       errWrongPw: '비밀번호가 올바르지 않습니다.',
       errLocked: '비밀번호를 5회 이상 틀려 계정이 잠겼습니다.\n선생님(관리자)에게 문의하세요.',
+      errGeneric:'로그인에 실패했습니다. 잠시 후 다시 시도하고,\n계속 안 되면 선생님(관리자)에게 문의하세요.',
       errNumReq: '번호를 입력하세요.', errNameReq: '이름을 입력하세요.',
       errNoMatch: '일치하는 학생 정보가 없습니다.\n학년·반·번호·이름을 다시 확인하세요.',
       errAlready: '이미 가입된 학생입니다.\n로그인 탭을 이용하세요.',
@@ -450,6 +451,7 @@
       errNotReg: '需要先注册。\n请切换到注册选项卡。',
       errWrongPw: '密码不正确，请重试。',
       errLocked: '密码错误已达5次，账号已被锁定。\n请联系老师（管理员）。',
+      errGeneric:'登录失败。请稍后重试；\n如仍无法登录，请联系老师（管理员）。',
       errNumReq: '请输入学号。', errNameReq: '请输入姓名。',
       errNoMatch: '未找到匹配的学生信息。\n请确认年级、班级、学号和姓名。',
       errAlready: '该学生已注册。\n请切换到登录选项卡。',
@@ -478,6 +480,7 @@
       errNotReg: 'Необходима регистрация.\nПерейдите на вкладку «Регистрация».',
       errWrongPw: 'Неверный пароль.',
       errLocked: 'Учётная запись заблокирована после 5 неверных попыток.\nОбратитесь к учителю (администратору).',
+      errGeneric:'Не удалось войти. Повторите попытку позже,\nа если проблема останется — обратитесь к учителю (администратору).',
       errNumReq: 'Введите номер.', errNameReq: 'Введите имя.',
       errNoMatch: 'Ученик не найден.\nПроверьте год, класс, номер и имя.',
       errAlready: 'Ученик уже зарегистрирован.\nПерейдите на вкладку «Вход».',
@@ -506,6 +509,7 @@
       errNotReg: 'Registration required.\nPlease use the Sign Up tab.',
       errWrongPw: 'Incorrect password.',
       errLocked: 'This account is locked after 5 incorrect attempts.\nPlease contact your teacher (admin).',
+      errGeneric:'Sign-in failed. Please try again in a moment,\nand contact your teacher (admin) if it keeps happening.',
       errNumReq: 'Please enter a number.', errNameReq: 'Please enter a name.',
       errNoMatch: 'No matching student found.\nPlease check grade, class, number, and name.',
       errAlready: 'This student is already registered.\nPlease use the Login tab.',
@@ -678,13 +682,13 @@
         if (ae instanceof AuthError && ae.code === 'not-registered') err.innerText = t.errNotReg;
         else if (ae instanceof AuthError && ae.code === 'locked') err.innerText = t.errLocked;
         else if (ae instanceof AuthError && ae.code === 'wrong-password') { err.innerText = t.errWrongPw; document.getElementById('loginPw').value = ''; }
-        else err.innerText = '오류: ' + ae.message;
+        else { console.error('login:', ae); err.innerText = t.errGeneric; }
         load(false);
         return;
       }
       saveSession({ id: matchId, ...data });
       window.location.href = 'home.html';
-    } catch(e) { err.innerText = '오류: ' + e.message; }
+    } catch(e) { console.error('login:', e); err.innerText = t.errGeneric; }
     load(false);
   };
 

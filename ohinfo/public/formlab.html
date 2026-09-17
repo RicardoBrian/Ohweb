@@ -310,19 +310,22 @@
 
 <script type="module">
 import { db } from './firebase-config.js';
+import { escHtml } from './escape.js';
 import {
   collection, query, where, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, doc, serverTimestamp, onSnapshot
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { loadSession, clearSession } from './session.js';
+import { loadSession, clearSession, verifyStudentAuth } from './session.js';
 
 // ── 유틸 ──
 const SESSION = loadSession();
 if (!SESSION) { window.location.href = 'index.html'; }
+// localStorage 세션은 브라우저에서 고칠 수 있다 — 실제 로그인 계정과
+// 맞는지 뒤이어 확인하고, 안 맞으면 로그인 화면으로 돌려보낸다.
+verifyStudentAuth(SESSION);
 function toggleDark() { document.body.classList.toggle('dark'); localStorage.setItem('dark', document.body.classList.contains('dark')?'1':'0'); }
 if (localStorage.getItem('dark')==='1') document.body.classList.add('dark');
 window.toggleDark = toggleDark;
 function showLoading(v) { document.getElementById('loadingOverlay').style.display = v ? 'flex' : 'none'; }
-function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 // URL을 클릭 가능한 링크로 변환 (이스케이프 후 처리)
 function linkify(s) {
   const esc = escHtml(s);

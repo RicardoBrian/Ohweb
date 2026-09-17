@@ -119,6 +119,7 @@ const T = {
     errSchool:'학교 이름을 입력하세요.', errNum:'번호를 선택하세요.', errPw:'비밀번호를 입력하세요.',
     errNotFound:'학생 정보를 찾을 수 없습니다.', errNotReg:'아직 등록되지 않은 계정입니다.', errWrongPw:'비밀번호가 맞지 않습니다.',
     errLocked:'비밀번호를 5회 이상 틀려 계정이 잠겼습니다.\n선생님(관리자)에게 문의하세요.',
+    errGeneric:'로그인에 실패했습니다. 잠시 후 다시 시도하고,\n계속 안 되면 선생님(관리자)에게 문의하세요.',
     loading:'확인 중...', ok:'로그인' },
   zh: { title:'登录', sub:'请登录以参与问卷', notice:'登录后将跳转至问卷页面',
     school:'学校名', schoolPh:'输入学校名称', grade:'年级', cls:'班', num:'学号', numOpt:'选择',
@@ -127,6 +128,7 @@ const T = {
     errSchool:'请输入学校名称。', errNum:'请选择学号。', errPw:'请输入密码。',
     errNotFound:'未找到学生信息。', errNotReg:'账号尚未注册。', errWrongPw:'密码错误。',
     errLocked:'密码错误已达5次，账号已被锁定。\n请联系老师（管理员）。',
+    errGeneric:'登录失败。请稍后重试；\n如仍无法登录，请联系老师（管理员）。',
     loading:'验证中...', ok:'登录' },
   ru: { title:'Вход', sub:'Войдите, чтобы пройти опрос', notice:'После входа вы будете перенаправлены на опрос',
     school:'Школа', schoolPh:'Введите название школы', grade:'Класс', cls:'Группа', num:'Номер', numOpt:'Выбрать',
@@ -135,6 +137,7 @@ const T = {
     errSchool:'Введите название школы.', errNum:'Выберите номер.', errPw:'Введите пароль.',
     errNotFound:'Ученик не найден.', errNotReg:'Аккаунт не зарегистрирован.', errWrongPw:'Неверный пароль.',
     errLocked:'Учётная запись заблокирована после 5 неверных попыток.\nОбратитесь к учителю (администратору).',
+    errGeneric:'Не удалось войти. Повторите попытку позже,\nа если проблема останется — обратитесь к учителю (администратору).',
     loading:'Проверка...', ok:'Войти' },
   en: { title:'Login', sub:'Sign in to participate in the survey', notice:'You will be redirected to the survey after login',
     school:'School', schoolPh:'Enter school name', grade:'Grade', cls:'Class', num:'Number', numOpt:'Select',
@@ -143,6 +146,7 @@ const T = {
     errSchool:'Please enter your school name.', errNum:'Please select your number.', errPw:'Please enter your password.',
     errNotFound:'Student not found.', errNotReg:'Account not registered yet.', errWrongPw:'Incorrect password.',
     errLocked:'This account is locked after 5 incorrect attempts.\nPlease contact your teacher (admin).',
+    errGeneric:'Sign-in failed. Please try again in a moment,\nand contact your teacher (admin) if it keeps happening.',
     loading:'Checking...', ok:'Login' },
 };
 
@@ -213,10 +217,13 @@ window.onLoginClassChange = () => {
   const nums=_distinct(_students.filter(s=>(!school||(s.schoolName||'').trim()===school)&&(!grade||_nv(s.grade)===_nv(grade))&&(!cls||_nv(s.class)===_nv(cls))).map(s=>String(s.number)));
   _setOpts(document.getElementById('loginNumber'), nums, t.numOpt||'선택');
 };
-(async function loadStudentsForLogin(){
+// 예전엔 여기서 문서 ID를 버려서(d.data()만 저장) 로그인 버튼을 누를 때
+// 같은 컬렉션을 한 번 더 받아와야 했다 — 한 화면에서 전체 조회 두 번.
+// ID를 같이 들고 있으면 로그인 시 재조회가 필요 없다.
+const _studentsReady = (async function loadStudentsForLogin(){
   try {
     const snap = await getDocs(collection(db,'students'));
-    _students = snap.docs.map(d=>d.data());
+    _students = snap.docs.map(d=>({ id: d.id, ...d.data() }));
   } catch(e){ console.error('load students:', e); }
   rebuildLoginDropdowns();
 })();
@@ -252,33 +259,32 @@ window.doLogin = async () => {
   btn.disabled = true;
   btn.textContent = t.loading;
   try {
-    const snap = await getDocs(collection(db, 'students'));
-    const match = snap.docs.find(d => {
-      const s = d.data();
-      return s.schoolName === schoolName
-        && nv(s.grade) === nv(grade)
-        && nv(s.class) === nv(cls)
-        && String(s.number) === String(number);
-    });
+    await _studentsReady;   // 드롭다운용으로 이미 받아둔 목록을 그대로 쓴다
+    const match = _students.find(s =>
+      s.schoolName === schoolName
+      && nv(s.grade) === nv(grade)
+      && nv(s.class) === nv(cls)
+      && String(s.number) === String(number));
     if (!match) { errEl.textContent = t.errNotFound; btn.disabled = false; btn.textContent = t.ok; return; }
-    const data = match.data();
+    const { id: matchId, ...data } = match;
     try {
-      await loginStudent(match.id, data, pw);
+      await loginStudent(matchId, data, pw);
     } catch (ae) {
       if (ae instanceof AuthError && ae.code === 'not-registered') errEl.textContent = t.errNotReg;
       else if (ae instanceof AuthError && ae.code === 'locked') errEl.textContent = t.errLocked;
       else if (ae instanceof AuthError && ae.code === 'wrong-password') { errEl.textContent = t.errWrongPw; document.getElementById('loginPw').value = ''; }
-      else errEl.textContent = '오류: ' + ae.message;
+      else { console.error('login:', ae); errEl.textContent = t.errGeneric; }
       btn.disabled = false; btn.textContent = t.ok;
       return;
     }
 
-    saveSession({ id: match.id, ...data });
+    saveSession({ id: matchId, ...data });
     const dest = sessionStorage.getItem('ohinfo_redirect');
     if (dest) { sessionStorage.removeItem('ohinfo_redirect'); location.href = dest; }
     else { location.href = 'home.html'; }
   } catch(e) {
-    errEl.textContent = '오류: ' + e.message;
+    console.error('login:', e);
+    errEl.textContent = t.errGeneric;
     btn.disabled = false; btn.textContent = t.ok;
   }
 };
