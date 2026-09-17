@@ -310,6 +310,7 @@
 
 <script type="module">
 import { db } from './firebase-config.js';
+import { escHtml } from './escape.js';
 import {
   collection, query, where, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, doc, serverTimestamp, onSnapshot
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
@@ -322,7 +323,6 @@ function toggleDark() { document.body.classList.toggle('dark'); localStorage.set
 if (localStorage.getItem('dark')==='1') document.body.classList.add('dark');
 window.toggleDark = toggleDark;
 function showLoading(v) { document.getElementById('loadingOverlay').style.display = v ? 'flex' : 'none'; }
-function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 // URL을 클릭 가능한 링크로 변환 (이스케이프 후 처리)
 function linkify(s) {
   const esc = escHtml(s);

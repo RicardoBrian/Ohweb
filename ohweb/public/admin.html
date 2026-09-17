@@ -399,7 +399,8 @@
     <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">이름</label>
     <input class="inp" id="seName" type="text" placeholder="이름" style="width:100%;margin-bottom:12px;">
     <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">비밀번호</label>
-    <input class="inp" id="sePw" type="text" placeholder="비밀번호 (비우면 미설정 = 로그인 불가)" style="width:100%;margin-bottom:6px;">
+    <input class="inp" id="sePw" type="text" placeholder="새 비밀번호 (비워두면 변경 안 함)" style="width:100%;margin-bottom:6px;">
+    <div style="font-size:0.74rem;color:var(--sub);margin-bottom:6px;line-height:1.5;">기존 비밀번호는 조회할 수 없습니다 — Firebase가 해시로만 저장합니다.<br>잊어버린 학생에게는 여기서 새 비밀번호를 정해 알려주세요.</div>
     <div style="font-size:0.76rem;color:var(--sub);margin-bottom:14px;">비밀번호를 설정하면 학생이 로그인할 수 있어요. 비우면 로그인 불가(미등록) 상태가 됩니다.</div>
     <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:18px;">
       <input type="checkbox" id="seMaster" style="width:16px;height:16px;accent-color:var(--accent);">
@@ -1392,7 +1393,10 @@
     document.getElementById('seId').value = id;
     document.getElementById('seInfo').innerText = `${s.schoolName||''} ${nv(s.grade)}학년 ${nv(s.class)}반 ${s.number||''}번`;
     document.getElementById('seName').value = s.name || '';
-    document.getElementById('sePw').value = s.password || '';
+    // 기존 비밀번호는 원리상 불러올 수 없다(Firebase Auth는 해시만 보관).
+    // 예전엔 Firestore의 평문 password 필드를 채워 넣었는데, 그 필드는
+    // 이제 쓰지 않으므로 항상 빈 칸으로 연다 — 비우면 비밀번호 변경 없음.
+    document.getElementById('sePw').value = '';
     document.getElementById('seMaster').checked = !!s.isMaster;
     document.getElementById('studentEditModal').classList.add('show');
   };

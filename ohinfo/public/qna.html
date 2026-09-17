@@ -150,6 +150,7 @@ import {
   doc, getDoc, setDoc, updateDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { loadSession } from './session.js';
+import { escHtml as esc } from './escape.js';
 
 const student = loadSession();
 if (!student) { window.location.href = 'index.html'; throw new Error('no session'); }
@@ -220,7 +221,6 @@ const threadRef = doc(db, 'qna_threads', student.id);
 const msgsRef = collection(db, 'qna_threads', student.id, 'messages');
 let pendingFiles = [];
 
-function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function isImg(name) { return /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(String(name||'')); }
 function fmtTime(ts) {
   const ms = ts?.toMillis ? ts.toMillis() : (ts?.seconds ? ts.seconds*1000 : 0);

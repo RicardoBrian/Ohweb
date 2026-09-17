@@ -400,6 +400,7 @@
 
 <script type="module">
 import { db, auth } from './firebase-config.js';
+import { escHtml } from './escape.js';
 import {
   collection, addDoc, getDocs, getDoc, doc,
   query, where, orderBy, setDoc, updateDoc, serverTimestamp, Timestamp, onSnapshot
@@ -1148,7 +1149,6 @@ function renderQuestion(q, i) {
   </div>`;
 }
 
-function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 // ── 답 저장 ──
 window.selectMC = (idx, optIdx) => {
