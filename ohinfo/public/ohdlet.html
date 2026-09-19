@@ -1068,6 +1068,13 @@
   let currentExample = '';
   let currentClassMeta = { boardLayout: 'grid', columns: [] }; // 패들릿식 칼럼형 게시판 지원용
   let currentSort = 'new';
+  // 글 작성창에서 Enter로 텍스트를 줄바꿈하려다 실수로 폼 자체가 다시
+  // 제출되는 경우(브라우저는 disabled 안 된 다른 필드에서의 Enter도
+  // form submit으로 취급할 수 있음), submitPost()가 동시에 두 번 겹쳐
+  // 돌면서 그 사이 manualRefresh()가 서로 꼬여 #postForm이 일시적으로
+  // 못 찾아지는 크래시(Cannot read properties of null (reading 'closest'))
+  // 로 이어질 수 있었다. 이 플래그로 중복 실행 자체를 막는다.
+  let postSubmitting = false;
   let pwResolveCallback = null;
   let modalImgList = [];
   let modalImgIndex = 0;
@@ -1507,13 +1514,15 @@
       document.getElementById('sidebarNoticeText').innerHTML = fmtMsg(example);
       // 폼은 appendChild로 위치만 옮겨다니므로(복제 아님) 현재 어디 붙어있든
       // (사이드바/대기 장소/특정 칼럼 안) 실제 노드를 그대로 찾아 옮기면 된다.
-      const formCard = document.getElementById('postForm').closest('.form-card');
-      if (isColumns) {
-        document.getElementById('composeHolder').appendChild(formCard); // 새로고침 시 열려있던 인라인 폼은 일단 접어 정리
-        cancelEdit();
-      } else {
-        document.getElementById('sidebarFormSlot').appendChild(formCard);
+      const formCard = document.getElementById('postForm')?.closest('.form-card');
+      if (formCard) {
+        if (isColumns) {
+          document.getElementById('composeHolder').appendChild(formCard); // 새로고침 시 열려있던 인라인 폼은 일단 접어 정리
+        } else {
+          document.getElementById('sidebarFormSlot').appendChild(formCard);
+        }
       }
+      if (isColumns) cancelEdit();
       const photoMap = await fetchPhotoMap(rawPosts.map(p => p.studentId));
       currentPosts = rawPosts.map(p => ({
         ...p,
@@ -1914,6 +1923,8 @@
 
   async function submitPost(event) {
     event.preventDefault();
+    if (postSubmitting) return;
+    postSubmitting = true;
     toggleLoading(true);
     document.getElementById('subBtn').disabled = true;
     const mode = getHidden('f_mode');
@@ -1924,6 +1935,7 @@
     if (currentClassMeta.boardLayout === 'columns' && !column) {
       alert('칼럼을 선택하세요.');
       toggleLoading(false); document.getElementById('subBtn').disabled = false;
+      postSubmitting = false;
       return;
     }
 
@@ -1984,6 +1996,7 @@
       cancelEdit(); // 폼 reset·필드 정리 전부 여기서 처리 (아래 fillSession도 포함)
       setTimeout(() => { const first = document.querySelector('.grid-board .post-card:not(.teacher-card)'); if (first) first.scrollIntoView({behavior:'smooth',block:'center'}); }, 150);
     } catch(err) { alert(err.message); document.getElementById('subBtn').disabled = false; }
+    postSubmitting = false;
     toggleLoading(false);
   }
 
