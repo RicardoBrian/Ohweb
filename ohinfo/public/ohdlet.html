@@ -971,6 +971,13 @@
     const g = c.grade || '', grp = c.group || '';
     return `${c.name||''}__${c.schoolName||''}${g?('__g'+g):''}${grp?('__c'+grp):''}`;
   }
+  // classBoardKey()의 "이름__학교" 부분만 — 선생님이 나중에 그 수업의
+  // 대상(학년/반)을 바꾸면 새 글의 boardKey가 달라지는데, 예전 글은 옛
+  // boardKey 그대로라서 정확히 일치 비교만 하면 대상을 바꾸는 순간 기존
+  // 글이 전부 안 보이게 된다. 학교까지만 같으면 같은 게시판으로 본다
+  // (마스터 계정이 같은 이름의 다른 학교 수업을 볼 때 글이 섞이는 것만
+  // 막으면 되고, 학년/반 변경까지 엄격히 구분할 필요는 없다).
+  function classBoardKeyBase(c) { return `${c.name||''}__${c.schoolName||''}`; }
   let currentBoardKey = '';
   let _mpStudent = { ..._st };
 
@@ -1485,10 +1492,13 @@
       };
       setHidden('p_column', '');
 
-      // 게시물 조회 (boardKey 없는 옛 게시글은 이름만으로 계속 노출 — 하위호환)
+      // 게시물 조회 (boardKey 없는 옛 게시글은 이름만으로 계속 노출 — 하위호환.
+      // 대상(학년/반)이 바뀌어 boardKey 뒷부분만 달라진 글도 이름+학교가
+      // 같으면 그대로 노출한다 — classBoardKeyBase 주석 참고)
+      const boardKeyBase = cls.name ? classBoardKeyBase(cls) : '';
       const allPosts = await loadClassPosts(classTitle, currentBoardKey);
       const rawPosts = allPosts
-        .filter(p => !p.deleted && (!p.boardKey || p.boardKey === currentBoardKey));
+        .filter(p => !p.deleted && (!p.boardKey || p.boardKey === currentBoardKey || (boardKeyBase && p.boardKey.startsWith(boardKeyBase))));
       // 클라이언트 정렬: pinned desc, createdAt desc
       rawPosts.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (b.createdAt > a.createdAt ? 1 : -1));
 
