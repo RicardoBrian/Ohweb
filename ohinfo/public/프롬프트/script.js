@@ -46,10 +46,30 @@ const DESIGN_PRESETS = [
   },
 ];
 
-const CLOSING_TEXT = '빌드 도구(Vite, React, webpack 등) 없이 순수 HTML/CSS/JS 단일 파일로 작성해주세요. 데스크톱과 모바일 화면 모두에서 자연스럽게 보이도록 반응형으로 만들어주세요. 데이터 저장이 필요하면 브라우저 localStorage를 사용해주세요(Firebase나 다른 외부 데이터베이스는 쓰지 마세요). 화면에 보이는 버튼, 안내 문구, 오류 메시지 등 모든 텍스트는 한국어로 작성해주세요. TODO나 "여기에 구현" 같은 미완성 부분 없이, 위에 적은 기능들이 실제로 클릭하면 동작하는 완성된 코드로 작성해주세요. 입력값이 비어있거나 잘못된 경우에도 오류 없이 자연스럽게 동작하도록 예외 처리를 해주세요. 완성된 웹앱을 별도 설명 없이 바로 실행 가능한 코드로 한 번에 작성해주세요.';
+const CLOSING_TEXT = '빌드 도구(Vite, React, webpack 등) 없이 순수 HTML/CSS/JS로 작성해주세요. 데스크톱과 모바일 화면 모두에서 자연스럽게 보이도록 반응형으로 만들어주세요. 화면에 보이는 버튼, 안내 문구, 오류 메시지 등 모든 텍스트는 한국어로 작성해주세요. TODO나 "여기에 구현" 같은 미완성 부분 없이, 위에 적은 기능들이 실제로 클릭하면 동작하는 완성된 코드로 작성해주세요. 입력값이 비어있거나 잘못된 경우에도 오류 없이 자연스럽게 동작하도록 예외 처리를 해주세요. 완성된 웹앱을 별도 설명 없이 바로 실행 가능한 코드로 한 번에 작성해주세요.';
+
+// 데이터 저장 방식별 삽입 문구 — 견본 화면(견본/shared/firestore-lite*.js)과 달리
+// 실제로 만들어질 앱은 진짜 구글 시트/Firebase를 붙여야 하므로, Gemini가 자리표시
+// 상수/설정값을 코드에 남겨두고 연동 방법까지 단계별로 설명하도록 명시한다.
+const STORAGE_TEXT = {
+  local: '데이터 저장은 브라우저 localStorage만 사용해주세요. 로그인이나 외부 서비스 연동 없이, 각 사용자의 브라우저 안에만 데이터가 저장되면 됩니다.',
+  sheets: [
+    '데이터는 Google 스프레드시트에 저장하고 불러와주세요. Google Apps Script로 스프레드시트를 웹앱(Web App)으로 배포한 뒤, 그 배포 URL로 fetch(GET/POST)를 보내 데이터를 읽고 쓰는 방식으로 구현해주세요.',
+    '코드 안에는 실제 URL 대신 아래처럼 자리표시 상수를 만들어 두고, 제가 나중에 제 배포 URL로 바꿔 넣을 수 있게 해주세요:',
+    'const SHEET_WEB_APP_URL = "여기에_Apps_Script_웹앱_URL_붙여넣기";',
+    '그리고 제가 직접 연동할 수 있도록 아래 내용을 코드와 함께 단계별로 설명해주세요: (1) 구글 스프레드시트를 새로 만들고 어떤 열(컬럼)로 구성하면 되는지, (2) 스프레드시트의 확장 프로그램 → Apps Script에 붙여넣을 코드(doGet/doPost로 데이터를 읽고 쓰는 코드), (3) Apps Script를 웹앱으로 배포하는 방법과 배포 후 나오는 URL을 어디에 붙여넣어야 하는지.',
+  ].join(' '),
+  firebase: [
+    '데이터는 Firebase(Firestore)에 저장하고 불러와주세요. Firebase JS SDK(CDN 방식)를 사용해서 구현해주세요.',
+    '코드 안에는 실제 값 대신 아래처럼 자리표시 설정 객체를 만들어 두고, 제가 나중에 제 Firebase 프로젝트 설정값으로 바꿔 넣을 수 있게 해주세요:',
+    'const firebaseConfig = { apiKey: "여기에_API_KEY", authDomain: "여기에_AUTH_DOMAIN", projectId: "여기에_PROJECT_ID", storageBucket: "여기에_STORAGE_BUCKET", messagingSenderId: "여기에_SENDER_ID", appId: "여기에_APP_ID" };',
+    '그리고 제가 직접 연동할 수 있도록 아래 내용을 단계별로 설명해주세요: (1) Firebase 콘솔(console.firebase.google.com)에서 새 프로젝트를 만드는 방법, (2) Firestore Database를 테스트 모드로 생성하고 어떤 컬렉션 구조를 쓰면 되는지, (3) "웹 앱 추가"로 앱을 등록해서 위 firebaseConfig 값을 얻는 방법과 그 값을 코드 어디에 붙여넣어야 하는지.',
+  ].join(' '),
+};
 
 const state = {
   features: [],
+  storage: null, // 'local' | 'sheets' | 'firebase'
   designMode: 'custom', // 'custom' | 'preset'
   selectedPreset: null,
 };
@@ -364,6 +384,7 @@ function selectRevisePreset(id) {
 function goStep(n) {
   if (n === 2 && !validateStep1()) return;
   if (n === 3 && !validateStep2()) return;
+  if (n === 4 && !validateStorage()) return;
   showStep(n);
 }
 
@@ -402,6 +423,17 @@ function validateStep2() {
   return topicOk && featuresOk;
 }
 
+function getStorage() {
+  const el = document.querySelector('input[name="storage"]:checked');
+  return el ? el.value : null;
+}
+
+function validateStorage() {
+  const ok = !!getStorage();
+  document.getElementById('err-storage').hidden = ok;
+  return ok;
+}
+
 function validateStep3() {
   let ok = false;
   if (state.designMode === 'custom') {
@@ -420,9 +452,11 @@ function validateStep3() {
 function generatePrompt() {
   if (!validateStep1()) { showStep(1); return; }
   if (!validateStep2()) { showStep(2); return; }
+  if (!validateStorage()) { showStep(3); return; }
   if (!validateStep3()) return;
 
   const purpose = getPurpose();
+  const storage = getStorage();
   const topic = document.getElementById('topic').value.trim();
   const validFeatures = state.features.filter((f) => f.name.trim());
 
@@ -450,7 +484,11 @@ function generatePrompt() {
   });
   lines.push('');
 
-  // 4. 디자인
+  // 4. 데이터 저장 방식
+  lines.push(STORAGE_TEXT[storage]);
+  lines.push('');
+
+  // 5. 디자인
   if (state.designMode === 'custom') {
     lines.push(document.getElementById('designText').value.trim());
   } else {
@@ -459,11 +497,11 @@ function generatePrompt() {
   }
   lines.push('');
 
-  // 5. 고정 문구
+  // 6. 고정 문구
   lines.push(CLOSING_TEXT);
 
   document.getElementById('resultText').value = lines.join('\n');
-  showStep(4);
+  showStep(5);
 }
 
 // ============================================================
@@ -537,10 +575,10 @@ function generateRevisePrompt() {
     lines.push('');
   }
 
-  lines.push('수정된 전체 코드를 다시 한 번에, 생략 없이 작성해주세요. (빌드 도구 없이 순수 HTML/CSS/JS, 외부 데이터베이스 금지, 데이터 저장이 필요하면 localStorage 사용, 화면 텍스트는 한국어 등 기존 제약은 동일하게 적용해주세요.) TODO나 "여기에 구현" 같은 미완성 부분 없이 실제로 동작하는 코드로 작성해주세요.');
+  lines.push('수정된 전체 코드를 다시 한 번에, 생략 없이 작성해주세요. (빌드 도구 없이 순수 HTML/CSS/JS, 기존에 쓰던 데이터 저장 방식(localStorage/구글 시트/Firebase 등) 그대로 유지, 화면 텍스트는 한국어 등 기존 제약은 동일하게 적용해주세요.) TODO나 "여기에 구현" 같은 미완성 부분 없이 실제로 동작하는 코드로 작성해주세요.');
 
   document.getElementById('resultText').value = lines.join('\n');
-  showStep(4);
+  showStep(5);
   toast('수정 프롬프트가 생성되었습니다');
 }
 
@@ -581,6 +619,7 @@ function resetAll() {
   document.getElementById('topic').value = '';
   state.features = [newFeature()];
   renderFeatures();
+  document.querySelectorAll('input[name="storage"]').forEach((el) => { el.checked = false; });
   document.getElementById('designText').value = '';
   state.selectedPreset = null;
   setDesignMode('custom');
@@ -588,6 +627,7 @@ function resetAll() {
   document.getElementById('err-purpose').hidden = true;
   document.getElementById('err-topic').hidden = true;
   document.getElementById('err-features').hidden = true;
+  document.getElementById('err-storage').hidden = true;
   document.getElementById('err-design').hidden = true;
 
   reviseState.newFeatures = [];
@@ -622,6 +662,8 @@ function fillExample() {
   }];
   renderFeatures();
 
+  document.querySelector('input[name="storage"][value="local"]').checked = true;
+
   state.selectedPreset = 'minimal';
   setDesignMode('preset');
   renderPresets();
@@ -642,6 +684,7 @@ function saveDraft() {
       purpose: getPurpose(),
       topic: document.getElementById('topic').value,
       features: state.features.map((f) => ({ name: f.name, desc: f.desc, steps: f.steps })),
+      storage: getStorage(),
       designMode: state.designMode,
       designText: document.getElementById('designText').value,
       selectedPreset: state.selectedPreset,
@@ -680,6 +723,11 @@ function loadDraft() {
       desc: f.desc || '',
       steps: Array.isArray(f.steps) && f.steps.length ? f.steps : [''],
     }));
+  }
+
+  if (draft.storage) {
+    const el = document.querySelector(`input[name="storage"][value="${draft.storage}"]`);
+    if (el) el.checked = true;
   }
 
   document.getElementById('designText').value = draft.designText || '';
