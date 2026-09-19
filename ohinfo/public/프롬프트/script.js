@@ -46,7 +46,7 @@ const DESIGN_PRESETS = [
   },
 ];
 
-const CLOSING_TEXT = '빌드 도구(Vite, React, webpack 등) 없이 순수 HTML/CSS/JS 단일 파일로 작성해주세요. 데스크톱과 모바일 화면 모두에서 자연스럽게 보이도록 반응형으로 만들어주세요. 데이터 저장이 필요하면 브라우저 localStorage를 사용해주세요(Firebase나 다른 외부 데이터베이스는 쓰지 마세요). 완성된 웹앱을 별도 설명 없이 바로 실행 가능한 코드로 한 번에 작성해주세요.';
+const CLOSING_TEXT = '빌드 도구(Vite, React, webpack 등) 없이 순수 HTML/CSS/JS 단일 파일로 작성해주세요. 데스크톱과 모바일 화면 모두에서 자연스럽게 보이도록 반응형으로 만들어주세요. 데이터 저장이 필요하면 브라우저 localStorage를 사용해주세요(Firebase나 다른 외부 데이터베이스는 쓰지 마세요). 화면에 보이는 버튼, 안내 문구, 오류 메시지 등 모든 텍스트는 한국어로 작성해주세요. TODO나 "여기에 구현" 같은 미완성 부분 없이, 위에 적은 기능들이 실제로 클릭하면 동작하는 완성된 코드로 작성해주세요. 입력값이 비어있거나 잘못된 경우에도 오류 없이 자연스럽게 동작하도록 예외 처리를 해주세요. 완성된 웹앱을 별도 설명 없이 바로 실행 가능한 코드로 한 번에 작성해주세요.';
 
 const state = {
   features: [],
@@ -442,7 +442,7 @@ function generatePrompt() {
   lines.push('');
 
   // 3. 기능 목록
-  lines.push('다음 기능들을 구현해주세요:');
+  lines.push('다음 기능들을 구현해주세요. 각 기능은 적어놓은 순서/설명 그대로 실제로 동작해야 하고, 기능이 여러 개면 서로 방해하지 않고 함께 정상 동작해야 합니다:');
   validFeatures.forEach((f) => {
     lines.push(`- ${f.name}: ${f.desc || '(설명 없음)'}`);
     const steps = f.steps.map((s) => s.trim()).filter(Boolean);
@@ -537,7 +537,7 @@ function generateRevisePrompt() {
     lines.push('');
   }
 
-  lines.push('수정된 전체 코드를 다시 한 번에, 생략 없이 작성해주세요. (빌드 도구 없이 순수 HTML/CSS/JS, 외부 데이터베이스 금지, 데이터 저장이 필요하면 localStorage 사용 등 기존 제약은 동일하게 적용해주세요.)');
+  lines.push('수정된 전체 코드를 다시 한 번에, 생략 없이 작성해주세요. (빌드 도구 없이 순수 HTML/CSS/JS, 외부 데이터베이스 금지, 데이터 저장이 필요하면 localStorage 사용, 화면 텍스트는 한국어 등 기존 제약은 동일하게 적용해주세요.) TODO나 "여기에 구현" 같은 미완성 부분 없이 실제로 동작하는 코드로 작성해주세요.');
 
   document.getElementById('resultText').value = lines.join('\n');
   showStep(4);

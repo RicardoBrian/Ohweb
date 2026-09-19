@@ -816,12 +816,16 @@
     collection, query, where, orderBy, getDocs, documentId,
     addDoc, updateDoc, deleteDoc, doc, serverTimestamp, increment, onSnapshot
   } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-  import { saveSession, loadSession, clearSession } from './session.js';
+  import { saveSession, loadSession, clearSession, verifyStudentAuth } from './session.js';
   import { changeStudentPassword, AuthError } from './student-auth.js';
+  import { escHtml, fmtMsg, safePhotoUrl } from './escape.js';
 
   // ── 세션 체크 ──
   const _st = loadSession();
   if (!_st) { window.location.href = 'index.html'; }
+  // localStorage 세션은 브라우저에서 고칠 수 있다 — 실제 로그인 계정과
+  // 맞는지 뒤이어 확인하고, 안 맞으면 로그인 화면으로 돌려보낸다.
+  verifyStudentAuth(_st);
   const _nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
   const SESSION = {
     id: _st?.id || '',
@@ -972,7 +976,7 @@
 
   // ── 네비 아바타 ──
   function renderAvatar(el, s) {
-    if (s.photoUrl) { el.innerHTML = `<img src="${s.photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`; }
+    if (safePhotoUrl(s.photoUrl)) { el.innerHTML = `<img src="${escHtml(safePhotoUrl(s.photoUrl))}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`; }
     else { el.innerText = (s.name||'?')[0]; }
   }
   renderAvatar(document.getElementById('navAvatar'), _mpStudent);
@@ -992,7 +996,7 @@
     document.getElementById('userDropdown').classList.add('hidden');
     _mpPhotoB64 = null;
     const prev = document.getElementById('mpPhotoPreview');
-    if (_mpStudent.photoUrl) { prev.innerHTML = `<img src="${_mpStudent.photoUrl}">`; }
+    if (safePhotoUrl(_mpStudent.photoUrl)) { prev.innerHTML = `<img src="${escHtml(safePhotoUrl(_mpStudent.photoUrl))}">`; }
     else { prev.innerText = (_mpStudent.name||'?')[0]; }
     ['mpCurPw','mpNewPw','mpNewPw2'].forEach(id => document.getElementById(id).value = '');
     const msg = document.getElementById('mpMsg'); msg.innerText = ''; msg.className = 'modal-msg';
@@ -1303,7 +1307,6 @@
   function closePopup() { document.getElementById('popupOverlay').classList.remove('show'); }
 
   // ── 포맷 ──
-  function fmtMsg(text) { if (!text) return ''; let s = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); return s.replace(/(https?:\/\/[^\s]+)/g,'<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'); }
 
   // ── 언어 ──
   window.toggleLangDD = () => { document.getElementById('langGlobeDD').classList.toggle('hidden'); };
@@ -1625,10 +1628,10 @@
 
   function postCardHtml(p) {
     const hasLiked = localStorage.getItem('voted_'+p.id);
-    const _srch = [p.subject,p.subKo,p.message,p.msgKo,p.name].filter(Boolean).join(' ').replace(/"/g,'&quot;');
-    return `<div class="post-card ${p.pinned?'pinned-card':''}" data-id="${p.id}" data-search="${_srch}">
+    const _srch = escHtml([p.subject,p.subKo,p.message,p.msgKo,p.name].filter(Boolean).join(' '));
+    return `<div class="post-card ${p.pinned?'pinned-card':''}" data-id="${escHtml(p.id)}" data-search="${_srch}">
         ${p.pinned ? '<div class="pin-badge"><svg width="11" height="11"><use href="#ic-pin"/></svg> 고정</div>' : ''}
-        ${p.subject ? `<div class="post-sub">${p.subject}</div>` : ''}
+        ${p.subject ? `<div class="post-sub">${escHtml(p.subject)}</div>` : ''}
         ${p.message ? `<div class="post-msg">${fmtMsg(p.message)}</div>` : (!p.subject ? `<div class="post-msg" style="color:var(--sub);font-style:italic;">(내용 없음)</div>` : '')}
         ${buildSlider(p.imgs, p.id)}
         <div class="post-meta">
@@ -1646,7 +1649,7 @@
           </div>
         </div>
         <div class="comment-panel" id="cpanel_${p.id}"></div>
-        <div class="post-byline">${p.photoUrl ? `<img src="${p.photoUrl}" style="width:18px;height:18px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:5px;">` : ''}${p.name}(${p.num}) · ${p.time}</div>
+        <div class="post-byline">${safePhotoUrl(p.photoUrl) ? `<img src="${escHtml(safePhotoUrl(p.photoUrl))}" style="width:18px;height:18px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:5px;">` : ''}${escHtml(p.name)}(${escHtml(p.num)}) · ${escHtml(p.time)}</div>
       </div>`;
   }
 
@@ -1815,15 +1818,14 @@
   }
 
   // ── 댓글 ──
-  function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   const _commentsCache = {}; // postId → 댓글 배열(펼친 적 있으면 캐시, 새로고침 없이 다시 펼칠 때 재사용)
 
   function renderCommentList(postId, comments, photoMap) {
     const listHtml = comments.length ? comments.map(c => {
-      const photo = photoMap[String(c.studentId)] || '';
+      const photo = safePhotoUrl(photoMap[String(c.studentId)]);
       const isMine = String(c.studentId) === String(SESSION.id);
       return `<div class="comment-item">
-        <div class="comment-avatar">${photo ? `<img src="${photo}">` : escHtml((c.name||'?')[0])}</div>
+        <div class="comment-avatar">${photo ? `<img src="${escHtml(photo)}">` : escHtml((c.name||'?')[0])}</div>
         <div class="comment-body">
           <div class="comment-byline">${escHtml(c.name||'')}<span class="num"> (${escHtml(c.num||'')})</span>${isMine ? `<span class="comment-del" onclick="deleteComment('${postId}','${c.id}')">삭제</span>` : ''}</div>
           <div class="comment-text">${escHtml(c.text)}</div>
@@ -2140,7 +2142,7 @@
     // profile card in step1
     const s1Photo = document.getElementById('s1Photo');
     if (s1Photo) {
-      if (_mpStudent.photoUrl) { s1Photo.innerHTML = `<img src="${_mpStudent.photoUrl}">`; }
+      if (safePhotoUrl(_mpStudent.photoUrl)) { s1Photo.innerHTML = `<img src="${escHtml(safePhotoUrl(_mpStudent.photoUrl))}">`; }
       else { s1Photo.innerText = (SESSION.name||'?')[0]; }
     }
     const s1Name = document.getElementById('s1Name'); if (s1Name) s1Name.innerText = SESSION.name;

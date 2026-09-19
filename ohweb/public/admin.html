@@ -318,8 +318,11 @@
     .toast {
       position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(80px);
       background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
-      border: 1px solid var(--border); border-radius: 50px;
+      border: 1px solid var(--border); border-radius: 20px;
       padding: 12px 24px; font-size: 0.88rem; font-weight: 700;
+      /* 설정 오류 안내처럼 두 줄 이상인 메시지도 읽히게 — 한 줄짜리는
+         그대로 알약 모양으로 보인다. */
+      white-space: pre-line; max-width: min(92vw, 560px); line-height: 1.5; text-align: center;
       box-shadow: var(--highlight), var(--shadow-md);
       z-index: 9999; transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
       white-space: nowrap;
@@ -399,7 +402,8 @@
     <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">이름</label>
     <input class="inp" id="seName" type="text" placeholder="이름" style="width:100%;margin-bottom:12px;">
     <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">비밀번호</label>
-    <input class="inp" id="sePw" type="text" placeholder="비밀번호 (비우면 미설정 = 로그인 불가)" style="width:100%;margin-bottom:6px;">
+    <input class="inp" id="sePw" type="text" placeholder="새 비밀번호 (비워두면 변경 안 함)" style="width:100%;margin-bottom:6px;">
+    <div style="font-size:0.74rem;color:var(--sub);margin-bottom:6px;line-height:1.5;">기존 비밀번호는 조회할 수 없습니다 — Firebase가 해시로만 저장합니다.<br>잊어버린 학생에게는 여기서 새 비밀번호를 정해 알려주세요.</div>
     <div style="font-size:0.76rem;color:var(--sub);margin-bottom:14px;">비밀번호를 설정하면 학생이 로그인할 수 있어요. 비우면 로그인 불가(미등록) 상태가 됩니다.</div>
     <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:18px;">
       <input type="checkbox" id="seMaster" style="width:16px;height:16px;accent-color:var(--accent);">
@@ -732,7 +736,7 @@
         <input type="hidden" id="q_docId">
         <div style="margin-bottom:12px;">
           <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">대상 시험</label>
-          <select class="inp" id="q_examId" style="width:100%;" onchange="loadQList()">
+          <select class="inp" id="q_examId" style="width:100%;" onchange="onQFormExamChange(this.value)">
             <option value="">시험을 선택하세요</option>
           </select>
         </div>
@@ -858,10 +862,13 @@
       <div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
           <h2 style="margin:0;"><span class="icon"><svg width="18" height="18"><use href="#ic-doc"/></svg></span> 문제 목록</h2>
-          <button class="icon-action" title="번역 보완" onclick="fixMissingTranslations()"><svg width="17" height="17"><use href="#ic-globe"/></svg></button>
+          <div style="display:flex;gap:6px;">
+            <button class="btn ghost sm" title="예전 문항의 정답을 학생이 못 읽는 곳(exam_answers)으로 옮깁니다" onclick="migrateAnswers()">정답 분리</button>
+            <button class="icon-action" title="번역 보완" onclick="fixMissingTranslations()"><svg width="17" height="17"><use href="#ic-globe"/></svg></button>
+          </div>
         </div>
         <div style="margin-bottom:12px;">
-          <select class="inp" id="qlist_examId" style="width:100%;" onchange="loadQList()">
+          <select class="inp" id="qlist_examId" style="width:100%;" onchange="loadQList(this.value)">
             <option value="">시험을 선택하세요</option>
           </select>
         </div>
@@ -1021,7 +1028,7 @@
 </script>
 
 <script type="module">
-  import { db } from './firebase-config.js';
+  import { db, auth } from './firebase-config.js';
   import {
     collection, addDoc, getDocs, deleteDoc, doc,
     query, where, orderBy, setDoc, getDoc, serverTimestamp, writeBatch, updateDoc, deleteField
@@ -1082,13 +1089,14 @@
     return out;
   }
 
-  function toast(msg, type = '') {
+  // ms: 읽는 데 오래 걸리는 안내(설정이 뭐가 틀렸는지 같은 것)는 길게 띄운다.
+  function toast(msg, type = '', ms = 2800) {
     const el = document.getElementById('toast');
     el.className = `toast ${type}`;
     el.innerText = msg;
     el.classList.add('show');
     clearTimeout(el._t);
-    el._t = setTimeout(() => el.classList.remove('show'), 2800);
+    el._t = setTimeout(() => el.classList.remove('show'), ms);
   }
 
   function confirmDialog(title, msg, cb) {
@@ -1389,7 +1397,10 @@
     document.getElementById('seId').value = id;
     document.getElementById('seInfo').innerText = `${s.schoolName||''} ${nv(s.grade)}학년 ${nv(s.class)}반 ${s.number||''}번`;
     document.getElementById('seName').value = s.name || '';
-    document.getElementById('sePw').value = s.password || '';
+    // 기존 비밀번호는 원리상 불러올 수 없다(Firebase Auth는 해시만 보관).
+    // 예전엔 Firestore의 평문 password 필드를 채워 넣었는데, 그 필드는
+    // 이제 쓰지 않으므로 항상 빈 칸으로 연다 — 비우면 비밀번호 변경 없음.
+    document.getElementById('sePw').value = '';
     document.getElementById('seMaster').checked = !!s.isMaster;
     document.getElementById('studentEditModal').classList.add('show');
   };
@@ -1402,18 +1413,40 @@
     if (!name) { toast('이름을 입력하세요.', 'error'); return; }
     showLoading(true);
     try {
+      const existing = allStudents.find(x => x.id === id);
+      // 비밀번호를 입력했으면 Firestore 필드가 아니라 실제 Firebase Auth
+      // 계정 비밀번호를 바꾼다 — 이전엔 Firestore 필드만 바꿔서 학생이
+      // 로그인할 때 안 먹혔다(심지어 auth/email-already-in-use로 깨짐).
+      if (pw) {
+        const idToken = await auth.currentUser.getIdToken();
+        const res = await fetch('/api/reset-student-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ studentDocId: id, newPassword: pw, idToken }),
+        });
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          // 설정이 틀렸을 때의 상세는 화면에도 띄운다 — 매번 개발자 도구를
+          // 열어 콘솔을 봐야 원인을 알 수 있으면 안내가 아니다.
+          if (data.detail) console.error('reset-student-password:', data.detail);
+          const e = new Error(data.error || '비밀번호 설정 실패');
+          e.detail = data.detail;
+          throw e;
+        }
+      }
       await updateDoc(doc(db, 'students', id), {
         name,
-        password: pw || null,
-        registered: !!pw,
+        password: deleteField(),
+        registered: pw ? true : !!existing?.registered,
         isMaster: isMaster || false
       });
-      const s = allStudents.find(x => x.id === id);
-      if (s) { s.name = name; s.password = pw || null; s.registered = !!pw; s.isMaster = isMaster || false; }
+      if (existing) { existing.name = name; existing.password = null; existing.registered = pw ? true : !!existing.registered; existing.isMaster = isMaster || false; }
       closeStudentEdit();
       toast('저장되었습니다.', 'success');
       renderStudents();
-    } catch (e) { toast('오류: ' + e.message, 'error'); }
+    } catch (e) {
+      toast(e.detail ? `${e.message}\n${e.detail}` : '오류: ' + e.message, 'error', e.detail ? 9000 : 2800);
+    }
     showLoading(false);
   };
 
@@ -1970,6 +2003,52 @@
   let _testCases = [];
   let _qCache = {};
 
+  // ── 정답 분리 ──
+  // 정답(answer)과 테스트케이스(testCases)는 exam_questions가 아니라
+  // exam_answers/{문항ID}에 따로 둔다. exam_questions는 학생도 읽어야 해서
+  // 공개인데, 거기에 정답이 같이 들어있으면 학생이 브라우저 콘솔에서
+  // Firestore를 직접 읽어 시험 전에 정답을 전부 볼 수 있었다. 채점은
+  // ohinfo의 /api/grade-exam이 서비스 계정으로 정답을 읽어서 한다.
+  // 관리자는 규칙상 exam_answers를 읽을 수 있으므로, 편집 화면에서는
+  // attachAnswers()로 다시 합쳐서 예전과 똑같이 보여준다.
+  const ANSWER_KEYS = ['answer', 'testCases'];
+
+  async function saveQuestionDoc(docId, data, extraOnCreate) {
+    const qFields = { ...data };
+    const key = {};
+    ANSWER_KEYS.forEach(k => { if (k in qFields) { key[k] = qFields[k]; delete qFields[k]; } });
+
+    let id = docId;
+    if (id) {
+      // 예전 문항에 남아있는 평문 정답 필드도 이 참에 지운다.
+      const strip = {};
+      ANSWER_KEYS.forEach(k => { strip[k] = deleteField(); });
+      await updateDoc(doc(db, 'exam_questions', id), { ...qFields, ...strip });
+    } else {
+      id = (await addDoc(collection(db, 'exam_questions'), { ...qFields, ...(extraOnCreate || {}) })).id;
+    }
+    // merge를 쓰지 않는다 — 문항 유형을 바꿨을 때(예: 코딩→객관식) 이전
+    // 유형의 testCases가 남아 채점에 끼어드는 걸 막으려면 매번 통째로 덮어써야 한다.
+    await setDoc(doc(db, 'exam_answers', id), {
+      examId: data.examId || '',
+      answer: key.answer ?? '',
+      testCases: key.testCases ?? [],
+    });
+    return id;
+  }
+
+  async function deleteQuestionDoc(id) {
+    await deleteDoc(doc(db, 'exam_questions', id));
+    try { await deleteDoc(doc(db, 'exam_answers', id)); } catch (e) { /* 정답 문서가 없을 수도 있다 */ }
+  }
+
+  async function attachAnswers(questions) {
+    const keys = await Promise.all(questions.map(async q => {
+      try { return await getDoc(doc(db, 'exam_answers', q.id)); } catch (e) { return null; }
+    }));
+    return questions.map((q, i) => (keys[i] && keys[i].exists()) ? { ...q, ...keys[i].data() } : q);
+  }
+
   const renderTestCases = (tcs) => {
     _testCases = tcs || [];
     const el = document.getElementById('q_tcList');
@@ -2006,12 +2085,26 @@
     document.getElementById('qf_code').classList.toggle('hidden', type !== 'code');
   };
 
+  // 편집 폼의 "대상 시험"(q_examId)을 바꿨을 때. 기존 문항을 편집하는
+  // 중이라면 목록은 건드리지 않는다 — 그 문항을 다른 시험으로 옮기려는
+  // 중일 뿐, 목록 필터까지 따라갈 이유가 없다.
+  window.onQFormExamChange = (value) => {
+    if (document.getElementById('q_docId')?.value) return;
+    loadQList(value);
+  };
+
   window.loadQList = async (forceId) => {
     // forceId 우선, 없으면 qlist_examId, 없으면 q_examId
     const examId = forceId || document.getElementById('qlist_examId')?.value || document.getElementById('q_examId')?.value;
     if (!examId) return;
-    const a = document.getElementById('q_examId'); if (a) a.value = examId;
     const b = document.getElementById('qlist_examId'); if (b) b.value = examId;
+    // 폼의 대상 시험은 새 문항을 만들 때만 목록에 맞춰준다. 예전엔 무조건
+    // 덮어써서 두 가지가 망가져 있었다 — 폼에서 대상 시험을 고르면 목록
+    // 필터의 옛 값으로 즉시 되돌아가서 새로고침 전에는 바꿀 수가 없었고,
+    // 반대로 편집 중에 목록 필터를 바꾸면 폼의 대상 시험까지 같이 바뀌어
+    // 저장할 때 문항이 엉뚱한 시험으로 옮겨갔다.
+    const editingId = document.getElementById('q_docId')?.value;
+    if (!editingId) { const a = document.getElementById('q_examId'); if (a) a.value = examId; }
     const el = document.getElementById('qList');
     try {
     let snap;
@@ -2021,7 +2114,8 @@
       // composite index 없을 때 fallback
       snap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId)));
     }
-    const qs = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.order||0)-(b.order||0));
+    const qsRaw = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.order||0)-(b.order||0));
+    const qs = await attachAnswers(qsRaw);
     _qCache = {};
     qs.forEach(q => { _qCache[q.id] = q; });
     if (!qs.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-help"/></svg></div>문제가 없습니다.</div>'; return; }
@@ -2107,8 +2201,7 @@
     }
     showLoading(true);
     try {
-      if (docId) await updateDoc(doc(db,'exam_questions',docId), data);
-      else await addDoc(collection(db,'exam_questions'), { ...data, createdAt: serverTimestamp() });
+      await saveQuestionDoc(docId, data, { createdAt: serverTimestamp() });
       toast('저장되었습니다.', 'success');
       const savedExamId = examId;
       resetQForm();
@@ -2158,7 +2251,7 @@
   window.deleteQuestion = (id) => {
     confirmDialog('문제 삭제', '이 문제를 삭제하시겠습니까?', async () => {
       showLoading(true);
-      await deleteDoc(doc(db,'exam_questions',id));
+      await deleteQuestionDoc(id);
       await loadQList();
       showLoading(false);
     });
@@ -2403,7 +2496,10 @@
       let qSnap;
       try { qSnap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId), orderBy('order','asc'))); }
       catch(e) { qSnap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId))); }
-      const questions = qSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.order||0)-(b.order||0));
+      // 채점/검토 화면은 정답을 보여줘야 하므로 exam_answers를 다시 합친다.
+      const questions = await attachAnswers(
+        qSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.order||0)-(b.order||0))
+      );
       const typeLabel = { mc:'객관식', sa:'주관식', essay:'서술형', code:'코딩' };
 
       const pages = [];
@@ -2493,7 +2589,9 @@
       const name = progData.name || progDocId.split('_')[1] || progDocId;
 
       const typeLabel = { mc:'객관식', sa:'주관식', essay:'서술형', code:'코딩' };
-      const autoScore = { mc: true, sa: true, essay: false, code: false };
+      // 단답형(sa)은 자동 채점에서 뺐다 — 문자열 그대로 비교하느라 맞은 답이
+      // 오답으로 찍히는 일이 잦았다. 서술형과 같이 여기서 직접 채점한다.
+      const autoScore = { mc: true, sa: false, essay: false, code: false };
 
       inner.innerHTML = `
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
@@ -2562,6 +2660,44 @@
       await loadResults();
     } catch(e) { toast('저장 오류: '+e.message, 'error'); }
     showLoading(false);
+  };
+
+  // ── 정답 분리 마이그레이션 ──
+  // 예전 문항은 정답이 exam_questions 안에 들어있다(= 학생이 읽을 수 있다).
+  // 전체 시험의 문항을 훑어서 정답을 exam_answers로 옮기고 원본 필드를 지운다.
+  // 반드시 "복사 먼저, 삭제 나중" 순서다 — 중간에 실패해도 정답이 사라지지 않는다.
+  window.migrateAnswers = () => {
+    confirmDialog('정답 분리', '모든 시험의 문항에서 정답을 학생이 읽을 수 없는 곳으로 옮깁니다.\n시험 채점에 필요한 작업이며, 여러 번 실행해도 안전합니다.', async () => {
+      showLoading(true);
+      try {
+        const snap = await getDocs(collection(db, 'exam_questions'));
+        const targets = snap.docs.filter(d => {
+          const q = d.data();
+          return q.answer !== undefined || q.testCases !== undefined;
+        });
+        if (!targets.length) { toast('이미 모두 분리되어 있습니다.', 'success'); showLoading(false); return; }
+
+        let done = 0, failed = 0;
+        for (const d of targets) {
+          const q = d.data();
+          try {
+            await setDoc(doc(db, 'exam_answers', d.id), {
+              examId: q.examId || '',
+              answer: q.answer ?? '',
+              testCases: q.testCases ?? [],
+            });
+            await updateDoc(doc(db, 'exam_questions', d.id), {
+              answer: deleteField(), testCases: deleteField(),
+            });
+            done++;
+          } catch (e) { failed++; console.error('migrateAnswers', d.id, e); }
+        }
+        toast(failed ? `${done}개 완료, ${failed}개 실패` : `${done}개 문항의 정답을 분리했습니다.`, failed ? 'error' : 'success');
+        const sel = document.getElementById('qlist_examId')?.value;
+        if (sel) await loadQList(sel);
+      } catch (e) { toast('오류: ' + e.message, 'error'); }
+      showLoading(false);
+    });
   };
 
   // ── 누락 번역 보완 ──
@@ -2732,7 +2868,7 @@
     for (const exDoc of exSnap.docs) {
       const examId = exDoc.id;
       const qSnap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId)));
-      for (const qd of qSnap.docs) await deleteDoc(qd.ref);
+      for (const qd of qSnap.docs) await deleteQuestionDoc(qd.id);
       const asSnap = await getDocs(query(collection(db,'exam_assignments'), where('examId','==',examId)));
       for (const asDoc of asSnap.docs) {
         const asId = asDoc.id;
@@ -2781,8 +2917,8 @@
       } else {
         data.answer = q.answer;
       }
-      const qRef = await addDoc(collection(db,'exam_questions'), data);
-      newQuestions.push({ id: qRef.id, ...data });
+      const qId = await saveQuestionDoc(null, data);
+      newQuestions.push({ id: qId, ...data });
     }
 
     // 결과를 담을 레거시 전용 배정(assignment) 하나 생성

@@ -9,14 +9,19 @@ rules_version = '2';
  * 레포에 Firebase CLI 배포 설정이 없어서 자동 배포되지 않음 — seatchange의
  * firebase.json/firestore.rules와 달리 참고용 기록일 뿐이다).
  *
- * 학생 쪽(ohinfo)엔 아직 진짜 인증이 없다(localStorage 기반 자체 세션뿐).
- * 그래서 학생이 직접 쓰는 컬렉션(students/posts/qna_threads/student_forms/
- * student_form_responses/exam_progress/exam_results)은 지금 완전히 잠글 수
- * 없다 — 잠그면 회원가입/게시글 작성/시험 응시가 그대로 깨진다. 학생 인증을
- * 붙이는 다음 단계(Phase 2)에서 이 컬렉션들도 손봐야 한다.
+ * 학생은 이제 Firebase Auth로 로그인한다(student-auth.js) — 합성 이메일
+ * {문서ID}@ohinfo.local. 그래서 isOwnStudentAuth()로 "본인"을 규칙에서
+ * 판별할 수 있고, 시험 관련 컬렉션은 그 기준으로 잠갔다.
  *
- * 지금 당장 잠근 건 "학생 쪽에서 쓰기 경로가 아예 없는" 컬렉션들 —
- * schools/classes/exams/exam_questions/exam_assignments/appSettings.
+ * 다만 학생 페이지의 진입 가드는 아직 localStorage 세션을 믿는다. 즉 Auth
+ * 세션이 끊긴 상태로도 화면엔 들어올 수 있으므로, 시험 응시 자체를 막으면
+ * 안 되는 쓰기(진행 상황·탭 이탈 횟수)는 인증 없이도 통과시키고, 대신
+ * 점수처럼 조작되면 안 되는 것만 서버/관리자로 제한했다.
+ *
+ * 아직 완전히 열려 있는 것: posts/qna_threads/student_forms/
+ * student_form_responses. 잠그면 게시글 작성·질문이 그대로 깨져서, 진입
+ * 가드를 Auth 기반으로 바꾸는 작업과 같이 가야 한다.
+ *
  * 이전엔 이 프로젝트 전체가 `allow read, write: if true`였다.
  */
 service cloud.firestore {
@@ -30,6 +35,8 @@ service cloud.firestore {
     match /schools/{id}          { allow read, write: if isAdmin(); }
     match /classes/{id}          { allow read: if true; allow write: if isAdmin(); }
     match /exams/{id}            { allow read: if true; allow write: if isAdmin(); }
+    // 문항 본문은 학생이 읽어야 화면에 뜬다. 정답은 여기 없고 exam_answers에
+    // 따로 있으므로 공개 읽기로 둬도 새어나갈 게 없다.
     match /exam_questions/{id}   { allow read: if true; allow write: if isAdmin(); }
     match /exam_assignments/{id} { allow read: if true; allow write: if isAdmin(); }
     match /appSettings/{id}      { allow read: if true; allow write: if isAdmin(); }
@@ -60,8 +67,15 @@ service cloud.firestore {
     //     failedAttempts/locked/lockedAt 필드만 건드릴 수 있고, failedAttempts를
     //     낮추거나 locked를 true→false로 되돌리는 건 막는다 — recordFailedLogin
     //     (student-auth.js)이 늘리기만/잠그기만 하도록 쓰여 있는 것과 대응.
+    // Firebase Auth는 이메일을 소문자로 정규화해서 저장하는데 Firestore 문서
+    // ID는 대소문자를 구분한다(자동 생성 ID엔 대문자가 섞여 있다). 그래서
+    // 단순 비교를 쓰면 대문자가 든 ID에서는 이 함수가 항상 false가 되고,
+    // 결과적으로 "본인 확인" 분기 전체가 죽어 있었다 — 로그인 성공 후
+    // failedAttempts를 0으로 되돌리는 쓰기가 막혀서, 비밀번호를 한 번이라도
+    // 틀린 학생은 그 뒤로 올바른 비밀번호로도 로그인이 안 되는 버그로 이어졌다.
     function isOwnStudentAuth(id) {
-      return request.auth != null && request.auth.token.email == id + '@ohinfo.local';
+      return request.auth != null
+          && request.auth.token.email.lower() == (id + '@ohinfo.local').lower();
     }
     function lockFieldsOnlyAndNotLoosened() {
       let before = resource.data;
@@ -71,7 +85,10 @@ service cloud.firestore {
         && (before.get('locked', false) == false || after.get('locked', false) == true);
     }
     match /students/{id} {
-      allow read, create, delete: if true;
+      // delete는 관리자만 — 예전엔 누구나 학생 문서를 지울 수 있었다.
+      // 학생 쪽 코드에는 삭제 경로가 없어서 막아도 깨지는 기능이 없다.
+      allow read, create: if true;
+      allow delete: if isAdmin();
       allow update: if isAdmin() || isOwnStudentAuth(id) || lockFieldsOnlyAndNotLoosened();
     }
     match /posts/{id}                  { allow read, write: if true; }
@@ -86,8 +103,38 @@ service cloud.firestore {
     match /qna_threads/{id}/{document=**} { allow read, write: if true; }
     match /student_forms/{id}          { allow read, write: if true; }
     match /student_form_responses/{id} { allow read, write: if true; }
-    match /exam_progress/{id}          { allow read, write: if true; }
-    match /exam_results/{id}           { allow read, write: if true; }
+    // ── 시험 ──
+    // 채점은 ohinfo의 /api/grade-exam이 서비스 계정으로 한다. 서비스 계정은
+    // 보안 규칙을 우회하므로, 아래에서 학생의 점수 쓰기를 완전히 막아도
+    // 정상 채점은 그대로 동작한다.
+
+    // 진행 상황: 학생은 시작 시각·탭 이탈 횟수까지만 쓸 수 있고, 점수와
+    // "제출됨" 상태는 못 건드린다. 한 번 제출된 뒤에는 학생 쓰기를 전부 막아
+    // 재응시로 되돌리는 것도 차단한다.
+    match /exam_progress/{id} {
+      allow read: if true;
+      allow create: if isAdmin()
+          || (!request.resource.data.keys().hasAny(['totalScore', 'totalPoints'])
+              && request.resource.data.get('status', '') != 'submitted');
+      allow update: if isAdmin()
+          || (resource.data.get('status', '') != 'submitted'
+              && request.resource.data.get('status', '') != 'submitted'
+              && request.resource.data.get('totalScore', -1) == resource.data.get('totalScore', -1)
+              && request.resource.data.get('totalPoints', -1) == resource.data.get('totalPoints', -1));
+    }
+
+    // 채점 결과: 쓰기는 서버/관리자만(예전엔 학생이 자기 점수를 임의로
+    // 써넣을 수 있었다). 읽기는 본인 것과 관리자만 — exam.html의 결과 조회는
+    // studentId로 필터링하므로 이 규칙으로 통과한다.
+    match /exam_results/{id} {
+      allow read: if isAdmin() || isOwnStudentAuth(resource.data.get('studentId', ''));
+      allow write: if isAdmin();
+    }
+
+    // 정답·테스트케이스. 학생은 절대 읽으면 안 된다 — 이게 exam_questions
+    // 안에 같이 들어있던 탓에, 공개 읽기 규칙을 타고 시험 전에 정답이
+    // 전부 노출됐다.
+    match /exam_answers/{id}           { allow read, write: if isAdmin(); }
 
     // 명시 안 한 나머지 컬렉션은 전부 거부(기본값)
   }

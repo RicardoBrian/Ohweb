@@ -18,9 +18,12 @@
 // `students` 컬렉션에서 registered=true 이고 아직 password 필드(평문)가
 // 남아있는 문서를 찾아서:
 //   - 문서 ID로 합성 이메일 `${id}@ohinfo.local` 을 만들고
-//   - 이미 그 이메일로 된 Auth 계정이 있으면 (이미 로그인 시점에 자동
-//     전환된 경우) → 새로 만들지 않고 Firestore의 password 필드만 지움
-//   - 없으면 Auth 계정을 새로 만들고 → password 필드를 지움
+//   - Auth 계정이 없으면 → 새로 만들고 → password 필드를 지움
+//   - 이미 그 이메일로 된 Auth 계정이 있으면 → Firestore에 남은 평문
+//     password로 그 계정의 Auth 비밀번호를 강제로 맞춘 뒤(admin.html에서
+//     비밀번호를 "재설정"하면 Auth는 그대로 두고 이 평문 필드만 다시
+//     채워버려서 로그인이 auth/email-already-in-use로 깨지는 문제 — 그
+//     불일치를 여기서 해소한다) → password 필드를 지움
 //
 // 6자 미만 비밀번호를 Firebase가 거부하는 문제는 `public/student-auth.js`와
 // 동일한 padPassword 로직으로 맞춘다 — 여기서 로직이 어긋나면 그 학생만
@@ -62,7 +65,7 @@ async function main() {
   console.log(`전체 학생 문서: ${snap.size}건, 마이그레이션 대상(등록됨 + 평문 비밀번호 남음): ${targets.length}건`);
   if (dryRun) console.log('(--dry-run: 실제로 쓰지 않고 미리보기만 합니다)');
 
-  let created = 0, cleanedOnly = 0, failed = 0;
+  let created = 0, synced = 0, failed = 0;
 
   for (const docSnap of targets) {
     const id = docSnap.id;
@@ -71,23 +74,24 @@ async function main() {
     const password = padPassword(data.password);
 
     try {
-      let userExists = false;
+      let existingUser = null;
       try {
-        await auth.getUserByEmail(email);
-        userExists = true;
+        existingUser = await auth.getUserByEmail(email);
       } catch (e) {
         if (e.code !== 'auth/user-not-found') throw e;
       }
 
       if (!dryRun) {
-        if (!userExists) {
+        if (!existingUser) {
           await auth.createUser({ email, password, emailVerified: true });
+        } else {
+          await auth.updateUser(existingUser.uid, { password });
         }
         await db.collection('students').doc(id).update({ password: FieldValue.delete() });
       }
 
-      if (userExists) cleanedOnly++; else created++;
-      console.log(`✓ ${id} (${data.schoolName || ''} ${data.grade || ''}/${data.class || ''} ${data.number || ''}번 ${data.name || ''}) — ${userExists ? '기존 계정, 평문 필드만 정리' : '계정 생성'}`);
+      if (existingUser) synced++; else created++;
+      console.log(`✓ ${id} (${data.schoolName || ''} ${data.grade || ''}/${data.class || ''} ${data.number || ''}번 ${data.name || ''}) — ${existingUser ? '기존 계정 비밀번호를 동기화' : '계정 생성'}`);
     } catch (e) {
       failed++;
       console.error(`✗ ${id} 실패: ${e.message}`);
@@ -95,7 +99,7 @@ async function main() {
   }
 
   console.log('---');
-  console.log(`계정 생성: ${created}건, 기존 계정 정리: ${cleanedOnly}건, 실패: ${failed}건`);
+  console.log(`계정 생성: ${created}건, 기존 계정 비밀번호 동기화: ${synced}건, 실패: ${failed}건`);
   if (dryRun) console.log('(dry-run이었으므로 실제로는 아무것도 바뀌지 않았습니다)');
 }
 
