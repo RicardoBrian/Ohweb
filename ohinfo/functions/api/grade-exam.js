@@ -164,7 +164,12 @@ const isSafeId = s => typeof s === 'string' && SAFE_ID.test(s);
 
 // ── Firestore REST 클라이언트 ──
 function makeDb(projectId, token) {
-  const base = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents`;
+  // commit의 Write.update.name은 URL이 아니라 리소스 이름이어야 한다
+  // ("projects/…/databases/(default)/documents/…"). 예전엔 여기에 base(https://
+  // 로 시작하는 전체 URL)를 그대로 붙여 넣어서 Firestore가 모든 쓰기를
+  // INVALID_ARGUMENT로 거부했고, 학생 제출이 전부 "채점 중 오류"로 실패했다.
+  const docRoot = `projects/${projectId}/databases/(default)/documents`;
+  const base = `https://firestore.googleapis.com/v1/${docRoot}`;
   const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
 
   return {
@@ -200,7 +205,7 @@ function makeDb(projectId, token) {
         method: 'POST', headers,
         body: JSON.stringify({
           writes: writes.map(w => ({
-            update: { name: `${base}/${w.path}`, fields: toFsFields(w.data) },
+            update: { name: `${docRoot}/${w.path}`, fields: toFsFields(w.data) },
             ...(w.merge ? { updateMask: { fieldPaths: Object.keys(w.data) } } : {}),
           })),
         }),
@@ -330,20 +335,22 @@ async function handle(request, env) {
       .sort((a, b) => (a.order || 0) - (b.order || 0));
     if (!questions.length) return json({ error: '시험 문제가 없습니다.' }, 404);
 
-    // 정답은 문항과 같은 문서 ID로 exam_answers에 들어있다.
-    const answerDocs = await Promise.all(questions.map(q => db.get(`exam_answers/${q.id}`)));
+    // 정답은 문항과 같은 문서 ID로 exam_answers에 들어있다. 다만 admin의
+    // "정답 분리"를 아직 안 돌린 예전 시험은 정답이 문항 문서(exam_questions)에
+    // 그대로 남아있다 — 서버는 서비스 계정이라 그걸 읽을 수 있으니, 정답
+    // 문서가 없으면 문항 문서의 값으로 채점한다. 예전엔 여기서 제출 자체를
+    // 막아서, 시험을 다 본 학생이 제출을 못 했다.
+    const answerDocs = (await Promise.all(questions.map(q => db.get(`exam_answers/${q.id}`))))
+      .map((key, i) => key || {
+        answer: questions[i].answer,
+        testCases: questions[i].testCases,
+      });
 
-    // 정답 문서가 없으면 전부 오답 처리돼 버린다 — 조용히 0점을 주느니
-    // 제출을 막고 원인을 알린다(admin의 "정답 분리 마이그레이션" 미실행).
-    const missing = questions
-      .map((q, i) => ({ q, key: answerDocs[i] }))
-      .filter(({ q, key }) => (q.type === 'mc' || q.type === 'code') && !key);
-    if (missing.length) {
-      return json({
-        error: '채점 기준이 준비되지 않았습니다. 선생님께 문의해 주세요.',
-        detail: `exam_answers 누락 ${missing.length}건 (examId=${assignment.examId}) — admin에서 정답 분리 마이그레이션을 실행해야 합니다.`,
-      }, 409);
-    }
+    // 그래도 객관식 정답이 어디에도 없으면 그 문항만 수동 채점으로 넘긴다
+    // (아래 채점 루프에서 처리) — 제출 자체는 막지 않는다.
+    const noKey = questions
+      .filter((q, i) => q.type === 'mc' && (answerDocs[i].answer === undefined || answerDocs[i].answer === null));
+    if (noKey.length) console.error(`grade-exam: 정답 없는 객관식 ${noKey.length}건 (examId=${assignment.examId}) — 수동 채점 필요`);
 
     const answerByIdx = new Map(answers.map(a => [Number(a.qIdx), a.value]));
     const resultItems = [];
@@ -362,9 +369,13 @@ async function handle(request, env) {
       let feedback = '';
 
       if (q.type === 'mc') {
-        const correct = String(key.answer ?? '');
-        if (value !== '' && value === correct) { score = points; feedback = 'correct'; }
-        else { feedback = `wrong:${correct}`; }
+        if (key.answer === undefined || key.answer === null) {
+          feedback = 'manual'; // 정답이 등록 안 된 문항 — 선생님이 직접 채점
+        } else {
+          const correct = String(key.answer);
+          if (value !== '' && value === correct) { score = points; feedback = 'correct'; }
+          else { feedback = `wrong:${correct}`; }
+        }
 
       } else if (q.type === 'sa' || q.type === 'essay') {
         // 서술형과 단답형은 자동 채점하지 않는다 — 선생님이 admin에서 직접
