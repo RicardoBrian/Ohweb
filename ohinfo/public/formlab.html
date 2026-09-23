@@ -4,6 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>설문지 만들기</title>
+  <script>
+    // 예전 공유 링크(formlab?id=…)로 들어온 응답자는 화면이 그려지기 전에
+    // 응답 페이지로 바로 넘긴다 — 모듈 스크립트에서 넘기면 그 사이 formlab
+    // 화면이 잠깐 그려지며 로그인 없이 목록을 불러오다 난 에러 문구가 보였다.
+    (function () {
+      var id = new URLSearchParams(location.search).get('id');
+      if (id) { document.documentElement.style.display = 'none'; location.replace('/formfill?id=' + encodeURIComponent(id)); }
+    })();
+  </script>
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
@@ -860,8 +869,8 @@ window.exportCsv = () => {
   const a = document.createElement('a'); a.href=url; a.download=`${currentFormData.title||'survey'}_responses.csv`; a.click(); URL.revokeObjectURL(url);
 };
 
-// ── 초기 로드 ──
-loadMyForms();
+// ── 초기 로드 ── (세션 없으면 곧 다른 페이지로 넘어가는 중이라 안 부른다)
+if (SESSION) loadMyForms();
 
 // ── 파일 미리보기 모달 ──
 function _labDriveId(url) { const m = String(url||'').match(/\/d\/([^/]+)|[?&]id=([^&]+)/); return m?(m[1]||m[2]):''; }
