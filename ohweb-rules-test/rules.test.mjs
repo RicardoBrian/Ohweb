@@ -17,6 +17,9 @@ await env.withSecurityRulesDisabled(async c => {
   await setDoc(doc(db, 'student_directory/StuB'), { schoolName: 'S', grade: '1', class: '2', number: 4, registered: false, locked: false, failedAttempts: 0 });
   await setDoc(doc(db, 'student_directory/StuC'), { schoolName: 'S', grade: '1', class: '2', number: 5, registered: true, locked: true, failedAttempts: 5 });
   await setDoc(doc(db, 'qna_threads/StuA'), { studentName: '김학생' });
+  await setDoc(doc(db, 'student_forms/F1'), { ownerId: 'StuA', title: '설문', status: 'open', responseCount: 1, questions: [] });
+  await setDoc(doc(db, 'student_form_responses/R1'), { formId: 'F1', ownerId: 'StuA', respondentId: 'StuB', respondentName: '4 박학생', answers: ['비밀 답'] });
+  await setDoc(doc(db, 'student_form_responses/R2'), { formId: 'F1', ownerId: 'StuA', respondentId: 'anonymous', respondentName: '익명', answers: ['x'] });
   await setDoc(doc(db, 'qna_threads/StuA/messages/m1'), { text: '비밀 상담', sender: 'student' });
   await setDoc(doc(db, 'exam_progress/AS1_StuA'), { studentId: 'StuA', name: '김학생', status: 'started', alertCount: 1 });
   await setDoc(doc(db, 'exam_progress/AS2_StuA'), { studentId: 'StuA', name: '김학생', totalScore: 40, status: 'submitted' });
@@ -59,6 +62,16 @@ await T('명단: 잠긴 본인이 자기 잠금 해제', updateDoc(doc(Cc, 'stud
 await T('명단: 다른 학생이 남의 가입 표시', updateDoc(doc(A, 'student_directory/StuB'), { registered: true }), false);
 await T('명단: 비로그인이 항목 생성', setDoc(doc(anon, 'student_directory/X'), { schoolName: 'S' }), false);
 await T('명단: 학생이 항목 삭제', deleteDoc(doc(A, 'student_directory/StuA')), false);
+await T('설문: 비로그인이 응답 전체 읽기', getDocs(collection(anon, 'student_form_responses')), false);
+await T('설문: 다른 학생이 남의 설문 응답 읽기', getDocs(query(collection(L, 'student_form_responses'), where('formId', '==', 'F1'))), false);
+await T('설문: 응답자가 같은 설문의 남 응답까지 읽기', getDocs(query(collection(B, 'student_form_responses'), where('formId', '==', 'F1'))), false);
+await T('설문: 남의 이름으로 응답 제출', addDoc(collection(B, 'student_form_responses'), { formId: 'F1', ownerId: 'StuA', respondentId: 'StuA', answers: [] }), false);
+await T('설문: 남의 설문 수정', updateDoc(doc(B, 'student_forms/F1'), { title: 'hacked' }), false);
+await T('설문: 남의 설문 삭제', deleteDoc(doc(B, 'student_forms/F1')), false);
+await T('설문: 남 이름으로 설문 생성', setDoc(doc(B, 'student_forms/F9'), { ownerId: 'StuA', title: 'x' }), false);
+await T('설문: 응답 수 크게 조작', updateDoc(doc(anon, 'student_forms/F1'), { responseCount: 999 }), false);
+await T('설문: 소유자 바꿔치기', updateDoc(doc(A, 'student_forms/F1'), { ownerId: 'StuB' }), false);
+await T('설문: 남의 응답 삭제', deleteDoc(doc(B, 'student_form_responses/R2')), false);
 if (PHASE === 2) {
   await T('[2단계] 비로그인이 학생 명단(이름·사진) 읽기', getDocs(collection(anon, 'students')), false);
   await T('[2단계] 다른 학생 문서 읽기', getDoc(doc(B, 'students/StuA')), false);
@@ -95,6 +108,18 @@ await T('시험 중: 이탈 횟수 갱신', setDoc(doc(A, 'exam_progress/AS1_Stu
 await T('시험 중: 붙여넣기 횟수 갱신', setDoc(doc(A, 'exam_progress/AS1_StuA'), { pasteBlockCount: 1 }, { merge: true }), true);
 await T('제출 실패: 답안 보관', setDoc(doc(A, 'exam_progress/AS1_StuA'), { pendingAnswers: [{ qIdx: 0, value: '1' }], pendingAt: serverTimestamp(), submitError: 'x' }, { merge: true }), true);
 await T('결과 보기: 본인 채점 결과 조회', getDocs(query(collection(A, 'exam_results'), where('asId', '==', 'AS2'), where('studentId', '==', 'StuA'))), true);
+await T('설문(formfill): 설문 열기(비로그인)', getDoc(doc(anon, 'student_forms/F1')), true);
+await T('설문(formfill): 1회 제한 확인 — 내 응답 조회', getDocs(query(collection(B, 'student_form_responses'), where('formId', '==', 'F1'), where('respondentId', '==', 'StuB'))), true);
+await T('설문(formfill): 로그인 응답 제출', addDoc(collection(B, 'student_form_responses'), { formId: 'F1', ownerId: 'StuA', respondentId: 'StuB', respondentName: '4 박', answers: [], submittedAt: serverTimestamp() }), true);
+await T('설문(formfill): 비로그인 익명 응답 제출', addDoc(collection(anon, 'student_form_responses'), { formId: 'F1', ownerId: 'StuA', respondentId: 'anonymous', respondentName: '익명', answers: [] }), true);
+await T('설문(formfill): 응답 수 +1(비로그인)', updateDoc(doc(anon, 'student_forms/F1'), { responseCount: increment(1) }), true);
+await T('설문(formlab): 내 설문 목록', getDocs(query(collection(A, 'student_forms'), where('ownerId', '==', 'StuA'))), true);
+await T('설문(formlab): 내 설문 응답 조회', getDocs(query(collection(A, 'student_form_responses'), where('formId', '==', 'F1'), where('ownerId', '==', 'StuA'))), true);
+await T('설문(formlab): 새 설문 만들기', addDoc(collection(A, 'student_forms'), { ownerId: 'StuA', title: 't', status: 'open', responseCount: 0 }), true);
+await T('설문(formlab): 설문 수정·마감', updateDoc(doc(A, 'student_forms/F1'), { title: '수정', status: 'closed' }), true);
+await T('설문(formlab): 응답 1건 삭제 + 응답 수 -1', (async () => { await deleteDoc(doc(A, 'student_form_responses/R2')); await updateDoc(doc(A, 'student_forms/F1'), { responseCount: increment(-1) }); })(), true);
+await T('설문(admin): 전체 설문·응답 조회, 마감, 삭제', (async () => { await getDocs(collection(admin, 'student_forms')); await getDocs(collection(admin, 'student_form_responses')); await updateDoc(doc(admin, 'student_forms/F1'), { status: 'open' }); await deleteDoc(doc(admin, 'student_form_responses/R1')); })(), true);
+await T('설문(formlab): 설문 삭제', deleteDoc(doc(A, 'student_forms/F1')), true);
 await T('관리자: 학생 목록/수정/잠금해제', (async () => { await getDocs(collection(admin, 'students')); await updateDoc(doc(admin, 'students/StuA'), { name: '김', isMaster: true, locked: false, failedAttempts: 0 }); })(), true);
 await T('관리자: 학생 생성/삭제', (async () => { await addDoc(collection(admin, 'students'), { name: 'n' }); await deleteDoc(doc(admin, 'students/StuL')); })(), true);
 await T('관리자: 스레드 목록·답장', (async () => { await getDocs(collection(admin, 'qna_threads')); await addDoc(collection(admin, 'qna_threads/StuA/messages'), { sender: 'admin', text: 'a' }); await updateDoc(doc(admin, 'qna_threads/StuA'), { unreadByStudent: true }); })(), true);

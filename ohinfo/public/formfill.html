@@ -206,11 +206,11 @@
 </div>
 
 <script type="module">
-import { db } from './firebase-config.js';
+import { db, auth } from './firebase-config.js';
 import { escHtml as _escP, safePhotoUrl } from './escape.js';
 import { doc, getDoc, addDoc, updateDoc, collection, query, where, getDocs, serverTimestamp, increment }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { loadSession, clearSession, verifyStudentAuth } from './session.js';
+import { loadSession, clearSession, verifyStudentAuth, authReady } from './session.js';
 
 // ── i18n ──
 const T = {
@@ -406,6 +406,10 @@ window.toggleUserMenu = () => { document.getElementById('userDropdown').classLis
 
 // ── session ──
 function getSession() { return loadSession(); }
+function _authMatches() {
+  const em = (auth.currentUser?.email || '').toLowerCase();
+  return !!SESSION && em === `${SESSION.id}@ohinfo.local`.toLowerCase();
+}
 // 세션 검증(verifyStudentAuth)은 설문을 불러온 뒤 init()에서 한다 —
 // 검증에 실패하면 무조건 로그인 화면으로 보내기 때문에, 여기서 먼저
 // 돌리면 "비로그인 응답 허용" 설문인데도 예전 세션이 남아있던 학생이
@@ -476,7 +480,9 @@ async function init() {
   // (안 맞으면 verifyStudentAuth가 로그인 화면으로 보냄).
   if (needLogin && SESSION) verifyStudentAuth(SESSION);
 
-  if (FORM.limitOnce && SESSION) {
+  // 응답 조회·제출은 로그인 계정 기준으로 권한을 본다 — 로그인 복원을 기다린다.
+  if (SESSION) await authReady();
+  if (FORM.limitOnce && SESSION && _authMatches()) {
     try {
       const q = query(collection(db,'student_form_responses'), where('formId','==',formId), where('respondentId','==',SESSION.id));
       const ex = await getDocs(q);
@@ -687,6 +693,17 @@ async function submitForm() {
   btn.disabled = true;
   document.getElementById('btnNextTxt').textContent = t.submitting;
 
+  // 응답자 = 실제 로그인 계정. 세션은 남아 있는데 로그인이 풀린 경우, 비로그인
+  // 허용 설문이면 익명으로 받고, 아니면 다시 로그인하게 한다(규칙이 respondentId를
+  // 로그인 계정과 대조하므로 그대로 보내면 거부된다).
+  const asMe = SESSION && _authMatches();
+  if (SESSION && !asMe && !FORM.allowAnon) {
+    btn.disabled = false;
+    document.getElementById('btnNextTxt').textContent = t.submit;
+    sessionStorage.setItem('ohinfo_redirect', location.href);
+    clearSession(); location.href = 'login.html'; return;
+  }
+
   const allQ = sections.flatMap(s => s.questions);
 
   // 파일 첨부 업로드 → 드라이브 (설문이름-학교-학년 폴더 / 제출시간_이름_파일명)
@@ -744,8 +761,8 @@ async function submitForm() {
 
   const payload = {
     formId, ownerId: FORM.ownerId || '',
-    respondentId: SESSION ? SESSION.id : 'anonymous',
-    respondentName: SESSION ? [SESSION.number, SESSION.name].filter(Boolean).join(' ') || '' : '익명',
+    respondentId: asMe ? SESSION.id : 'anonymous',
+    respondentName: asMe ? [SESSION.number, SESSION.name].filter(Boolean).join(' ') || '' : '익명',
     answers: answersArr, submittedAt: serverTimestamp()
   };
   if (FORM.isQuiz) { payload.score = score; payload.total = total; }

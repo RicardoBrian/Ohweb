@@ -387,6 +387,8 @@ window.showPage = (id) => {
 // ── 목록 로드 ──
 async function loadMyForms() {
   showLoading(true);
+  // 응답은 설문 만든 사람(ownerId)만 읽을 수 있다 — 로그인 복원 뒤에, ownerId 조건을 붙여 조회한다.
+  await authReady();
   try {
     const snap = await getDocs(query(
       collection(db, 'student_forms'),
@@ -400,7 +402,7 @@ async function loadMyForms() {
     if (!forms.length) { el.innerHTML = '<div class="empty-msg">아직 만든 설문이 없습니다.<br>새 설문을 만들어보세요!</div>'; showLoading(false); return; }
     // 응답 수 실시간 조회
     const respCounts = await Promise.all(forms.map(f =>
-      getDocs(query(collection(db,'student_form_responses'), where('formId','==',f.id)))
+      getDocs(query(collection(db,'student_form_responses'), where('formId','==',f.id), where('ownerId','==',SESSION.id)))
         .then(s => s.size).catch(() => f.responseCount || 0)
     ));
     el.innerHTML = forms.map((f, i) => {
@@ -668,7 +670,7 @@ window.openResults = async (formId) => {
     if (!fSnap.exists()) { showLoading(false); return; }
     currentFormId = formId;
     currentFormData = { id: formId, ...fSnap.data() };
-    const rSnap = await getDocs(query(collection(db,'student_form_responses'), where('formId','==',formId)));
+    const rSnap = await getDocs(query(collection(db,'student_form_responses'), where('formId','==',formId), where('ownerId','==',SESSION.id)));
     responses = rSnap.docs.filter(d => SAFE_ID.test(d.id)).map(d => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (b.submittedAt?.seconds || 0) - (a.submittedAt?.seconds || 0));
 
@@ -857,7 +859,7 @@ window.deleteFormId = async (id) => {
   if (!confirm('삭제하시겠습니까? 응답도 모두 삭제됩니다.')) return;
   showLoading(true);
   try {
-    const rSnap = await getDocs(query(collection(db,'student_form_responses'), where('formId','==',id)));
+    const rSnap = await getDocs(query(collection(db,'student_form_responses'), where('formId','==',id), where('ownerId','==',SESSION.id)));
     await Promise.all(rSnap.docs.map(d=>deleteDoc(doc(db,'student_form_responses',d.id))));
     await deleteDoc(doc(db,'student_forms',id));
     await loadMyForms();
