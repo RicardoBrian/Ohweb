@@ -44,8 +44,15 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
-const PISTON_EXECUTE_URL = 'https://emkc.org/api/v2/piston/execute';
-const PISTON_RUNTIMES_URL = 'https://emkc.org/api/v2/piston/runtimes';
+// Piston 공개 API(emkc.org)는 2026-02-15부터 허가받은 곳만 쓸 수 있다(토큰 필요).
+// 토큰을 받았거나 직접 띄운 Piston이 있으면 Cloudflare 환경변수
+// PISTON_URL(예: https://my-piston.example.com/api/v2/piston)과 PISTON_TOKEN으로 지정한다.
+function pistonConfig(env) {
+  const base = String(env?.PISTON_URL || 'https://emkc.org/api/v2/piston').replace(/\/+$/, '');
+  const headers = { 'Content-Type': 'application/json' };
+  if (env?.PISTON_TOKEN) headers.Authorization = env.PISTON_TOKEN;
+  return { execute: `${base}/execute`, runtimes: `${base}/runtimes`, headers };
+}
 const FALLBACK_PYTHON_VERSION = '3.10.0';
 
 const json = (body, status = 200) =>
@@ -78,10 +85,10 @@ let cachedVersion = null;
 let cachedAt = 0;
 const CACHE_MS = 30 * 60 * 1000;
 
-async function resolvePythonVersion() {
+async function resolvePythonVersion(cfg) {
   if (cachedVersion && Date.now() - cachedAt < CACHE_MS) return cachedVersion;
   try {
-    const r = await withTimeout(fetch(PISTON_RUNTIMES_URL), 5000);
+    const r = await withTimeout(fetch(cfg.runtimes, { headers: cfg.headers }), 5000);
     if (r.ok) {
       const list = await r.json();
       const py = Array.isArray(list) ? list.find(x => x.language === 'python') : null;
@@ -91,7 +98,7 @@ async function resolvePythonVersion() {
   return cachedVersion || FALLBACK_PYTHON_VERSION;
 }
 
-async function handle(request) {
+async function handle(request, env) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
   if (request.method !== 'POST') return json({ error: 'Method Not Allowed' }, 405);
 
@@ -105,14 +112,15 @@ async function handle(request) {
   if (code.length > 20000) return json({ error: '코드가 너무 깁니다 (20000자 제한).' }, 400);
   if (stdin.length > 20000) return json({ error: '입력값이 너무 깁니다.' }, 400);
 
-  const version = await resolvePythonVersion();
+  const cfg = pistonConfig(env);
+  const version = await resolvePythonVersion(cfg);
 
   let res;
   const startedAt = Date.now();
   try {
-    res = await withTimeout(fetch(PISTON_EXECUTE_URL, {
+    res = await withTimeout(fetch(cfg.execute, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: cfg.headers,
       body: JSON.stringify({
         language: 'python',
         version,
@@ -128,19 +136,25 @@ async function handle(request) {
     return json({
       error: '실행 서버에 연결할 수 없습니다.',
       detail: `${e.name || 'Error'}: ${e.message} (${Date.now() - startedAt}ms 경과, python version=${version})`,
-    }, 502);
+    }, 200);
   }
 
   if (res.status === 429) return json({ error: '실행 요청이 몰려 있습니다. 잠시 후 다시 시도해주세요.' }, 429);
+  if (res.status === 401 || res.status === 403) {
+    console.error('run-python: 실행 서버 권한 없음 — PISTON_URL/PISTON_TOKEN 설정 필요');
+    return json({ error: '코드 실행 서버를 사용할 수 없습니다. 선생님께 알려 주세요. (실행 서버 권한 설정 필요)' }, 200);
+  }
+  // 5xx로 돌려주면 Cloudflare가 본문을 자기 오류 페이지로 바꿔서 원인이 사라진다 —
+  // 서버 쪽 실패도 200 + error로 돌려준다(exam.html은 data.error가 있으면 실패 처리).
   if (!res.ok) {
     const t = await res.text().catch(() => '');
-    return json({ error: `실행 서버 오류 (HTTP ${res.status})`, detail: `version=${version} · ${t.slice(0, 300)}` }, 502);
+    return json({ error: `실행 서버 오류 (HTTP ${res.status})`, detail: `version=${version} · ${t.slice(0, 300)}` }, 200);
   }
 
   const rawText = await res.text();
   let data;
   try { data = JSON.parse(rawText); }
-  catch { return json({ error: '실행 서버 응답을 해석할 수 없습니다.', detail: rawText.slice(0, 300) }, 502); }
+  catch { return json({ error: '실행 서버 응답을 해석할 수 없습니다.', detail: rawText.slice(0, 300) }, 200); }
 
   const run = data?.run || {};
   return json({
@@ -160,13 +174,13 @@ function withCors(res, request) {
   return out;
 }
 
-export async function onRequest({ request }) {
+export async function onRequest({ request, env }) {
   try {
-    return withCors(await handle(request), request);
+    return withCors(await handle(request, env), request);
   } catch (e) {
-    // 스택을 응답에 실어 보내면 내부 구조가 노출되고, 200으로 내보내면
-    // 호출부가 실패를 성공으로 오해한다. 상세는 Cloudflare 로그에만 남긴다.
+    // 스택은 응답에 싣지 않는다. 상태코드는 200 — 5xx면 Cloudflare가 본문을
+    // 바꿔치기해 오류 문구가 사라진다(호출부는 error 필드로 실패를 판단한다).
     console.error('run-python uncaught:', e);
-    return withCors(json({ error: '코드 실행 서버에 문제가 발생했습니다.' }, 500), request);
+    return withCors(json({ error: '코드 실행 서버에 문제가 발생했습니다.' }, 200), request);
   }
 }

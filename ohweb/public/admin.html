@@ -1424,7 +1424,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ studentDocId: id, newPassword: pw, idToken }),
         });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({ error: `비밀번호 설정 실패 (HTTP ${res.status})` }));
         if (!res.ok || data.error) {
           // 설정이 틀렸을 때의 상세는 화면에도 띄운다 — 매번 개발자 도구를
           // 열어 콘솔을 봐야 원인을 알 수 있으면 안내가 아니다.

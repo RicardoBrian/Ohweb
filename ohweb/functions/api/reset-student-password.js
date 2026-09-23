@@ -63,6 +63,9 @@ const CORS = {
   'Access-Control-Allow-Headers': 'Content-Type',
 };
 
+// 서버 쪽 실패도 5xx가 아니라 200 + { error }로 돌려준다 — 5xx면 Cloudflare가
+// 본문을 자기 오류 페이지로 바꿔서 화면에 "HTTP 502"만 뜨고 원인이 사라진다.
+// 호출부는 전부 data.error로 실패를 판단한다.
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -191,7 +194,7 @@ async function handle(request, env) {
       detail: declared
         ? 'Cloudflare에서 Secret은 저장 후 값이 가려지기 때문에, 편집하면 값이 빈 채로 저장되기 쉽습니다. 변수를 지우고 새로 추가하면서 서비스 계정 JSON 전체를 다시 붙여넣은 뒤 재배포해 주세요.'
         : `현재 이 배포의 환경변수: ${names.join(', ') || '(없음)'} — Production 환경에 추가했는지, 추가한 뒤 재배포했는지 확인해 주세요.`,
-    }, 500);
+    }, 200);
   }
 
   let serviceAccount;
@@ -201,7 +204,7 @@ async function handle(request, env) {
     return json({
       error: 'FIREBASE_SERVICE_ACCOUNT_KEY가 올바른 JSON이 아닙니다.',
       detail: `값의 길이는 ${String(saRaw).length}자입니다. 붙여넣다가 잘렸을 수 있습니다 — { 로 시작해 } 로 끝나는 JSON 전체여야 합니다.`,
-    }, 500);
+    }, 200);
   }
   // 잘린 JSON은 파싱은 되면서 정작 필요한 필드가 없을 수 있다.
   const missingFields = ['private_key', 'client_email', 'project_id'].filter(k => !serviceAccount[k]);
@@ -209,7 +212,7 @@ async function handle(request, env) {
     return json({
       error: '서비스 계정 키에 필요한 항목이 없습니다.',
       detail: `없는 항목: ${missingFields.join(', ')} — Firebase 콘솔에서 받은 JSON 파일 전체를 그대로 넣었는지 확인해 주세요.`,
-    }, 500);
+    }, 200);
   }
 
   const email = `${studentDocId}${EMAIL_SUFFIX}`;
@@ -241,7 +244,7 @@ async function handle(request, env) {
 
     return json({ ok: true, created: !existing });
   } catch (e) {
-    return json({ error: e.message }, 502);
+    return json({ error: e.message }, 200);
   }
 }
 
@@ -260,6 +263,6 @@ export async function onRequest({ request, env }) {
     // 스택을 응답에 실어 보내면 내부 구조가 노출되고, 200으로 내보내면
     // 호출부가 실패를 성공으로 오해한다. 상세는 Cloudflare 로그에만 남긴다.
     console.error('reset-student-password uncaught:', e);
-    return withCors(json({ error: '비밀번호 재설정 중 서버 오류가 발생했습니다.' }, 500), request);
+    return withCors(json({ error: '비밀번호 재설정 중 서버 오류가 발생했습니다.' }, 200), request);
   }
 }

@@ -44,6 +44,9 @@ const CORS = {
 
 const GOOGLE_URL = 'https://translation.googleapis.com/language/translate/v2';
 
+// 서버 쪽 실패도 5xx가 아니라 200 + { error }로 돌려준다 — 5xx면 Cloudflare가
+// 본문을 자기 오류 페이지로 바꿔서 화면에 "HTTP 502"만 뜨고 원인이 사라진다.
+// 호출부는 전부 data.error로 실패를 판단한다.
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -66,7 +69,7 @@ async function handle(request, env) {
   if (request.method !== 'POST') return json({ error: 'Method Not Allowed' }, 405);
 
   const apiKey = env.GOOGLE_TRANSLATE_KEY;
-  if (!apiKey) return json({ error: 'GOOGLE_TRANSLATE_KEY not configured' }, 500);
+  if (!apiKey) return json({ error: 'GOOGLE_TRANSLATE_KEY not configured' }, 200);
 
   let body;
   try {
@@ -108,7 +111,7 @@ async function handle(request, env) {
     nonEmpty.forEach((x, idx) => { out[x.i] = translations[idx]?.translatedText || ''; });
     return json({ translations: out.map(text => ({ text })) });
   } catch (e) {
-    return json({ error: e.message }, 502);
+    return json({ error: e.message }, 200);
   }
 }
 
@@ -127,6 +130,6 @@ export async function onRequest({ request, env }) {
     // 스택을 응답에 실어 보내면 내부 구조가 노출되고, 200으로 내보내면
     // 호출부가 실패를 성공으로 오해한다. 상세는 Cloudflare 로그에만 남긴다.
     console.error('translate uncaught:', e);
-    return withCors(json({ error: '번역 서버에 문제가 발생했습니다.' }, 500), request);
+    return withCors(json({ error: '번역 서버에 문제가 발생했습니다.' }, 200), request);
   }
 }

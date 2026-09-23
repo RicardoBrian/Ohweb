@@ -66,7 +66,6 @@ const json = (body, status = 200) =>
 // 이미 노출된 값이라 비밀이 아니다. 학생 idToken 검증에만 쓴다.
 const WEB_API_KEY = 'AIzaSyB1SuaWwJgUY6SrCnmN8dmhG2cnVnGcl2s';
 const EMAIL_SUFFIX = '@ohinfo.local';
-const PISTON_EXECUTE_URL = 'https://emkc.org/api/v2/piston/execute';
 const PISTON_PYTHON_VERSION = '3.10.0';
 
 // ── Google 서비스 계정 → OAuth 액세스 토큰 ──
@@ -246,33 +245,60 @@ function pickTitle(q, lang) {
 // ── 코드형 문항 채점 ──
 const normalizeOut = s => String(s ?? '').replace(/\r\n/g, '\n').trimEnd();
 
-async function runPython(code, stdin) {
-  const res = await fetch(PISTON_EXECUTE_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      language: 'python',
-      version: PISTON_PYTHON_VERSION,
-      files: [{ name: 'main.py', content: code }],
-      stdin,
-      compile_timeout: 10000,
-      run_timeout: 8000,
-    }),
-  });
-  if (!res.ok) throw new Error(`실행 서버 오류 ${res.status}`);
-  const data = await res.json();
-  return data?.run?.stdout || '';
+// 실행 서버 — 기본은 Piston 공개 API(emkc.org)인데, 이 공개 API는 2026-02-15부터
+// 허가받은 곳만 쓸 수 있게 바뀌었다(토큰 필요). 토큰을 받았거나 직접 띄운
+// Piston이 있으면 Cloudflare 환경변수 PISTON_URL / PISTON_TOKEN으로 지정한다.
+function pistonConfig(env) {
+  const base = String(env?.PISTON_URL || 'https://emkc.org/api/v2/piston').replace(/\/+$/, '');
+  const headers = { 'Content-Type': 'application/json' };
+  if (env?.PISTON_TOKEN) headers.Authorization = env.PISTON_TOKEN;
+  return { url: `${base}/execute`, headers };
 }
 
-async function gradeCode(code, testCases) {
+async function runPython(cfg, code, stdin) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 12000);
+  try {
+    const res = await fetch(cfg.url, {
+      method: 'POST',
+      headers: cfg.headers,
+      signal: ctrl.signal,
+      body: JSON.stringify({
+        language: 'python',
+        version: PISTON_PYTHON_VERSION,
+        files: [{ name: 'main.py', content: code }],
+        stdin,
+        compile_timeout: 10000,
+        run_timeout: 8000,
+      }),
+    });
+    if (!res.ok) throw new Error(`실행 서버 오류 ${res.status}`);
+    const data = await res.json();
+    if (!data?.run) throw new Error('실행 서버 응답 형식 오류');
+    return data.run.stdout || '';
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// 반환값: 통과한 케이스 수, 또는 null(= 채점 불가 → 선생님이 직접 채점).
+// 예전엔 실행 서버 자체가 실패해도(권한 없음·타임아웃) 그 케이스를 "오답"으로
+// 세서, 맞게 짠 코드도 0점이 됐다. 이제 서버 쪽 실패가 하나라도 있으면
+// 점수를 매기지 않고 수동 채점으로 넘긴다. 학생 코드의 실행 오류(예외)는
+// 서버가 정상 응답하므로 여기에 해당하지 않고 그대로 오답이다.
+async function gradeCode(cfg, code, testCases) {
   if (!code.trim() || !testCases?.length) return null;
   // 테스트케이스를 순차로 돌리면 케이스 수만큼 지연이 쌓인다 — 병렬로 던진다.
   const results = await Promise.all(testCases.map(async tc => {
     try {
-      const stdout = await runPython(code, String(tc.input || ''));
+      const stdout = await runPython(cfg, code, String(tc.input || ''));
       return normalizeOut(stdout) === normalizeOut(tc.expected);
-    } catch { return false; }
+    } catch (e) {
+      console.error('grade-exam: 코드 실행 실패 —', e.message);
+      return null;
+    }
   }));
+  if (results.some(r => r === null)) return null;
   return results.filter(Boolean).length;
 }
 
@@ -387,7 +413,7 @@ async function handle(request, env) {
 
       } else if (q.type === 'code') {
         const cases = key.testCases || [];
-        const passCount = await gradeCode(value, cases);
+        const passCount = await gradeCode(pistonConfig(env), value, cases);
         if (passCount === null) { feedback = 'manual'; }
         else {
           score = Math.round(points * (passCount / cases.length));
