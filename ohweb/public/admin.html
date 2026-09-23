@@ -2455,8 +2455,8 @@
           <td style="padding:8px 12px;text-align:right;font-weight:800;color:var(--accent);">${p.totalScore!==undefined?p.totalScore:'-'}${p.totalPoints?'/'+p.totalPoints:''}</td>
           <td style="padding:8px 12px;text-align:right;color:${(p.alertCount||0)>3?'#ef4444':'var(--sub)'};">${p.alertCount||0}</td>
           <td style="padding:8px 12px;text-align:right;color:${(p.pasteBlockCount||0)>0?'#ef4444':'var(--sub)'};">${p.pasteBlockCount||0}</td>
-          <td style="padding:8px 12px;"><span style="padding:3px 10px;border-radius:50px;font-size:0.75rem;font-weight:700;background:${p.status==='submitted'?'rgba(34,197,94,0.15)':'rgba(245,158,11,0.15)'};color:${p.status==='submitted'?'#22c55e':'#f59e0b'}">${p.status==='submitted'?'제출':'진행중'}</span></td>
-          <td style="padding:8px 12px;text-align:center;"><button class="btn ghost sm" onclick="gradeStudent('${asId}','${p._studentId}','${p.id}')">채점</button></td>
+          <td style="padding:8px 12px;"><span style="padding:3px 10px;border-radius:50px;font-size:0.75rem;font-weight:700;background:${p.status==='submitted'?'rgba(34,197,94,0.15)':'rgba(245,158,11,0.15)'};color:${p.status==='submitted'?'#22c55e':'#f59e0b'}">${p.status==='submitted'?'제출':(p.pendingAnswers?'답안 보관됨':'진행중')}</span></td>
+          <td style="padding:8px 12px;text-align:center;white-space:nowrap;">${p.status!=='submitted'&&p.pendingAnswers?`<button class="btn sm" title="${escHtml(p.submitError||'')}" onclick="adoptPendingAnswers('${p.id}')">보관 답안 반영</button> `:''}<button class="btn ghost sm" onclick="gradeStudent('${asId}','${p._studentId}','${p.id}')">채점</button></td>
         </tr>`).join('')}</tbody>
       </table></div>`;
       el.innerHTML = html;
@@ -2661,6 +2661,57 @@
       document.getElementById('gradeModal')?.remove();
       await loadResults();
     } catch(e) { toast('저장 오류: '+e.message, 'error'); }
+    showLoading(false);
+  };
+
+  // ── 제출 실패 학생의 보관 답안을 제출로 반영 ──
+  // 학생 쪽 채점 서버(/api/grade-exam)가 실패하면 exam.html이 답안을
+  // exam_progress.pendingAnswers에 남겨둔다. 여기서 서버와 같은 규칙으로
+  // 채점해 exam_results를 만들고 제출 처리한다(객관식만 자동, 나머지는
+  // 수동 채점 — 코드형은 여기서 실행하지 않으니 "채점"에서 직접 점수 입력).
+  window.adoptPendingAnswers = async (progDocId) => {
+    const p = (window._resultsProgs || []).find(x => x.id === progDocId);
+    if (!p?.pendingAnswers) return;
+    if (!confirm(`${p.name||''} 학생의 보관 답안을 제출로 반영할까요?`)) return;
+    showLoading(true);
+    try {
+      const asId = p.asId || window._resultsAsId;
+      const asSnap = await getDoc(doc(db,'exam_assignments',asId));
+      const examId = p.examId || asSnap.data()?.examId;
+      const qSnap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId)));
+      const questions = qSnap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.order||0)-(b.order||0));
+      const keys = await Promise.all(questions.map(async q => {
+        const k = await getDoc(doc(db,'exam_answers',q.id));
+        return k.exists() ? k.data() : { answer: q.answer };
+      }));
+      const byIdx = new Map(p.pendingAnswers.map(a => [Number(a.qIdx), a.value]));
+      const studentId = p._studentId;
+      const batch = writeBatch(db);
+      let totalScore = 0, totalPoints = 0;
+      questions.forEach((q, i) => {
+        const points = Number(q.points) || 0;
+        totalPoints += points;
+        let value = byIdx.get(i); value = value == null ? '' : String(value);
+        let score = 0, feedback = 'manual';
+        if (q.type === 'mc' && keys[i].answer !== undefined && keys[i].answer !== null) {
+          const correct = String(keys[i].answer);
+          if (value !== '' && value === correct) { score = points; feedback = 'correct'; }
+          else feedback = `wrong:${correct}`;
+        } else if (q.type === 'sa' || q.type === 'essay') value = value.trim();
+        totalScore += score;
+        batch.set(doc(db,'exam_results',`${asId}_${studentId}_${i}`), {
+          asId, examId, studentId, name: p.name||'', grade: p.grade||'', class: p.class||'', num: p.num??'',
+          lang: 'ko', qIdx: i, type: q.type||'', title: q.title||'',
+          value, score, maxScore: points, feedback, gradedAt: new Date().toISOString(),
+        });
+      });
+      batch.set(doc(db,'exam_progress',progDocId), {
+        status: 'submitted', totalScore, totalPoints, submitTime: serverTimestamp(),
+      }, { merge: true });
+      await batch.commit();
+      toast('보관 답안을 제출로 반영했습니다. 서술형·단답형·코드형은 "채점"에서 점수를 입력하세요.', 'success');
+      await loadResults();
+    } catch(e) { toast('반영 오류: '+e.message, 'error'); }
     showLoading(false);
   };
 

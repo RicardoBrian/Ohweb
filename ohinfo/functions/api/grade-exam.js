@@ -291,7 +291,7 @@ async function handle(request, env) {
     console.error('grade-exam:', declared
       ? 'FIREBASE_SERVICE_ACCOUNT_KEY는 ohinfo 배포에 등록돼 있는데 값이 비어 있습니다. 변수를 지우고 새로 추가하면서 서비스 계정 JSON 전체를 다시 붙여넣은 뒤 재배포해 주세요.'
       : `FIREBASE_SERVICE_ACCOUNT_KEY가 ohinfo 배포에 없습니다. 현재 환경변수: ${Object.keys(env || {}).join(', ') || '(없음)'}`);
-    return json({ error: '채점 기능이 아직 준비되지 않았습니다. 선생님께 문의해 주세요.' }, 500);
+    return json({ error: '채점 기능이 아직 준비되지 않았습니다. 선생님께 문의해 주세요.', detail: 'FIREBASE_SERVICE_ACCOUNT_KEY 설정 문제' }, 200);
   }
 
   let body;
@@ -314,12 +314,12 @@ async function handle(request, env) {
   catch {
     console.error('grade-exam: FIREBASE_SERVICE_ACCOUNT_KEY가 올바른 JSON이 아닙니다.',
       `값의 길이 ${String(saJson).length}자 — 붙여넣다가 잘렸을 수 있습니다.`);
-    return json({ error: '채점 기능이 아직 준비되지 않았습니다. 선생님께 문의해 주세요.' }, 500);
+    return json({ error: '채점 기능이 아직 준비되지 않았습니다. 선생님께 문의해 주세요.', detail: 'FIREBASE_SERVICE_ACCOUNT_KEY 설정 문제' }, 200);
   }
   const missingKeyFields = ['private_key', 'client_email', 'project_id'].filter(k => !sa[k]);
   if (missingKeyFields.length) {
     console.error('grade-exam: 서비스 계정 키에 필요한 항목이 없습니다 —', missingKeyFields.join(', '));
-    return json({ error: '채점 기능이 아직 준비되지 않았습니다. 선생님께 문의해 주세요.' }, 500);
+    return json({ error: '채점 기능이 아직 준비되지 않았습니다. 선생님께 문의해 주세요.', detail: 'FIREBASE_SERVICE_ACCOUNT_KEY 설정 문제' }, 200);
   }
 
   try {
@@ -424,7 +424,12 @@ async function handle(request, env) {
 
     return json({ ok: true, totalScore, totalPoints, items: resultItems });
   } catch (e) {
-    return json({ error: '채점 중 오류가 발생했습니다.', detail: e.message }, 502);
+    // 502로 돌려주면 Cloudflare가 응답 본문을 자기 오류 페이지로 바꿔버려서
+    // 학생 화면엔 "채점 요청 실패 (HTTP 502)"만 뜨고 실제 원인(detail)이
+    // 사라졌다. 본문이 반드시 전달되도록 200 + error로 돌려준다
+    // (exam.html은 graded.error가 있으면 실패로 처리한다).
+    console.error('grade-exam:', e);
+    return json({ error: '채점 중 오류가 발생했습니다.', detail: String(e.message || e).slice(0, 400) }, 200);
   }
 }
 
@@ -441,6 +446,6 @@ export async function onRequest({ request, env }) {
     return withCors(await handle(request, env), request);
   } catch (e) {
     console.error('grade-exam uncaught:', e);
-    return withCors(json({ error: '채점 서버 오류가 발생했습니다.' }, 500), request);
+    return withCors(json({ error: '채점 서버 오류가 발생했습니다.', detail: String(e?.message || e).slice(0, 400) }, 200), request);
   }
 }

@@ -533,6 +533,7 @@ const UI = {
     correct:'정답', wrong:'오답 (정답: ', testPass:'테스트케이스 통과', manualGrade:'수동 채점 필요',
     sessionExpired:'로그인이 만료되었습니다. 다시 로그인한 뒤 제출해 주세요.',
     draftKept:'작성한 답안은 이 기기에 저장되어 있습니다. 잠시 후 다시 제출하기를 눌러 주세요.',
+    pendingKept:'답안은 선생님께 전달되어 보관되었습니다. 이 화면을 선생님께 보여 주세요.',
     pendingResultMsg:'제출이 완료되었습니다.\n서술형 문항은 선생님이 채점한 후 최종 점수를 확인할 수 있어요.',
     stdin:'표준 입력 (stdin)', stdinPlaceholder:'입력이 필요한 경우 입력 값을 넣어주세요.',
     noOutput:'(출력 없음)', runErr:'실행 오류: ',
@@ -550,6 +551,7 @@ const UI = {
     correct:'正确', wrong:'错误 (正确答案: ', testPass:'测试用例通过', manualGrade:'需要人工评分',
     sessionExpired:'登录已过期，请重新登录后提交。',
     draftKept:'已作答的内容已保存在本设备上。请稍后再次点击提交。',
+    pendingKept:'答案已保存并传给老师。请把此画面给老师看。',
     pendingResultMsg:'提交成功。\n论述题由老师批改后即可查看最终成绩。',
     stdin:'标准输入 (stdin)', stdinPlaceholder:'如需输入，请填写输入值。',
     noOutput:'(无输出)', runErr:'运行错误: ',
@@ -567,6 +569,7 @@ const UI = {
     correct:'Правильно', wrong:'Неверно (ответ: ', testPass:'тест-кейс пройден', manualGrade:'Требует проверки',
     sessionExpired:'Сессия истекла. Войдите снова и отправьте работу.',
     draftKept:'Ваши ответы сохранены на этом устройстве. Попробуйте отправить ещё раз чуть позже.',
+    pendingKept:'Ответы сохранены и переданы учителю. Покажите этот экран учителю.',
     pendingResultMsg:'Отправка завершена.\nОкончательный балл будет доступен после проверки эссе учителем.',
     stdin:'Стандартный ввод (stdin)', stdinPlaceholder:'Введите тестовые данные.',
     noOutput:'(нет вывода)', runErr:'Ошибка выполнения: ',
@@ -584,6 +587,7 @@ const UI = {
     correct:'Correct', wrong:'Wrong (answer: ', testPass:'test cases passed', manualGrade:'Manual grading required',
     sessionExpired:'Your login has expired. Please sign in again and submit.',
     draftKept:'Your answers are saved on this device. Please press Submit again in a moment.',
+    pendingKept:'Your answers have been saved for your teacher. Please show this screen to your teacher.',
     pendingResultMsg:'Submission complete.\nYour final score will be available after your teacher grades the essay question(s).',
     stdin:'Standard Input (stdin)', stdinPlaceholder:'Enter test input values if needed.',
     noOutput:'(no output)', runErr:'Run error: ',
@@ -1338,12 +1342,13 @@ window.submitExam = async (isAuto = false) => {
   document.getElementById('timerBadge').classList.add('hidden');
   showLoading(true);
 
+  let payload = [];
   try {
     // 채점은 서버(/api/grade-exam)에서 한다. 예전엔 여기서 직접 채점했는데,
     // 그러려면 정답이 학생 브라우저까지 내려와 있어야 했고 exam_questions가
     // 공개 읽기라 시험 전에 콘솔에서 정답을 전부 볼 수 있었다. 이제 정답은
     // exam_answers(관리자 전용)에만 있고, 여기서는 답안만 모아서 보낸다.
-    const payload = questions.map((q, i) => {
+    payload = questions.map((q, i) => {
       if (q.type === 'code') {
         const cm = cmInstances[i];
         return { qIdx: i, value: cm ? cm.getValue() : (codeAnswers[i]?.code || '') };
@@ -1369,7 +1374,8 @@ window.submitExam = async (isAuto = false) => {
     const graded = await res.json().catch(() => ({}));
     if (!res.ok || graded.error) {
       if (graded.detail) console.error('grade-exam:', graded.detail);
-      throw new Error(graded.error || `채점 요청 실패 (HTTP ${res.status})`);
+      const err = new Error((graded.error || `채점 요청 실패 (HTTP ${res.status})`) + (graded.detail ? `\n[${graded.detail}]` : ''));
+      throw err;
     }
 
     const totalScore = graded.totalScore || 0;
@@ -1398,7 +1404,19 @@ window.submitExam = async (isAuto = false) => {
     showLoading(false);
     submitted = false;
     scheduleDraftSave();
-    alert(UI[currentLang].submitErr + e.message + '\n\n' + UI[currentLang].draftKept);
+    // 채점 서버가 실패해도 답안은 선생님이 볼 수 있게 서버에 보관한다 —
+    // admin 결과 화면에서 "보관 답안 반영"으로 제출 처리할 수 있다.
+    // (exam_progress는 제출 전 상태에선 학생이 쓸 수 있고, 점수 필드는 안 건드린다.)
+    let kept = false;
+    if (payload.length && currentAssignment) {
+      try {
+        await setDoc(doc(db, 'exam_progress', `${currentAssignment.asId}_${SESSION.id}`), {
+          pendingAnswers: payload, pendingAt: serverTimestamp(), submitError: String(e.message || '').slice(0, 500),
+        }, { merge: true });
+        kept = true;
+      } catch (e2) { console.error('pendingAnswers 저장 실패:', e2); }
+    }
+    alert(UI[currentLang].submitErr + e.message + '\n\n' + (kept ? UI[currentLang].pendingKept : UI[currentLang].draftKept));
   }
 };
 
