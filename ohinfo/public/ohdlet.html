@@ -940,6 +940,8 @@
     return raw.updatedAt?.toMillis?.() ?? raw.createdAt?.toMillis?.() ?? 0;
   }
   async function loadClassPosts(classTitle, boardKey) {
+    // 게시글은 로그인한 학생만 읽을 수 있다 — 로그인 복원을 기다린 뒤 읽는다.
+    await authReady();
     const cacheKey = boardKey || ('classTitle:' + classTitle);
     const cache = loadPostsCache(cacheKey);
     if (cache) {
@@ -1096,7 +1098,6 @@
   let pwResolveCallback = null;
   let modalImgList = [];
   let modalImgIndex = 0;
-  const MASTER_PW = "9600";
 
   const uiText = {
     ko: {
@@ -1439,7 +1440,10 @@
     if (inBoard) { goHome(); } else { window.location.href = 'home.html'; }
   }
 
-  function toggleAdmin() { askPassword(uiText[currentLang]?.admPw||uiText.ko.admPw).then(pw => { if (pw !== MASTER_PW) return; document.getElementById('adminPanel').classList.toggle('hidden'); if (!document.getElementById('adminPanel').classList.contains('hidden')) { loadAdminList(); window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); } }); }
+  // 예전엔 비밀번호("9600")를 이 페이지 소스에 그대로 넣어두고 비교했다 — 소스 보기로
+  // 누구나 알 수 있었다. 이제 마스터 계정(isMaster)만 쓸 수 있고, 실제 권한은
+  // Firestore 규칙이 확인한다.
+  function toggleAdmin() { Promise.resolve().then(() => { if (!IS_MASTER) return; document.getElementById('adminPanel').classList.toggle('hidden'); if (!document.getElementById('adminPanel').classList.contains('hidden')) { loadAdminList(); window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); } }); }
 
   async function loadMasterClassGrid() {
     const grid = document.getElementById('masterClassGrid');
@@ -1669,7 +1673,7 @@
             </div>
           </div>
           <div class="action-links">
-            <a class="pin-link ${p.pinned?'is-pinned':''}" onclick="handlePinClick('${p.id}')">${uiText[currentLang]?.pin||uiText.ko.pin}</a>
+            ${IS_MASTER ? `<a class="pin-link ${p.pinned?'is-pinned':''}" onclick="handlePinClick('${p.id}')">${uiText[currentLang]?.pin||uiText.ko.pin}</a>` : ''}
             ${!p._readonly && String(p.studentId)===String(SESSION.id) ? `<a onclick="handleEditClick('${p.id}')">${uiText[currentLang]?.edit||uiText.ko.edit}</a><a class="del-link" onclick="openDelete('${p.id}')">${uiText[currentLang]?.del||uiText.ko.del}</a>` : ''}
           </div>
         </div>
@@ -1933,13 +1937,13 @@
   };
 
   async function handlePinClick(postId) {
-    const pw = await askPassword(uiText[currentLang]?.admPw||uiText.ko.admPw);
-    if (pw !== MASTER_PW) return;
+    if (!IS_MASTER) return;
     const post = currentPosts.find(p => p.id === postId);
     if (!post) return;
     const isPinned = !post.pinned;
     try {
-      await updateDoc(doc(db, 'posts', postId), { pinned: isPinned, updatedAt: serverTimestamp() });
+      // pinnedBy: 규칙이 이 학생 문서의 isMaster를 확인한다.
+      await updateDoc(doc(db, 'posts', postId), { pinned: isPinned, pinnedBy: SESSION.id, updatedAt: serverTimestamp() });
       post.pinned = isPinned;
       render(currentExample, sortedPosts());
     } catch(err) { alert(err.message); }
