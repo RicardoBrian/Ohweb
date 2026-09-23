@@ -1374,6 +1374,15 @@ window.submitExam = async (isAuto = false) => {
       }),
     });
     const graded = await res.json().catch(() => ({}));
+    // 이미 제출된 시험(다른 기기에서 냈거나 선생님이 보관 답안을 반영함) —
+    // 재시도할 일이 아니므로 임시저장을 지우고 결과 화면으로 보낸다.
+    if (res.status === 409) {
+      showLoading(false);
+      clearDraft();
+      alert(graded.error || '이미 제출한 시험입니다.');
+      await showMyResult(currentAssignment.asId);
+      return;
+    }
     if (!res.ok || graded.error) {
       if (graded.detail) console.error('grade-exam:', graded.detail);
       const err = new Error((graded.error || `채점 요청 실패 (HTTP ${res.status})`) + (graded.detail ? `\n[${graded.detail}]` : ''));

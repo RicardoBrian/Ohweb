@@ -357,6 +357,14 @@ async function handle(request, env) {
     const student = await db.get(`students/${studentDocId}`);
     if (!student) return json({ error: '학생 정보를 찾을 수 없습니다.' }, 404);
 
+    // 이미 제출(채점)된 시험은 다시 받지 않는다. 결과 화면에 오답의 정답이
+    // 보이므로, 재제출을 받으면 정답을 보고 다시 내서 점수를 덮어쓸 수 있었다.
+    // (선생님이 다시 보게 하려면 admin에서 진행 기록을 지우면 된다.)
+    const progress = await db.get(`exam_progress/${asId}_${studentDocId}`);
+    if (progress?.status === 'submitted') {
+      return json({ error: '이미 제출한 시험입니다. 다시 보려면 선생님께 문의해 주세요.' }, 409);
+    }
+
     const questions = (await db.queryEq('exam_questions', 'examId', assignment.examId))
       .sort((a, b) => (a.order || 0) - (b.order || 0));
     if (!questions.length) return json({ error: '시험 문제가 없습니다.' }, 404);
