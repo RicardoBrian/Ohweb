@@ -405,9 +405,10 @@ window.toggleUserMenu = () => { document.getElementById('userDropdown').classLis
 
 // ── session ──
 function getSession() { return loadSession(); }
-// localStorage 세션은 브라우저에서 고칠 수 있다 — 실제 로그인 계정과
-// 맞는지 뒤이어 확인하고, 안 맞으면 로그인 화면으로 돌려보낸다.
-if (getSession()) verifyStudentAuth(getSession());
+// 세션 검증(verifyStudentAuth)은 설문을 불러온 뒤 init()에서 한다 —
+// 검증에 실패하면 무조건 로그인 화면으로 보내기 때문에, 여기서 먼저
+// 돌리면 "비로그인 응답 허용" 설문인데도 예전 세션이 남아있던 학생이
+// 로그인 화면으로 튕겼다.
 
 function renderNavUser(s) {
   if (!s) return;
@@ -470,6 +471,9 @@ async function init() {
     sessionStorage.setItem('ohinfo_redirect', location.href);
     location.href = 'login.html'; return;
   }
+  // 로그인이 필요한 설문만 세션이 실제 로그인 계정과 맞는지 확인한다
+  // (안 맞으면 verifyStudentAuth가 로그인 화면으로 보냄).
+  if (needLogin && SESSION) verifyStudentAuth(SESSION);
 
   if (FORM.limitOnce && SESSION) {
     try {
