@@ -323,7 +323,7 @@ import { escHtml, jsArg, safeHttpsUrl, safeImgUrl, safePhotoUrl, SAFE_ID } from 
 import {
   collection, query, where, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, doc, serverTimestamp, onSnapshot, increment
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { loadSession, clearSession, verifyStudentAuth } from './session.js';
+import { loadSession, clearSession, verifyStudentAuth, authReady } from './session.js';
 
 // ── 유틸 ──
 // 예전 공유 링크는 formfill이 아니라 formlab?id=… 로 잘못 만들어졌었다
@@ -944,10 +944,10 @@ function fileTileSmall(f) {
 }
 
 if (SESSION && SESSION.id) {
-  onSnapshot(doc(db, 'qna_threads', SESSION.id), snap => {
+  authReady().then(() => onSnapshot(doc(db, 'qna_threads', SESSION.id), snap => {
     const badge = document.getElementById('qnaBadge');
     if (badge) badge.classList.toggle('on', !!(snap.exists() && snap.data().unreadByStudent));
-  });
+  }, () => {}));
 }
 </script>
 <div class="lab-drive-modal" id="labDriveModal" onclick="if(event.target===this)closeFilePreview()">

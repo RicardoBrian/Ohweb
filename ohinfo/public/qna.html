@@ -149,7 +149,7 @@ import { db } from './firebase-config.js';
 import {
   doc, getDoc, setDoc, updateDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { loadSession, verifyStudentAuth } from './session.js';
+import { loadSession, verifyStudentAuth, authReady } from './session.js';
 import { escHtml as esc, safeHttpsUrl } from './escape.js';
 
 const student = loadSession();
@@ -250,6 +250,8 @@ function renderAtt(f) {
 }
 
 const chatBody = document.getElementById('chatBody');
+// 1:1 질문은 본인만 읽을 수 있다 — 로그인 복원이 끝난 뒤에 구독한다.
+await authReady();
 onSnapshot(query(msgsRef, orderBy('createdAt', 'asc')), snap => {
   if (snap.empty) {
     chatBody.innerHTML = `<div class="chat-empty"><div class="icon"><svg width="34" height="34"><use href="#ic-chat"/></svg></div><p>${esc(L.empty).replace(/\n/g,'<br>')}</p></div>`;

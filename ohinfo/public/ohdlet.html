@@ -816,7 +816,7 @@
     collection, query, where, orderBy, getDocs, documentId,
     addDoc, updateDoc, deleteDoc, doc, serverTimestamp, increment, onSnapshot
   } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-  import { saveSession, loadSession, clearSession, verifyStudentAuth } from './session.js';
+  import { saveSession, loadSession, clearSession, verifyStudentAuth, authReady } from './session.js';
   import { changeStudentPassword, AuthError } from './student-auth.js';
   import { escHtml, fmtMsg, safePhotoUrl, safeImgUrl, SAFE_ID } from './escape.js';
 
@@ -2224,10 +2224,10 @@
   window.slideTo = slideTo;
 
   if (SESSION.id) {
-    onSnapshot(doc(db, 'qna_threads', SESSION.id), snap => {
+    authReady().then(() => onSnapshot(doc(db, 'qna_threads', SESSION.id), snap => {
       const badge = document.getElementById('qnaBadge');
       if (badge) badge.classList.toggle('on', !!(snap.exists() && snap.data().unreadByStudent));
-    });
+    }, () => {}));
   }
 </script>
 </body>

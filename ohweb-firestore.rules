@@ -13,22 +13,26 @@ rules_version = '2';
  * {문서ID}@ohinfo.local. 그래서 isOwnStudentAuth()로 "본인"을 규칙에서
  * 판별할 수 있고, 시험 관련 컬렉션은 그 기준으로 잠갔다.
  *
- * 다만 학생 페이지의 진입 가드는 아직 localStorage 세션을 믿는다. 즉 Auth
- * 세션이 끊긴 상태로도 화면엔 들어올 수 있으므로, 시험 응시 자체를 막으면
- * 안 되는 쓰기(진행 상황·탭 이탈 횟수)는 인증 없이도 통과시키고, 대신
- * 점수처럼 조작되면 안 되는 것만 서버/관리자로 제한했다.
+ * 본인만 보는 데이터(1:1 질문, 시험 진행 기록·결과)는 Auth 기준으로 잠갔다.
+ * 학생 페이지는 이런 데이터를 읽기 전에 session.js의 authReady()로 로그인
+ * 복원을 기다린다.
  *
- * 아직 완전히 열려 있는 것: posts/qna_threads/student_forms/
- * student_form_responses. 잠그면 게시글 작성·질문이 그대로 깨져서, 진입
- * 가드를 Auth 기반으로 바꾸는 작업과 같이 가야 한다.
+ * 아직 열려 있는 것: students 읽기(로그인 화면이 비로그인 상태에서 명단을
+ * 받아 쓰는 구조라서 — 공개용 최소 명단 분리 작업과 같이 가야 한다),
+ * posts, student_forms, student_form_responses.
  *
  * 이전엔 이 프로젝트 전체가 `allow read, write: if true`였다.
  */
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // email_verified까지 본다 — 이메일/비밀번호 가입이 켜져 있어서(학생 로그인용),
+    // 검증 안 된 계정이 관리자 이메일을 주장하는 경우를 막는다. 관리자는 Google
+    // 로그인이라 항상 verified다.
     function isAdmin() {
-      return request.auth != null && request.auth.token.email == 'qjatjr7575@gmail.com';
+      return request.auth != null
+          && request.auth.token.email == 'qjatjr7575@gmail.com'
+          && request.auth.token.email_verified == true;
     }
 
     // 학생 쪽에서 건드릴 일이 아예 없는 것들 — 관리자만
@@ -84,12 +88,28 @@ service cloud.firestore {
         && after.get('failedAttempts', 0) >= before.get('failedAttempts', 0)
         && (before.get('locked', false) == false || after.get('locked', false) == true);
     }
+    // 본인이 자기 문서에서 바꿀 수 있는 것 — 학생 쪽 코드가 실제로 쓰는 것만:
+    //   photoUrl(마이페이지·가입), registered(가입 시 true로만), failedAttempts
+    //   (로그인 성공 시 0으로만), password(옛 평문 필드 삭제만).
+    // 예전엔 본인이면 아무 필드나 바꿀 수 있어서, 학생이 콘솔에서 자기 문서에
+    // isMaster:true를 넣으면 교사(마스터) 권한이 생겼다.
+    function ownSafeUpdate() {
+      let before = resource.data;
+      let after = request.resource.data;
+      let changed = after.diff(before).affectedKeys();
+      return changed.hasOnly(['photoUrl', 'registered', 'failedAttempts', 'password'])
+        && (!changed.hasAny(['registered']) || after.registered == true)
+        && (!changed.hasAny(['failedAttempts']) || after.failedAttempts == 0)
+        && (!changed.hasAny(['password']) || !('password' in after))
+        && (!changed.hasAny(['photoUrl']) || (after.photoUrl is string && after.photoUrl.size() < 400000));
+    }
     match /students/{id} {
-      // delete는 관리자만 — 예전엔 누구나 학생 문서를 지울 수 있었다.
-      // 학생 쪽 코드에는 삭제 경로가 없어서 막아도 깨지는 기능이 없다.
-      allow read, create: if true;
-      allow delete: if isAdmin();
-      allow update: if isAdmin() || isOwnStudentAuth(id) || lockFieldsOnlyAndNotLoosened();
+      // 생성·삭제는 관리자만 — 예전엔 누구나 학생 문서를 만들 수 있어서
+      // isMaster:true인 가짜 학생을 만들고 그 계정으로 가입할 수 있었다.
+      // 학생 쪽 코드에는 생성·삭제 경로가 없다(가입은 관리자가 만든 문서를 update).
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (isOwnStudentAuth(id) && ownSafeUpdate()) || lockFieldsOnlyAndNotLoosened();
     }
     match /posts/{id}                  { allow read, write: if true; }
     // 댓글(posts/{id}/comments/{commentId})도 posts 규칙이 자동으로 상속하지
@@ -99,8 +119,10 @@ service cloud.firestore {
     // (qna_threads/{학생ID}/messages/{msgId})까지 열어야 한다 — 규칙은
     // 하위 컬렉션에 자동으로 상속되지 않아서, 이걸 빠뜨리면 스레드 문서는
     // 되는데 정작 메시지 전송(addDoc)은 기본 거부에 걸려 permission-denied가 난다.
-    match /qna_threads/{id}            { allow read, write: if true; }
-    match /qna_threads/{id}/{document=**} { allow read, write: if true; }
+    // 1:1 질문은 스레드 ID = 학생 문서 ID. 본인과 관리자만 — 예전엔 누구나
+    // 모든 학생의 상담 내용을 읽고 쓸 수 있었다.
+    match /qna_threads/{id}            { allow read, write: if isAdmin() || isOwnStudentAuth(id); }
+    match /qna_threads/{id}/{document=**} { allow read, write: if isAdmin() || isOwnStudentAuth(id); }
     match /student_forms/{id}          { allow read, write: if true; }
     match /student_form_responses/{id} { allow read, write: if true; }
     // ── 시험 ──
@@ -111,14 +133,25 @@ service cloud.firestore {
     // 진행 상황: 학생은 시작 시각·탭 이탈 횟수까지만 쓸 수 있고, 점수와
     // "제출됨" 상태는 못 건드린다. 한 번 제출된 뒤에는 학생 쓰기를 전부 막아
     // 재응시로 되돌리는 것도 차단한다.
+    // 문서 ID는 `${asId}_${학생문서ID}` — 끝 부분이 학생 ID다. 문서가 아직 없을 때
+    // (첫 입장 전)도 판별할 수 있도록 데이터가 아니라 ID로 본인을 가린다.
+    // 예전엔 읽기가 완전 공개라 누구나 전교생의 이름·점수를 볼 수 있었다.
+    function progOwner(id) {
+      let parts = id.split('_');
+      return parts[parts.size() - 1];
+    }
     match /exam_progress/{id} {
-      allow read: if true;
+      allow read: if isAdmin() || isOwnStudentAuth(progOwner(id));
       allow create: if isAdmin()
-          || (!request.resource.data.keys().hasAny(['totalScore', 'totalPoints'])
+          || (isOwnStudentAuth(progOwner(id))
+              && request.resource.data.get('studentId', progOwner(id)) == progOwner(id)
+              && !request.resource.data.keys().hasAny(['totalScore', 'totalPoints'])
               && request.resource.data.get('status', '') != 'submitted');
       allow update: if isAdmin()
-          || (resource.data.get('status', '') != 'submitted'
+          || (isOwnStudentAuth(progOwner(id))
+              && resource.data.get('status', '') != 'submitted'
               && request.resource.data.get('status', '') != 'submitted'
+              && request.resource.data.get('studentId', '') == resource.data.get('studentId', '')
               && request.resource.data.get('totalScore', -1) == resource.data.get('totalScore', -1)
               && request.resource.data.get('totalPoints', -1) == resource.data.get('totalPoints', -1));
     }

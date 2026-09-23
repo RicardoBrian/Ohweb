@@ -406,7 +406,7 @@ import {
   collection, addDoc, getDocs, getDoc, doc,
   query, where, orderBy, setDoc, updateDoc, serverTimestamp, Timestamp, onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { saveSession, loadSession, verifyStudentAuth } from './session.js';
+import { saveSession, loadSession, verifyStudentAuth, authReady } from './session.js';
 import { changeStudentPassword, AuthError } from './student-auth.js';
 
 // ── 세션 ──
@@ -669,6 +669,8 @@ document.getElementById('sessionInfo').innerText = `${SESSION.grade}학년 ${SES
 async function loadMyExams() {
   const area = document.getElementById('examListArea');
   area.innerHTML = `<div style="color:var(--sub);font-size:0.85rem;">${UI[currentLang].loading}</div>`;
+  // 진행 기록(exam_progress)은 본인만 읽을 수 있다 — 로그인 복원이 끝난 뒤에 읽는다.
+  await authReady();
   try {
     const snap = await getDocs(collection(db, 'exam_assignments'));
     const assignments = snap.docs.map(d=>({id:d.id,...d.data()})).filter(a => {
@@ -1469,10 +1471,10 @@ window.toggleDark = toggleDark;
 window.goHome = goHome;
 
 if (_st.id) {
-  onSnapshot(doc(db, 'qna_threads', _st.id), snap => {
+  authReady().then(() => onSnapshot(doc(db, 'qna_threads', _st.id), snap => {
     const badge = document.getElementById('qnaBadge');
     if (badge) badge.classList.toggle('on', !!(snap.exists() && snap.data().unreadByStudent));
-  });
+  }, () => {}));
 }
 </script>
 </body>

@@ -404,7 +404,7 @@
   import { db } from './firebase-config.js';
   import { escHtml, safePhotoUrl } from './escape.js';
   import { doc, getDoc, updateDoc, collection, query, where, orderBy, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-  import { saveSession, loadSession, clearSession, verifyStudentAuth } from './session.js';
+  import { saveSession, loadSession, clearSession, verifyStudentAuth, authReady } from './session.js';
   import { changeStudentPassword, AuthError } from './student-auth.js';
 
   const student = loadSession();
@@ -589,10 +589,10 @@
   // 설문은 대시보드에 공개하지 않음 — 링크(formfill.html?id=)로만 접근
 
   // 질문하기 안읽음 뱃지
-  onSnapshot(doc(db, 'qna_threads', student.id), snap => {
+  authReady().then(() => onSnapshot(doc(db, 'qna_threads', student.id), snap => {
     const badge = document.getElementById('qnaBadge');
     if (badge) badge.classList.toggle('on', !!(snap.exists() && snap.data().unreadByStudent));
-  });
+  }, () => {}));
 </script>
 </body>
 </html>

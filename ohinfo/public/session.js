@@ -67,3 +67,20 @@ export async function verifyStudentAuth(session, { redirectTo = 'index.html' } =
     return session;
   }
 }
+
+// Firebase Auth의 로그인 상태 복원(새로고침 후 저장된 로그인 불러오기)은
+// 비동기다. 1:1 질문·시험 진행 기록처럼 "본인만" 읽을 수 있게 잠근 데이터는
+// 복원이 끝나기 전에 요청하면 비로그인으로 취급돼 거부될 수 있으므로, 그런
+// 요청 전에 이걸 기다린다. 한 번 풀리면 이후 호출은 바로 넘어간다.
+let _authReadyPromise = null;
+export function authReady() {
+  if (!_authReadyPromise) {
+    _authReadyPromise = Promise.all([
+      import('./firebase-config.js'),
+      import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'),
+    ]).then(([{ auth }, { onAuthStateChanged }]) => new Promise(resolve => {
+      const stop = onAuthStateChanged(auth, u => { stop(); resolve(u); });
+    })).catch(() => null);
+  }
+  return _authReadyPromise;
+}
