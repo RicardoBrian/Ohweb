@@ -563,7 +563,7 @@
     collection, getDocs
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import { saveSession, loadSession } from './session.js';
-  import { loginStudent, registerStudent, AuthError } from './student-auth.js';
+  import { loginStudent, registerStudent, AuthError, loadLoginDirectory, fetchOwnStudent } from './student-auth.js';
 
   let foundStudentId = null, foundStudent = null;
   const load = v => document.getElementById('loadingOverlay').style.display = v ? 'flex' : 'none';
@@ -598,8 +598,7 @@
   }
   async function loadSchools() {
     try {
-      const snap = await getDocs(collection(db, 'students'));
-      _students = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      _students = await loadLoginDirectory();
       const schools = [...new Set(_students.map(s => s.schoolName).filter(Boolean))].sort();
       ['loginSchool','joinSchool'].forEach(id => {
         const sel = document.getElementById(id);
@@ -686,7 +685,8 @@
         load(false);
         return;
       }
-      saveSession({ id: matchId, ...data });
+      // 공개 명단엔 이름 등이 없다 — 로그인된 상태로 본인 문서를 읽어 세션을 만든다.
+      saveSession(await fetchOwnStudent(matchId));
       window.location.href = 'home.html';
     } catch(e) { console.error('login:', e); err.innerText = t.errGeneric; }
     load(false);
@@ -708,13 +708,14 @@
     load(true);
     try {
       const match = _students.find(s => {
-        return s.schoolName === schoolName && nv(s.grade) === nv(grade) && nv(s.class) === nv(cls) && String(s.number) === String(number) && s.name === name;
+        // 이름은 공개 명단에 없다 — 가입 단계(registerStudent)에서 본인 문서로 대조한다.
+        return s.schoolName === schoolName && nv(s.grade) === nv(grade) && nv(s.class) === nv(cls) && String(s.number) === String(number);
       });
       if (!match) { err.innerText = t.errNoMatch; load(false); return; }
       const { id: matchId, ...data } = match;
       if (data.registered) { err.innerText = t.errAlready; load(false); return; }
       foundStudentId = matchId;
-      foundStudent = data;
+      foundStudent = { ...data, name };
       document.getElementById('badgeAvatar').innerText = name[0];
       document.getElementById('badgeName').innerText = `${name} (${number}번)`;
       document.getElementById('badgeSub').innerText = `${data.schoolName || ''} · ${grade} ${cls}`;
@@ -778,11 +779,16 @@
     try {
       const extra = {};
       if (_joinPhotoB64) extra.photoUrl = _joinPhotoB64;
-      const updates = await registerStudent(foundStudentId, extra, pw);
-      Object.assign(foundStudent, updates);
-      saveSession({ id: foundStudentId, ...foundStudent });
+      const fresh = await registerStudent(foundStudentId, extra, pw, foundStudent.name);
+      delete fresh.password;
+      saveSession(fresh);
       window.location.href = 'home.html';
-    } catch(e) { err.innerText = '오류: ' + e.message; }
+    } catch(e) {
+      if (e instanceof AuthError && e.code === 'name-mismatch') {
+        resetJoin();
+        document.getElementById('joinErr1').innerText = T[lang].errNoMatch;
+      } else err.innerText = '오류: ' + e.message;
+    }
     load(false);
   };
 

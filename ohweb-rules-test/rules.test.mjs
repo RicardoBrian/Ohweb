@@ -1,13 +1,21 @@
 import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import { readFileSync } from 'node:fs';
 import { doc, getDoc, getDocs, setDoc, updateDoc, addDoc, collection, query, where, orderBy, deleteDoc, deleteField, increment, serverTimestamp, writeBatch } from 'firebase/firestore';
-const env = await initializeTestEnvironment({ projectId: 'ohweb-93062', firestore: { rules: readFileSync(new URL('../ohweb-firestore.rules', import.meta.url), 'utf8'), host: '127.0.0.1', port: 8181 } });
+// PHASE=2 이면 students 읽기 잠금(2단계) 규칙으로 바꿔서 테스트한다.
+const PHASE = process.env.PHASE === '2' ? 2 : 1;
+let rulesText = readFileSync(new URL('../ohweb-firestore.rules', import.meta.url), 'utf8');
+if (PHASE === 2) rulesText = rulesText.replace(/allow read: if true; \/\/ PHASE2: (allow read: if [^;]+;)/, '$1');
+console.log(`[규칙 ${PHASE}단계]`);
+const env = await initializeTestEnvironment({ projectId: 'ohweb-93062', firestore: { rules: rulesText, host: '127.0.0.1', port: 8181 } });
 await env.clearFirestore();
 await env.withSecurityRulesDisabled(async c => {
   const db = c.firestore();
   await setDoc(doc(db, 'students/StuA'), { name: '김학생', schoolName: 'S', grade: '1', class: '2', number: 3, registered: true, failedAttempts: 2 });
   await setDoc(doc(db, 'students/StuB'), { name: '박학생', schoolName: 'S', grade: '1', class: '2', number: 4, registered: false });
   await setDoc(doc(db, 'students/StuL'), { name: '레거시', registered: true, password: 'plain1234' });
+  await setDoc(doc(db, 'student_directory/StuA'), { schoolName: 'S', grade: '1', class: '2', number: 3, registered: true, locked: false, failedAttempts: 2 });
+  await setDoc(doc(db, 'student_directory/StuB'), { schoolName: 'S', grade: '1', class: '2', number: 4, registered: false, locked: false, failedAttempts: 0 });
+  await setDoc(doc(db, 'student_directory/StuC'), { schoolName: 'S', grade: '1', class: '2', number: 5, registered: true, locked: true, failedAttempts: 5 });
   await setDoc(doc(db, 'qna_threads/StuA'), { studentName: '김학생' });
   await setDoc(doc(db, 'qna_threads/StuA/messages/m1'), { text: '비밀 상담', sender: 'student' });
   await setDoc(doc(db, 'exam_progress/AS1_StuA'), { studentId: 'StuA', name: '김학생', status: 'started', alertCount: 1 });
@@ -43,8 +51,29 @@ await T('학생이 이탈 횟수 0으로 되돌리기(제출 후)', setDoc(doc(A
 await T('학생이 남의 채점 결과 조회', getDocs(query(collection(B, 'exam_results'), where('asId', '==', 'AS2'), where('studentId', '==', 'StuA'))), false);
 await T('email_verified 없는 가짜 관리자', getDocs(collection(fakeAdmin, 'qna_threads')), false);
 await T('비로그인 잠금 해제 시도', updateDoc(doc(anon, 'students/StuA'), { failedAttempts: 0 }), false);
+await T('명단: 비로그인 잠금 해제', updateDoc(doc(anon, 'student_directory/StuC'), { locked: false }), false);
+await T('명단: 비로그인 실패 카운트 0으로', updateDoc(doc(anon, 'student_directory/StuA'), { failedAttempts: 0 }), false);
+await T('명단: 비로그인이 가입 표시 조작', updateDoc(doc(anon, 'student_directory/StuB'), { registered: true }), false);
+const Cc = env.authenticatedContext('uidC', { email: 'stuc@ohinfo.local' }).firestore();
+await T('명단: 잠긴 본인이 자기 잠금 해제', updateDoc(doc(Cc, 'student_directory/StuC'), { locked: false }), false);
+await T('명단: 다른 학생이 남의 가입 표시', updateDoc(doc(A, 'student_directory/StuB'), { registered: true }), false);
+await T('명단: 비로그인이 항목 생성', setDoc(doc(anon, 'student_directory/X'), { schoolName: 'S' }), false);
+await T('명단: 학생이 항목 삭제', deleteDoc(doc(A, 'student_directory/StuA')), false);
+if (PHASE === 2) {
+  await T('[2단계] 비로그인이 학생 명단(이름·사진) 읽기', getDocs(collection(anon, 'students')), false);
+  await T('[2단계] 다른 학생 문서 읽기', getDoc(doc(B, 'students/StuA')), false);
+  await T('[2단계] 로그인 학생이 명단 전체 읽기', getDocs(collection(A, 'students')), false);
+}
 console.log('── 정상 기능 ──');
-await T('로그인 화면: 비로그인 학생 목록 조회(아직 공개, P0-4에서 처리)', getDocs(collection(anon, 'students')), true);
+if (PHASE === 1) await T('[1단계] 로그인 화면 대체 경로: 비로그인 students 조회', getDocs(collection(anon, 'students')), true);
+await T('로그인 화면: 비로그인 공개 명단 조회', getDocs(collection(anon, 'student_directory')), true);
+await T('명단: 로그인 실패 카운트 증가(비로그인)', updateDoc(doc(anon, 'student_directory/StuB'), { failedAttempts: increment(1) }), true);
+await T('명단: 5회 실패 잠금(비로그인)', updateDoc(doc(anon, 'student_directory/StuB'), { failedAttempts: increment(1), locked: true, lockedAt: serverTimestamp() }), true);
+await env.withSecurityRulesDisabled(async c => { await updateDoc(doc(c.firestore(), 'student_directory/StuB'), { locked: false, failedAttempts: 0 }); });
+await T('명단: 로그인 성공 후 카운트 0 리셋(본인)', updateDoc(doc(A, 'student_directory/StuA'), { failedAttempts: 0 }), true);
+await T('명단: 가입 표시(본인)', updateDoc(doc(B, 'student_directory/StuB'), { registered: true }), true);
+await T('가입 직후 본인 문서 읽기(이름 대조)', getDoc(doc(B, 'students/StuB')), true);
+await T('관리자: 명단 동기화(생성/수정/삭제/잠금해제)', (async () => { const b = writeBatch(admin); b.set(doc(admin, 'student_directory/New1'), { schoolName: 'S', registered: false, locked: false, failedAttempts: 0 }); b.update(doc(admin, 'student_directory/StuA'), { grade: '2' }); b.delete(doc(admin, 'student_directory/StuB')); await b.commit(); await setDoc(doc(admin, 'student_directory/StuC'), { locked: false, failedAttempts: 0 }, { merge: true }); await getDocs(collection(admin, 'student_directory')); })(), true);
 await T('로그인 실패 카운트 증가(비로그인)', updateDoc(doc(anon, 'students/StuA'), { failedAttempts: increment(1) }), true);
 await T('5회 실패 잠금(비로그인)', updateDoc(doc(anon, 'students/StuB'), { failedAttempts: increment(1), locked: true, lockedAt: serverTimestamp() }), true);
 await T('로그인 성공 후 카운트 0 리셋(본인)', updateDoc(doc(A, 'students/StuA'), { failedAttempts: 0 }), true);

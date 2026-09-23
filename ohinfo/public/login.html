@@ -103,7 +103,7 @@
 import { db } from './firebase-config.js';
 import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { saveSession, loadSession } from './session.js';
-import { loginStudent, AuthError } from './student-auth.js';
+import { loginStudent, AuthError, loadLoginDirectory, fetchOwnStudent } from './student-auth.js';
 
 // ── dark ──
 const savedDark = localStorage.getItem('dark');
@@ -222,8 +222,7 @@ window.onLoginClassChange = () => {
 // ID를 같이 들고 있으면 로그인 시 재조회가 필요 없다.
 const _studentsReady = (async function loadStudentsForLogin(){
   try {
-    const snap = await getDocs(collection(db,'students'));
-    _students = snap.docs.map(d=>({ id: d.id, ...d.data() }));
+    _students = await loadLoginDirectory();
   } catch(e){ console.error('load students:', e); }
   rebuildLoginDropdowns();
 })();
@@ -278,7 +277,8 @@ window.doLogin = async () => {
       return;
     }
 
-    saveSession({ id: matchId, ...data });
+    // 공개 명단엔 이름 등이 없다 — 로그인된 상태로 본인 문서를 읽어 세션을 만든다.
+    saveSession(await fetchOwnStudent(matchId));
     const dest = sessionStorage.getItem('ohinfo_redirect');
     if (dest) { sessionStorage.removeItem('ohinfo_redirect'); location.href = dest; }
     else { location.href = 'home.html'; }

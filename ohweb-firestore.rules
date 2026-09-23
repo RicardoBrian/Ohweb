@@ -107,9 +107,30 @@ service cloud.firestore {
       // 생성·삭제는 관리자만 — 예전엔 누구나 학생 문서를 만들 수 있어서
       // isMaster:true인 가짜 학생을 만들고 그 계정으로 가입할 수 있었다.
       // 학생 쪽 코드에는 생성·삭제 경로가 없다(가입은 관리자가 만든 문서를 update).
-      allow read: if true;
+      //
+      // 읽기: 로그인 화면은 이제 공개용 명단(student_directory)을 읽는다. 전환 순서 —
+      //   1단계) 이 규칙 그대로 적용 → admin 학생 화면을 한 번 열어 명단 자동 생성
+      //          + "평문 비밀번호 정리" 실행
+      //   2단계) 아래 줄을 `allow read: if isAdmin() || isOwnStudentAuth(id);`로 바꿔 적용
+      //          (이름·사진·옛 비밀번호가 더 이상 공개되지 않는다)
+      allow read: if true; // PHASE2: allow read: if isAdmin() || isOwnStudentAuth(id);
       allow create, delete: if isAdmin();
       allow update: if isAdmin() || (isOwnStudentAuth(id) && ownSafeUpdate()) || lockFieldsOnlyAndNotLoosened();
+    }
+    // 공개용 학생 명단 — 로그인 화면용 최소 정보(학교/학년/반/번호/가입·잠금 상태).
+    // 이름·사진·비밀번호는 없다. 문서 ID = 학생 문서 ID. 쓰기는 admin이 students를
+    // 기준으로 맞추고, 로그인 화면은 실패 카운트·잠금(늘리기만)과, 본인 인증 뒤
+    // 가입 표시(true로만)·실패 카운트 리셋(0으로만)만 한다.
+    function dirOwnUpdate() {
+      let changed = request.resource.data.diff(resource.data).affectedKeys();
+      return changed.hasOnly(['registered', 'failedAttempts'])
+        && (!changed.hasAny(['registered']) || request.resource.data.registered == true)
+        && (!changed.hasAny(['failedAttempts']) || request.resource.data.failedAttempts == 0);
+    }
+    match /student_directory/{id} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (isOwnStudentAuth(id) && dirOwnUpdate()) || lockFieldsOnlyAndNotLoosened();
     }
     match /posts/{id}                  { allow read, write: if true; }
     // 댓글(posts/{id}/comments/{commentId})도 posts 규칙이 자동으로 상속하지

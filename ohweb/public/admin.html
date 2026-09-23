@@ -1265,6 +1265,7 @@
           registered: false, password: null,
           createdAt: serverTimestamp()
         });
+        batch.set(doc(db, 'student_directory', ref.id), { ...dirOf(r), registered: false, locked: false, failedAttempts: 0 });
       });
       await batch.commit();
       toast(`${csvData.length}명 업로드 완료!`, 'success');
@@ -1295,9 +1296,49 @@
     sel.value = values.includes(cur) ? cur : '';
   }
 
+  // ── 공개용 학생 명단(student_directory) ──
+  // 로그인 화면은 로그인 전에 학교/학년/반/번호와 가입·잠금 상태만 필요하다.
+  // 그 최소 정보만 student_directory에 두고, 이름·사진이 든 students는 본인과
+  // 관리자만 읽게 잠근다. 명단은 여기(학생 화면을 열 때마다)서 students를 기준으로
+  // 자동으로 맞춘다 — 빠진 학생 추가, 학교/학년/반/번호 변경 반영, 삭제된 학생 제거.
+  // 잠금(locked/failedAttempts)은 로그인 화면이 명단 쪽에 기록하므로 명단이 기준이다.
+  const dirOf = s => ({ schoolName: s.schoolName || '', grade: s.grade ?? '', class: s.class ?? '', number: s.number ?? '' });
+  async function syncDirectory(students) {
+    let dirSnap;
+    try { dirSnap = await getDocs(collection(db, 'student_directory')); }
+    catch (e) { console.error('student_directory 읽기 실패(규칙 적용 전?):', e); return null; }
+    const dir = new Map(dirSnap.docs.map(d => [d.id, d.data()]));
+    const ops = [];
+    students.forEach(st => {
+      const want = dirOf(st);
+      const cur = dir.get(st.id);
+      if (!cur) {
+        ops.push(b => b.set(doc(db, 'student_directory', st.id), { ...want, registered: !!st.registered, locked: !!st.locked, failedAttempts: Number(st.failedAttempts) || 0 }));
+      } else {
+        const diff = {};
+        Object.entries(want).forEach(([k, v]) => { if (String(cur[k] ?? '') !== String(v)) diff[k] = v; });
+        if (st.registered && !cur.registered) diff.registered = true;
+        if (Object.keys(diff).length) ops.push(b => b.update(doc(db, 'student_directory', st.id), diff));
+      }
+    });
+    const ids = new Set(students.map(st => st.id));
+    dir.forEach((_, id) => { if (!ids.has(id)) ops.push(b => b.delete(doc(db, 'student_directory', id))); });
+    for (let i = 0; i < ops.length; i += 400) {
+      const b = writeBatch(db);
+      ops.slice(i, i + 400).forEach(fn => fn(b));
+      await b.commit();
+    }
+    return dir;
+  }
+
   window.loadStudents = async () => {
     const snap = await getDocs(collection(db, 'students'));
     allStudents = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const dir = await syncDirectory(allStudents).catch(e => { console.error('명단 동기화 실패:', e); return null; });
+    // 잠금 상태는 명단 쪽이 기준(로그인 화면이 거기에 기록한다).
+    if (dir) allStudents.forEach(st => { const d = dir.get(st.id); if (d) { st.locked = !!d.locked; st.failedAttempts = d.failedAttempts || 0; } });
+    const legacy = allStudents.filter(st => typeof st.password === 'string' && st.password.length).length;
+    if (legacy) toast(`평문 비밀번호가 남은 학생 ${legacy}명 — "평문 비밀번호 정리"를 눌러 주세요.`, 'error', 6000);
     buildStudentFilters();
     window.populateAddDatalists();
     renderStudents();
@@ -1441,6 +1482,7 @@
         registered: pw ? true : !!existing?.registered,
         isMaster: isMaster || false
       });
+      if (pw) await setDoc(doc(db, 'student_directory', id), { registered: true }, { merge: true }).catch(e => console.error('명단 가입 표시 실패:', e));
       if (existing) { existing.name = name; existing.password = null; existing.registered = pw ? true : !!existing.registered; existing.isMaster = isMaster || false; }
       closeStudentEdit();
       toast('저장되었습니다.', 'success');
@@ -1454,6 +1496,8 @@
   window.unlockStudent = async (id) => {
     showLoading(true);
     try {
+      // 잠금은 로그인 화면이 공개 명단(student_directory)에 기록한다 — 양쪽 다 푼다.
+      await setDoc(doc(db, 'student_directory', id), { locked: false, failedAttempts: 0 }, { merge: true });
       await updateDoc(doc(db, 'students', id), { locked: false, failedAttempts: 0 });
       const s = allStudents.find(x => x.id === id);
       if (s) { s.locked = false; s.failedAttempts = 0; }
@@ -1468,6 +1512,7 @@
       showLoading(true);
       try {
         await deleteDoc(doc(db, 'students', id));
+        await deleteDoc(doc(db, 'student_directory', id)).catch(e => console.error('명단 삭제 실패(다음 동기화 때 정리됨):', e));
         toast('삭제되었습니다.', 'success');
         await loadStudents();
       } catch (e) {
@@ -1491,11 +1536,15 @@
     if (!number) { err.innerText = '번호를 입력하세요.'; return; }
     showLoading(true);
     try {
-      await addDoc(collection(db, 'students'), {
+      const ref = doc(collection(db, 'students'));
+      const b = writeBatch(db);
+      b.set(ref, {
         schoolName, grade, class: cls, number, name,
         registered: false, password: null,
         createdAt: serverTimestamp()
       });
+      b.set(doc(db, 'student_directory', ref.id), { ...dirOf({ schoolName, grade, class: cls, number }), registered: false, locked: false, failedAttempts: 0 });
+      await b.commit();
       toast(`${name} 추가 완료!`, 'success');
       document.getElementById('addSchoolName').value = '';
       document.getElementById('addName').value = '';

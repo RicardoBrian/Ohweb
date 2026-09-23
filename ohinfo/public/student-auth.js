@@ -14,7 +14,41 @@ import {
   signInWithEmailAndPassword, createUserWithEmailAndPassword,
   updatePassword, EmailAuthProvider, reauthenticateWithCredential,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { doc, updateDoc, deleteField, increment, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { doc, getDoc, getDocs, collection, updateDoc, deleteField, increment, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+// ── 공개용 학생 명단 ──
+// 로그인 화면은 로그인 "전"에 학교/학년/반/번호 목록과 가입·잠금 상태가
+// 필요하다. 예전엔 이걸 위해 students 컬렉션 전체(이름·사진·옛 평문 비밀번호
+// 포함)를 누구나 읽을 수 있게 열어뒀다. 이제 그 최소 정보만 담은
+// student_directory(문서 ID = 학생 문서 ID)를 따로 두고, students는 본인·
+// 관리자만 읽는다. 명단은 admin.html의 학생 화면이 자동으로 맞춰 쓴다.
+//
+// 전환기 대비: student_directory가 아직 비어 있으면(관리자가 학생 화면을 한 번도
+// 안 열었으면) 예전처럼 students를 읽는다 — 규칙이 아직 열려 있는 동안은 이걸로
+// 로그인이 끊기지 않는다. 이름·사진·비밀번호는 어느 쪽이든 여기서 버린다.
+const DIR_FIELDS = ['schoolName', 'grade', 'class', 'number', 'registered', 'locked', 'failedAttempts'];
+function pickDir(id, d) {
+  const o = { id };
+  DIR_FIELDS.forEach(k => { if (d[k] !== undefined) o[k] = d[k]; });
+  return o;
+}
+export async function loadLoginDirectory() {
+  try {
+    const snap = await getDocs(collection(db, 'student_directory'));
+    if (!snap.empty) return snap.docs.map(d => pickDir(d.id, d.data()));
+  } catch (e) { console.error('student_directory 읽기 실패 — students로 대체:', e); }
+  const snap = await getDocs(collection(db, 'students'));
+  return snap.docs.map(d => pickDir(d.id, d.data()));
+}
+
+// 로그인·가입에 성공한 직후(= 본인 인증 상태) 본인 문서를 읽어 세션을 만든다.
+// 공개 명단엔 이름 등이 없으므로 세션은 반드시 이걸로 채운다.
+export async function fetchOwnStudent(studentDocId) {
+  const snap = await getDoc(doc(db, 'students', studentDocId));
+  const data = snap.exists() ? snap.data() : {};
+  delete data.password;
+  return { id: studentDocId, ...data };
+}
 
 // 비밀번호를 5회 이상 틀리면 계정을 잠근다(locked:true) — 무차별 대입 시도
 // 방어용. 잠긴 계정은 admin.html(학생 관리)에서만 풀 수 있다 — 학생 쪽
@@ -32,7 +66,7 @@ async function recordFailedLogin(studentDocId, currentFailedAttempts) {
     updates.lockedAt = serverTimestamp();
   }
   try {
-    await updateDoc(doc(db, 'students', studentDocId), updates);
+    await updateDoc(doc(db, 'student_directory', studentDocId), updates);
   } catch (e) {
     // 카운트 기록이 실패해도(오프라인 등) 로그인 자체는 이미 아래에서
     // wrong-password로 막힌다 — 카운트만 못 늘어날 뿐.
@@ -76,7 +110,7 @@ export async function loginStudent(studentDocId, data, pw) {
   // 올바른 비밀번호를 넣어도 영영 로그인이 안 됐다.
   if (data.failedAttempts) {
     try {
-      await updateDoc(doc(db, 'students', studentDocId), { failedAttempts: 0 });
+      await updateDoc(doc(db, 'student_directory', studentDocId), { failedAttempts: 0 });
     } catch (e) {
       console.error('failedAttempts 리셋 실패(로그인은 정상):', e);
     }
@@ -86,8 +120,18 @@ export async function loginStudent(studentDocId, data, pw) {
 // Auth 로그인이 실패했을 때의 경로 — 아직 Auth로 전환되지 않은 옛 계정이면
 // Firestore의 평문 password로 한 번만 검증하고 그 자리에서 전환한다.
 async function loginFallback(studentDocId, data, pw) {
+  // 옛 평문 비밀번호는 공개 명단에 없다 — students 문서에서 직접 본다(규칙이 아직
+  // 열려 있는 전환기에만 읽힌다. 잠근 뒤엔 읽기가 거부되는데, 그 전에 admin의
+  // "평문 비밀번호 정리"로 전부 계정 전환해 둔다).
+  let legacyPw = data.password;
+  if (legacyPw === undefined) {
+    try {
+      const snap = await getDoc(doc(db, 'students', studentDocId));
+      legacyPw = snap.exists() ? snap.data().password : undefined;
+    } catch (e) { legacyPw = undefined; }
+  }
   // 이미 전환된 계정인데 위에서 실패했다면 password 필드가 없으니 여기서 걸러진다.
-  if (data.password === undefined || data.password !== pw) {
+  if (typeof legacyPw !== 'string' || legacyPw !== pw) {
     await recordFailedLogin(studentDocId, data.failedAttempts);
     throw new AuthError('wrong-password');
   }
@@ -108,15 +152,33 @@ async function loginFallback(studentDocId, data, pw) {
     }
     throw e;
   }
-  await updateDoc(doc(db, 'students', studentDocId), { password: deleteField(), failedAttempts: 0 });
+  await updateDoc(doc(db, 'students', studentDocId), { password: deleteField() });
+  updateDoc(doc(db, 'student_directory', studentDocId), { failedAttempts: 0 }).catch(() => {});
 }
 
 // 신규 가입 — Firestore엔 password를 아예 쓰지 않는다.
-export async function registerStudent(studentDocId, extraFields, pw) {
-  await createUserWithEmailAndPassword(auth, emailFor(studentDocId), padPassword(pw));
+//
+// 이름 확인: 공개 명단엔 이름이 없어서 가입 전에는 이름을 대조할 수 없다.
+// 그래서 계정을 먼저 만들고(= 본인 인증 상태가 되면 자기 문서를 읽을 수 있다)
+// 바로 이름을 대조해서, 다르면 방금 만든 계정을 지우고 실패로 돌려보낸다.
+const normName = s => String(s ?? '').replace(/\s+/g, '').normalize('NFC');
+export async function registerStudent(studentDocId, extraFields, pw, typedName) {
+  const cred = await createUserWithEmailAndPassword(auth, emailFor(studentDocId), padPassword(pw));
+  let own;
+  try {
+    own = await getDoc(doc(db, 'students', studentDocId));
+  } catch (e) {
+    await cred.user.delete().catch(() => {});
+    throw e;
+  }
+  if (!own.exists() || normName(own.data().name) !== normName(typedName)) {
+    await cred.user.delete().catch(() => {});
+    throw new AuthError('name-mismatch');
+  }
   const updates = { ...extraFields, registered: true };
   await updateDoc(doc(db, 'students', studentDocId), updates);
-  return updates;
+  await updateDoc(doc(db, 'student_directory', studentDocId), { registered: true }).catch(e => console.error('명단 가입 표시 실패:', e));
+  return { id: studentDocId, ...own.data(), ...updates, password: undefined };
 }
 
 // 마이페이지의 "비밀번호 변경" — Firestore엔 password를 쓰지 않고

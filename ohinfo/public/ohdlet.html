@@ -877,7 +877,12 @@
     let dirty = false;
     for (let i = 0; i < toFetch.length; i += 10) {
       const batch = toFetch.slice(i, i + 10);
-      const snap = await getDocs(query(collection(db, 'students'), where(documentId(), 'in', batch)));
+      // students는 본인·관리자만 읽을 수 있게 잠갔다(학생 명단·사진 보호) — 다른
+      // 학생 사진 조회가 거부되면 이니셜로 대신 보여주고, 게시판 로딩은 계속한다.
+      // (게시글 작성자 사진은 글에 저장된 photoUrl로 따로 보인다.)
+      let snap;
+      try { snap = await getDocs(query(collection(db, 'students'), where(documentId(), 'in', batch))); }
+      catch (e) { batch.forEach(id => { cache[id] = { u: null, t: now }; }); dirty = true; continue; }
       const found = new Set();
       snap.docs.forEach(d => {
         const u = d.data().photoUrl || null;

@@ -3,7 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "firebase emulators:exec --only firestore --project ohweb-93062 \"node rules.test.mjs\""
+    "test": "npm run test:rules && npm run test:login",
+    "test:rules": "firebase emulators:exec --only firestore --project ohweb-93062 \"node rules.test.mjs && PHASE=2 node rules.test.mjs\"",
+    "test:login": "firebase emulators:exec --only firestore,auth --project ohweb-93062 \"node login.e2e.mjs && PHASE=2 node login.e2e.mjs\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^4.0.1",
