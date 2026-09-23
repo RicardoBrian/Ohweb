@@ -207,7 +207,13 @@ let threads = [];
 let expandedId = null;
 let msgUnsub = null;
 
-function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function escHtml(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+// 스레드 문서 ID는 학생 문서 ID(영숫자)다. qna_threads는 누구나 쓸 수 있어서
+// 따옴표 같은 게 든 ID로 문서를 만들면 onclick="…('${id}')" 자리에서 스크립트가
+// 돌 수 있다 — 이 관리자 화면에서 돌면 관리자 권한을 그대로 쓴다. 그런 ID는 아예 뺀다.
+const SAFE_ID = /^[A-Za-z0-9_-]{1,128}$/;
+// 첨부 링크는 https만 — javascript: 같은 주소가 href에 들어가면 클릭 한 번에 실행된다.
+function safeHttpsUrl(u) { const s = String(u ?? '').trim(); return /^https:\/\/[^\s"'<>]+$/i.test(s) ? s : ''; }
 function millis(ts) { return ts?.toMillis ? ts.toMillis() : (ts?.seconds ? ts.seconds*1000 : 0); }
 function fmtTime(ts) {
   const ms = millis(ts); if (!ms) return '';
@@ -239,7 +245,7 @@ async function loadAll() {
   list.innerHTML = `<div class="empty-state">불러오는 중…</div>`;
   try {
     const snap = await getDocs(collection(db, 'qna_threads'));
-    threads = snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(t => t.studentName);
+    threads = snap.docs.filter(d => SAFE_ID.test(d.id)).map(d => ({ id: d.id, ...d.data() })).filter(t => t.studentName);
     threads.sort((a, b) => millis(b.lastMessageAt) - millis(a.lastMessageAt));
 
     recalcStats();
@@ -303,7 +309,7 @@ function driveId(url) { const m = String(url||'').match(/\/d\/([^/]+)|[?&]id=([^
 function isImg(name) { return /\.(jpe?g|png|gif|webp|bmp|heic|heif)$/i.test(String(name||'')); }
 window.openLightbox = (url) => {
   const id = driveId(url);
-  document.getElementById('lightboxImg').src = id ? `https://drive.google.com/thumbnail?id=${id}&sz=w1600` : url;
+  document.getElementById('lightboxImg').src = /^[A-Za-z0-9_-]+$/.test(id) ? `https://drive.google.com/thumbnail?id=${id}&sz=w1600` : safeHttpsUrl(url);
   document.getElementById('lightbox').classList.add('open');
 };
 window.closeLightbox = () => {
@@ -311,9 +317,11 @@ window.closeLightbox = () => {
   document.getElementById('lightboxImg').src = '';
 };
 function renderAtt(f) {
-  const id = driveId(f.url);
-  if (isImg(f.name) && id) return `<div class="msg-att" onclick="openLightbox('${(f.url||'').replace(/'/g,"\\'")}')"><img src="https://drive.google.com/thumbnail?id=${id}&sz=w400" referrerpolicy="no-referrer"></div>`;
-  return `<a class="msg-att" href="${f.url}" target="_blank" rel="noopener"><svg width="12" height="12" style="flex-shrink:0;"><use href="#ic-paperclip"/></svg> ${escHtml(f.name||'파일')}</a>`;
+  const url = safeHttpsUrl(f?.url);
+  if (!url) return `<span class="msg-att">${escHtml(f?.name||'파일')}</span>`;
+  const id = driveId(url);
+  if (isImg(f.name) && /^[A-Za-z0-9_-]+$/.test(id)) return `<div class="msg-att" data-url="${escHtml(url)}" onclick="openLightbox(this.dataset.url)"><img src="https://drive.google.com/thumbnail?id=${id}&sz=w400" referrerpolicy="no-referrer"></div>`;
+  return `<a class="msg-att" href="${escHtml(url)}" target="_blank" rel="noopener"><svg width="12" height="12" style="flex-shrink:0;"><use href="#ic-paperclip"/></svg> ${escHtml(f.name||'파일')}</a>`;
 }
 
 function openChat(id) {

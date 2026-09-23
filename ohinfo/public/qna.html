@@ -150,7 +150,7 @@ import {
   doc, getDoc, setDoc, updateDoc, collection, addDoc, query, orderBy, onSnapshot, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { loadSession, verifyStudentAuth } from './session.js';
-import { escHtml as esc } from './escape.js';
+import { escHtml as esc, safeHttpsUrl } from './escape.js';
 
 const student = loadSession();
 if (!student) { window.location.href = 'index.html'; throw new Error('no session'); }
@@ -233,7 +233,7 @@ function fmtTime(ts) {
 function driveId(url) { const m = String(url||'').match(/\/d\/([^/]+)|[?&]id=([^&]+)/); return m ? (m[1]||m[2]) : ''; }
 window.openLightbox = (url) => {
   const id = driveId(url);
-  document.getElementById('lightboxImg').src = id ? `https://drive.google.com/thumbnail?id=${id}&sz=w1600` : url;
+  document.getElementById('lightboxImg').src = /^[A-Za-z0-9_-]+$/.test(id) ? `https://drive.google.com/thumbnail?id=${id}&sz=w1600` : safeHttpsUrl(url);
   document.getElementById('lightbox').classList.add('open');
 };
 window.closeLightbox = () => {
@@ -241,9 +241,12 @@ window.closeLightbox = () => {
   document.getElementById('lightboxImg').src = '';
 };
 function renderAtt(f) {
-  const id = driveId(f.url);
-  if (isImg(f.name) && id) return `<div class="msg-att" onclick="openLightbox('${f.url.replace(/'/g,"\\'")}')"><img src="https://drive.google.com/thumbnail?id=${id}&sz=w400" referrerpolicy="no-referrer"></div>`;
-  return `<a class="msg-att" href="${f.url}" target="_blank" rel="noopener"><svg width="12" height="12" style="flex-shrink:0;"><use href="#ic-paperclip"/></svg> <span>${esc(f.name)}</span></a>`;
+  // 첨부 주소는 https만 — javascript: 주소가 href에 들어가면 클릭 한 번에 실행된다.
+  const url = safeHttpsUrl(f?.url);
+  if (!url) return `<span class="msg-att">${esc(f?.name||'')}</span>`;
+  const id = driveId(url);
+  if (isImg(f.name) && /^[A-Za-z0-9_-]+$/.test(id)) return `<div class="msg-att" data-url="${esc(url)}" onclick="openLightbox(this.dataset.url)"><img src="https://drive.google.com/thumbnail?id=${id}&sz=w400" referrerpolicy="no-referrer"></div>`;
+  return `<a class="msg-att" href="${esc(url)}" target="_blank" rel="noopener"><svg width="12" height="12" style="flex-shrink:0;"><use href="#ic-paperclip"/></svg> <span>${esc(f.name)}</span></a>`;
 }
 
 const chatBody = document.getElementById('chatBody');

@@ -401,7 +401,7 @@
 
 <script type="module">
 import { db, auth } from './firebase-config.js';
-import { escHtml } from './escape.js';
+import { escHtml, safePhotoUrl } from './escape.js';
 import {
   collection, addDoc, getDocs, getDoc, doc,
   query, where, orderBy, setDoc, updateDoc, serverTimestamp, Timestamp, onSnapshot
@@ -423,7 +423,7 @@ let _mpStudent = { ..._st }; // mutable copy for mypage updates
 // ── 네비 아바타 렌더 ──
 function renderAvatar(el, s) {
   if (s.photoUrl) {
-    el.innerHTML = `<img src="${s.photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+    el.innerHTML = `<img src="${escHtml(safePhotoUrl(s.photoUrl))}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
   } else {
     el.innerText = (s.name||'?')[0];
   }
@@ -444,7 +444,7 @@ window.openMyPage = () => {
   document.getElementById('userDropdown').classList.add('hidden');
   _mpPhotoB64 = null;
   const prev = document.getElementById('mpPhotoPreview');
-  if (_mpStudent.photoUrl) { prev.innerHTML = `<img src="${_mpStudent.photoUrl}">`; }
+  if (_mpStudent.photoUrl) { prev.innerHTML = `<img src="${escHtml(safePhotoUrl(_mpStudent.photoUrl))}">`; }
   else { prev.innerText = (_mpStudent.name||'?')[0]; }
   ['mpCurPw','mpNewPw','mpNewPw2'].forEach(id => document.getElementById(id).value = '');
   const msg = document.getElementById('mpMsg'); msg.innerText = ''; msg.className = 'modal-msg';

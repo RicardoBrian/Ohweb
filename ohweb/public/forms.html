@@ -364,8 +364,14 @@ function statusLabel(s) {
   return { text:'공개', cls:'open' };
 }
 function escHtml(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+// 설문·응답은 학생(비로그인 포함)이 쓰는 데이터다. 이 관리자 화면에서 스크립트가
+// 돌면 관리자 권한을 그대로 쓰게 되므로: 문서 ID는 우리 코드가 만드는 모양만,
+// 링크는 https만, onclick 인자는 JS 문자열로 만든 뒤 이스케이프한다.
+const SAFE_ID = /^[A-Za-z0-9_-]{1,128}$/;
+function safeHttpsUrl(u) { const s = String(u ?? '').trim(); return /^https:\/\/[^\s"'<>]+$/i.test(s) ? s : ''; }
+function jsArg(s) { return escHtml(JSON.stringify(String(s ?? ''))); }
 function initials(name) {
   const n = (name||'').trim();
   if (!n || n === '(작성자 미상)') return '?';
@@ -404,7 +410,7 @@ async function loadAll() {
       getDocs(collection(db, 'student_form_responses')),
       getDocs(collection(db, 'students')),
     ]);
-    allForms = formSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    allForms = formSnap.docs.filter(d => SAFE_ID.test(d.id)).map(d => ({ id: d.id, ...d.data() }));
     responsesByForm = {};
     respSnap.docs.forEach(d => {
       const r = d.data(); const fid = r.formId;
@@ -492,7 +498,7 @@ function renderGrouped(forms) {
     const collapsed = collapsedGroups.has(key) ? ' collapsed' : '';
     return `
     <div class="group${collapsed}" id="grp-${cssId(key)}">
-      <div class="group-head" onclick="toggleGroup('${jsStr(key)}')">
+      <div class="group-head" onclick="toggleGroup(${jsArg(key)})">
         <div class="group-avatar">${escHtml(initials(ownerName(items[0])))}</div>
         <span class="group-name">${escHtml(label)}</span>
         <span class="group-meta">설문 ${items.length} · 응답 ${resp}</span>
@@ -518,7 +524,7 @@ function buildItem(f) {
       <button class="icon-action" title="링크 복사" onclick="copyLink('${f.id}')"><svg><use href="#ic-link"/></svg></button>
       <button class="icon-action" title="응답 보기" onclick="togglePanel('${f.id}')"><svg><use href="#ic-chart"/></svg></button>
       <button class="icon-action" title="CSV 내보내기" onclick="exportCsv('${f.id}')"><svg><use href="#ic-download"/></svg></button>
-      <button class="icon-action" title="${(f.status||'open')==='closed'?'공개로 전환':'마감하기'}" onclick="toggleStatus('${f.id}','${f.status || 'open'}')"><svg><use href="#${(f.status||'open')==='closed'?'ic-unlock':'ic-lock'}"/></svg></button>
+      <button class="icon-action" title="${(f.status||'open')==='closed'?'공개로 전환':'마감하기'}" onclick="toggleStatus('${f.id}','${f.status === 'closed' ? 'closed' : 'open'}')"><svg><use href="#${(f.status||'open')==='closed'?'ic-unlock':'ic-lock'}"/></svg></button>
       <button class="icon-action danger" title="삭제" onclick="deleteSurvey('${f.id}')"><svg><use href="#ic-trash"/></svg></button>
     </div>
     <div class="response-panel hidden" id="panel-${f.id}"></div>
@@ -661,7 +667,9 @@ window._imgFallback = function(img) {
 function _driveId(url) { const m = String(url||'').match(/\/d\/([^/]+)|[?&]id=([^&]+)/); return m ? (m[1]||m[2]) : ''; }
 function _isImg(name) { return /\.(jpe?g|png|gif|webp|bmp|heic|heif|svg)$/i.test(String(name||'')); }
 function fileTile(f, who) {
-  const id = _driveId(f.url);
+  f = { ...f, url: safeHttpsUrl(f?.url) };
+  const rawId = _driveId(f.url);
+  const id = /^[A-Za-z0-9_-]+$/.test(rawId) ? rawId : '';
   const cap = `${who?escHtml(who)+' · ':''}${escHtml(f.name||'파일')}`;
   if (f.url && id && _isImg(f.name)) {
     return `<div class="file-tile" onclick="openDrivePreview('${id}')">
@@ -671,7 +679,7 @@ function fileTile(f, who) {
   if (f.url) {
     return id
       ? `<div class="file-tile" onclick="openDrivePreview('${id}')"><div class="file-doc-ico"><svg width="16" height="16"><use href="#ic-paperclip"/></svg></div><div class="file-tile-cap">${cap}</div></div>`
-      : `<a class="file-tile" href="${f.url}" target="_blank" rel="noopener"><div class="file-doc-ico"><svg width="16" height="16"><use href="#ic-paperclip"/></svg></div><div class="file-tile-cap">${cap}</div></a>`;
+      : `<a class="file-tile" href="${escHtml(f.url)}" target="_blank" rel="noopener"><div class="file-doc-ico"><svg width="16" height="16"><use href="#ic-paperclip"/></svg></div><div class="file-tile-cap">${cap}</div></a>`;
   }
   return `<div class="file-tile"><div class="file-doc-ico"><svg width="16" height="16"><use href="#ic-paperclip"/></svg></div><div class="file-tile-cap">${cap}${f.folder?'<br>(드라이브: '+escHtml(f.folder)+')':''}</div></div>`;
 }

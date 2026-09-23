@@ -319,7 +319,7 @@
 
 <script type="module">
 import { db } from './firebase-config.js';
-import { escHtml } from './escape.js';
+import { escHtml, jsArg, safeHttpsUrl, safeImgUrl, safePhotoUrl, SAFE_ID } from './escape.js';
 import {
   collection, query, where, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, doc, serverTimestamp, onSnapshot, increment
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
@@ -362,7 +362,7 @@ window.doLogout = () => { clearSession(); location.href = 'ohdlet.html'; };
 if (SESSION) {
   document.getElementById('navUserName').textContent = SESSION.name || '';
   const av = document.getElementById('navAvatar');
-  if (SESSION.photoUrl) { av.innerHTML = `<img src="${SESSION.photoUrl}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`; }
+  if (safePhotoUrl(SESSION.photoUrl)) { av.innerHTML = `<img src="${escHtml(safePhotoUrl(SESSION.photoUrl))}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`; }
   else { av.textContent = (SESSION.name||'?')[0].toUpperCase(); }
 }
 
@@ -392,7 +392,9 @@ async function loadMyForms() {
       collection(db, 'student_forms'),
       where('ownerId', '==', SESSION.id)
     ));
-    const forms = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    // 설문 문서는 누구나 만들 수 있다(ownerId도 남의 것으로 지정 가능) — 우리 코드가
+    // 만들지 않는 모양의 ID는 onclick 자리에서 스크립트가 될 수 있으니 뺀다.
+    const forms = snap.docs.filter(d => SAFE_ID.test(d.id)).map(d => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
     const el = document.getElementById('myFormList');
     if (!forms.length) { el.innerHTML = '<div class="empty-msg">아직 만든 설문이 없습니다.<br>새 설문을 만들어보세요!</div>'; showLoading(false); return; }
@@ -446,6 +448,8 @@ window.initBuilder = (formId) => {
       formDescImage = d.descImage || '';
       renderDescImg();
       questions = d.questions ? JSON.parse(JSON.stringify(d.questions)) : [];
+      // 문항 ID·이미지 주소는 편집 화면의 onclick/src에 그대로 들어간다 — 이상한 값은 교체.
+      questions.forEach(q => { if (!SAFE_ID.test(String(q.id))) q.id = uid(); if (q.imageUrl) q.imageUrl = safeImgUrl(q.imageUrl); });
       renderQuestions();
     }).catch(e => { showLoading(false); alert(e.message); });
   } else {
@@ -483,7 +487,7 @@ function renderQCard(q, i) {
     <button class="add-opt" onclick="addOpt('${q.id}')">+ 옵션 추가</button>
   ` : '';
   const imgHtml = q.imageUrl
-    ? `<img class="q-img-preview" src="${q.imageUrl}"><button class="icon-action danger" title="이미지 삭제" onclick="removeQImg('${q.id}')" style="margin-bottom:8px;"><svg width="15" height="15"><use href="#ic-trash"/></svg></button>`
+    ? `<img class="q-img-preview" src="${escHtml(safeImgUrl(q.imageUrl))}"><button class="icon-action danger" title="이미지 삭제" onclick="removeQImg('${q.id}')" style="margin-bottom:8px;"><svg width="15" height="15"><use href="#ic-trash"/></svg></button>`
     : `<input type="file" accept="image/*" id="imgf_${q.id}" style="display:none" onchange="onQImg(this,'${q.id}')"><button class="btn sm ghost" onclick="document.getElementById('imgf_${q.id}').click()" style="margin-bottom:8px;"><svg width="13" height="13" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-image"/></svg>이미지 첨부</button>`;
 
   return `<div class="q-card" id="qc_${q.id}">
@@ -665,7 +669,7 @@ window.openResults = async (formId) => {
     currentFormId = formId;
     currentFormData = { id: formId, ...fSnap.data() };
     const rSnap = await getDocs(query(collection(db,'student_form_responses'), where('formId','==',formId)));
-    responses = rSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+    responses = rSnap.docs.filter(d => SAFE_ID.test(d.id)).map(d => ({ id: d.id, ...d.data() }))
       .sort((a, b) => (b.submittedAt?.seconds || 0) - (a.submittedAt?.seconds || 0));
 
     document.getElementById('resTitle').innerText = currentFormData.title || '(제목 없음)';
@@ -789,7 +793,7 @@ function renderIndividual(el) {
     return `<div class="resp-row" onclick="toggleDetail('rd_${i}')">
       <div><b>${escHtml(name)}</b> <span style="color:var(--sub);font-size:0.75rem;">${time}</span></div>
       <div style="display:flex;align-items:center;gap:6px;">
-        <button class="icon-action danger" title="이 응답 삭제" onclick="event.stopPropagation();deleteResponse('${escHtml(r.id)}')"><svg width="15" height="15"><use href="#ic-trash"/></svg></button>
+        <button class="icon-action danger" title="이 응답 삭제" onclick="event.stopPropagation();deleteResponse(${jsArg(r.id)})"><svg width="15" height="15"><use href="#ic-trash"/></svg></button>
         <span style="color:var(--sub);">▾</span>
       </div>
     </div>
@@ -899,6 +903,10 @@ if (SESSION) loadMyForms();
 function _labDriveId(url) { const m = String(url||'').match(/\/d\/([^/]+)|[?&]id=([^&]+)/); return m?(m[1]||m[2]):''; }
 function _labIsImg(name) { return /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(String(name||'')); }
 window.openFilePreview = (url, name) => {
+  // 응답 첨부는 응답자(비로그인 포함)가 넣은 값이다 — https만 연다. javascript:
+  // 주소를 iframe/img에 넣으면 이 페이지 권한으로 실행될 수 있다.
+  url = safeHttpsUrl(url);
+  if (!url) return;
   const modal = document.getElementById('labDriveModal');
   const head = document.getElementById('labDriveHead');
   const body = document.getElementById('labDriveBody');
@@ -907,14 +915,14 @@ window.openFilePreview = (url, name) => {
   if (_labIsImg(name)) {
     const img = document.createElement('img');
     img.className = 'preview-img';
-    img.src = _labDriveId(url) ? `https://drive.google.com/thumbnail?id=${_labDriveId(url)}&sz=w800` : url;
+    img.src = /^[A-Za-z0-9_-]+$/.test(_labDriveId(url)) ? `https://drive.google.com/thumbnail?id=${_labDriveId(url)}&sz=w800` : url;
     img.style.cssText = 'flex:1;width:100%;object-fit:contain;max-height:calc(78vh - 54px);';
     body.appendChild(img);
   } else {
     const id = _labDriveId(url);
     const ifr = document.createElement('iframe');
     ifr.style.cssText = 'flex:1;width:100%;height:100%;border:none;';
-    ifr.src = id ? `https://drive.google.com/file/d/${id}/preview` : url;
+    ifr.src = /^[A-Za-z0-9_-]+$/.test(id) ? `https://drive.google.com/file/d/${id}/preview` : url;
     body.appendChild(ifr);
   }
   modal.classList.add('open');
@@ -922,16 +930,16 @@ window.openFilePreview = (url, name) => {
 window.closeFilePreview = () => document.getElementById('labDriveModal').classList.remove('open');
 
 function fileTileSmall(f) {
-  const url = f.url || '';
-  const name = f.name || '파일';
+  const url = safeHttpsUrl(f?.url);
+  const name = f?.name || '파일';
   const isImg = _labIsImg(name);
   const id = _labDriveId(url);
-  const thumb = isImg && id ? `https://drive.google.com/thumbnail?id=${id}&sz=w200` : '';
+  const thumb = isImg && /^[A-Za-z0-9_-]+$/.test(id) ? `https://drive.google.com/thumbnail?id=${id}&sz=w200` : '';
   const inner = thumb
     ? `<img src="${thumb}" onerror="this.style.display='none'"><div class="file-tile-sm-cap">${escHtml(name)}</div>`
     : `<div class="file-tile-sm-ico">${isImg ? '<svg width="16" height="16"><use href="#ic-image"/></svg>' : '<svg width="16" height="16"><use href="#ic-paperclip"/></svg>'}</div><div class="file-tile-sm-cap">${escHtml(name)}</div>`;
   return url
-    ? `<div class="file-tile-sm" onclick="openFilePreview('${url.replace(/'/g,"\\'")}','${name.replace(/'/g,"\\'")}')"><${thumb?'div':'div'}>${inner}</${'div'}></div>`
+    ? `<div class="file-tile-sm" data-url="${escHtml(url)}" data-name="${escHtml(name)}" onclick="openFilePreview(this.dataset.url,this.dataset.name)"><div>${inner}</div></div>`
     : `<div class="file-tile-sm"><div class="file-tile-sm-ico"><svg width="16" height="16"><use href="#ic-paperclip"/></svg></div><div class="file-tile-sm-cap">${escHtml(name)}</div></div>`;
 }
 

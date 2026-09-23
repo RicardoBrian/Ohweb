@@ -37,3 +37,25 @@ export function safePhotoUrl(url) {
   if (/^https:\/\/[^\s"'<>]+$/i.test(s)) return s;
   return '';
 }
+
+// onclick="fn(…)" 같은 인라인 핸들러에 넣는 문자열 인자. JS 문자열 리터럴로
+// 만든 뒤 HTML 이스케이프한다 — '${id}'처럼 따옴표로만 감싸면 값 안의
+// 따옴표로 빠져나가 스크립트를 실행할 수 있다(게시글·설문 문서 ID는
+// 누구나 만들 수 있다).
+export function jsArg(s) {
+  return escHtml(JSON.stringify(String(s ?? '')));
+}
+
+// 링크(href, iframe src)용 — https만 통과. javascript: 주소는 클릭하거나
+// iframe에 넣는 순간 이 페이지 권한으로 실행된다.
+export function safeHttpsUrl(url) {
+  const s = String(url ?? '').trim();
+  return /^https:\/\/[^\s"'<>]+$/i.test(s) ? s : '';
+}
+
+// 게시글 첨부 이미지(<img src>)용 — 업로드한 base64 이미지나 https 주소만.
+export const safeImgUrl = safePhotoUrl;
+
+// Firestore 문서 ID 검사. 우리 코드가 만드는 ID(자동 생성 ID 등)는 전부
+// 영숫자/_/- 라서, 이 밖의 문자가 든 문서는 누군가 일부러 만든 것이다.
+export const SAFE_ID = /^[A-Za-z0-9_-]{1,128}$/;

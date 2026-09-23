@@ -207,6 +207,7 @@
 
 <script type="module">
 import { db } from './firebase-config.js';
+import { escHtml as _escP, safePhotoUrl } from './escape.js';
 import { doc, getDoc, addDoc, updateDoc, collection, query, where, getDocs, serverTimestamp, increment }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { loadSession, clearSession, verifyStudentAuth } from './session.js';
@@ -416,7 +417,7 @@ function renderNavUser(s) {
   document.getElementById('navUserName').textContent = s.name || '';
   const av = document.getElementById('navAvatar');
   if (s.photoUrl) {
-    av.innerHTML = `<img src="${s.photoUrl}" alt="">`;
+    av.innerHTML = `<img src="${_escP(safePhotoUrl(s.photoUrl))}" alt="">`;
   } else {
     av.textContent = (s.name || '?')[0].toUpperCase();
   }

@@ -402,6 +402,7 @@
 </script>
 <script type="module">
   import { db } from './firebase-config.js';
+  import { escHtml, safePhotoUrl } from './escape.js';
   import { doc, getDoc, updateDoc, collection, query, where, orderBy, getDocs, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import { saveSession, loadSession, clearSession, verifyStudentAuth } from './session.js';
   import { changeStudentPassword, AuthError } from './student-auth.js';
@@ -433,7 +434,7 @@
   // ── 아바타 렌더 (사진 or 이니셜) ──
   function renderAvatar(el, s) {
     if (s.photoUrl) {
-      el.innerHTML = `<img src="${s.photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+      el.innerHTML = `<img src="${escHtml(safePhotoUrl(s.photoUrl))}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
     } else {
       el.innerText = s.name[0];
     }
@@ -447,7 +448,7 @@
     _mpPhotoB64 = null;
     const prev = document.getElementById('mpPhotoPreview');
     if (student.photoUrl) {
-      prev.innerHTML = `<img src="${student.photoUrl}">`;
+      prev.innerHTML = `<img src="${escHtml(safePhotoUrl(student.photoUrl))}">`;
     } else {
       prev.innerText = student.name[0];
     }

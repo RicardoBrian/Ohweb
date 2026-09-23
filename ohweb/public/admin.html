@@ -1368,19 +1368,19 @@
           <tbody>
             ${students.map(s => `
               <tr>
-                <td>${s.schoolName||''}</td>
-                <td>${s.grade||''}</td>
-                <td>${s.class||''}</td>
-                <td>${s.number||''}</td>
-                <td style="font-weight:700;">${s.name||''}</td>
+                <td>${escHtml(s.schoolName)}</td>
+                <td>${escHtml(s.grade)}</td>
+                <td>${escHtml(s.class)}</td>
+                <td>${escHtml(s.number)}</td>
+                <td style="font-weight:700;">${escHtml(s.name)}</td>
                 <td>${s.registered
                   ? '<span style="font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(34,197,94,0.15);color:#16a34a;">등록</span>'
                   : '<span style="font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(120,120,120,0.12);color:var(--sub);">미등록</span>'}
                   ${s.locked ? '<span style="margin-left:4px;font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(239,68,68,0.15);color:#dc2626;">잠김</span>' : ''}</td>
                 <td style="white-space:nowrap;">
-                  ${s.locked ? `<button class="icon-action" title="잠금 해제" onclick="unlockStudent('${s.id}')"><svg width="16" height="16"><use href="#ic-unlock"/></svg></button>` : ''}
-                  <button class="icon-action" title="수정" onclick="editStudent('${s.id}')"><svg width="16" height="16"><use href="#ic-edit"/></svg></button>
-                  <button class="icon-action danger" title="삭제" onclick="deleteStudent('${s.id}','${(s.name||'').replace(/'/g,"\\'")}')"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
+                  ${s.locked ? `<button class="icon-action" title="잠금 해제" onclick="unlockStudent(${jsArg(s.id)})"><svg width="16" height="16"><use href="#ic-unlock"/></svg></button>` : ''}
+                  <button class="icon-action" title="수정" onclick="editStudent(${jsArg(s.id)})"><svg width="16" height="16"><use href="#ic-edit"/></svg></button>
+                  <button class="icon-action danger" title="삭제" onclick="deleteStudent(${jsArg(s.id)},${jsArg(s.name)})"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
                 </td>
               </tr>
             `).join('')}
@@ -2449,14 +2449,14 @@
           <th style="text-align:center;padding:8px 12px;color:var(--sub);">채점</th>
         </tr></thead>
         <tbody>${progs.map(p=>`<tr style="border-bottom:1px solid var(--border-card);">
-          <td style="padding:8px 12px;"><input type="checkbox" class="res-chk" value="${p.id}"></td>
-          <td style="padding:8px 12px;">${p.grade||'-'}학년 ${p.class||'-'}반 ${p.num||'-'}번</td>
-          <td style="padding:8px 12px;font-weight:700;">${p.name||'-'}</td>
-          <td style="padding:8px 12px;text-align:right;font-weight:800;color:var(--accent);">${p.totalScore!==undefined?p.totalScore:'-'}${p.totalPoints?'/'+p.totalPoints:''}</td>
-          <td style="padding:8px 12px;text-align:right;color:${(p.alertCount||0)>3?'#ef4444':'var(--sub)'};">${p.alertCount||0}</td>
-          <td style="padding:8px 12px;text-align:right;color:${(p.pasteBlockCount||0)>0?'#ef4444':'var(--sub)'};">${p.pasteBlockCount||0}</td>
+          <td style="padding:8px 12px;"><input type="checkbox" class="res-chk" value="${escHtml(p.id)}"></td>
+          <td style="padding:8px 12px;">${escHtml(p.grade||'-')}학년 ${escHtml(p.class||'-')}반 ${escHtml(p.num||'-')}번</td>
+          <td style="padding:8px 12px;font-weight:700;">${escHtml(p.name||'-')}</td>
+          <td style="padding:8px 12px;text-align:right;font-weight:800;color:var(--accent);">${escHtml(p.totalScore!==undefined?p.totalScore:'-')}${p.totalPoints?'/'+escHtml(p.totalPoints):''}</td>
+          <td style="padding:8px 12px;text-align:right;color:${(p.alertCount||0)>3?'#ef4444':'var(--sub)'};">${escHtml(p.alertCount||0)}</td>
+          <td style="padding:8px 12px;text-align:right;color:${(p.pasteBlockCount||0)>0?'#ef4444':'var(--sub)'};">${escHtml(p.pasteBlockCount||0)}</td>
           <td style="padding:8px 12px;"><span style="padding:3px 10px;border-radius:50px;font-size:0.75rem;font-weight:700;background:${p.status==='submitted'?'rgba(34,197,94,0.15)':'rgba(245,158,11,0.15)'};color:${p.status==='submitted'?'#22c55e':'#f59e0b'}">${p.status==='submitted'?'제출':(p.pendingAnswers?'답안 보관됨':'진행중')}</span></td>
-          <td style="padding:8px 12px;text-align:center;white-space:nowrap;">${p.status!=='submitted'&&p.pendingAnswers?`<button class="btn sm" title="${escHtml(p.submitError||'')}" onclick="adoptPendingAnswers('${p.id}')">보관 답안 반영</button> `:''}<button class="btn ghost sm" onclick="gradeStudent('${asId}','${p._studentId}','${p.id}')">채점</button></td>
+          <td style="padding:8px 12px;text-align:center;white-space:nowrap;">${p.status!=='submitted'&&p.pendingAnswers?`<button class="btn sm" title="${escHtml(p.submitError||'')}" onclick="adoptPendingAnswers(${jsArg(p.id)})">보관 답안 반영</button> `:''}<button class="btn ghost sm" onclick="gradeStudent(${jsArg(asId)},${jsArg(p._studentId)},${jsArg(p.id)})">채점</button></td>
         </tr>`).join('')}</tbody>
       </table></div>`;
       el.innerHTML = html;
@@ -2562,7 +2562,13 @@
   };
 
   // ── 채점 모달 ──
-  function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  // 따옴표까지 막는다 — 속성 값(title="…", value="…") 자리에서 따옴표로 빠져나가
+  // onerror= 같은 걸 주입할 수 있다. 학생이 쓸 수 있는 데이터(게시글, 시험
+  // 진행 기록의 이름 등)가 이 관리자 화면에 그대로 뜨므로, 여기서 스크립트가
+  // 돌면 관리자 권한으로 DB 전체를 건드릴 수 있다.
+  function escHtml(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+  // onclick="fn(…)" 안에 넣는 문자열 인자 — JS 문자열 리터럴로 만든 뒤 HTML 이스케이프.
+  function jsArg(s) { return escHtml(JSON.stringify(String(s ?? ''))); }
 
   window.gradeStudent = async (asId, studentId, progDocId) => {
     showLoading(true);
@@ -2599,7 +2605,7 @@
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
           <div>
             <div style="font-size:1.05rem;font-weight:900;color:${fg};">${escHtml(name)} 채점</div>
-            <div style="font-size:0.78rem;color:${sub};margin-top:2px;">${progData.grade||'-'}학년 ${progData.class||'-'}반 ${progData.num||'-'}번</div>
+            <div style="font-size:0.78rem;color:${sub};margin-top:2px;">${escHtml(progData.grade||'-')}학년 ${escHtml(progData.class||'-')}반 ${escHtml(progData.num||'-')}번</div>
           </div>
           <button onclick="document.getElementById('gradeModal').remove()" style="background:none;border:1px solid ${border};border-radius:50px;padding:6px 14px;cursor:pointer;font-size:0.82rem;color:${fg};">닫기</button>
         </div>
@@ -2620,7 +2626,7 @@
                     <label style="font-size:0.78rem;font-weight:700;color:${sub};">점수</label>
                     <input type="number" value="${r.score||0}" min="0" max="${r.maxScore||0}" data-docid="${r.docId}" data-max="${r.maxScore||0}"
                       id="gscore_${ri}" style="width:64px;padding:5px 8px;border:1px solid ${border};border-radius:8px;background:${inputBg};color:${fg};font-size:0.88rem;font-weight:700;text-align:center;">
-                    <span style="font-size:0.78rem;color:${sub};">/ ${r.maxScore||0}점</span>
+                    <span style="font-size:0.78rem;color:${sub};">/ ${escHtml(r.maxScore||0)}점</span>
                   </div>
                   <div>
                     <textarea id="gfeedback_${ri}" data-docid="${r.docId}" rows="2"
@@ -2632,7 +2638,7 @@
           }).join('')}
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px;">
           <button onclick="document.getElementById('gradeModal').remove()" style="background:none;border:1px solid ${border};border-radius:50px;padding:8px 20px;cursor:pointer;font-size:0.85rem;font-weight:600;color:${fg};">취소</button>
-          <button onclick="saveGrades('${progDocId}',${items.length})" style="background:#2a5ce6;border:none;border-radius:50px;padding:8px 20px;cursor:pointer;font-size:0.85rem;font-weight:700;color:#fff;">저장</button>
+          <button onclick="saveGrades(${jsArg(progDocId)},${items.length})" style="background:#2a5ce6;border:none;border-radius:50px;padding:8px 20px;cursor:pointer;font-size:0.85rem;font-weight:700;color:#fff;">저장</button>
         </div>`;
       modal.appendChild(inner);
       document.body.appendChild(modal);
@@ -3124,10 +3130,10 @@
       const badge = missing.length ? `<span style="font-size:0.7rem;padding:2px 7px;border-radius:50px;background:rgba(239,68,68,0.12);color:#ef4444;margin-left:6px;">누락: ${missing.join(',')}</span>` : `<span style="font-size:0.7rem;padding:2px 7px;border-radius:50px;background:rgba(34,197,94,0.12);color:#16a34a;margin-left:6px;">완료</span>`;
       const checked = _txChecked.has(p.id);
       return `<label style="display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:10px;border:1px solid var(--border-card);background:var(--glass);margin-bottom:6px;cursor:pointer;">
-        <input type="checkbox" ${checked?'checked':''} onchange="txToggle('${p.id}',this.checked)" style="width:16px;height:16px;accent-color:var(--accent)">
+        <input type="checkbox" ${checked?'checked':''} onchange="txToggle(${jsArg(p.id)},this.checked)" style="width:16px;height:16px;accent-color:var(--accent)">
         <div style="flex:1;min-width:0">
-          <div style="font-size:0.85rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${sub||'(제목 없음)'}</div>
-          <div style="font-size:0.72rem;color:var(--sub)">원문: ${srcTxt} · ${p.name||''} ${badge}</div>
+          <div style="font-size:0.85rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(sub||'(제목 없음)')}</div>
+          <div style="font-size:0.72rem;color:var(--sub)">원문: ${escHtml(srcTxt)} · ${escHtml(p.name||'')} ${badge}</div>
         </div>
       </label>`;
     });
