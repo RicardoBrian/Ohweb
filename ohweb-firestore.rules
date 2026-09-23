@@ -17,9 +17,10 @@ rules_version = '2';
  * 학생 페이지는 이런 데이터를 읽기 전에 session.js의 authReady()로 로그인
  * 복원을 기다린다.
  *
- * 아직 열려 있는 것: students 읽기(로그인 화면이 비로그인 상태에서 명단을
- * 받아 쓰는 구조라서 — 공개용 최소 명단 분리 작업과 같이 가야 한다),
- * posts, student_forms, student_form_responses.
+ * 붙여넣기 전에 ohweb-rules-test에서 `npm test`로 공격 차단·정상 기능을 확인한다.
+ *
+ * students 읽기는 2단계로 잠근다(아래 students 규칙의 PHASE2 주석 참고) —
+ * 로그인 화면이 공개용 명단(student_directory)으로 옮겨간 뒤에.
  *
  * 이전엔 이 프로젝트 전체가 `allow read, write: if true`였다.
  */
