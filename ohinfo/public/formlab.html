@@ -321,7 +321,7 @@
 import { db } from './firebase-config.js';
 import { escHtml } from './escape.js';
 import {
-  collection, query, where, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, doc, serverTimestamp, onSnapshot
+  collection, query, where, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, doc, serverTimestamp, onSnapshot, increment
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { loadSession, clearSession, verifyStudentAuth } from './session.js';
 
@@ -788,7 +788,10 @@ function renderIndividual(el) {
     const time = r.submittedAt ? new Date(r.submittedAt.toDate?r.submittedAt.toDate():r.submittedAt).toLocaleString() : '';
     return `<div class="resp-row" onclick="toggleDetail('rd_${i}')">
       <div><b>${escHtml(name)}</b> <span style="color:var(--sub);font-size:0.75rem;">${time}</span></div>
-      <span style="color:var(--sub);">▾</span>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button class="icon-action danger" title="이 응답 삭제" onclick="event.stopPropagation();deleteResponse('${escHtml(r.id)}')"><svg width="15" height="15"><use href="#ic-trash"/></svg></button>
+        <span style="color:var(--sub);">▾</span>
+      </div>
     </div>
     <div class="resp-detail hidden" id="rd_${i}">
       ${qs.map((q, qi) => {
@@ -806,6 +809,26 @@ function renderIndividual(el) {
 }
 
 window.toggleDetail = (id) => { document.getElementById(id)?.classList.toggle('hidden'); };
+
+// ── 응답 1건 삭제 ──
+window.deleteResponse = async (respId) => {
+  const r = responses.find(x => x.id === respId);
+  if (!r) return;
+  const name = r.respondentName || (r.respondentId ? `학생 #${r.respondentId.slice(-4)}` : '익명');
+  if (!confirm(`"${name}"의 응답을 삭제하시겠습니까?\n삭제한 응답은 되돌릴 수 없습니다.`)) return;
+  showLoading(true);
+  try {
+    await deleteDoc(doc(db, 'student_form_responses', respId));
+    // 목록 카드의 응답 수는 실제 응답 문서 개수로 다시 세지만, 혹시 저장된
+    // 카운터(responseCount)를 쓰는 곳이 있으니 같이 맞춰둔다.
+    updateDoc(doc(db, 'student_forms', currentFormId), { responseCount: increment(-1) }).catch(() => {});
+    responses = responses.filter(x => x.id !== respId);
+    document.getElementById('resMeta').innerText = `응답 ${responses.length}개 · ${currentFormData.allowAnon?'비로그인 허용':'로그인 필요'} · ${currentFormData.showResultToRespondent?'결과 공개':'결과 비공개'}`;
+    renderResStats();
+    showResTabContent(resTabMode);
+  } catch(e) { alert('삭제 오류: ' + e.message); }
+  showLoading(false);
+};
 
 // ── 상태 토글 ──
 window.toggleStatus = async () => {
