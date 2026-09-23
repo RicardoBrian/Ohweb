@@ -532,6 +532,7 @@ const UI = {
     mpErrCur:'현재 비밀번호가 맞지 않습니다.', mpErrShort:'새 비밀번호는 4자 이상이어야 합니다.', mpErrMatch:'새 비밀번호가 일치하지 않습니다.', mpOk:'저장되었습니다.',
     correct:'정답', wrong:'오답 (정답: ', testPass:'테스트케이스 통과', manualGrade:'수동 채점 필요',
     sessionExpired:'로그인이 만료되었습니다. 다시 로그인한 뒤 제출해 주세요.',
+    draftKept:'작성한 답안은 이 기기에 저장되어 있습니다. 잠시 후 다시 제출하기를 눌러 주세요.',
     pendingResultMsg:'제출이 완료되었습니다.\n서술형 문항은 선생님이 채점한 후 최종 점수를 확인할 수 있어요.',
     stdin:'표준 입력 (stdin)', stdinPlaceholder:'입력이 필요한 경우 입력 값을 넣어주세요.',
     noOutput:'(출력 없음)', runErr:'실행 오류: ',
@@ -548,6 +549,7 @@ const UI = {
     mpErrCur:'当前密码不正确。', mpErrShort:'新密码至少需要4位。', mpErrMatch:'两次输入的新密码不一致。', mpOk:'已保存。',
     correct:'正确', wrong:'错误 (正确答案: ', testPass:'测试用例通过', manualGrade:'需要人工评分',
     sessionExpired:'登录已过期，请重新登录后提交。',
+    draftKept:'已作答的内容已保存在本设备上。请稍后再次点击提交。',
     pendingResultMsg:'提交成功。\n论述题由老师批改后即可查看最终成绩。',
     stdin:'标准输入 (stdin)', stdinPlaceholder:'如需输入，请填写输入值。',
     noOutput:'(无输出)', runErr:'运行错误: ',
@@ -564,6 +566,7 @@ const UI = {
     mpErrCur:'Неверный текущий пароль.', mpErrShort:'Новый пароль должен быть не менее 4 символов.', mpErrMatch:'Пароли не совпадают.', mpOk:'Сохранено.',
     correct:'Правильно', wrong:'Неверно (ответ: ', testPass:'тест-кейс пройден', manualGrade:'Требует проверки',
     sessionExpired:'Сессия истекла. Войдите снова и отправьте работу.',
+    draftKept:'Ваши ответы сохранены на этом устройстве. Попробуйте отправить ещё раз чуть позже.',
     pendingResultMsg:'Отправка завершена.\nОкончательный балл будет доступен после проверки эссе учителем.',
     stdin:'Стандартный ввод (stdin)', stdinPlaceholder:'Введите тестовые данные.',
     noOutput:'(нет вывода)', runErr:'Ошибка выполнения: ',
@@ -580,6 +583,7 @@ const UI = {
     mpErrCur:'Current password is incorrect.', mpErrShort:'New password must be at least 4 characters.', mpErrMatch:'Passwords do not match.', mpOk:'Saved.',
     correct:'Correct', wrong:'Wrong (answer: ', testPass:'test cases passed', manualGrade:'Manual grading required',
     sessionExpired:'Your login has expired. Please sign in again and submit.',
+    draftKept:'Your answers are saved on this device. Please press Submit again in a moment.',
     pendingResultMsg:'Submission complete.\nYour final score will be available after your teacher grades the essay question(s).',
     stdin:'Standard Input (stdin)', stdinPlaceholder:'Enter test input values if needed.',
     noOutput:'(no output)', runErr:'Run error: ',
@@ -881,6 +885,8 @@ async function startExamFromAs(asDoc, errEl) {
     studentId: SESSION.id, name: SESSION.name, grade: SESSION.grade, class: SESSION.cls, num: SESSION.num,
     status: 'started', alertCount, pasteBlockCount, startTime: serverTimestamp()
   }, { merge: true });
+  answers = {}; codeAnswers = {};
+  loadDraft();
   showLoading(false);
   startExamUI();
 }
@@ -1238,6 +1244,41 @@ function updateProgress() {
   });
   const pct = questions.length ? (filled / questions.length * 100) : 0;
   document.getElementById('progressFill').style.width = pct + '%';
+  scheduleDraftSave();
+}
+
+// ── 답안 임시저장 (이 기기 localStorage) ──
+// 답안은 제출 전까지 메모리에만 있어서, 제출이 실패한 채 탭을 닫거나
+// 새로고침하면 전부 사라졌다. 입력할 때마다 기기에 저장해 두고, 다시
+// 입장하면 복원한다. 문제 구성이 바뀌었으면(문제 id 목록 불일치) 복원하지
+// 않는다 — 번호가 밀려 엉뚱한 문제에 답이 들어가는 걸 막기 위해.
+function draftKey() {
+  return currentAssignment && SESSION.id ? `exam_draft_${currentAssignment.asId}_${SESSION.id}` : null;
+}
+function draftQIds() { return questions.map(q => q.id).join(','); }
+let _draftT = null;
+function scheduleDraftSave() {
+  clearTimeout(_draftT);
+  _draftT = setTimeout(() => {
+    const k = draftKey();
+    if (!k || submitted) return;
+    try { localStorage.setItem(k, JSON.stringify({ qIds: draftQIds(), answers, codeAnswers, savedAt: Date.now() })); } catch {}
+  }, 400);
+}
+function loadDraft() {
+  const k = draftKey();
+  if (!k) return;
+  try {
+    const d = JSON.parse(localStorage.getItem(k) || 'null');
+    if (!d || d.qIds !== draftQIds()) return;
+    if (d.answers) answers = d.answers;
+    if (d.codeAnswers) codeAnswers = d.codeAnswers;
+  } catch {}
+}
+function clearDraft() {
+  clearTimeout(_draftT);
+  const k = draftKey();
+  if (k) try { localStorage.removeItem(k); } catch {}
 }
 
 // ── 코드 실행 (서버에서 돌린다 — 위 runPythonRemote 설명 참고) ──
@@ -1343,6 +1384,7 @@ window.submitExam = async (isAuto = false) => {
       feedback: localizeFeedback(r.feedback, questions[r.qIdx]),
     }));
     // exam_results와 exam_progress(점수·제출상태)는 서버가 이미 기록했다.
+    clearDraft();
 
     showLoading(false);
     // 서술형(선생님이 나중에 직접 채점)이 하나라도 있으면, 아직 최종 점수가
@@ -1354,8 +1396,9 @@ window.submitExam = async (isAuto = false) => {
     else showResult(totalScore, totalPoints, resultItems);
   } catch(e) {
     showLoading(false);
-    alert(UI[currentLang].submitErr + e.message);
     submitted = false;
+    scheduleDraftSave();
+    alert(UI[currentLang].submitErr + e.message + '\n\n' + UI[currentLang].draftKept);
   }
 };
 
