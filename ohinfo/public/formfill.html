@@ -706,23 +706,34 @@ async function submitForm() {
 
   const allQ = sections.flatMap(s => s.questions);
 
-  // 파일 첨부 업로드 → 드라이브 (설문이름-학교-학년 폴더 / 제출시간_이름_파일명)
+  // 파일 첨부 업로드 → 드라이브 '과제 제출' 폴더 아래
+  //   설문이름 / 학교 / N학년 M반 / 제출시간_학번 이름.확장자
+  // 폴더 경로의 '/'는 GAS(_folder)가 하위 폴더로 나눠 만든다. 각 이름 안의
+  // '/' 등은 _safe가 '_'로 바꿔 경로가 의도치 않게 쪼개지지 않게 한다.
   const hasFiles = allQ.some((q, i) => q.type === 'file' && Array.isArray(allAnswers[i]) && allAnswers[i].length && allAnswers[i][0] instanceof File);
   if (hasFiles) {
-    const _nv = v => String(v || '').replace(/학년|년급|학|반|班|кл\./g, '').trim();
-    const school = (SESSION && SESSION.schoolName) ? SESSION.schoolName : '익명';
-    const grade = (SESSION && SESSION.grade) ? _nv(SESSION.grade) + '학년' : '';
-    const who = (SESSION && SESSION.name) ? SESSION.name : '익명';
-    const d = new Date(), p = n => String(n).padStart(2, '0');
-    const stamp = `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`;
-    const folder = _safe(`${_formTitle() || '설문'}-${school}${grade ? '-' + grade : ''}`);
+    const me = asMe ? SESSION : null;   // 익명 제출이면 로그인 정보를 쓰지 않는다
+    const _num = v => String(v || '').replace(/[^0-9]/g, '') || String(v || '').trim();
+    const g = _num(me && me.grade), c = _num(me && me.class), n = _num(me && me.number);
+    const pad2 = v => /^\d+$/.test(v) ? v.padStart(2, '0') : v;
+    const school = _safe(me && me.schoolName) || '익명';
+    const klass = _safe([g && `${g}학년`, c && `${c}반`].filter(Boolean).join(' ')) || '미지정';
+    const studentNo = (g && c && n) ? `${g}${pad2(c)}${pad2(n)}` : n;
+    const who = _safe([studentNo, me && me.name].filter(Boolean).join(' ')) || '익명';
+    const d = new Date(), p = v => String(v).padStart(2, '0');
+    const stamp = `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+    // 원본 제목 사용 — 번역 제목을 쓰면 응답 언어마다 폴더가 갈라진다
+    const title = _safe(FORM.title || _formTitle()) || '설문';
+    const folder = me ? `${title}/${school}/${klass}` : `${title}/익명`;
+    const ext = name => { const m = String(name || '').match(/\.([A-Za-z0-9]{1,10})$/); return m ? '.' + m[1].toLowerCase() : ''; };
+    let seq = 0;   // 한 번에 여러 장 올리면 _2, _3 … 을 붙여 구분
     try {
       for (let i = 0; i < allQ.length; i++) {
         if (allQ[i].type !== 'file') continue;
         const files = allAnswers[i];
         if (Array.isArray(files) && files.length && files[0] instanceof File) {
           const uploaded = [];
-          for (const f of files) uploaded.push(await uploadOneFile(f, folder, _safe(`${stamp}_${who}_${f.name}`)));
+          for (const f of files) { seq++; uploaded.push(await uploadOneFile(f, folder, `${stamp}_${who}${seq > 1 ? '_' + seq : ''}${ext(f.name)}`)); }
           allAnswers[i] = uploaded;
         } else { allAnswers[i] = []; }
       }
