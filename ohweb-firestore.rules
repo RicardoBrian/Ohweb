@@ -228,7 +228,7 @@ service cloud.firestore {
       allow create: if isAdmin()
           || (isOwnStudentAuth(progOwner(id))
               && request.resource.data.get('studentId', progOwner(id)) == progOwner(id)
-              && !request.resource.data.keys().hasAny(['totalScore', 'totalPoints'])
+              && !request.resource.data.keys().hasAny(['totalScore', 'totalPoints', 'submitTime', 'elapsedSec', 'late', 'needsManual', 'gradedAt'])
               && request.resource.data.get('status', '') != 'submitted');
       allow update: if isAdmin()
           || (isOwnStudentAuth(progOwner(id))
@@ -236,7 +236,12 @@ service cloud.firestore {
               && request.resource.data.get('status', '') != 'submitted'
               && request.resource.data.get('studentId', '') == resource.data.get('studentId', '')
               && request.resource.data.get('totalScore', -1) == resource.data.get('totalScore', -1)
-              && request.resource.data.get('totalPoints', -1) == resource.data.get('totalPoints', -1));
+              && request.resource.data.get('totalPoints', -1) == resource.data.get('totalPoints', -1)
+              // 시작 시각은 한 번 기록되면 못 바꾼다(지우거나 바꾸면 제한시간이 리셋된다).
+              // 제출 시각·소요 시간·시간 초과 표시는 서버만 쓴다.
+              && (!resource.data.keys().hasAny(['startTime'])
+                  || request.resource.data.get('startTime', null) == resource.data.startTime)
+              && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['submitTime', 'elapsedSec', 'late', 'needsManual', 'gradedAt']));
     }
 
     // 채점 결과: 쓰기는 서버/관리자만(예전엔 학생이 자기 점수를 임의로

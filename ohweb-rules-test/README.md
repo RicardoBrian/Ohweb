@@ -12,5 +12,6 @@ npm test        # Java 필요 (Firestore 에뮬레이터)
 
 - `rules.test.mjs` — 규칙 단위 테스트. "── 공격 ──"은 전부 `✅ 차단`, "── 정상 기능 ──"은 전부 `✅ 허용`.
 - `login.e2e.mjs` — 실제 `student-auth.js`를 Auth·Firestore 에뮬레이터에서 실행(가입·로그인·잠금·옛 계정 전환).
+- `exam.e2e.mjs` — 실제 `ohinfo/public`을 브라우저(Chromium)로 띄워 로그인 → 시험 입장 → 새로고침(타이머 유지·답안 복원) → 제출 → 시간 초과 재입장 자동 제출까지. 채점 서버는 모의 응답. Chromium 경로가 따로 있으면 `CHROMIUM_PATH=...`.
 - 둘 다 규칙 1단계(students 읽기 공개)와 2단계(`PHASE2` 주석의 잠금 규칙)를 각각 돌린다.
 - 학생 페이지에 Firestore 접근을 새로 추가하면 그 접근을 "정상 기능"에 한 줄 추가한다.
