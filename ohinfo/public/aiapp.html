@@ -28,7 +28,7 @@ import { SAFE_ID } from './escape.js';
 import { makeT, getLang, setLang } from './ai-i18n.js';
 import { appHtml, probsByLabel } from './ai-render.js';
 import { loadModel, predict, imageFromBlob } from './ai-model.js';
-import { extractFromTransfer, fetchImageUrl } from './ai-image.js';
+import { extractFromTransfer, fetchFirstImage } from './ai-image.js';
 
 const params = new URLSearchParams(location.search);
 const appId = params.get('id') || '';
@@ -101,7 +101,7 @@ async function handleTransfer(dt) {
   const { files, urls } = extractFromTransfer(dt);
   if (files.length) return handleBlob(files[0]);
   if (urls.length) {
-    try { handleBlob(await fetchImageUrl(urls[0])); }
+    try { handleBlob(await fetchFirstImage(urls)); }
     catch { state.status = 'error'; state.msg = t('fetchFail'); render(); }
   }
 }
@@ -117,9 +117,10 @@ root.addEventListener('click', e => {
   const zone = e.target.closest('[data-act="zone"]');
   if (zone) { zone.classList.add('active'); if (!state.photo) fileInput.click(); }
 });
-root.addEventListener('dragover', e => { const z = e.target.closest('[data-act="zone"]'); if (z) { e.preventDefault(); z.classList.add('drag'); } });
-root.addEventListener('dragleave', e => { const z = e.target.closest('[data-act="zone"]'); if (z) z.classList.remove('drag'); });
-root.addEventListener('drop', e => { const z = e.target.closest('[data-act="zone"]'); if (z) { e.preventDefault(); handleTransfer(e.dataTransfer); } });
+// 화면 어디에 떨어뜨려도 사진으로 받는다(칸 밖에 놓으면 브라우저가 그 사진으로 페이지를 바꿔 버리므로).
+window.addEventListener('dragover', e => { e.preventDefault(); const z = root.querySelector('[data-act="zone"]'); if (z) z.classList.add('drag'); });
+window.addEventListener('dragleave', e => { if (!e.relatedTarget) { const z = root.querySelector('[data-act="zone"]'); if (z) z.classList.remove('drag'); } });
+window.addEventListener('drop', e => { e.preventDefault(); const z = root.querySelector('[data-act="zone"]'); if (z) z.classList.remove('drag'); if (app) handleTransfer(e.dataTransfer); });
 window.addEventListener('paste', e => { if (app) handleTransfer(e.clipboardData); });
 root.addEventListener('keydown', e => {
   const z = e.target.closest('[data-act="zone"]');

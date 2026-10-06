@@ -16,7 +16,7 @@ import { loadSession, verifyStudentAuth, authReady, clearSession } from './sessi
 import { escHtml } from './escape.js';
 import * as C from './ai-core.js';
 import { makeT, getLang, setLang } from './ai-i18n.js';
-import { prepareImage, bindDropZone, clearZones, fetchImageUrl } from './ai-image.js';
+import { prepareImage, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js';
 import { Uploader, driveConfigured, downloadZip, trashFile } from './ai-drive.js';
 import { loadModel, fetchMetadata, predict, imageFromSrc, imageFromBlob } from './ai-model.js';
 import { appHtml, probsByLabel, THEMES } from './ai-render.js';
@@ -46,7 +46,7 @@ const uploader = new Uploader({
   writeRecord: item => setDoc(doc(db, 'ai_projects', item.pid, 'images', item.id), {
     labelId: item.labelId, kind: item.kind, owner: item.owner, thumb: item.thumb, fp: item.fp || '',
     driveId: item.driveId || '', ...(item.kind === 'test' ? { evalImg: item.evalImg } : {}),
-    w: item.w || 0, h: item.h || 0, createdAt: serverTimestamp(),
+    w: item.w || 0, h: item.h || 0, small: !!item.small, createdAt: serverTimestamp(),
   }),
   onChange: () => schedule(),
   onDrop: (item, code) => toast(code === 'auth' ? t('error') + ' (auth)' : t('notImage'), 'warn'),
@@ -99,6 +99,10 @@ function screen(title, sub, extra = '') {
 }
 
 function render() {
+  // 한글은 글자를 조합하는 동안(ㄱ+ㅗ → 고) 입력칸이 바뀌면 조합이 끊겨 "ㄱㅗ"로 남는다.
+  // 조합이 끝날 때(compositionend)까지 미뤘다가 그린다.
+  if (S.composing) { S.renderPending = true; return; }
+  S.renderPending = false;
   applyStaticText();
   if (!S.asg) return;
   if (S.asg.status !== 'ON') return screen(t('noAssignment'), t('noAssignmentSub'));
@@ -237,14 +241,15 @@ function nextBtn(step, key) {
 function photoGrid(kind, labelId, canDelete) {
   const done = imgs(kind, labelId).sort((a, b) => ms(b.createdAt) - ms(a.createdAt));
   const pend = uploader.pendingFor(kind, labelId);
-  const cell = (im, pending) => `<div class="ph${pending ? ' pend' : ''}"><img src="${E(im.thumb)}" alt="" loading="lazy">
+  const cell = (im, pending) => `<div class="ph${pending ? ' pend' : ''}${im.small ? ' small' : ''}"${im.small ? ` title="${E(t('smallPhoto'))}"` : ''}><img src="${E(im.thumb)}" alt="" loading="lazy">
+    ${im.small ? `<span class="ph-small">${E(t('smallBadge'))}</span>` : ''}
     ${pending ? '<span class="ph-spin"></span>' : ''}
     ${canDelete(im) ? `<button class="ph-x" data-act="photo-del" data-id="${E(im.id)}" data-pending="${pending ? 1 : 0}" aria-label="${E(t('del'))}">×</button>` : ''}</div>`;
   return `<div class="photos">${pend.map(i => cell(i, true)).join('')}${done.map(i => cell(i, false)).join('')}</div>`;
 }
 
-function zoneHtml(kind, labelId) {
-  return `<div class="dz" tabindex="0" data-zone="${kind}:${E(labelId)}">
+function zoneHtml(kind, labelId, standalone = false) {
+  return `<div class="dz" tabindex="0"${standalone ? ` data-dropzone="${kind}:${E(labelId)}"` : ''}>
     <span>${E(t('dropHere'))}</span>
     <button class="btn sm" data-act="pick" data-zone="${kind}:${E(labelId)}">${E(t('chooseFiles'))}</button></div>`;
 }
@@ -266,11 +271,11 @@ function step2() {
     const ownerCtl = isLeader() && members().length > 1
       ? `<select class="owner-sel" data-field="lowner2" data-id="${E(l.id)}" aria-label="${E(t('changeOwner'))}">${members().map(m => `<option value="${E(m)}" ${m === l.owner ? 'selected' : ''}>${E(nameOf(m))}</option>`).join('')}</select>`
       : `<span class="tag${mine ? ' me' : ''}">${E(mine ? t('mine') : t('collector', { name: nameOf(l.owner) }))}</span>`;
-    return `<div class="lcard${mine ? ' mine' : ''}">
+    return `<div class="lcard${mine ? ' mine' : ''}"${mine ? ` data-dropzone="train:${E(l.id)}"` : ''}>
       <div class="lc-head"><b>${E(l.name)}</b>${ownerCtl}</div>
       <div class="prog"><div class="bar"><span style="width:${pct}%"></span></div>
         <span class="cnt">${E(t('countOf', { c, m: min }))}</span></div>
-      <div class="lc-state ${c >= min ? 'ok' : ''}">${E(c >= min ? t('enough') : t('needMore', { n: min - c }))}</div>
+      <div class="lc-state ${c >= min ? 'ok' : ''}">${E(c >= min ? t('enough') : t('needMore', { n: min - c }))}${imgs('train', l.id).some(i => i.small) ? ` <span class="warn-txt">· ${E(t('smallCount', { n: imgs('train', l.id).filter(i => i.small).length }))}</span>` : ''}</div>
       ${mine ? zoneHtml('train', l.id) : `<div class="not-mine">${E(t('notMine', { name: nameOf(l.owner) }))}</div>`}
       ${photoGrid('train', l.id, im => im.owner === S.me || isLeader())}
     </div>`;
@@ -352,7 +357,7 @@ function testTab() {
     <div class="muted">${E(t('testCount', { c: total, m: min }))}</div>`;
   h += `<div class="lgrid">${labels.map(l => {
     const c = imgs('test', l.id).length;
-    return `<div class="lcard test"><div class="lc-head"><b>${E(l.name)}</b><span class="cnt ${c >= min ? 'ok' : ''}">${c} / ${min}</span></div>
+    return `<div class="lcard test" data-dropzone="test:${E(l.id)}"><div class="lc-head"><b>${E(l.name)}</b><span class="cnt ${c >= min ? 'ok' : ''}">${c} / ${min}</span></div>
       ${zoneHtml('test', l.id)}
       ${photoGrid('test', l.id, () => true)}</div>`;
   }).join('')}</div>`;
@@ -447,7 +452,7 @@ function tryOneHtml() {
     }).join('')}</div></div>`;
   } else if (tr && tr.error) res = `<div class="err">${E(t('l_loadFail'))}</div>`;
   return `<details class="card" ${tr ? 'open' : ''}><summary><b>${E(t('tryOne'))}</b> <span class="muted">${E(t('tryOneHint'))}</span></summary>
-    ${zoneHtml('try', 'x')}${res}</details>`;
+    ${zoneHtml('try', 'x', true)}${res}</details>`;
 }
 
 // ── ⑤ 배포 ──
@@ -492,7 +497,7 @@ function step5() {
       <div class="phrases">${C.PHRASES.map((ph, k) => `<label class="radio"><input type="radio" name="ph-${E(l.id)}" data-act="phrase" data-id="${E(l.id)}" data-v="${k}" ${l.phrase === k ? 'checked' : ''}> ${E(C.fillPhrase(ph[S.lang] || ph.ko, C.labelName(l, S.lang)))}</label>`).join('')}
         <label class="radio custom"><input type="radio" name="ph-${E(l.id)}" data-act="phrase" data-id="${E(l.id)}" data-v="${C.CUSTOM_PHRASE}" ${l.phrase === C.CUSTOM_PHRASE ? 'checked' : ''}> ${E(t('customLabel'))}:
           <span class="cust"><b>${E(name)}</b><input id="f-custom-${E(l.id)}" data-field="custom" data-id="${E(l.id)}" maxlength="${C.CUSTOM_PHRASE_MAX}" placeholder="${E(t('customPh'))}" value="${E(draftOr('custom-' + l.id, l.custom))}"></span></label>
-        ${err && l.phrase === C.CUSTOM_PHRASE ? `<div class="err sm">${E(t('c_' + err))}</div>` : ''}
+        <div class="err sm" id="err-c-${E(l.id)}">${err && l.phrase === C.CUSTOM_PHRASE ? E(t('c_' + err)) : ''}</div>
         ${hidden[l.id] ? `<div class="note warn">${E(t('hiddenNote'))}</div>` : ''}
       </div></div>`;
   }).join('')}</div>`;
@@ -508,6 +513,16 @@ function step5() {
     <div class="pv-tabs">${a.labels.map((l, i) => `<button class="${i === S.previewLabel ? 'on' : ''}" data-act="preview-label" data-v="${i}">${E(l.emoji || '')} ${E(C.labelName(l, S.lang))}</button>`).join('')}</div>
     <div class="pv-frame">${previewHtml(a)}</div></div></div>`;
   return h;
+}
+
+// 제목·직접 쓰기를 입력하는 동안: 입력칸은 건드리지 않고 미리보기와 그 칸의 오류 문구만 바꾼다.
+function updatePreview(el) {
+  const frame = document.querySelector('.pv-frame');
+  if (frame) frame.innerHTML = previewHtml(appData());
+  if (el && el.dataset.field === 'custom') {
+    const box = $('err-c-' + el.dataset.id);
+    if (box) { const v = C.validateCustomPhrase(el.value); box.textContent = v ? t('c_' + v) : ''; }
+  }
 }
 
 function previewHtml(a) {
@@ -553,8 +568,8 @@ function boardHtml() {
 
 // ── 그린 뒤: 사진 칸 연결 ──
 function afterRender() {
-  document.querySelectorAll('.dz[data-zone]').forEach(el => {
-    const [kind, id] = el.dataset.zone.split(':');
+  document.querySelectorAll('[data-dropzone]').forEach(el => {
+    const [kind, id] = el.dataset.dropzone.split(':');
     bindDropZone(el, (files, urls) => onPhotos(kind, id, files, urls));
   });
 }
@@ -562,14 +577,17 @@ function afterRender() {
 // ── 사진 넣기 ──
 async function onPhotos(kind, labelId, files, urls) {
   if (kind === 'try') return tryPhoto(files, urls);
-  const srcs = [...files, ...urls];
+  // 파일은 한 장씩, 끌어온 주소들은 "사진 한 장의 후보들"이라 그중 처음 되는 것 하나만.
+  const srcs = files.length ? files : (urls.length ? [urls] : []);
   for (const src of srcs) {
     try {
-      const blob = typeof src === 'string' ? await fetchImageUrl(src) : src;
-      const prep = await prepareImage(blob, kind);
+      const prep = Array.isArray(src)
+        ? await fetchFirstImage(src, b => prepareImage(b, kind))
+        : await prepareImage(src, kind);
       const fps = [...S.images.map(i => i.fp), ...uploader.items.map(i => i.fp)].filter(Boolean);
       if (C.isDuplicate(prep.fp, fps)) { toast(t('dupPhoto'), 'warn'); continue; }
       await uploader.add({ id: C.newId('im'), pid: S.pid, labelId, kind, owner: S.me, ...prep });
+      if (prep.small) toast(t('smallPhoto'), 'warn');
     } catch (e) {
       const m = e && e.message;
       toast(t(m === 'tooSmall' ? 'tooSmall' : m === 'fetchFail' ? 'fetchFail' : 'notImage'), 'warn');
@@ -579,11 +597,11 @@ async function onPhotos(kind, labelId, files, urls) {
 
 async function tryPhoto(files, urls) {
   try {
-    const blob = files[0] || (urls[0] ? await fetchImageUrl(urls[0]) : null);
+    const blob = files[0] || (urls.length ? await fetchFirstImage(urls) : null);
     if (!blob) return;
     const photo = URL.createObjectURL(blob);
     S.tryOne = { busy: true, photo }; schedule();
-    const loaded = await loadModel(S.project.modelUrl);
+    const loaded = await loadModel(S.project.modelUrl, { fresh: true });
     const img = await imageFromBlob(blob);
     const preds = await predict(loaded, img);
     S.tryOne = { photo, probs: probsByLabel(preds, S.project.mapping || {}) };
@@ -969,9 +987,9 @@ const actions = {
 };
 
 // ① 레이블 저장(대표만). 입력할 때마다가 아니라 잠깐 멈췄을 때 저장한다.
-function saveLabels() {
+function saveLabels(redraw = true) {
   S.labelsDirty = true;
-  schedule();
+  if (redraw) schedule();
   debounce('labels', async () => {
     const labels = (S.labels || []).map(({ id, name, owner, tr, trOf }) => ({ id, name: String(name || '').slice(0, C.LABEL_NAME_MAX), owner, tr: tr || {}, ...(trOf ? { trOf } : {}) }));
     await safeUpdate(pref(), { labels, updatedAt: serverTimestamp() });
@@ -1038,12 +1056,14 @@ function bindEvents() {
     if (f === 'lname') {
       S.labels = (S.labels || []).map(l => l.id === el.dataset.id ? { ...l, name: el.value } : l);
       S.labelsDirty = true;
-      return debounce('labels-save', saveLabels, 400);
+      return debounce('labels-save', () => saveLabels(false), 400);
     }
     S.drafts[draftKey(el)] = el.value;
-    if (f === 'custom' || f === 'title') schedule(); // 미리보기·오류 문구 갱신
+    if (f === 'custom' || f === 'title') updatePreview(el); // 입력칸은 그대로 두고 미리보기만
     if (SAVED_FIELDS.has(f)) debounce('field:' + el.id, () => saveField(f, el), 700);
   });
+  main.addEventListener('compositionstart', () => { S.composing = true; });
+  main.addEventListener('compositionend', () => { S.composing = false; if (S.renderPending) schedule(); });
   main.addEventListener('focusin', e => {
     if (S.rendering) return;
     const f = e.target.dataset && e.target.dataset.field;
@@ -1117,5 +1137,6 @@ async function start() {
   $('main').querySelectorAll('[data-asg]').forEach(b => b.addEventListener('click', () => chooseAsg(S.asgs.find(a => a.id === b.dataset.asg))));
 }
 
+onStrayDrop(() => toast(t('dropInside'), 'warn'));
 $('logoutBtn').addEventListener('click', () => { clearSession(); location.href = 'index.html'; });
 start();
