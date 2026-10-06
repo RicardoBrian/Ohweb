@@ -21,7 +21,7 @@ const $ = id => document.getElementById(id);
 
 const S = {
   tab: 'assign', asgs: [], schools: [], boards: [], asId: sessionStorage.getItem('aiadm_as') || '',
-  students: [], pairs: [], projects: [], apps: {}, sel: new Set(), editId: '', trEdit: '',
+  students: [], pairs: [], projects: [], apps: {}, sel: new Set(), editId: '', trEdit: '', basket: [],
 };
 let unsubPairs = null;
 let watchedAs = null;
@@ -134,7 +134,9 @@ function assignHtml() {
       <label>제목</label><input class="inp" id="aiT_title" placeholder="예: AI 이미지 분류 모델 만들기" value="${E(ed.title || '')}">
       <label>학교</label><select class="inp" id="aiT_school"><option value="">학교 선택</option>${schoolOpts}</select>
       <label>학년</label><select class="inp" id="aiT_grade">${[1, 2, 3].map(g => `<option ${String(g) === nv(ed.grade) ? 'selected' : ''}>${g}</option>`).join('')}</select>
-      <label>반</label><select class="inp" id="aiT_class">${Array.from({ length: 15 }, (_, i) => i + 1).map(c => `<option ${String(c) === nv(ed.class) ? 'selected' : ''}>${c}</option>`).join('')}</select>
+      <label>반</label><div class="ai-btns"><select class="inp ai-num" id="aiT_class">${Array.from({ length: 15 }, (_, i) => i + 1).map(c => `<option ${String(c) === nv(ed.class) ? 'selected' : ''}>${c}</option>`).join('')}</select>
+        ${S.editId ? '' : '<button class="btn sm" data-ai="basketAdd">학급 담기</button>'}</div>
+      ${S.editId ? '' : `<label>담은 학급</label><div id="aiBasket">${basketHtml()}</div>`}
       ${num('aiT_min', '레이블당 학습 사진(최소)', ed.minPerLabel || 15, 3, 200)}
       ${num('aiT_test', '레이블당 테스트 사진(권장)', ed.minTestPerLabel || 3, 1, 50)}
       ${num('aiT_group', '모둠 인원', ed.groupSize || 2, 1, 8)}
@@ -142,10 +144,10 @@ function assignHtml() {
       <label>ohdlet 게시판</label><select class="inp" id="aiT_board">${boardOpts}</select>
     </div>
     <div class="ai-btns" style="margin-top:12px;">
-      <button class="btn accent" data-ai="saveAsg">${S.editId ? '저장' : '배정하기'}</button>
+      <button class="btn accent" data-ai="saveAsg">${S.editId ? '저장' : S.basket.length > 1 ? `${S.basket.length}개 학급에 배정하기` : '배정하기'}</button>
       ${S.editId ? '<button class="btn ghost" data-ai="cancelEdit">취소</button>' : ''}
     </div>
-    <p class="ai-sub" style="margin-top:8px;">배정하면 그 반 학생 화면에 AI 실험실이 열립니다. 홈 화면 카드는 [앱 설정]에서 "AI 실험실"을 켜 주세요.</p></div>
+    <p class="ai-sub" style="margin-top:8px;">${S.editId ? '' : '같은 내용을 여러 반에 주려면 학년·반을 고르고 [학급 담기]를 반마다 누른 뒤 배정하세요(반마다 따로 배정됩니다). 담지 않으면 고른 반 하나에만 배정합니다. '}배정하면 그 반 학생 화면에 AI 실험실이 열립니다. 홈 화면 카드는 [앱 설정]에서 "AI 실험실"을 켜 주세요.</p></div>
     <div class="card"><h2>배정 목록</h2>${list}</div>`;
 }
 
@@ -298,6 +300,25 @@ export function splitGroups(ids, gs) {
   return out;
 }
 
+const classKey = c => `${nv(c.grade)}-${nv(c.class)}`;
+function basketHtml() {
+  if (!S.basket.length) return '<span class="ai-sub">없음 — 위에서 고른 반 하나에만 배정합니다.</span>';
+  return `<div class="ai-chips">${S.basket.map(c => `<button class="ai-chip on" data-ai="basketDel" data-k="${E(classKey(c))}" title="빼기">${E(c.grade)}학년 ${E(c.class)}반 ×</button>`).join('')}
+    <button class="ai-chip" data-ai="basketClear">모두 비우기</button></div>`;
+}
+// 담기·빼기는 폼 전체를 다시 그리지 않는다(입력해 둔 제목 등이 지워지지 않게).
+function refreshBasket() {
+  const box = $('aiBasket'); if (box) box.innerHTML = basketHtml();
+  const btn = document.querySelector('#section-ailab [data-ai="saveAsg"]');
+  if (btn && !S.editId) btn.textContent = S.basket.length > 1 ? `${S.basket.length}개 학급에 배정하기` : '배정하기';
+}
+// 고른 게시판이 특정 반 게시판이면, 다른 반에는 같은 이름의 그 반 게시판을 찾아 쓴다(없으면 고른 게시판 그대로).
+function boardFor(board, c) {
+  if (!board || !board.group) return board;
+  const b = S.boards.find(x => x.name === board.name && (x.schoolName || '') === board.schoolName && nv(x.grade) === nv(c.grade) && nv(x.group) === nv(c.class));
+  return b ? { name: b.name, schoolName: b.schoolName || '', grade: b.grade || '', group: b.group || '' } : board;
+}
+
 const nextNo = () => S.pairs.reduce((m, p) => Math.max(m, p.no || 0), 0) + 1;
 
 async function go(tab, asId) {
@@ -314,15 +335,34 @@ const actions = {
     const f = readForm();
     if (!f.title || !f.schoolName) return toast('제목과 학교를 입력하세요.', 'err');
     await guard(async () => {
-      if (S.editId) await updateDoc(doc(db, 'ai_assignments', S.editId), f);
-      else await addDoc(collection(db, 'ai_assignments'), { ...f, status: 'ON', createdAt: serverTimestamp() });
-      toast(S.editId ? '저장했습니다.' : '배정했습니다.', 'ok');
+      if (S.editId) {
+        await updateDoc(doc(db, 'ai_assignments', S.editId), f);
+        toast('저장했습니다.', 'ok');
+      } else {
+        const classes = S.basket.length ? S.basket : [{ grade: f.grade, class: f.class }];
+        const dup = classes.filter(c => S.asgs.some(a => a.title === f.title && a.schoolName === f.schoolName && classKey(a) === classKey(c)));
+        if (dup.length && !confirm(`같은 제목으로 이미 배정한 반이 있습니다: ${dup.map(c => `${c.grade}-${c.class}`).join(', ')}\n그래도 새로 배정할까요?`)) return;
+        const b = writeBatch(db);
+        classes.forEach(c => b.set(doc(collection(db, 'ai_assignments')), { ...f, grade: c.grade, class: c.class, board: boardFor(f.board, c), status: 'ON', createdAt: serverTimestamp() }));
+        await b.commit();
+        toast(classes.length > 1 ? `${classes.length}개 학급에 배정했습니다.` : '배정했습니다.', 'ok');
+        S.basket = [];
+      }
       S.editId = '';
       await loadBase(); render();
     });
   },
   edit(el) { S.editId = el.dataset.id; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); },
   cancelEdit() { S.editId = ''; render(); },
+  basketAdd() {
+    const c = { grade: $('aiT_grade').value, class: $('aiT_class').value };
+    if (S.basket.some(x => classKey(x) === classKey(c))) return toast(`${c.grade}학년 ${c.class}반은 이미 담았습니다.`);
+    S.basket.push(c);
+    S.basket.sort((x, y) => x.grade - y.grade || x.class - y.class);
+    refreshBasket();
+  },
+  basketDel(el) { S.basket = S.basket.filter(x => classKey(x) !== el.dataset.k); refreshBasket(); },
+  basketClear() { S.basket = []; refreshBasket(); },
   async delAsg(el) {
     const a = S.asgs.find(x => x.id === el.dataset.id);
     if (!a || !confirm(`"${a.title}" 배정을 지울까요?\n모둠 구성도 함께 지워집니다. 학생들이 만든 프로젝트와 공개 웹앱은 남습니다.`)) return;
