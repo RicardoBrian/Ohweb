@@ -447,6 +447,7 @@
     <symbol id="ic-alert" viewBox="0 0 24 24"><path d="M12 3.5 21 19.5H3Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><line x1="12" y1="9.5" x2="12" y2="14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></symbol>
     <symbol id="ic-check" viewBox="0 0 24 24"><polyline points="5,13 9.5,17.5 19,6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="ic-wallet" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 9h14a3 3 0 0 1 3 3v0" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="16.5" cy="13" r="1.3" fill="currentColor"/></symbol>
+    <symbol id="ic-ai" viewBox="0 0 24 24"><rect x="5" y="7" width="14" height="11" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="9.5" cy="12.5" r="1.4" fill="currentColor"/><circle cx="14.5" cy="12.5" r="1.4" fill="currentColor"/><line x1="12" y1="7" x2="12" y2="4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="3.3" r="1.1" fill="currentColor"/><line x1="3" y1="11.5" x2="3" y2="14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="21" y1="11.5" x2="21" y2="14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
   </defs>
 </svg>
 
@@ -473,6 +474,7 @@
       <button class="app-modal-item" onclick="goApp('students')"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-people"/></svg></span><span>학생</span></button>
       <button class="app-modal-item" onclick="goApp('paddlet')"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-board"/></svg></span><span>정보 게시판</span></button>
       <button class="app-modal-item" onclick="goApp('exam')"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-clipboard"/></svg></span><span>시험</span></button>
+      <button class="app-modal-item" onclick="goApp('ailab')"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-ai"/></svg></span><span>AI 실험실</span></button>
       <button class="app-modal-item" onclick="goApp('forms')"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-doc"/></svg></span><span>설문지</span></button>
       <button class="app-modal-item" onclick="goApp('messages')"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-chat"/></svg></span><span>학생 질문</span></button>
       <button class="app-modal-item" onclick="location.href='timer.html'"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-timer"/></svg></span><span>타이머</span></button>
@@ -626,6 +628,21 @@
       <div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-device"/></svg></div>학교와 학급을 선택하세요.</div>
     </div>
 
+  </div>
+
+  <!-- AI 실험실 섹션 (admin-ailab.js) -->
+  <div class="section" id="section-ailab">
+    <div class="section-header">
+      <h1>AI 실험실</h1>
+      <p>반에 AI 수업을 배정하고, 짝을 구성하고, 진행 상황과 결과를 봅니다.</p>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;">
+      <button class="btn accent sm" data-ai-tab="assign">배정 관리</button>
+      <button class="btn ghost sm" data-ai-tab="pairs">짝 구성</button>
+      <button class="btn ghost sm" data-ai-tab="board">현황판</button>
+      <button class="btn ghost sm" data-ai-tab="results">결과 조회</button>
+    </div>
+    <div id="aiPane"></div>
   </div>
 
   <!-- 패들릿 관리 섹션 -->
@@ -1025,9 +1042,11 @@
     if (name === 'forms') { location.href = 'forms.html'; return; }
     if (name === 'messages') { location.href = 'messages.html'; return; }
     showSection(name);
+    if (name === 'ailab' && window.AiAdmin) window.AiAdmin.show();
   }
 </script>
 
+<script type="module" src="admin-ailab.js"></script>
 <script type="module">
   import { db, auth } from './firebase-config.js';
   import {
@@ -1047,6 +1066,7 @@
     { id: 'submit', name: '과제제출', icon: 'ic-doc' },
     { id: 'exam',   name: '시험',    icon: 'ic-clipboard' },
     { id: 'form',   name: '설문지 만들기', icon: 'ic-chart' },
+    { id: 'ai',     name: 'AI 실험실', icon: 'ic-ai' },
   ];
 
   let schools = [];
