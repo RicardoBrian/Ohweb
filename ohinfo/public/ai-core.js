@@ -80,7 +80,15 @@ export function labelName(label, lang) {
   return (label.tr && label.tr[lang]) || label.name || '';
 }
 
-// 레이블 검사(① 문제 정의 확정 시).
+// 레이블을 모을 사람들 — 모둠이면 한 레이블을 여러 명이 함께 모을 수 있다(owners 배열).
+// 예전 기록(owner 한 명)도 그대로 읽는다.
+export function ownersOf(label) {
+  if (!label) return [];
+  if (Array.isArray(label.owners)) return label.owners;
+  return label.owner ? [label.owner] : [];
+}
+
+// 레이블 검사(① 문제 정의 확정 시). 레이블마다 모으는 사람이 1명 이상, 모둠원은 누구나 1개 이상.
 export function validateLabels(labels, memberIds, maxLabels = DEFAULT_MAX_LABELS) {
   const errs = [];
   if (labels.length < 2) errs.push('min2');
@@ -89,10 +97,9 @@ export function validateLabels(labels, memberIds, maxLabels = DEFAULT_MAX_LABELS
   if (names.some(n => !n)) errs.push('empty');
   if (new Set(names).size !== names.length) errs.push('duplicate');
   if (labels.some(l => String(l.name || '').trim().length > LABEL_NAME_MAX)) errs.push('tooLong');
-  if (labels.some(l => !memberIds.includes(l.owner))) errs.push('noOwner');
-  // 한 사람이 최소 한 개는 맡아야 한다.
-  const owners = new Set(labels.map(l => l.owner));
-  if (memberIds.some(id => !owners.has(id))) errs.push(labels.length < memberIds.length ? 'fewerThanMembers' : 'memberWithout');
+  if (labels.some(l => !ownersOf(l).some(id => memberIds.includes(id)))) errs.push('noOwner');
+  const covered = new Set(labels.flatMap(l => ownersOf(l)));
+  if (memberIds.some(id => !covered.has(id))) errs.push('memberWithout');
   return errs;
 }
 

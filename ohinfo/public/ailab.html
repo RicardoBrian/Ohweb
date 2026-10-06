@@ -70,7 +70,7 @@
     .empty p { color: var(--text-2); margin: 0; }
     .choose { display: flex; flex-direction: column; gap: 8px; max-width: 320px; margin: 20px auto 0; }
 
-    /* 머리: 짝 + 탭 */
+    /* 머리: 모둠 + 탭 */
     .lab-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
     .lab-pair { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
     .pair-no { font-weight: 800; font-size: 1.1rem; margin-right: 4px; }
@@ -100,9 +100,13 @@
 
     /* ① */
     .label-rows { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
-    .label-row { display: grid; grid-template-columns: 26px 1fr 140px 36px; gap: 8px; align-items: center; }
+    .label-row { display: grid; grid-template-columns: 26px 1fr 36px; gap: 8px; align-items: center; }
+    .owner-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 4px 34px; font-size: .8rem; }
+    .ochips { display: flex; flex-wrap: wrap; gap: 4px; margin: 2px 0 6px; }
+    .ochip { border: 1px solid var(--border-card); background: var(--glass); color: var(--text-2); border-radius: 999px; padding: 3px 10px; font-size: .78rem; cursor: pointer; }
+    .ochip.on { background: var(--accent); color: #fff; border-color: transparent; }
     .label-row .ln { font-weight: 800; color: var(--text-2); text-align: center; }
-    @media (max-width: 520px) { .label-row { grid-template-columns: 22px 1fr 96px 32px; } }
+    @media (max-width: 520px) { .label-row { grid-template-columns: 22px 1fr 32px; } .owner-line { margin-left: 30px; } }
     .icon-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border-card); background: var(--glass); cursor: pointer; font-size: 18px; color: var(--text-2); }
     .icon-btn:disabled { opacity: .3; cursor: not-allowed; }
     .tr-line { display: flex; flex-wrap: wrap; gap: 8px; font-size: .75rem; color: var(--text-3); margin: -2px 0 4px 34px; }

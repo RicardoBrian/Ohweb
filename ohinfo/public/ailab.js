@@ -1,10 +1,10 @@
-// AI 실험실(학생) — 짝과 함께 이미지 분류 모델을 만드는 5단계.
+// AI 실험실(학생) — 모둠(관리자가 인원을 정함)이 함께 이미지 분류 모델을 만드는 5단계.
 //  ① 문제 정의(대표) → ② 데이터 수집(각자 맡은 레이블) → ③ 학습(대표: 티처블머신 /
-//  짝: 테스트 사진) → ④ 평가(자동 채점 + 각자 별점, 함께 원인·고칠 점) → ⑤ 배포(웹앱 + ohdlet)
+//  모둠원: 테스트 사진) → ④ 평가(자동 채점 + 각자 별점, 함께 원인·고칠 점) → ⑤ 배포(웹앱 + ohdlet)
 //
-// 데이터: ai_assignments(반 배정) / ai_pairs(짝, 현황판 요약) / ai_projects(짝의 모델 하나)
+// 데이터: ai_assignments(반 배정) / ai_pairs(모둠, 현황판 요약) / ai_projects(모둠의 모델 하나)
 //         / ai_projects/{pid}/images(사진 기록) / ai_apps(공개 웹앱)
-// 짝 두 사람이 같은 프로젝트를 실시간으로 본다. "열린 단계"는 함께 쓰고, 지금 보고 있는
+// 모둠원 모두가 같은 프로젝트를 실시간으로 본다. "열린 단계"는 함께 쓰고, 지금 보고 있는
 // 화면은 각자 고른다 — 한 사람이 넘어가도 다른 사람 화면이 끌려가지 않게.
 
 import { db, auth } from './firebase-config.js';
@@ -201,11 +201,10 @@ function step1() {
     body += `<div class="note">${E(t('s1Wait', { name: leaderName() }))}</div>`;
     body += `<div class="card"><div class="field"><label>${E(t('topicLabel'))}</label><div class="ro">${E(p.topic || '…')}</div></div>
       <div class="field"><label>${E(t('labelsLabel'))}</label>
-      <div class="ro-labels">${labels.length ? labels.map(l => `<div class="ro-label"><b>${E(l.name || '…')}</b><span class="tag${l.owner === S.me ? ' me' : ''}">${E(l.owner === S.me ? t('mine') : t('collector', { name: nameOf(l.owner) }))}</span>${trHtml(l)}</div>`).join('') : '<div class="ro">…</div>'}</div></div></div>`;
+      <div class="ro-labels">${labels.length ? labels.map(l => `<div class="ro-label"><b>${E(l.name || '…')}</b>${ownerTag(l)}${trHtml(l)}</div>`).join('') : '<div class="ro">…</div>'}</div></div></div>`;
     if (p.defined && p.step >= 2) body += nextBtn(2, 's2');
     return body;
   }
-  const opts = id => members().map(m => `<option value="${E(m)}" ${m === id ? 'selected' : ''}>${E(nameOf(m))}</option>`).join('');
   body += `<div class="card">
     <div class="field"><label for="f-topic">${E(t('topicLabel'))}</label>
       <input id="f-topic" data-field="topic" maxlength="40" placeholder="${E(t('topicPh'))}" value="${E(draftOr('topic', p.topic))}"></div>
@@ -213,9 +212,8 @@ function step1() {
       <div class="label-rows">${labels.map((l, i) => `<div class="label-row">
         <span class="ln">${i + 1}</span>
         <input id="f-lname-${E(l.id)}" data-field="lname" data-id="${E(l.id)}" maxlength="${C.LABEL_NAME_MAX}" placeholder="${E(t('labelPh'))}" value="${E(l.name)}" ${hasImg(l.id) ? 'disabled title="🔒"' : ''}>
-        <select data-field="lowner" data-id="${E(l.id)}" aria-label="${E(t('owner'))}">${opts(l.owner)}</select>
         <button class="icon-btn" data-act="lremove" data-id="${E(l.id)}" ${labels.length <= 2 || hasImg(l.id) ? 'disabled' : ''} aria-label="${E(t('del'))}">×</button>
-      </div>${trHtml(l)}`).join('')}</div>
+      </div><div class="owner-line"><span class="muted">${E(t('owner'))}</span>${ownerChips(l, 's1')}</div>${trHtml(l)}`).join('')}</div>
       ${labels.length < maxLabels() ? `<button class="btn ghost sm" data-act="ladd">${E(t('addLabel'))}</button>` : ''}
     </div>
     <div id="s1err" class="err"></div>
@@ -223,6 +221,18 @@ function step1() {
   </div>`;
   if (p.defined && p.step >= 2) body += nextBtn(2, 's2');
   return body;
+}
+
+// 레이블을 모으는 사람: 모둠이면 여러 명. 대표는 이름 칩을 눌러 켜고 끈다.
+const namesOf = l => C.ownersOf(l).map(nameOf).join(', ');
+const isMine = l => C.ownersOf(l).includes(S.me);
+function ownerChips(l, scope) {
+  const on = new Set(C.ownersOf(l));
+  return `<div class="ochips" role="group" aria-label="${E(t('owner'))}">${members().map(m =>
+    `<button type="button" class="ochip${on.has(m) ? ' on' : ''}" data-act="otoggle" data-scope="${scope}" data-id="${E(l.id)}" data-m="${E(m)}">${E(nameOf(m))}</button>`).join('')}</div>`;
+}
+function ownerTag(l) {
+  return `<span class="tag${isMine(l) ? ' me' : ''}">${E(isMine(l) ? t('mine') : t('collector', { name: namesOf(l) }))}</span>`;
 }
 
 function trHtml(l) {
@@ -264,18 +274,16 @@ function step2() {
   let body = lead('s2Lead') + `<div class="two">${howToHtml()}${tipsHtml(t('s2Tips'))}</div>`;
   if (C.isUnbalanced(counts)) body += `<div class="note warn">⚖️ ${E(t('unbalanced'))}</div>`;
   body += `<div class="lgrid">${labels.map(l => {
-    const mine = l.owner === S.me;
+    const mine = isMine(l);
     const c = imgs('train', l.id).length;
     const pct = Math.min(100, Math.round(c * 100 / min));
-    const ownerCtl = isLeader() && members().length > 1
-      ? `<select class="owner-sel" data-field="lowner2" data-id="${E(l.id)}" aria-label="${E(t('changeOwner'))}">${members().map(m => `<option value="${E(m)}" ${m === l.owner ? 'selected' : ''}>${E(nameOf(m))}</option>`).join('')}</select>`
-      : `<span class="tag${mine ? ' me' : ''}">${E(mine ? t('mine') : t('collector', { name: nameOf(l.owner) }))}</span>`;
     return `<div class="lcard${mine ? ' mine' : ''}"${mine ? ` data-dropzone="train:${E(l.id)}"` : ''}>
-      <div class="lc-head"><b>${E(l.name)}</b>${ownerCtl}</div>
+      <div class="lc-head"><b>${E(l.name)}</b>${ownerTag(l)}</div>
+      ${isLeader() && members().length > 1 ? ownerChips(l, 's2') : ''}
       <div class="prog"><div class="bar"><span style="width:${pct}%"></span></div>
         <span class="cnt">${E(t('countOf', { c, m: min }))}</span></div>
       <div class="lc-state ${c >= min ? 'ok' : ''}">${E(c >= min ? t('enough') : t('needMore', { n: min - c }))}${imgs('train', l.id).some(i => i.small) ? ` <span class="warn-txt">· ${E(t('smallCount', { n: imgs('train', l.id).filter(i => i.small).length }))}</span>` : ''}</div>
-      ${mine ? zoneHtml('train', l.id) : `<div class="not-mine">${E(t('notMine', { name: nameOf(l.owner) }))}</div>`}
+      ${mine ? zoneHtml('train', l.id) : `<div class="not-mine">${E(t('notMine', { name: namesOf(l) }))}</div>`}
       ${photoGrid('train', l.id, im => im.owner === S.me || isLeader())}
     </div>`;
   }).join('')}</div>`;
@@ -581,7 +589,7 @@ function afterRender() {
 }
 
 // ── 학습 진행 상황 ──
-// 이 PC 화면은 매번, 짝 화면(Firestore)은 10%마다만 알린다(쓰기를 줄이려고).
+// 이 PC 화면은 매번, 모둠원 화면(Firestore)은 10%마다만 알린다(쓰기를 줄이려고).
 let _lastPushed = -1;
 function setPhase(phase, i, n, force = false) {
   S.training = { phase, i, n };
@@ -708,9 +716,9 @@ async function ensureProject(round) {
       tx.set(ref, {
         asId: S.asg.id, pairId: pair.id, round, memberEmails: pair.memberEmails,
         schoolName: S.asg.schoolName || '', grade: S.asg.grade || '', class: S.asg.class || '',
-        // 빈 레이블 칸 2개를 짝에게 하나씩 미리 맡겨 둔다(대표가 바로 이름만 쓰면 되게).
+        // 빈 레이블 칸 2개를 만들고 모둠원을 번갈아 나눠 맡겨 둔다(대표가 바로 이름만 쓰면 되게).
         step: 1, defined: false, topic: '', counts: { train: {}, test: {} },
-        labels: [0, 1].map(i => ({ id: C.newId('l'), name: '', owner: pair.members[i % pair.members.length], tr: {} })),
+        labels: [0, 1].map(i => ({ id: C.newId('l'), name: '', owners: pair.members.filter((_, k) => k % 2 === i || pair.members.length === 1), tr: {} })),
         appLabels: {}, app: { title: '', theme: 'minimal' }, published: false,
         createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
       });
@@ -772,11 +780,28 @@ const actions = {
   ladd() {
     const ls = S.labels || [];
     if (ls.length >= maxLabels()) return;
-    const owners = members();
-    // 아직 하나도 안 맡은 사람에게 먼저 준다.
-    const owner = owners.find(m => !ls.some(l => l.owner === m)) || S.me;
-    S.labels = [...ls, { id: C.newId('l'), name: '', owner, tr: {} }];
+    // 맡은 레이블이 가장 적은 모둠원에게 준다.
+    const load = m => ls.filter(l => C.ownersOf(l).includes(m)).length;
+    const owner = [...members()].sort((a, b) => load(a) - load(b))[0] || S.me;
+    S.labels = [...ls, { id: C.newId('l'), name: '', owners: [owner], tr: {} }];
     saveLabels();
+  },
+  // 모으는 사람 켜고 끄기(대표). ①은 고치는 중인 목록에, ②는 바로 저장.
+  otoggle(_, el) {
+    if (!isLeader()) return;
+    const flip = l => {
+      if (l.id !== el.dataset.id) return l;
+      const set = new Set(C.ownersOf(l));
+      if (set.has(el.dataset.m)) set.delete(el.dataset.m); else set.add(el.dataset.m);
+      const { owner, ...rest } = l;
+      return { ...rest, owners: members().filter(m => set.has(m)) };
+    };
+    if (el.dataset.scope === 's1') { S.labels = (S.labels || []).map(flip); saveLabels(); }
+    else {
+      const labels = labelsOf().map(flip).map(l => { const { owner, ...rest } = l; return { ...rest, owners: C.ownersOf(l) }; });
+      if (labels.some(l => !C.ownersOf(l).length)) return toast(t('e_noOwner'), 'warn');
+      safeUpdate(pref(), { labels });
+    }
   },
   lremove(_, el) {
     S.labels = (S.labels || []).filter(l => l.id !== el.dataset.id);
@@ -1010,7 +1035,7 @@ function saveLabels(redraw = true) {
   S.labelsDirty = true;
   if (redraw) schedule();
   debounce('labels', async () => {
-    const labels = (S.labels || []).map(({ id, name, owner, tr, trOf }) => ({ id, name: String(name || '').slice(0, C.LABEL_NAME_MAX), owner, tr: tr || {}, ...(trOf ? { trOf } : {}) }));
+    const labels = (S.labels || []).map(l => ({ id: l.id, name: String(l.name || '').slice(0, C.LABEL_NAME_MAX), owners: C.ownersOf(l), tr: l.tr || {}, ...(l.trOf ? { trOf: l.trOf } : {}) }));
     await safeUpdate(pref(), { labels, updatedAt: serverTimestamp() });
     S.labelsDirty = false;
   }, 500);
@@ -1061,11 +1086,6 @@ function bindEvents() {
     const el = e.target;
     if (el.dataset.act && (el.type === 'checkbox' || el.type === 'radio') && actions[el.dataset.act]) return actions[el.dataset.act](el.dataset.v, el);
     const f = el.dataset.field;
-    if (f === 'lowner') { S.labels = (S.labels || []).map(l => l.id === el.dataset.id ? { ...l, owner: el.value } : l); saveLabels(); }
-    if (f === 'lowner2') {
-      const labels = labelsOf().map(l => l.id === el.dataset.id ? { ...l, owner: el.value } : l);
-      safeUpdate(pref(), { labels });
-    }
   });
   main.addEventListener('input', e => {
     const el = e.target;

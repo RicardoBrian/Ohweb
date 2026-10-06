@@ -49,16 +49,20 @@ test('기본 클래스 이름 감지', () => {
   assert.ok(C.isDefaultClassName('Class 1')); assert.ok(C.isDefaultClassName('클래스 2'));
   assert.ok(!C.isDefaultClassName('Classic'));
 });
-test('레이블 검사', () => {
-  const ok = [{ id: 'a', name: '사과', owner: 'A' }, { id: 'b', name: '배', owner: 'B' }];
+test('레이블 검사(모둠: 한 레이블을 여러 명이, 모둠원마다 1개 이상)', () => {
+  const ok = [{ id: 'a', name: '사과', owners: ['A'] }, { id: 'b', name: '배', owners: ['B'] }];
   assert.deepEqual(C.validateLabels(ok, ['A', 'B']), []);
   assert.ok(C.validateLabels([ok[0]], ['A']).includes('min2'));
-  assert.ok(C.validateLabels([ok[0], { id: 'c', name: ' 사 과 ', owner: 'A' }], ['A']).includes('duplicate'));
-  assert.ok(C.validateLabels([{ ...ok[0], owner: 'A' }, { ...ok[1], owner: 'A' }], ['A', 'B']).includes('memberWithout'));
-  assert.ok(C.validateLabels(ok, ['A', 'B', 'C']).includes('fewerThanMembers'));
-  assert.ok(C.validateLabels([...ok, { id: 'c', name: '', owner: 'A' }], ['A', 'B']).includes('empty'));
-  assert.ok(C.validateLabels([...ok, { id: 'c', name: 'x', owner: 'Z' }], ['A', 'B']).includes('noOwner'));
-  const six = 'abcdef'.split('').map((x, i) => ({ id: x, name: x, owner: i % 2 ? 'A' : 'B' }));
+  assert.ok(C.validateLabels([ok[0], { id: 'c', name: ' 사 과 ', owners: ['A'] }], ['A']).includes('duplicate'));
+  assert.ok(C.validateLabels([{ ...ok[0], owners: ['A'] }, { ...ok[1], owners: ['A'] }], ['A', 'B']).includes('memberWithout'));
+  // 4명 모둠, 레이블 2개: 한 레이블을 두 명씩 모으면 통과
+  assert.deepEqual(C.validateLabels([{ id: 'a', name: '사과', owners: ['A', 'B'] }, { id: 'b', name: '배', owners: ['C', 'D'] }], ['A', 'B', 'C', 'D']), []);
+  assert.ok(C.validateLabels([...ok, { id: 'c', name: '', owners: ['A'] }], ['A', 'B']).includes('empty'));
+  assert.ok(C.validateLabels([...ok, { id: 'c', name: 'x', owners: [] }], ['A', 'B']).includes('noOwner'));
+  assert.ok(C.validateLabels([...ok, { id: 'c', name: 'x', owners: ['Z'] }], ['A', 'B']).includes('noOwner'));
+  // 예전 기록(owner 한 명)도 읽는다
+  assert.deepEqual(C.validateLabels([{ id: 'a', name: '사과', owner: 'A' }, { id: 'b', name: '배', owner: 'B' }], ['A', 'B']), []);
+  const six = 'abcdef'.split('').map((x, i) => ({ id: x, name: x, owners: [i % 2 ? 'A' : 'B'] }));
   assert.ok(C.validateLabels(six, ['A', 'B'], 5).includes('tooMany'));
 });
 test('번역 문맥 붙이고 떼기', () => {

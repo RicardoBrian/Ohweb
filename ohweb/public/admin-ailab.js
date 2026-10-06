@@ -1,4 +1,4 @@
-// 관리자 — AI 실험실(ohinfo ailab.html) 관리: 배정 · 짝 구성 · 현황판 · 결과 조회.
+// 관리자 — AI 실험실(ohinfo ailab.html) 관리: 배정 · 모둠 구성 · 현황판 · 결과 조회.
 // admin.html의 "AI 실험실" 메뉴가 window.AiAdmin.show()로 연다.
 // 학생 사이트(kakainfo.com)와 주소가 달라 그쪽 모듈을 불러오지 않고 필요한 것만 여기 둔다.
 
@@ -52,6 +52,9 @@ async function loadBase() {
   if (!S.asId && S.asgs[0]) S.asId = S.asgs[0].id;
 }
 const curAsg = () => S.asgs.find(a => a.id === S.asId);
+// 모둠 인원(배정마다 선생님이 정함). 한 모둠 최대 인원은 그보다 1명 더(결석·전학 조정용).
+const groupSize = () => Math.min(8, Math.max(1, Number((curAsg() || {}).groupSize) || 2));
+const maxSize = () => Math.min(9, groupSize() + 1);
 
 async function loadStudents() {
   const a = curAsg();
@@ -62,7 +65,7 @@ async function loadStudents() {
     .sort((x, y) => (Number(x.number) || 0) - (Number(y.number) || 0));
 }
 
-// 지금 고른 배정의 짝 목록을 실시간으로 본다. 배정이 바뀌었을 때만 다시 연결한다
+// 지금 고른 배정의 모둠 목록을 실시간으로 본다. 배정이 바뀌었을 때만 다시 연결한다
 // (처음 배정을 만든 직후처럼 고른 배정이 생기는 순간도 포함).
 function watchPairs() {
   if (watchedAs === S.asId && unsubPairs) return;
@@ -116,10 +119,10 @@ function assignHtml() {
     const n = 0;
     return `<div class="ai-asg">
       <div><b>${E(a.title)}</b> <span class="badge ${a.status === 'ON' ? 'on' : 'off'}">${a.status === 'ON' ? '열림' : '닫힘'}</span>
-        <div class="ai-sub">${E(a.schoolName)} ${E(a.grade)}학년 ${E(a.class)}반 · 레이블당 사진 ${a.minPerLabel || 15}장 · 테스트 ${a.minTestPerLabel || 3}장 · 레이블 최대 ${a.maxLabels || 5}개 · 게시판: ${a.board ? E(a.board.name) : '없음'}</div></div>
+        <div class="ai-sub">${E(a.schoolName)} ${E(a.grade)}학년 ${E(a.class)}반 · 레이블당 사진 ${a.minPerLabel || 15}장 · 테스트 ${a.minTestPerLabel || 3}장 · 모둠 ${a.groupSize || 2}명 · 레이블 최대 ${a.maxLabels || 5}개 · 게시판: ${a.board ? E(a.board.name) : '없음'}</div></div>
       <div class="ai-btns">
         <label class="toggle" title="학생 화면 열기/닫기"><input type="checkbox" data-ai="status" data-id="${E(a.id)}" ${a.status === 'ON' ? 'checked' : ''}><div class="toggle-track"></div></label>
-        <button class="btn sm" data-ai="goPairs" data-id="${E(a.id)}">짝 구성</button>
+        <button class="btn sm" data-ai="goPairs" data-id="${E(a.id)}">모둠 구성</button>
         <button class="btn sm" data-ai="goBoard" data-id="${E(a.id)}">현황판</button>
         <button class="btn sm" data-ai="goResults" data-id="${E(a.id)}">결과</button>
         <button class="btn sm ghost" data-ai="edit" data-id="${E(a.id)}">수정</button>
@@ -134,6 +137,7 @@ function assignHtml() {
       <label>반</label><select class="inp" id="aiT_class">${Array.from({ length: 15 }, (_, i) => i + 1).map(c => `<option ${String(c) === nv(ed.class) ? 'selected' : ''}>${c}</option>`).join('')}</select>
       ${num('aiT_min', '레이블당 학습 사진(최소)', ed.minPerLabel || 15, 3, 200)}
       ${num('aiT_test', '레이블당 테스트 사진(권장)', ed.minTestPerLabel || 3, 1, 50)}
+      ${num('aiT_group', '모둠 인원', ed.groupSize || 2, 1, 8)}
       ${num('aiT_max', '레이블 최대 개수', ed.maxLabels || 5, 2, 8)}
       <label>ohdlet 게시판</label><select class="inp" id="aiT_board">${boardOpts}</select>
     </div>
@@ -153,25 +157,27 @@ function stuName(id) {
 function pairsHtml() {
   const used = new Set(S.pairs.flatMap(p => p.members || []));
   const free = S.students.filter(s => !used.has(s.id));
-  const freeChips = free.map(s => `<button class="ai-chip${S.sel.has(s.id) ? ' on' : ''}" data-ai="sel" data-id="${E(s.id)}">${E(s.number || '')} ${E(s.name || '')}</button>`).join('') || '<span class="ai-sub">모든 학생에게 짝이 있습니다.</span>';
+  const freeChips = free.map(s => `<button class="ai-chip${S.sel.has(s.id) ? ' on' : ''}" data-ai="sel" data-id="${E(s.id)}">${E(s.number || '')} ${E(s.name || '')}</button>`).join('') || '<span class="ai-sub">모든 학생이 모둠에 들어가 있습니다.</span>';
   const cards = S.pairs.map(p => {
     const mem = (p.members || []).map(id => `<div class="ai-mem">
       <button class="ai-star${id === p.leaderId ? ' on' : ''}" data-ai="leader" data-pair="${E(p.id)}" data-id="${E(id)}" title="대표로 지정">★</button>
       <span>${E(stuName(id))}</span>
-      <button class="ai-x" data-ai="removeMem" data-pair="${E(p.id)}" data-id="${E(id)}" title="짝에서 빼기">×</button></div>`).join('');
-    const add = (p.members || []).length < 3 && free.length
+      <button class="ai-x" data-ai="removeMem" data-pair="${E(p.id)}" data-id="${E(id)}" title="모둠에서 빼기">×</button></div>`).join('');
+    const add = (p.members || []).length < maxSize() && free.length
       ? `<select class="inp ai-add" data-ai="addMem" data-pair="${E(p.id)}"><option value="">+ 학생 추가</option>${free.map(s => `<option value="${E(s.id)}">${E(s.number || '')} ${E(s.name || '')}</option>`).join('')}</select>` : '';
-    return `<div class="ai-pair"><div class="ai-pair-h"><b>${p.no}짝</b>${(p.members || []).length === 1 ? '<span class="ai-sub">혼자 진행</span>' : ''}
+    return `<div class="ai-pair"><div class="ai-pair-h"><b>${p.no}모둠</b> <span class="ai-sub">${(p.members || []).length}명</span>${(p.members || []).length === 1 ? '<span class="ai-sub">혼자 진행</span>' : ''}
       <button class="btn sm danger" data-ai="delPair" data-id="${E(p.id)}">삭제</button></div>${mem}${add}</div>`;
   }).join('');
-  return `<div class="card"><h2>짝 없는 학생 (${free.length}명)</h2>
+  const gs = groupSize();
+  return `<div class="card"><h2>모둠 없는 학생 (${free.length}명)</h2>
     <div class="ai-chips">${freeChips}</div>
     <div class="ai-btns" style="margin-top:12px;">
-      <button class="btn accent sm" data-ai="makePair" ${S.sel.size >= 1 && S.sel.size <= 3 ? '' : 'disabled'}>선택한 ${S.sel.size}명으로 짝 만들기</button>
-      <button class="btn sm" data-ai="autoPair" ${free.length ? '' : 'disabled'}>남은 학생 번호순으로 2명씩 짝짓기</button>
+      <button class="btn accent sm" data-ai="makePair" ${S.sel.size >= 1 && S.sel.size <= maxSize() ? '' : 'disabled'}>선택한 ${S.sel.size}명으로 모둠 만들기</button>
+      <button class="btn sm" data-ai="autoPair" ${free.length ? '' : 'disabled'}>남은 학생 번호순으로 ${gs}명씩 모둠 짜기</button>
     </div>
-    <p class="ai-sub">★ = 대표(문제 정의·학습 담당). 결석생이 있으면 짝에서 빼고, 혼자 남은 학생은 1명 짝으로 진행합니다. 홀수면 마지막 짝은 3명이 됩니다.</p></div>
-    <div class="ai-pairs">${cards || '<div class="empty-state">아직 짝이 없습니다.</div>'}</div>`;
+    <p class="ai-sub">모둠 인원은 [배정 관리]의 "모둠 인원"(지금 ${gs}명)을 따릅니다. 나누어떨어지지 않으면 모둠 크기를 고르게 나눕니다(예: 25명·4명 → 4·4·4·4·3·3·3).
+      ★ = 대표(문제 정의·학습 담당). 결석생은 ×로 빼고, 혼자 남은 학생은 1명 모둠으로 진행합니다. 한 모둠은 최대 ${maxSize()}명까지.</p></div>
+    <div class="ai-pairs">${cards || '<div class="empty-state">아직 모둠이 없습니다.</div>'}</div>`;
 }
 
 function boardHtml() {
@@ -187,7 +193,7 @@ function boardHtml() {
     const lead = (p.members || []).map(id => `<option value="${E(id)}" ${id === p.leaderId ? 'selected' : ''}>${E((p.memberNames || {})[id] || id)}</option>`).join('');
     const needHelp = step === 2 && (s.labels || []).some(l => l.c < min / 2);
     return `<div class="ai-bcard${needHelp ? ' help' : ''}">
-      <div class="ai-pair-h"><b>${p.no}짝</b><span class="ai-step">${STEP[step]}</span></div>
+      <div class="ai-pair-h"><b>${p.no}모둠</b><span class="ai-step">${STEP[step]}</span></div>
       <div class="ai-sub">${(p.members || []).map(id => E((p.memberNames || {})[id] || id) + (id === p.leaderId ? '★' : '')).join(' · ')}</div>
       ${s.topic ? `<div><b>${E(s.topic)}</b>${s.round > 1 ? ` <span class="ai-sub">${s.round}번째 모델</span>` : ''}</div>` : ''}
       <div class="ai-lc">${labels}</div>
@@ -199,8 +205,8 @@ function boardHtml() {
   return `<div class="stats-grid">${[1, 2, 3, 4, 5].map(n => `<div class="stat-card"><div class="stat-num">${steps[n]}</div><div class="stat-label">${STEP[n]}</div></div>`).join('')}
       <div class="stat-card"><div class="stat-num">${done}</div><div class="stat-label">공개 완료</div></div></div>
     <div class="ai-btns" style="margin-bottom:10px;"><button class="btn sm" data-ai="full">전체 화면</button>
-      <span class="ai-sub">빨간 숫자 = 아직 ${min}장 미만 · 노란 카드 = 사진이 절반도 안 모인 짝(도움 필요)</span></div>
-    <div class="ai-board" id="aiBoard">${cards || '<div class="empty-state">짝이 없습니다.</div>'}</div>`;
+      <span class="ai-sub">빨간 숫자 = 아직 ${min}장 미만 · 노란 카드 = 사진이 절반도 안 모인 모둠(도움 필요)</span></div>
+    <div class="ai-board" id="aiBoard">${cards || '<div class="empty-state">모둠이 없습니다.</div>'}</div>`;
 }
 
 function resultsHtml() {
@@ -233,7 +239,7 @@ function projectHtml(p, pair) {
       ${r.fix ? `<div>고칠 점: ${E(r.fix)}</div>` : ''}</div>`).join('') || '<span class="ai-sub">평가 전</span>';
   const appLink = p.published ? `<a href="${OHINFO}/aiapp.html?id=${encodeURIComponent(p.id)}" target="_blank" rel="noopener">${E((app && app.title) || '웹앱')} ↗</a> <span class="ai-sub">${E(THEME_NAMES[(app && app.theme)] || '')}</span>` : '<span class="ai-sub">공개 전</span>';
   return `<div class="card ai-proj">
-    <h2>${pair.no || '?'}짝 · ${(pair.members || []).map(id => E(names[id] || id)).join(', ')} <span class="ai-sub">${p.round || 1}번째 모델 · ${STEP[p.step || 1]}</span></h2>
+ <h2>${pair.no || '?'}모둠 · ${(pair.members || []).map(id => E(names[id] || id)).join(', ')} <span class="ai-sub">${p.round || 1}번째 모델 · ${STEP[p.step || 1]}</span></h2>
     <div><b>분류 대상:</b> ${E(p.topic || '-')}</div>
     <div class="table-wrap"><table class="ai-table"><thead><tr><th>레이블</th><th>번역 ${trEditing
       ? `<button class="btn sm accent" data-ai="trSave" data-pid="${E(p.id)}">저장</button><button class="btn sm ghost" data-ai="trCancel">취소</button>`
@@ -251,6 +257,7 @@ function readForm() {
     title: v('aiT_title').trim(), schoolName: v('aiT_school'), grade: v('aiT_grade'), class: v('aiT_class'),
     minPerLabel: Math.max(3, Number(v('aiT_min')) || 15), minTestPerLabel: Math.max(1, Number(v('aiT_test')) || 3),
     maxLabels: Math.min(8, Math.max(2, Number(v('aiT_max')) || 5)),
+    groupSize: Math.min(8, Math.max(1, Number(v('aiT_group')) || 2)),
     board: board ? { name: board.name, schoolName: board.schoolName || '', grade: board.grade || '', group: board.group || '' } : null,
   };
 }
@@ -274,6 +281,21 @@ async function createPair(ids, no) {
     asId: S.asId, no, members: ids, memberEmails: ids.map(emailOf), memberNames: names, leaderId: ids[0],
     round: 0, currentProjectId: '', createdAt: serverTimestamp(),
   });
+}
+
+// 정한 인원(gs)으로 번호순 모둠 짜기. 나누어떨어지지 않으면 크기를 고르게(차이 최대 1명).
+// 기본은 한 명 적은 모둠을 두지만(25명·4명 → 4·4·4·4·3·3·3), 그러면 너무 작아질 때
+// (2명 모둠에서 1명이 남는 경우 등)는 모둠 수를 줄여 한 명 많은 모둠을 둔다(5명·2명 → 3·2).
+export function splitGroups(ids, gs) {
+  const n = ids.length;
+  if (!n) return [];
+  const sizes = count => { const base = Math.floor(n / count), extra = n % count; return Array.from({ length: count }, (_, i) => base + (i < extra ? 1 : 0)); };
+  let count = Math.ceil(n / gs);
+  if (Math.min(...sizes(count)) < Math.max(2, gs - 1) && Math.floor(n / gs) >= 1) count = Math.floor(n / gs);
+  const out = [];
+  let k = 0;
+  for (const size of sizes(count)) out.push(ids.slice(k, k += size));
+  return out;
 }
 
 const nextNo = () => S.pairs.reduce((m, p) => Math.max(m, p.no || 0), 0) + 1;
@@ -303,7 +325,7 @@ const actions = {
   cancelEdit() { S.editId = ''; render(); },
   async delAsg(el) {
     const a = S.asgs.find(x => x.id === el.dataset.id);
-    if (!a || !confirm(`"${a.title}" 배정을 지울까요?\n짝 구성도 함께 지워집니다. 학생들이 만든 프로젝트와 공개 웹앱은 남습니다.`)) return;
+    if (!a || !confirm(`"${a.title}" 배정을 지울까요?\n모둠 구성도 함께 지워집니다. 학생들이 만든 프로젝트와 공개 웹앱은 남습니다.`)) return;
     await guard(async () => {
       const pairs = await getDocs(query(collection(db, 'ai_pairs'), where('asId', '==', a.id)));
       const b = writeBatch(db);
@@ -317,7 +339,7 @@ const actions = {
   goPairs(el) { go('pairs', el.dataset.id); },
   goBoard(el) { go('board', el.dataset.id); },
   goResults(el) { go('results', el.dataset.id); },
-  sel(el) { const id = el.dataset.id; if (S.sel.has(id)) S.sel.delete(id); else if (S.sel.size < 3) S.sel.add(id); render(); },
+  sel(el) { const id = el.dataset.id; if (S.sel.has(id)) S.sel.delete(id); else if (S.sel.size < maxSize()) S.sel.add(id); render(); },
   async makePair() {
     const ids = [...S.sel];
     if (!ids.length || ids.length > 3) return;
@@ -327,11 +349,8 @@ const actions = {
     const used = new Set(S.pairs.flatMap(p => p.members || []));
     const free = S.students.filter(s => !used.has(s.id)).map(s => s.id);
     if (!free.length) return;
-    const groups = [];
-    for (let i = 0; i < free.length; i += 2) groups.push(free.slice(i, i + 2));
-    // 홀수면 마지막 한 명은 앞 짝에 붙여 3명으로(혼자 남지 않게).
-    if (groups.length > 1 && groups[groups.length - 1].length === 1) groups[groups.length - 2].push(groups.pop()[0]);
-    if (!confirm(`${groups.length}개의 짝을 만들까요?`)) return;
+    const groups = splitGroups(free, groupSize());
+    if (!confirm(`${groups.length}개 모둠(${groups.map(g => g.length).join('·')}명)을 만들까요?`)) return;
     await guard(async () => { let no = nextNo(); for (const g of groups) await createPair(g, no++); S.sel.clear(); });
   },
   async leader(el) {
@@ -345,7 +364,7 @@ const actions = {
   },
   async delPair(el) {
     const p = S.pairs.find(x => x.id === el.dataset.id);
-    if (!p || !confirm(`${p.no}짝을 지울까요? 학생들이 만든 프로젝트는 남습니다.`)) return;
+    if (!p || !confirm(`${p.no}모둠을 지울까요? 학생들이 만든 프로젝트는 남습니다.`)) return;
     await guard(() => deleteDoc(doc(db, 'ai_pairs', p.id)));
   },
   full() { const el = $('aiBoard'); if (el && el.requestFullscreen) el.requestFullscreen(); },
@@ -377,7 +396,7 @@ const actions = {
     await guard(async () => { await updateDoc(doc(db, 'ai_apps', pid), { hiddenPhrases: hp }); app.hiddenPhrases = hp; render(); });
   },
   csv() {
-    const rows = [['짝', '이름', '대표', '모델', '분류 대상', '레이블(학습 사진 수)', '단계', '회차별 정확도', '별점', '이유', '원인', '고칠 점', '웹앱 주소']];
+    const rows = [['모둠', '이름', '대표', '모델', '분류 대상', '레이블(학습 사진 수)', '단계', '회차별 정확도', '별점', '이유', '원인', '고칠 점', '웹앱 주소']];
     const pairOf = id => S.pairs.find(p => p.id === id) || {};
     for (const p of S.projects) {
       const pair = pairOf(p.pairId);
