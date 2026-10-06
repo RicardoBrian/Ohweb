@@ -2,7 +2,7 @@
 // 디자인 5종은 화면 배치가 같고 색·질감만 다르다(ai-themes.css).
 
 import { escHtml } from './escape.js';
-import { labelName, phraseFor, UNSURE, UNSURE_THRESHOLD, LANGS } from './ai-core.js?v=202610060655';
+import { labelName, phraseFor, UNSURE, UNSURE_THRESHOLD, LANGS } from './ai-core.js?v=202610060716';
 
 export const THEMES = ['minimal', 'bw', 'glass', 'neon', 'warm'];
 const LANG_NAMES = { ko: '한국어', en: 'English', zh: '中文', ru: 'Рус' };

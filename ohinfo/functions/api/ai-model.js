@@ -7,7 +7,11 @@
  * 돌려보내 모델을 못 받는 일이 있었다. 만든 학생은 자기 PC에 모델이 저장돼 있어서
  * 문제가 안 보이고 "다른 사람만 안 열리는" 증상이 됐다.
  * 그래서 이 서버가 대신 받는다(구글 쿠키와 무관) — 받은 모델은 엣지에 하루 보관해서
- * 같은 반 30명이 열어도 Apps Script는 한 번만 부른다.
+ * 같은 반 30명이 열어도 Apps Script는 한 번만 부른다. 학생이 [공개하기]를 누를 때 실험실이
+ * 이 주소를 한 번 불러 미리 받아 두므로, 첫 방문자도 Apps Script를 기다리지 않는다.
+ *
+ * 응답은 JSON+base64가 아니라 바이너리(가중치를 그대로)로 보내 크기를 약 1/4 줄인다:
+ *   'AIM1'(4바이트) · 머리 길이(uint32, big-endian) · 머리 JSON {modelJson, metadataJson} · 가중치 바이트
  *
  * 공개 여부는 매번 ai_apps 문서(누구나 읽기)로 확인한다: 공개 중이고 그 번호가
  * 배포 번호일 때만 준다(공개를 끄면 보관본도 바로 안 나간다).
@@ -16,7 +20,8 @@ import { AILAB_GAS_URL } from '../../public/ai-config.js';
 
 const PROJECT_ID = 'ohweb-93062';
 const ID_RE = /^[A-Za-z0-9_-]{1,128}$/;
-const TTL = 86400;
+const TTL = 30 * 86400;   // 번호마다 내용이 바뀌지 않으므로 길게(공개 여부는 매번 확인)
+export const MODEL_TYPE = 'application/x-ailab-model';
 
 const json = (obj, status = 200, extra = {}) =>
   new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', ...extra } });
@@ -44,7 +49,7 @@ export async function onRequest({ request, waitUntil }) {
   const key = new Request(`https://kakainfo.com/__ai-model-cache/${pid}/${v}`);
   if (cache) {
     const hit = await cache.match(key);
-    if (hit) return new Response(hit.body, { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store', 'X-Cache': 'HIT' } });
+    if (hit) return new Response(hit.body, { headers: { 'Content-Type': MODEL_TYPE, 'Cache-Control': 'no-store', 'X-Cache': 'HIT' } });
   }
 
   let txt;
@@ -57,10 +62,21 @@ export async function onRequest({ request, waitUntil }) {
   if (data.error) return fail(502, data.code || 'server', data.error);
   if (!data.modelJson || !data.weightsBase64) return fail(502, 'badResponse', 'no model');
 
-  const body = JSON.stringify({ modelJson: data.modelJson, metadataJson: data.metadataJson, weightsBase64: data.weightsBase64 });
+  const body = packModel(data);
   if (cache) {
-    const put = cache.put(key, new Response(body, { headers: { 'Content-Type': 'application/json', 'Cache-Control': `max-age=${TTL}` } }));
+    const put = cache.put(key, new Response(body, { headers: { 'Content-Type': MODEL_TYPE, 'Cache-Control': `max-age=${TTL}` } }));
     if (waitUntil) waitUntil(put); else await put;
   }
-  return new Response(body, { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
+  return new Response(body, { headers: { 'Content-Type': MODEL_TYPE, 'Cache-Control': 'no-store' } });
+}
+
+export function packModel({ modelJson, metadataJson, weightsBase64 }) {
+  const head = new TextEncoder().encode(JSON.stringify({ modelJson, metadataJson }));
+  const bin = atob(weightsBase64);
+  const out = new Uint8Array(8 + head.length + bin.length);
+  out.set([65, 73, 77, 49]);   // 'AIM1'
+  new DataView(out.buffer).setUint32(4, head.length);
+  out.set(head, 8);
+  for (let i = 0, o = 8 + head.length; i < bin.length; i++) out[o + i] = bin.charCodeAt(i);
+  return out;
 }

@@ -14,12 +14,12 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { loadSession, verifyStudentAuth, authReady, clearSession } from './session.js';
 import { escHtml } from './escape.js';
-import * as C from './ai-core.js?v=202610060655';
-import { makeT, getLang, setLang } from './ai-i18n.js?v=202610060655';
-import { prepareImage, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202610060655';
-import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, saveModelToDrive } from './ai-drive.js?v=202610060655';
-import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202610060655';
-import { appHtml, probsByLabel, THEMES } from './ai-render.js?v=202610060655';
+import * as C from './ai-core.js?v=202610060716';
+import { makeT, getLang, setLang } from './ai-i18n.js?v=202610060716';
+import { prepareImage, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202610060716';
+import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, saveModelToDrive } from './ai-drive.js?v=202610060716';
+import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202610060716';
+import { appHtml, probsByLabel, THEMES } from './ai-render.js?v=202610060716';
 
 const E = escHtml;
 const $ = id => document.getElementById(id);
@@ -987,6 +987,8 @@ const actions = {
         modelVersion: fresh.modelVersion, modelUrl: fresh.modelUrl, mapping: fresh.mapping, published: true, updatedAt: serverTimestamp(),
       };
       await setDoc(doc(db, 'ai_apps', S.pid), pub, { merge: true });
+      // 서버(/api/ai-model)가 모델을 미리 받아 두게 한 번 불러 둔다 — 첫 방문자가 기다리지 않게.
+      if (pub.modelVersion) fetch(`/api/ai-model?pid=${encodeURIComponent(S.pid)}&v=${pub.modelVersion}`).then(r => r.arrayBuffer()).catch(() => {});
       await updateDoc(pref(), { ...upd, published: true, pubSig: appSig(fresh), 'app.publishedAt': serverTimestamp() });
       toast(t('published'), 'ok');
     } catch (e) {

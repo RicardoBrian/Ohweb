@@ -1,8 +1,8 @@
 // 티처블머신 모델 불러오기·예측 (브라우저 전용).
 // 라이브러리는 필요할 때만 받는다 — tfjs가 커서(약 1MB) 실험실 첫 화면엔 싣지 않는다.
 
-import { TFJS_URL, TMIMAGE_URL, checkMetadata } from './ai-core.js?v=202610060655';
-import { fetchModelFiles, b64ToBytes } from './ai-drive.js?v=202610060655';
+import { TFJS_URL, TMIMAGE_URL, checkMetadata } from './ai-core.js?v=202610060716';
+import { fetchModelFiles, b64ToBytes } from './ai-drive.js?v=202610060716';
 
 let _libs = null;
 function loadScript(src) {
@@ -52,6 +52,7 @@ export async function loadModel(modelUrl, { fresh = false } = {}) {
     try {
       const handler = http(modelUrl + 'model.json', { requestInit: { cache: 'no-cache' } });
       const model = await window.tmImage.load(handler, meta);
+      await warmUp(model);
       return { model, labels };
     } catch { throw new ModelError('loadFail'); }
   })();
@@ -137,6 +138,11 @@ function cropSquare(img, size) {
   return c;
 }
 
+// 첫 예측은 GPU 준비(셰이더 만들기) 때문에 몇 초 걸린다 — 사진을 받기 전에 빈 그림으로 한 번 미리 돌려 둔다.
+async function warmUp(model) {
+  try { const c = document.createElement('canvas'); c.width = c.height = 224; await model.predict(c); } catch { /* 미리 돌리기 실패는 무시 */ }
+}
+
 // 드라이브에 저장된 모델 불러오기. getToken이 없으면 공개 웹앱(배포된 번호만).
 const _driveCache = new Map();
 export function rememberModel(pid, version, loaded) { _driveCache.set(`${pid}:${version}`, Promise.resolve(loaded)); }
@@ -144,15 +150,20 @@ export function loadDriveModel(getToken, pid, version) {
   const key = `${pid}:${version}`;
   if (_driveCache.has(key)) return _driveCache.get(key);
   const p = (async () => {
+    // 모델 파일과 라이브러리(tfjs)를 동시에 받는다.
+    const libs = loadLibs().catch(() => { throw new ModelError('libFail'); });
+    libs.catch(() => {});
     let files;
     try { files = await fetchModelFiles(getToken, pid, version); }
     catch (e) { const m = new ModelError(e.code === 'auth' ? 'notPublished' : 'loadFail', e.message); m.detail = e.code; throw m; }
-    try { await loadLibs(); } catch { throw new ModelError('libFail'); }
+    await libs;
     try {
       const mj = JSON.parse(files.modelJson);
       const meta = JSON.parse(files.metadataJson);
-      const handler = window.tf.io.fromMemory(mj.modelTopology, mj.weightsManifest[0].weights, b64ToBytes(files.weightsBase64).buffer);
+      const weights = files.weightsBytes || b64ToBytes(files.weightsBase64).buffer;
+      const handler = window.tf.io.fromMemory(mj.modelTopology, mj.weightsManifest[0].weights, weights);
       const model = await window.tmImage.load(handler, meta);
+      await warmUp(model);
       return { model, labels: meta.labels };
     } catch { throw new ModelError('loadFail'); }
   })();

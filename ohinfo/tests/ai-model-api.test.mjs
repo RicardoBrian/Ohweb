@@ -1,6 +1,7 @@
 // /api/ai-model 테스트 — `node ohinfo/tests/ai-model-api.test.mjs`
 import assert from 'node:assert/strict';
-import { onRequest } from '../functions/api/ai-model.js';
+import { onRequest, MODEL_TYPE } from '../functions/api/ai-model.js';
+import { unpackModel } from '../public/ai-drive.js';
 
 let n = 0;
 const test = async (name, fn) => { await fn(); n++; console.log('✅', name); };
@@ -35,10 +36,20 @@ await test('공개된 모델을 받아 주고, 두 번째는 보관본', async (
   mock(); gasCalls = 0;
   const r = await onRequest(req('pid=abc_1&v=2'));
   assert.equal(r.status, 200);
-  assert.equal((await r.json()).weightsBase64, 'AA==');
+  assert.equal(r.headers.get('Content-Type'), MODEL_TYPE);
+  const m = unpackModel(await r.arrayBuffer());
+  assert.equal(m.modelJson, '{}');
+  assert.deepEqual([...new Uint8Array(m.weightsBytes)], [0]);
   const r2 = await onRequest(req('pid=abc_1&v=2'));
   assert.equal(r2.headers.get('X-Cache'), 'HIT');
   assert.equal(gasCalls, 1);
+});
+await test('바이너리로 풀면 가중치가 그대로(긴 가중치)', async () => {
+  const w = Uint8Array.from({ length: 70000 }, (_, i) => (i * 7) % 256);
+  mock({ gas: { modelJson: '{"a":"한글"}', metadataJson: '{"labels":["x"]}', weightsBase64: Buffer.from(w).toString('base64') } });
+  const m = unpackModel(await (await onRequest(req('pid=big_1&v=2'))).arrayBuffer());
+  assert.equal(m.modelJson, '{"a":"한글"}');
+  assert.deepEqual(new Uint8Array(m.weightsBytes), w);
 });
 await test('공개를 끄면 보관본도 안 나감', async () => {
   mock({ published: false });

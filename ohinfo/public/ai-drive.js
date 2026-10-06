@@ -8,8 +8,8 @@
 // 실패하면 지우지 않고 간격을 늘려 가며 다시 시도한다. 학교 PC는 재부팅하면 브라우저
 // 저장이 지워지는 경우가 많아서, "드라이브에 올라간 것"만 진짜 저장으로 친다.
 
-import { AILAB_GAS_URL } from './ai-config.js?v=202610060655';
-import { blobToBase64 } from './ai-image.js?v=202610060655';
+import { AILAB_GAS_URL } from './ai-config.js?v=202610060716';
+import { blobToBase64 } from './ai-image.js?v=202610060716';
 
 export class DriveError extends Error {
   constructor(code, msg) { super(msg || code); this.code = code; }
@@ -256,17 +256,27 @@ export async function fetchModelFiles(getToken, pid, version) {
   let r;
   if (getToken) r = await gasCall(getToken, 'getModel', { pid, version });
   else r = await fetchPublicModel(pid, version);
-  const files = { modelJson: r.modelJson, metadataJson: r.metadataJson, weightsBase64: r.weightsBase64 };
+  const files = { modelJson: r.modelJson, metadataJson: r.metadataJson, weightsBase64: r.weightsBase64, weightsBytes: r.weightsBytes };
   await cachePut(key, files);
   return files;
 }
 export { b64ToBytes };
+
+// /api/ai-model의 바이너리 응답 풀기('AIM1' · 머리 길이 · 머리 JSON · 가중치)
+export function unpackModel(buf) {
+  const u8 = new Uint8Array(buf);
+  if (String.fromCharCode(...u8.subarray(0, 4)) !== 'AIM1') throw new DriveError('badResponse', 'model format');
+  const n = new DataView(buf).getUint32(4);
+  const head = JSON.parse(new TextDecoder().decode(u8.subarray(8, 8 + n)));
+  return { modelJson: head.modelJson, metadataJson: head.metadataJson, weightsBytes: buf.slice(8 + n) };
+}
 
 // 공개 웹앱(로그인 없음): 우리 서버(/api/ai-model)가 대신 받아 준다 — 방문자 브라우저의
 // 구글 로그인 상태와 상관없이 열리게. 서버 길이 없을 때(로컬 시험 등)만 Apps Script를 직접 부른다.
 async function fetchPublicModel(pid, version) {
   let res = null;
   try { res = await fetch(`/api/ai-model?pid=${encodeURIComponent(pid)}&v=${encodeURIComponent(version)}`); } catch { res = null; }
+  if (res && res.ok && /x-ailab-model/.test(res.headers.get('Content-Type') || '')) return unpackModel(await res.arrayBuffer());
   if (res && /json/.test(res.headers.get('Content-Type') || '')) {
     const r = await res.json();
     if (r.error) throw new DriveError(r.code || 'server', r.error);
