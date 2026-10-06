@@ -24,7 +24,8 @@ await env.withSecurityRulesDisabled(async c => {
   await setDoc(doc(db, 'student_form_responses/R1'), { formId: 'F1', ownerId: 'StuA', respondentId: 'StuB', respondentName: '4 박학생', answers: ['비밀 답'] });
   await setDoc(doc(db, 'student_form_responses/R2'), { formId: 'F1', ownerId: 'StuA', respondentId: 'anonymous', respondentName: '익명', answers: ['x'] });
   await setDoc(doc(db, 'qna_threads/StuA/messages/m1'), { text: '비밀 상담', sender: 'student' });
-  await setDoc(doc(db, 'exam_progress/AS1_StuA'), { studentId: 'StuA', name: '김학생', status: 'started', alertCount: 1 });
+  await setDoc(doc(db, 'exam_progress/AS1_StuA'), { studentId: 'StuA', name: '김학생', status: 'started', alertCount: 1, startTime: new Date('2026-01-01T00:00:00Z') });
+  await setDoc(doc(db, 'exam_progress/AS3_StuA'), { studentId: 'StuA', status: 'started', alertCount: 1 });
   await setDoc(doc(db, 'exam_progress/AS2_StuA'), { studentId: 'StuA', name: '김학생', totalScore: 40, status: 'submitted' });
   await setDoc(doc(db, 'exam_results/AS2_StuA_0'), { asId: 'AS2', studentId: 'StuA', score: 10 });
   await setDoc(doc(db, 'exam_results/AS2_StuB_0'), { asId: 'AS2', studentId: 'StuB', score: 5 });
@@ -54,6 +55,11 @@ await T('학생이 남의 ID로 진행 기록 생성', setDoc(doc(B, 'exam_progr
 await T('학생이 진행 기록 studentId 바꿔치기', setDoc(doc(A, 'exam_progress/AS1_StuA'), { studentId: 'StuB' }, { merge: true }), false);
 await T('학생이 제출 후 점수 수정', setDoc(doc(A, 'exam_progress/AS2_StuA'), { totalScore: 100 }, { merge: true }), false);
 await T('학생이 이탈 횟수 0으로 되돌리기(제출 후)', setDoc(doc(A, 'exam_progress/AS2_StuA'), { alertCount: 0 }, { merge: true }), false);
+await T('시험: 시작 시각 지우기(타이머 리셋)', updateDoc(doc(A, 'exam_progress/AS1_StuA'), { startTime: deleteField() }), false);
+await T('시험: 시작 시각 바꾸기(타이머 리셋)', setDoc(doc(A, 'exam_progress/AS1_StuA'), { startTime: serverTimestamp() }, { merge: true }), false);
+await T('시험: 채점 대기 표시 지워서 점수 미리 보기 조작', setDoc(doc(A, 'exam_progress/AS1_StuA'), { needsManual: false }, { merge: true }), false);
+await T('시험: 제출 시각·소요시간 조작', setDoc(doc(A, 'exam_progress/AS1_StuA'), { elapsedSec: 1, late: false }, { merge: true }), false);
+await T('시험: 생성 시 제출 시각 넣기', setDoc(doc(B, 'exam_progress/AS8_StuB'), { studentId: 'StuB', status: 'started', submitTime: 'x' }), false);
 await T('학생이 남의 채점 결과 조회', getDocs(query(collection(B, 'exam_results'), where('asId', '==', 'AS2'), where('studentId', '==', 'StuA'))), false);
 await T('email_verified 없는 가짜 관리자', getDocs(collection(fakeAdmin, 'qna_threads')), false);
 await T('비로그인 잠금 해제 시도', updateDoc(doc(anon, 'students/StuA'), { failedAttempts: 0 }), false);
@@ -118,6 +124,8 @@ await T('1:1 질문: 선생님 답장 읽음 표시', updateDoc(doc(A, 'qna_thre
 await T('시험 목록: 본인 진행 기록(없는 문서) 읽기', getDoc(doc(A, 'exam_progress/AS7_StuA')), true);
 await T('시험 목록: 본인 진행 기록 읽기', getDoc(doc(A, 'exam_progress/AS2_StuA')), true);
 await T('시험 입장: 진행 기록 생성(merge)', setDoc(doc(B, 'exam_progress/AS1_StuB'), { examId: 'E', asId: 'AS1', studentId: 'StuB', name: '박', status: 'started', alertCount: 0, pasteBlockCount: 0, startTime: serverTimestamp() }, { merge: true }), true);
+await T('시험 재입장: 시작 시각 유지 + 재입장 시각 기록', setDoc(doc(A, 'exam_progress/AS1_StuA'), { status: 'started', alertCount: 1, pasteBlockCount: 0, lastEnterAt: serverTimestamp(), name: '김학생', studentId: 'StuA' }, { merge: true }), true);
+await T('시험 입장: 시작 시각 없던 기록에 처음 기록', setDoc(doc(A, 'exam_progress/AS3_StuA'), { status: 'started', startTime: serverTimestamp(), lastEnterAt: serverTimestamp() }, { merge: true }), true);
 await T('시험 중: 이탈 횟수 갱신', setDoc(doc(A, 'exam_progress/AS1_StuA'), { alertCount: 2 }, { merge: true }), true);
 await T('시험 중: 붙여넣기 횟수 갱신', setDoc(doc(A, 'exam_progress/AS1_StuA'), { pasteBlockCount: 1 }, { merge: true }), true);
 await T('제출 실패: 답안 보관', setDoc(doc(A, 'exam_progress/AS1_StuA'), { pendingAnswers: [{ qIdx: 0, value: '1' }], pendingAt: serverTimestamp(), submitError: 'x' }, { merge: true }), true);

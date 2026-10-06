@@ -448,15 +448,29 @@ async function handle(request, env) {
       });
     }
 
+    // 제출 시각은 서버 시각으로 기록하고, 처음 시작한 시각과의 차이(소요 시간)와
+    // 제한시간 초과 여부도 남긴다 — 선생님이 결과 화면에서 확인한다. 초과해도
+    // 채점은 그대로 한다(네트워크 지연 등으로 몇 초 넘는 경우를 막지 않기 위해
+    // 90초 여유를 두고, 판단은 선생님 몫).
+    const submitIso = new Date().toISOString();
+    const timing = {};
+    const startedMs = progress?.startTime ? Date.parse(progress.startTime) : NaN;
+    if (!Number.isNaN(startedMs)) {
+      timing.elapsedSec = Math.max(0, Math.round((Date.parse(submitIso) - startedMs) / 1000));
+      const limitSec = (Number(assignment.duration) || 0) * 60;
+      timing.late = limitSec > 0 && timing.elapsedSec > limitSec + 90;
+    }
     writes.push({
       path: `exam_progress/${asId}_${studentDocId}`,
-      data: { status: 'submitted', totalScore, totalPoints, submitTime: new Date().toISOString() },
+      // needsManual: 선생님이 직접 채점할 문항(서술형·단답형·실행 실패한 코드형)이 있음 —
+      // 학생 화면은 선생님이 채점을 저장할 때까지 점수를 보여주지 않는다.
+      data: { status: 'submitted', totalScore, totalPoints, submitTime: submitIso, needsManual: resultItems.some(r => r.feedback === 'manual'), ...timing },
       merge: true,
     });
 
     await db.commit(writes);
 
-    return json({ ok: true, totalScore, totalPoints, items: resultItems });
+    return json({ ok: true, totalScore, totalPoints, needsManual: resultItems.some(r => r.feedback === 'manual'), items: resultItems });
   } catch (e) {
     // 502로 돌려주면 Cloudflare가 응답 본문을 자기 오류 페이지로 바꿔버려서
     // 학생 화면엔 "채점 요청 실패 (HTTP 502)"만 뜨고 실제 원인(detail)이
