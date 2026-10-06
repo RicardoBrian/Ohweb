@@ -8,8 +8,8 @@
 // 실패하면 지우지 않고 간격을 늘려 가며 다시 시도한다. 학교 PC는 재부팅하면 브라우저
 // 저장이 지워지는 경우가 많아서, "드라이브에 올라간 것"만 진짜 저장으로 친다.
 
-import { AILAB_GAS_URL } from './ai-config.js';
-import { blobToBase64 } from './ai-image.js';
+import { AILAB_GAS_URL } from './ai-config.js?v=202610060655';
+import { blobToBase64 } from './ai-image.js?v=202610060655';
 
 export class DriveError extends Error {
   constructor(code, msg) { super(msg || code); this.code = code; }
@@ -255,14 +255,29 @@ export async function fetchModelFiles(getToken, pid, version) {
   if (hit && hit.modelJson) return hit;
   let r;
   if (getToken) r = await gasCall(getToken, 'getModel', { pid, version });
-  else {
-    if (!AILAB_GAS_URL) throw new DriveError('notConfigured');
-    const res = await fetch(AILAB_GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getModel', pid, version }) });
-    r = JSON.parse(await res.text());
-    if (r.error) throw new DriveError(r.code || 'server', r.error);
-  }
+  else r = await fetchPublicModel(pid, version);
   const files = { modelJson: r.modelJson, metadataJson: r.metadataJson, weightsBase64: r.weightsBase64 };
   await cachePut(key, files);
   return files;
 }
 export { b64ToBytes };
+
+// 공개 웹앱(로그인 없음): 우리 서버(/api/ai-model)가 대신 받아 준다 — 방문자 브라우저의
+// 구글 로그인 상태와 상관없이 열리게. 서버 길이 없을 때(로컬 시험 등)만 Apps Script를 직접 부른다.
+async function fetchPublicModel(pid, version) {
+  let res = null;
+  try { res = await fetch(`/api/ai-model?pid=${encodeURIComponent(pid)}&v=${encodeURIComponent(version)}`); } catch { res = null; }
+  if (res && /json/.test(res.headers.get('Content-Type') || '')) {
+    const r = await res.json();
+    if (r.error) throw new DriveError(r.code || 'server', r.error);
+    return r;
+  }
+  if (!AILAB_GAS_URL) throw new DriveError('notConfigured');
+  let txt;
+  try { txt = await (await fetch(AILAB_GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getModel', pid, version }) })).text(); }
+  catch (e) { throw new DriveError('network', e.message); }
+  let r;
+  try { r = JSON.parse(txt); } catch { throw new DriveError('badResponse', txt.slice(0, 120)); }
+  if (r.error) throw new DriveError(r.code || 'server', r.error);
+  return r;
+}

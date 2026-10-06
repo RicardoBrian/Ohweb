@@ -15,7 +15,7 @@ const CODE_RE = /^[\p{L}\p{N}_-]{2,32}$/u;
 // 조회 없이 즉시 걸러내는 예약어 목록과도 그대로 맞아떨어진다(둘 다 이
 // 목록을 같이 유지해야 함).
 const RESERVED = new Set([
-  'api', 'admin', 'login', 'logout', 'favicon.ico', 'style.css', 'app.js', 'firebase-config.js', 'admin-auth.js', '견본', '프롬프트',
+  'api', 'admin', 'login', 'logout', 'favicon.ico', 'style.css', 'app.js', 'firebase-config.js', 'admin-auth.js', '견본', '프롬프트', 'aiapp', 'ailab',
   'wp-admin', 'wp-login', 'wp-content', 'wp-includes', 'wp-json', 'xmlrpc', 'graphql', 'phpmyadmin',
   'config', 'backup', 'env', 'robots', 'sitemap', 'ads', 'author', 'feed', 'rss', 'license', 'readme',
   'setup', 'install', 'test', 'debug', 'console', 'server-status', 'actuator', 'swagger',

@@ -1,8 +1,8 @@
 // 티처블머신 모델 불러오기·예측 (브라우저 전용).
 // 라이브러리는 필요할 때만 받는다 — tfjs가 커서(약 1MB) 실험실 첫 화면엔 싣지 않는다.
 
-import { TFJS_URL, TMIMAGE_URL, checkMetadata } from './ai-core.js';
-import { fetchModelFiles, b64ToBytes } from './ai-drive.js';
+import { TFJS_URL, TMIMAGE_URL, checkMetadata } from './ai-core.js?v=202610060655';
+import { fetchModelFiles, b64ToBytes } from './ai-drive.js?v=202610060655';
 
 let _libs = null;
 function loadScript(src) {
@@ -146,7 +146,7 @@ export function loadDriveModel(getToken, pid, version) {
   const p = (async () => {
     let files;
     try { files = await fetchModelFiles(getToken, pid, version); }
-    catch (e) { throw new ModelError(e.code === 'auth' ? 'notPublished' : 'loadFail'); }
+    catch (e) { const m = new ModelError(e.code === 'auth' ? 'notPublished' : 'loadFail', e.message); m.detail = e.code; throw m; }
     try { await loadLibs(); } catch { throw new ModelError('libFail'); }
     try {
       const mj = JSON.parse(files.modelJson);

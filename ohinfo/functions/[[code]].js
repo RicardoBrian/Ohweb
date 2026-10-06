@@ -67,7 +67,7 @@ const CODE_RE = /^[\p{L}\p{N}_-]{2,32}$/u;
 // 물어볼 필요도 없다"로 그 보장을 활용한다. CODE_RE만으로는 못 거르는
 // 순수 영단어형 봇 프로브(admin, wp-json, graphql 등)가 여기서 걸린다.
 const RESERVED = new Set([
-  'api', 'admin', 'login', 'logout', 'favicon.ico', 'style.css', 'app.js', 'firebase-config.js', 'admin-auth.js', '견본', '프롬프트',
+  'api', 'admin', 'login', 'logout', 'favicon.ico', 'style.css', 'app.js', 'firebase-config.js', 'admin-auth.js', '견본', '프롬프트', 'aiapp', 'ailab',
   'wp-admin', 'wp-login', 'wp-content', 'wp-includes', 'wp-json', 'xmlrpc', 'graphql', 'phpmyadmin',
   'config', 'backup', 'env', 'robots', 'sitemap', 'ads', 'author', 'feed', 'rss', 'license', 'readme',
   'setup', 'install', 'test', 'debug', 'console', 'server-status', 'actuator', 'swagger',

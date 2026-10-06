@@ -14,12 +14,12 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { loadSession, verifyStudentAuth, authReady, clearSession } from './session.js';
 import { escHtml } from './escape.js';
-import * as C from './ai-core.js';
-import { makeT, getLang, setLang } from './ai-i18n.js';
-import { prepareImage, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js';
-import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, saveModelToDrive } from './ai-drive.js';
-import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js';
-import { appHtml, probsByLabel, THEMES } from './ai-render.js';
+import * as C from './ai-core.js?v=202610060655';
+import { makeT, getLang, setLang } from './ai-i18n.js?v=202610060655';
+import { prepareImage, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202610060655';
+import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, saveModelToDrive } from './ai-drive.js?v=202610060655';
+import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202610060655';
+import { appHtml, probsByLabel, THEMES } from './ai-render.js?v=202610060655';
 
 const E = escHtml;
 const $ = id => document.getElementById(id);
