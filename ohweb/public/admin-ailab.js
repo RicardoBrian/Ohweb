@@ -227,7 +227,7 @@ function projectHtml(p, pair) {
       : LANGS.map(g => `<span class="ai-sub">${g}: ${E((l.tr || {})[g] || '-')}</span>`).join(' ');
     return `<tr><td><b>${E(l.emoji || al.emoji || '')} ${E(l.name)}</b>${custom}</td><td>${tr}</td><td>${cnt('train', l.id)}</td><td>${cnt('test', l.id)}</td><td>${E(names[l.owner] || l.owner)}</td></tr>`;
   }).join('');
-  const evalHtml = evals.map(r => `<div class="ai-eval"><b>${r.n}회차 ${r.pct}%</b> (${r.correct}/${r.total})
+  const evalHtml = evals.map(r => `<div class="ai-eval"><b>${r.n}회차 ${r.pct}%</b> (${r.correct}/${r.total})${r.modelVersion ? ` · ${r.modelVersion}번 모델` : ''}
       ${Object.entries(r.stars || {}).map(([sid, v]) => `<div>${E(names[sid] || sid)}: ${'★'.repeat(v.s || 0)}${'☆'.repeat(5 - (v.s || 0))} — ${E(v.reason || '')}</div>`).join('')}
       ${(r.cause || []).length ? `<div>원인: ${(r.cause || []).map(c => E(CAUSES[c] || c)).join(', ')}${r.causeText ? ` — ${E(r.causeText)}` : ''}</div>` : ''}
       ${r.fix ? `<div>고칠 점: ${E(r.fix)}</div>` : ''}</div>`).join('') || '<span class="ai-sub">평가 전</span>';
@@ -238,7 +238,7 @@ function projectHtml(p, pair) {
     <div class="table-wrap"><table class="ai-table"><thead><tr><th>레이블</th><th>번역 ${trEditing
       ? `<button class="btn sm accent" data-ai="trSave" data-pid="${E(p.id)}">저장</button><button class="btn sm ghost" data-ai="trCancel">취소</button>`
       : `<button class="btn sm ghost" data-ai="trEdit" data-pid="${E(p.id)}">고치기</button>`}</th><th>학습</th><th>테스트</th><th>담당</th></tr></thead><tbody>${labels}</tbody></table></div>
-    <div><b>모델:</b> ${p.modelUrl ? `<a href="${E(p.modelUrl)}" target="_blank" rel="noopener">${E(p.modelId || p.modelUrl)}</a>` : '-'}</div>
+    <div><b>모델:</b> ${p.modelVersion ? `${p.modelVersion}번 모델${(p.models && p.models['v' + p.modelVersion] && p.models['v' + p.modelVersion].valAcc != null) ? ` (학습 확인 점수 ${p.models['v' + p.modelVersion].valAcc}%)` : ''} · 지금까지 ${Object.keys(p.models || {}).length}번 학습` : (p.modelUrl ? `<a href="${E(p.modelUrl)}" target="_blank" rel="noopener">${E(p.modelId || p.modelUrl)}</a>` : '-')}</div>
     <div><b>평가:</b> ${evalHtml}</div>
     <div><b>웹앱:</b> ${appLink}</div></div>`;
 }

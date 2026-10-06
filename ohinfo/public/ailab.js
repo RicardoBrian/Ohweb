@@ -17,13 +17,12 @@ import { escHtml } from './escape.js';
 import * as C from './ai-core.js';
 import { makeT, getLang, setLang } from './ai-i18n.js';
 import { prepareImage, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js';
-import { Uploader, driveConfigured, downloadZip, trashFile } from './ai-drive.js';
-import { loadModel, fetchMetadata, predict, imageFromSrc, imageFromBlob } from './ai-model.js';
+import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, saveModelToDrive } from './ai-drive.js';
+import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js';
 import { appHtml, probsByLabel, THEMES } from './ai-render.js';
 
 const E = escHtml;
 const $ = id => document.getElementById(id);
-const TM_URL = 'https://teachablemachine.withgoogle.com/train/image';
 
 // ── 상태 ──
 const S = {
@@ -33,7 +32,7 @@ const S = {
   viewStep: 0, tab: 'project', s3tab: '', board: [],
   labels: null, labelsDirty: false,                // ① 대표가 고치는 중인 레이블
   drafts: {},                                      // 입력 중인 글(서버 값이 덮어쓰지 않게)
-  link: null,                                      // ③ 모델 링크 확인 결과
+  training: null,                                  // ③ 이 PC에서 하는 학습 진행 상황(대표)
   evalRun: null, tryOne: null, previewLabel: 0,
   busy: {}, bannerFor: 0,
 };
@@ -298,55 +297,58 @@ function step3() {
   return body;
 }
 
-function trainTab(leader) {
-  const p = S.project;
-  const train = imgs('train').filter(i => i.driveId);
-  const since = ms(p.lastDownloadAt);
-  const fresh = since ? train.filter(i => ms(i.createdAt) > since) : [];
-  let h = leader ? '' : `<div class="note">${E(t('leaderOnly', { name: leaderName() }))}</div>`;
-  h += `<div class="card"><h3>${E(t('dlTitle'))}</h3><div class="row">
-    <button class="btn" data-act="dl" data-v="all" ${!leader || !train.length || S.busy.dl ? 'disabled' : ''}>⬇ ${E(t('dlAll', { n: train.length }))}</button>
-    ${since && fresh.length ? `<button class="btn" data-act="dl" data-v="new" ${!leader || S.busy.dl ? 'disabled' : ''}>⬇ ${E(t('dlNew', { n: fresh.length }))}</button>` : ''}
-    </div>${S.busy.dl ? `<div class="muted"><span class="spin"></span>${E(t('dlWorking'))}</div>` : ''}
-    ${!driveConfigured() ? `<div class="note warn">${E(t('driveNotSet'))}</div>` : ''}</div>`;
-  h += `<div class="card"><h3>${E(t('guideTitle'))}</h3><ol class="guide">${t('guide').map(x => `<li>${E(x)}</li>`).join('')}</ol>
-    <div class="labels-inline">${labelsOf().map(l => `<code>${E(l.name)}</code>`).join('')}</div>
-    <a class="btn" href="${TM_URL}" target="_blank" rel="noopener">${E(t('openTM'))} ↗</a>
-    <div class="note warn">⚠ ${E(t('keepOpen'))}</div></div>`;
-  h += `<div class="card"><h3>${E(t('linkTitle'))}</h3>`;
-  if (p.modelUrl && !S.link) {
-    h += `<div class="linked">✅ ${E(t('linked'))}<div class="muted">${E(p.modelUrl)}</div>
-      <div class="muted">${E(t('modelClasses', { n: (p.modelClasses || []).length }))}: ${(p.modelClasses || []).map(c => `<code>${E(c)} → ${E((labelsOf().find(l => l.id === (p.mapping || {})[c]) || {}).name || '?')}</code>`).join(' ')}</div></div>
-      ${leader ? `<button class="btn ghost sm" data-act="relink">${E(t('relink'))}</button>` : ''}`;
-  } else if (leader) {
-    h += `<div class="row"><input id="f-link" data-field="link" placeholder="${E(t('linkPh'))}" value="${E(draftOr('link', ''))}">
-      <button class="btn primary" data-act="linkcheck" ${S.busy.link ? 'disabled' : ''}>${E(t('linkCheck'))}</button></div>
-      ${S.busy.link ? `<div class="muted"><span class="spin"></span>${E(t('loading'))}</div>` : ''}
-      ${S.link && S.link.error ? `<div class="err">${E(t('l_' + S.link.error))}</div>` : ''}
-      ${S.link && S.link.classes ? mappingHtml() : ''}`;
-  } else {
-    h += `<div class="muted">…</div>`;
-  }
-  return h + '</div>';
+// 학습 단계별 진행률(%) — 사진 받기 0~20, 기본 모델 20~25, 특징 뽑기 25~50, 학습 50~95, 저장 95~100.
+const PHASE_SPAN = { photos: [0, 20], base: [20, 25], extract: [25, 50], train: [50, 95], save: [95, 100] };
+function phasePct(tr) {
+  const [a, b] = PHASE_SPAN[tr.phase] || [0, 0];
+  return Math.round(a + (b - a) * (tr.n ? Math.min(1, tr.i / tr.n) : 0));
 }
 
-function mappingHtml() {
-  const L = S.link;
+function trainTab(leader) {
+  const p = S.project;
   const labels = labelsOf();
-  const chk = C.checkMapping(L.classes, labels, L.mapping);
-  const rows = L.classes.map(c => `<div class="map-row">
-    <code>${E(c)}</code><span>→</span>
-    <select data-field="map" data-id="${E(c)}"><option value="">${E(t('mapPick'))}</option>
-      ${labels.map(l => `<option value="${E(l.id)}" ${L.mapping[c] === l.id ? 'selected' : ''}>${E(l.name)}</option>`).join('')}</select>
-    ${C.isDefaultClassName(c) && !L.mapping[c] ? `<span class="err sm">${E(t('mapDefault', { c }))}</span>` : ''}</div>`).join('');
-  const msgs = [];
-  if (chk.missing.length) msgs.push(t('mapMissing'));
-  if (chk.dup.length) msgs.push(t('mapDup'));
-  const unused = chk.unusedLabels.map(id => (labels.find(l => l.id === id) || {}).name).filter(Boolean);
-  return `<div class="mapping"><b>${E(t('mapTitle'))}</b><p class="muted">${E(t('mapHint'))}</p>${rows}
-    ${msgs.map(m => `<div class="err">${E(m)}</div>`).join('')}
-    ${unused.length ? `<div class="note warn">${E(t('mapUnused', { list: unused.join(', ') }))}</div>` : ''}
-    <button class="btn primary" data-act="mapsave" ${chk.ok ? '' : 'disabled'}>${E(t('mapSave'))}</button></div>`;
+  const tr = S.training;
+  const remote = p.training && p.training.state === 'running' && p.training.by !== S.me && Date.now() - ms(p.training.at) < 5 * 60000 ? p.training : null;
+  const busy = !!(tr && !tr.done && !tr.error);
+  const pending = uploader.items.filter(i => i.kind === 'train').length;
+  const newN = C.newSinceTraining(p, S.images);
+  const v = p.modelVersion || 0;
+  let h = leader ? '' : `<div class="note">${E(t('leaderOnly', { name: leaderName() }))}</div>`;
+
+  h += `<div class="card"><h3>${E(t('trainData'))}</h3><div class="tdata">${labels.map(l => {
+    const list = imgs('train', l.id).filter(i => i.driveId);
+    const small = list.filter(i => i.small).length;
+    return `<div class="trow"><b>${E(l.name)}</b><span class="cnt">${E(t('countOf', { c: list.length, m: minTrain() }))}</span>${small ? `<span class="warn-txt">${E(t('smallCount', { n: small }))}</span>` : ''}</div>`;
+  }).join('')}</div>
+    ${newN ? `<div class="note warn">${E(t('newSince', { n: newN }))}</div>` : ''}
+    ${pending ? `<div class="note">${E(t('pendingFirst', { n: pending }))}</div>` : ''}
+    ${!driveConfigured() ? `<div class="note warn">${E(t('driveNotSet'))}</div>` : ''}</div>`;
+
+  const P = TRAIN_PARAMS;
+  h += `<div class="card"><h3>${E(t('paramsTitle'))}</h3><div class="params">${[['epochs', P.epochs], ['batch', P.batchSize], ['lr', P.learningRate]].map(([k, val]) =>
+    `<details class="param"><summary><b>${E(t('params.' + k + '.name'))}</b> <code>${val}</code> <span class="info" aria-hidden="true">ⓘ</span></summary><p>${E(t('params.' + k + '.help'))}</p></details>`).join('')}</div></div>`;
+
+  h += '<div class="card train-box">';
+  if (leader) {
+    h += `<button class="btn primary big" data-act="train" ${busy || pending || !driveConfigured() ? 'disabled' : ''}>🧠 ${E(v ? t('retrain', { n: v + 1 }) : t('trainStart'))}</button>`;
+  }
+  const show = busy ? tr : remote;
+  if (show) {
+    const pct = busy ? phasePct(tr) : (remote.pct || 0);
+    const label = busy ? t('phase_' + tr.phase, { i: tr.i, n: tr.n }) : t('trainingBy', { name: nameOf(remote.by), pct });
+    h += `<div class="tprog"><div class="bar"><span style="width:${pct}%"></span></div><div class="muted"><span class="spin"></span>${E(label)}</div></div>`;
+  }
+  if (tr && tr.error) h += `<div class="err">${E(t(tr.error))}</div>`;
+  if (tr && tr.done) h += `<div class="note ok">✅ ${E(t('trainDone', { n: tr.v }))}</div>`;
+  const models = Object.values(p.models || {}).filter(m => m && m.v).sort((a, b) => b.v - a.v);
+  if (models.length) {
+    h += `<h4>${E(t('modelList'))}</h4><div class="mlist">${models.map(m => `<div class="mitem${m.v === v ? ' cur' : ''}">
+      <b>${E(t('modelItem', { n: m.v, c: m.photos || 0 }))}</b>${m.valAcc != null ? ` · ${E(t('valAcc', { p: m.valAcc }))}` : ''}</div>`).join('')}</div>
+      <p class="muted sm">ⓘ ${E(t('valHelp'))}</p>`;
+  } else if (!leader && !show) {
+    h += `<div class="muted">${E(t('noModelYet'))}</div>`;
+  }
+  return h + '</div>';
 }
 
 function testTab() {
@@ -370,7 +372,7 @@ function labelById(id) { return labelsOf().find(l => l.id === id); }
 function step4() {
   const p = S.project;
   let h = lead('s4Lead');
-  if (!p.modelUrl) return h + `<div class="note warn">${E(t('l_empty'))}</div>`;
+  if (!C.hasModel(p)) return h + `<div class="note warn">${E(t('noModelYet'))}</div>`;
   const tests = imgs('test');
   const rounds = C.evalRounds(p);
   const cur = rounds[rounds.length - 1];
@@ -381,8 +383,9 @@ function step4() {
   h += `<div class="card eval-top">
     <button class="btn primary" data-act="evalrun" ${run ? 'disabled' : ''}>▶ ${E(rounds.length ? t('rerun') : t('runEval'))}</button>
     ${run ? `<div class="muted"><span class="spin"></span>${E(run.i ? t('evaluating', { i: run.i, n: run.n }) : t('loadingModel'))}</div>` : ''}
-    ${run && run.error ? `<div class="err">${E(t('l_loadFail'))}</div>` : ''}
-    ${cur && ms(p.modelAt) > ms(cur.at) ? `<div class="note">${E(t('modelChanged'))}</div>` : ''}
+    ${run && run.error ? `<div class="err">${E(t('modelLoadFail'))}</div>` : ''}
+    ${cur && (cur.modelVersion || 0) !== (p.modelVersion || 0) ? `<div class="note warn">${E(t('notEvaluated', { n: p.modelVersion }))} ${E(t('modelChanged'))}</div>` : ''}
+    ${C.newSinceTraining(p, S.images) ? `<div class="note">${E(t('newSince', { n: C.newSinceTraining(p, S.images) }))}</div>` : ''}
     ${rounds.length > 1 ? `<div class="history"><b>${E(t('history'))}</b> ${rounds.map(r => `<span class="hchip">${E(t('roundN', { n: r.n }))} ${r.pct}%</span>`).join(' → ')}</div>` : ''}
   </div>`;
   if (cur) h += evalResultHtml(cur) + ratingHtml(cur) + causeHtml(cur);
@@ -406,7 +409,7 @@ function evalResultHtml(r) {
       <div><span class="muted">${E(t('answer'))}</span> <b>${E((labelById(w.labelId) || {}).name || '?')}</b></div>
       <div><span class="muted">${E(t('aiSaid'))}</span> <b class="bad">${E((labelById(w.got) || {}).name || '?')}</b> ${w.p}%</div></div>`;
   }).join('');
-  return `<div class="card"><div class="score"><span class="big">${r.pct}%</span><span>${E(t('score', { n: r.total, c: r.correct }))}</span><span class="hchip">${E(t('roundN', { n: r.n }))}</span></div>
+  return `<div class="card"><div class="score"><span class="big">${r.pct}%</span><span>${E(t('score', { n: r.total, c: r.correct }))}</span><span class="hchip">${E(t('roundN', { n: r.n }))}</span>${r.modelVersion ? `<span class="hchip">${E(t('evalWith', { n: r.modelVersion }))}</span>` : ''}</div>
     <div class="ebars">${bars}</div>
     <h4>${E(t('wrongTitle'))}</h4>${wrong ? `<div class="wgrid">${wrong}</div>` : `<div class="ok-msg">${E(t('allRight'))}</div>`}</div>`;
 }
@@ -450,7 +453,7 @@ function tryOneHtml() {
       const pct = Math.round((tr.probs[l.id] || 0) * 100);
       return `<div class="erow"><span>${E(l.name)}</span><div class="bar"><span style="width:${pct}%"></span></div><span class="cnt">${pct}%</span></div>`;
     }).join('')}</div></div>`;
-  } else if (tr && tr.error) res = `<div class="err">${E(t('l_loadFail'))}</div>`;
+  } else if (tr && tr.error) res = `<div class="err">${E(t('modelLoadFail'))}</div>`;
   return `<details class="card" ${tr ? 'open' : ''}><summary><b>${E(t('tryOne'))}</b> <span class="muted">${E(t('tryOneHint'))}</span></summary>
     ${zoneHtml('try', 'x', true)}${res}</details>`;
 }
@@ -470,13 +473,13 @@ function appData() {
     theme: (p.app && p.app.theme) || 'minimal',
     srcLang: p.srcLang || 'ko',
     labels: labelsOf().map(appLabel),
-    modelUrl: p.modelUrl || '', mapping: p.mapping || {},
+    modelVersion: p.modelVersion || 0, modelUrl: p.modelVersion ? '' : (p.modelUrl || ''), mapping: p.mapping || {},
     hiddenPhrases: (S.appDoc && S.appDoc.hiddenPhrases) || {},
   };
 }
 // 공개 뒤에 고친 게 있는지 비교하는 서명(번역 결과는 빼고).
 function appSig(a) {
-  return JSON.stringify({ title: a.title, theme: a.theme, m: a.modelUrl, map: a.mapping, l: a.labels.map(l => [l.id, l.name, l.emoji, l.phrase, l.custom]) });
+  return JSON.stringify({ title: a.title, theme: a.theme, v: a.modelVersion, m: a.modelUrl, map: a.mapping, l: a.labels.map(l => [l.id, l.name, l.emoji, l.phrase, l.custom]) });
 }
 
 function step5() {
@@ -502,7 +505,10 @@ function step5() {
       </div></div>`;
   }).join('')}</div>`;
   const dirty = p.published && p.pubSig !== appSig(a);
-  h += `<div class="card"><div id="s5err" class="err"></div>
+  const evaluated = C.evalRounds(p).some(r => (r.modelVersion || 0) === (p.modelVersion || 0));
+  h += `<div class="card">${p.modelVersion ? `<div class="deploy-model"><b>${E(t('deployModel', { n: p.modelVersion }))}</b></div>
+    ${evaluated ? '' : `<div class="note warn">${E(t('deployNotEval', { n: p.modelVersion }))}</div>`}` : ''}
+    <div id="s5err" class="err"></div>
     <button class="btn primary" data-act="publish" ${S.busy.pub ? 'disabled' : ''}>${E(S.busy.pub ? t('publishing') : (p.published ? t('saveChanges') : t('publish')))}</button>
     ${p.published ? `<div class="url-box"><label>${E(t('publicUrl'))}${dirty ? '' : ' ✅'}</label><div class="row">
       <input id="f-url" readonly value="${E(appUrl())}"><button class="btn sm" data-act="copy">${E(t('copy'))}</button>
@@ -574,6 +580,26 @@ function afterRender() {
   });
 }
 
+// ── 학습 진행 상황 ──
+// 이 PC 화면은 매번, 짝 화면(Firestore)은 10%마다만 알린다(쓰기를 줄이려고).
+let _lastPushed = -1;
+function setPhase(phase, i, n, force = false) {
+  S.training = { phase, i, n };
+  schedule();
+  const pct = phasePct(S.training);
+  if (force || pct - _lastPushed >= 10 || pct < _lastPushed) {
+    _lastPushed = pct;
+    updateDoc(pref(), { training: { state: 'running', by: S.me, phase, pct, at: serverTimestamp() } }).catch(() => {});
+  }
+}
+
+// 평가·연습에 쓸 지금 모델: 실험실에서 학습한 N번 모델(드라이브), 예전 방식이면 티처블머신 링크.
+function currentModel() {
+  const p = S.project;
+  if (p.modelVersion) return loadDriveModel(() => auth.currentUser.getIdToken(), S.pid, p.modelVersion);
+  return loadModel(p.modelUrl, { fresh: true });
+}
+
 // ── 사진 넣기 ──
 async function onPhotos(kind, labelId, files, urls) {
   if (kind === 'try') return tryPhoto(files, urls);
@@ -601,7 +627,7 @@ async function tryPhoto(files, urls) {
     if (!blob) return;
     const photo = URL.createObjectURL(blob);
     S.tryOne = { busy: true, photo }; schedule();
-    const loaded = await loadModel(S.project.modelUrl, { fresh: true });
+    const loaded = await currentModel();
     const img = await imageFromBlob(blob);
     const preds = await predict(loaded, img);
     S.tryOne = { photo, probs: probsByLabel(preds, S.project.mapping || {}) };
@@ -648,7 +674,7 @@ function stop(k) { if (unsub[k]) { unsub[k](); unsub[k] = null; } }
 function watchProject(pid) {
   if (S.pid === pid) return;
   ['project', 'images', 'app'].forEach(stop);
-  S.pid = pid; S.project = null; S.images = []; S.imagesReady = false; S.labels = null; S.link = null;
+  S.pid = pid; S.project = null; S.images = []; S.imagesReady = false; S.labels = null; S.training = null;
   S.evalRun = null; S.tryOne = null; S.drafts = {}; S.viewStep = 0; S.appDoc = null;
   unsub.project = onSnapshot(pref(), snap => {
     if (!snap.exists()) return;
@@ -799,48 +825,41 @@ const actions = {
     inp.click();
   },
   'photo-del'(_, el) { deletePhoto(el.dataset.id, el.dataset.pending === '1'); },
-  async dl(v) {
-    if (!isLeader()) return;
-    const train = imgs('train').filter(i => i.driveId);
-    const since = ms(S.project.lastDownloadAt);
-    const list = v === 'new' ? train.filter(i => ms(i.createdAt) > since) : train;
+  // ③ 학습(대표만): 드라이브의 학습 사진 → 이 PC에서 학습 → 드라이브에 N번 모델로 저장.
+  async train() {
+    if (!isLeader() || (S.training && !S.training.done && !S.training.error)) return;
+    const labels = labelsOf();
+    const v = (S.project.modelVersion || 0) + 1;
+    const list = imgs('train').filter(i => i.driveId && labels.some(l => l.id === i.labelId));
     if (!list.length) return;
-    S.busy.dl = true; schedule();
+    const getToken = () => auth.currentUser.getIdToken();
+    setPhase('photos', 0, list.length, true);
     try {
-      // 파일 이름은 영문으로 — 브라우저·PC에 따라 한글 이름이 'download'로 바뀌는 경우가 있다.
-      const name = `ai_photos${S.project.round > 1 ? '_' + S.project.round : ''}${v === 'new' ? '_new' : ''}.zip`;
-      await downloadZip(() => auth.currentUser.getIdToken(), S.pid, list.map(i => i.driveId), name);
-      await safeUpdate(pref(), { lastDownloadAt: serverTimestamp() });
-      toast(t('dlDone'), 'ok');
+      const blobs = await fetchTrainPhotos(getToken, S.pid, list.map(i => i.driveId), (i, n) => setPhase('photos', i, n));
+      const used = list.filter(i => blobs.has(i.driveId));
+      const res = await trainModel({
+        labelIds: labels.map(l => l.id),
+        samples: used.map(i => ({ labelId: i.labelId, blob: blobs.get(i.driveId) })),
+        onPhase: (ph, i, n) => setPhase(ph, i, n),
+      });
+      setPhase('save', 0, 1, true);
+      await saveModelToDrive(getToken, S.pid, v, res.files);
+      rememberModel(S.pid, v, res.loaded);
+      const counts = {};
+      used.forEach(i => { counts[i.labelId] = (counts[i.labelId] || 0) + 1; });
+      await updateDoc(pref(), {
+        modelVersion: v, mapping: C.identityMapping(labels), mappingOk: true,
+        trainedIds: used.map(i => i.id), modelAt: serverTimestamp(),
+        [`models.v${v}`]: { v, at: serverTimestamp(), photos: used.length, counts, valAcc: res.valAcc != null ? Math.round(res.valAcc * 100) : null },
+        training: { state: 'done', by: S.me, at: serverTimestamp() },
+      });
+      S.training = { done: true, v };
+      toast(t('trainDone', { n: v }), 'ok');
     } catch (e) {
-      toast(e.code === 'notConfigured' ? t('driveNotSet') : t('dlFail'), 'err');
+      console.error(e);
+      S.training = { error: e.code === 'baseFail' ? 'baseFail' : 'trainFail' };
+      updateDoc(pref(), { training: { state: 'error', by: S.me, at: serverTimestamp() } }).catch(() => {});
     }
-    S.busy.dl = false; schedule();
-  },
-  relink() { S.link = { classes: null }; schedule(); },
-  async linkcheck() {
-    const raw = (S.drafts.link || '').trim();
-    const parsed = C.parseModelUrl(raw);
-    if (parsed.error) { S.link = { error: parsed.error }; return schedule(); }
-    S.busy.link = true; S.link = null; schedule();
-    try {
-      const { labels: classes } = await fetchMetadata(parsed.url);
-      S.link = { url: parsed.url, id: parsed.id, classes, mapping: C.autoMapClasses(classes, labelsOf()) };
-    } catch (e) {
-      S.link = { error: e.code && t('l_' + e.code) !== 'l_' + e.code ? e.code : 'loadFail' };
-    }
-    S.busy.link = false; schedule();
-  },
-  async mapsave() {
-    const L = S.link;
-    if (!L || !L.classes) return;
-    const chk = C.checkMapping(L.classes, labelsOf(), L.mapping);
-    if (!chk.ok) return;
-    const ok = await safeUpdate(pref(), {
-      modelUrl: L.url, modelId: L.id, modelClasses: L.classes, mapping: L.mapping, mappingOk: true,
-      modelAt: serverTimestamp(), updatedAt: serverTimestamp(),
-    });
-    if (ok) { S.link = null; delete S.drafts.link; toast(t('linked'), 'ok'); }
     schedule();
   },
   async evalrun() {
@@ -848,7 +867,7 @@ const actions = {
     if (!tests.length || S.evalRun) return;
     S.evalRun = { i: 0, n: tests.length }; schedule();
     try {
-      const loaded = await loadModel(S.project.modelUrl, { fresh: true });
+      const loaded = await currentModel();
       const mapping = S.project.mapping || {};
       const results = [];
       for (const im of tests) {
@@ -866,7 +885,7 @@ const actions = {
         [`evals.r${n}`]: {
           n, at: serverTimestamp(), total: sc.total, correct: sc.correct, pct: sc.pct, per: sc.per,
           wrong: results.filter(r => !r.ok).map(({ imgId, labelId, got, p }) => ({ imgId, labelId, got, p })),
-          modelId: S.project.modelId || '', stars: {}, cause: [], causeText: '', fix: '',
+          modelVersion: S.project.modelVersion || 0, stars: {}, cause: [], causeText: '', fix: '',
         },
       });
       S.evalRun = null; S.drafts.star = null; delete S.drafts.reason; delete S.drafts.causeText; delete S.drafts.fix;
@@ -940,7 +959,7 @@ const actions = {
       const pub = {
         title: fresh.title.trim().slice(0, C.TITLE_MAX), theme: fresh.theme, srcLang: fresh.srcLang,
         labels: fresh.labels.map(({ id, name, tr, emoji, phrase, custom, customLang, customTr }) => ({ id, name, tr, emoji, phrase, custom, customLang, customTr })),
-        modelUrl: fresh.modelUrl, mapping: fresh.mapping, published: true, updatedAt: serverTimestamp(),
+        modelVersion: fresh.modelVersion, modelUrl: fresh.modelUrl, mapping: fresh.mapping, published: true, updatedAt: serverTimestamp(),
       };
       await setDoc(doc(db, 'ai_apps', S.pid), pub, { merge: true });
       await updateDoc(pref(), { ...upd, published: true, pubSig: appSig(fresh), 'app.publishedAt': serverTimestamp() });
@@ -1047,7 +1066,6 @@ function bindEvents() {
       const labels = labelsOf().map(l => l.id === el.dataset.id ? { ...l, owner: el.value } : l);
       safeUpdate(pref(), { labels });
     }
-    if (f === 'map' && S.link) { S.link.mapping = { ...S.link.mapping, [el.dataset.id]: el.value }; schedule(); }
   });
   main.addEventListener('input', e => {
     const el = e.target;

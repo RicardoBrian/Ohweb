@@ -1,7 +1,25 @@
 // AI 실험실 4개 언어 문장 — 한국어·영어·중국어(간체)·러시아어.
 // 화면 문장은 전부 여기서 꺼내 쓴다. 키가 빠지면 한국어로, 그것도 없으면 키를 보여 준다.
-
 const ko = {
+  trainTitle: '학습하기', trainData: '학습에 쓸 사진', trainStart: '학습 시작', retrain: '다시 학습 ({n}번 모델 만들기)',
+  phase_photos: '사진 불러오는 중 {i} / {n}', phase_base: '학습 준비 중(기본 모델 받는 중)...',
+  phase_extract: '사진 특징 뽑는 중 {i} / {n}', phase_train: '학습 중 {i} / {n} 에포크', phase_save: '모델 저장 중...',
+  trainDone: '{n}번 모델을 만들었어요!', trainFail: '학습하지 못했어요. 다시 눌러 주세요.',
+  baseFail: '학습 준비 파일(기본 모델)을 받지 못했어요. 학교 인터넷이 storage.googleapis.com을 막고 있는지 선생님께 알려 주세요.',
+  pendingFirst: '아직 저장 중인 사진이 {n}장 있어요. 저장이 끝나면 학습할 수 있어요.',
+  trainingBy: '대표({name})가 학습하는 중이에요… {pct}%',
+  paramsTitle: '학습 설정 (티처블머신 기본값)',
+  params: {
+    epochs: { name: '에포크', help: '모든 학습 사진을 몇 번 반복해서 볼지예요. 많을수록 꼼꼼히 배우지만 오래 걸리고, 너무 많으면 학습 사진만 외워 버릴 수 있어요.' },
+    batch: { name: '배치 크기', help: '사진을 몇 장씩 묶어 보고 한 번 고칠지예요. 16이면 16장을 보고 한 번 고쳐요.' },
+    lr: { name: '학습률', help: '틀렸을 때 한 번에 얼마나 크게 고칠지예요. 너무 크면 들쭉날쭉하고, 너무 작으면 아주 천천히 배워요.' },
+  },
+  valAcc: '학습 확인 점수 {p}%', valHelp: '학습 사진 중 일부(15%)를 떼어 두었다가 맞혀 본 점수예요. 진짜 실력은 ④ 평가에서 새 사진으로 확인해요.',
+  modelList: '만든 모델', modelItem: '{n}번 모델 · 사진 {c}장',
+  newSince: '마지막 학습 뒤 새 사진 {n}장이 들어왔어요. 다시 학습해야 반영돼요.',
+  notEvaluated: '{n}번 모델은 아직 평가하지 않았어요.', evalWith: '{n}번 모델로 평가',
+  deployModel: '공개할 모델: {n}번', deployNotEval: '{n}번 모델은 아직 평가하지 않았어요. ④에서 평가해 보는 것을 권해요.',
+  noModelYet: '아직 모델이 없어요. ③ 학습에서 대표가 학습을 시작해요.', modelLoadFail: '모델을 불러오지 못했어요. 잠시 후 다시 눌러 주세요.',
   appName: 'AI 실험실',
   s1: '문제 정의', s2: '데이터 수집', s3: '학습', s4: '평가', s5: '배포',
   loading: '불러오는 중...', error: '문제가 생겼어요', retry: '다시 시도', save: '저장', cancel: '취소',
@@ -15,7 +33,6 @@ const ko = {
   newModelConfirm: '새 모델을 만들까요? 지금 모델과 웹앱은 그대로 남아요.',
   stepOpened: '다음 단계가 열렸어요!', go: '가 보기', locked: '아직 열리지 않았어요',
   leaderOnly: '이 부분은 대표({name})가 해요.',
-
   s1Lead: 'AI에게 무엇을 구분하게 할지 정해요',
   topicLabel: '무엇을 분류하나요?', topicPh: '예: 과일, 탈것, 학용품',
   labelsLabel: '레이블 (AI가 고를 답)', labelPh: '레이블 이름', addLabel: '+ 레이블 추가', owner: '모을 사람',
@@ -30,7 +47,6 @@ const ko = {
   e_noOwner: '모을 사람을 정하지 않은 레이블이 있어요.',
   e_fewerThanMembers: '짝 인원만큼 레이블을 만들어 주세요. 한 사람이 최소 한 개는 맡아요.',
   e_memberWithout: '레이블을 하나도 맡지 않은 사람이 있어요.',
-
   s2Lead: '내가 맡은 레이블의 사진을 모아요',
   howTo: '사진 넣는 방법',
   howToSteps: ['구글 이미지 창과 이 창을 나란히 놓아요. (Windows 키 + ← / →)', '구글 이미지에서 사진을 클릭해 크게 띄워요.', '큰 사진을 내 레이블 칸으로 끌어다 놓아요.'],
@@ -51,40 +67,20 @@ const ko = {
   changeOwner: '담당', driveNotSet: '사진 저장소(구글 드라이브)가 아직 연결되지 않았어요. 선생님께 알려 주세요.',
   deleteConfirm: '이 사진을 지울까요?', s2Next: '학습하러 가기', notMine: '{name}이(가) 모으는 레이블이에요.',
   addPhotos: '사진 넣기',
-
-  s3Lead: '모은 사진으로 티처블머신에서 AI를 학습시켜요',
+  s3Lead: '모은 사진으로 AI를 학습시켜요',
   tabTrain: '모델 만들기', tabTest: '테스트 사진 모으기',
   s3TestLead: '학습에 쓰지 않은 새 사진을 모아요. 다음 단계에서 AI가 이 사진을 맞히는지 확인해요.',
   s3TestNote: '학습용으로 넣은 사진과 다른 사진이어야 해요.',
   testCount: '테스트 사진 {c}장 (레이블마다 {m}장 이상 권장)',
-  dlTitle: '① 사진 내려받기', dlAll: '전체 사진 내려받기 ({n}장)', dlNew: '새로 넣은 사진만 내려받기 ({n}장)',
-  dlWorking: '압축 파일을 만드는 중...', dlDone: '내려받았어요. 압축을 풀어 주세요.',
-  dlFail: '내려받지 못했어요. 잠시 후 다시 눌러 주세요.',
-  guideTitle: '② 티처블머신에서 학습하기',
-  guide: [
-    '아래 [티처블머신 열기]를 눌러요.',
-    '클래스 이름을 우리 레이블 이름과 똑같이 바꿔요. 레이블이 3개 이상이면 [클래스 추가]를 눌러요.',
-    '내려받은 압축 파일을 풀어요. (오른쪽 클릭 → [압축 풀기])',
-    '각 클래스의 [업로드] → [파일에서 이미지 선택] → 그 레이블 폴더의 사진을 모두 골라요.',
-    '[모델 학습시키기]를 누르고 끝날 때까지 기다려요.',
-    '[모델 내보내기] → [업로드(공유 가능한 링크)] → [모델 업로드]를 눌러요.',
-    '나온 링크를 [복사]해서 아래에 붙여넣어요.',
-  ],
-  openTM: '티처블머신 열기',
-  keepOpen: '티처블머신 창은 수업이 끝날 때까지 닫지 마세요. 사진을 보충해 다시 학습할 때 필요해요.',
-  linkTitle: '③ 모델 링크 붙여넣기', linkPh: 'https://teachablemachine.withgoogle.com/models/...', linkCheck: '확인',
-  l_empty: '링크를 붙여넣어 주세요.',
-  l_downloaded: '[다운로드]가 아니라 [업로드(공유 가능한 링크)]를 눌러야 해요.',
-  l_notfound: '티처블머신 모델 링크를 찾지 못했어요. [모델 업로드] 뒤에 나온 링크를 복사해 주세요.',
-  l_notimage: '이미지 프로젝트로 만든 모델이 아니에요.', l_fewclasses: '클래스가 2개 이상이어야 해요.',
-  l_badmeta: '모델 정보를 읽지 못했어요.', l_loadFail: '모델을 불러오지 못했어요. 업로드가 끝났는지 확인해 주세요.',
-  mapTitle: '모델의 클래스 ↔ 우리 레이블 연결', mapHint: '이름이 다른 클래스는 어떤 레이블인지 골라 주세요.',
-  mapPick: '레이블 고르기', mapDefault: '"{c}"는 기본 이름이에요. 어떤 레이블인지 골라 주세요.',
-  mapDup: '같은 레이블을 두 번 골랐어요.', mapMissing: '아직 고르지 않은 클래스가 있어요.',
-  mapUnused: '모델에 없는 레이블: {list}', mapSave: '연결 저장',
-  linked: '모델이 연결됐어요!', relink: '모델 다시 연결', modelClasses: '모델의 클래스 {n}개',
-  s3Next: '평가하러 가기',
 
+
+
+
+
+
+
+
+  s3Next: '평가하러 가기',
   s4Lead: '테스트 사진으로 AI가 잘 맞히는지 확인해요',
   runEval: '평가 시작', rerun: '다시 평가하기 (새 회차)', loadingModel: 'AI 모델을 불러오는 중...',
   evaluating: '{i} / {n}장 확인하는 중...', noTests: '테스트 사진이 없어요. ③ 학습 단계에서 테스트 사진을 먼저 모아 주세요.',
@@ -100,9 +96,8 @@ const ko = {
   fixPh: '예: 바위 사진을 다른 배경으로 10장 더 모은다', typing: '{name}이(가) 쓰는 중...', saved: '저장됨',
   goCollect: '사진 보충하러 가기 (②)', goDeploy: '배포하러 가기 (⑤)',
   needStarToDeploy: '내 별점과 이유를 저장하면 배포 단계가 열려요.',
-  retrainHint: '사진을 보충했다면, 대표가 티처블머신에 새 사진을 넣고 다시 학습 → 다시 업로드한 뒤 [다시 평가하기]를 눌러요.',
-  modelChanged: '모델이 다시 연결됐어요. [다시 평가하기]로 새 회차를 시작해요.',
-
+  retrainHint: '사진을 보충했다면 대표가 ③에서 [다시 학습]을 누른 뒤, 여기서 [다시 평가하기]를 눌러요.',
+  modelChanged: '새 모델이 만들어졌어요. [다시 평가하기]로 새 회차를 시작해요.',
   s5Lead: '우리 AI를 웹앱으로 만들어 친구들에게 공개해요',
   appTitle: '웹앱 제목', appTitlePh: '예: 과일 판별기', design: '디자인',
   themes: { minimal: '미니멀', bw: '블랙앤화이트', glass: '리퀴드글래스', neon: '네온', warm: '따뜻한 느낌' },
@@ -118,19 +113,35 @@ const ko = {
   postBody: '우리 짝이 만든 AI 웹앱이에요! 아래 주소에서 사진을 넣어 테스트해 보고, 댓글로 평가해 주세요.\n🔗 {url}\n분류: {labels}',
   hiddenNote: '선생님이 이 문구를 숨겨서 기본 문구로 보여요.', e_title: '웹앱 제목을 써 주세요.',
   sampleNote: '미리보기 결과는 예시예요.',
-
   boardTitle: '우리 반 현황판', boardEmpty: '아직 짝이 없어요.', photos: '사진', done: '완성!',
   viewApp: '웹앱 보기', needPhotos: '사진이 더 필요해요', accuracy: '정확도 {p}%', modelReady: '모델 연결됨',
   stepNow: '{n}단계 · {name}',
-
   appLoading: 'AI를 불러오는 중...', notFound: '웹앱을 찾을 수 없어요.', notPublished: '아직 공개되지 않은 웹앱이에요.',
   modelFail: 'AI 모델을 불러오지 못했어요. 잠시 후 다시 열어 주세요.',
   choosePhoto: '사진 넣기', dropPhoto: '사진을 끌어다 놓거나, 눌러서 고르거나, Ctrl+V로 붙여넣으세요.',
   again: '다른 사진 넣기', probability: 'AI가 생각한 가능성', madeWith: 'OHinfo AI 실험실에서 만들었어요',
   thinking: 'AI가 생각하는 중...',
 };
-
 const en = {
+  trainTitle: 'Train', trainData: 'Photos for training', trainStart: 'Start training', retrain: 'Train again (make model #{n})',
+  phase_photos: 'Loading photos {i} / {n}', phase_base: 'Getting ready (loading the base model)...',
+  phase_extract: 'Reading photo features {i} / {n}', phase_train: 'Training {i} / {n} epochs', phase_save: 'Saving the model...',
+  trainDone: 'Model #{n} is ready!', trainFail: "Training didn't finish. Please try again.",
+  baseFail: "Couldn't load the base model. Ask your teacher whether the school network blocks storage.googleapis.com.",
+  pendingFirst: '{n} photos are still saving. You can train when they finish.',
+  trainingBy: 'The leader ({name}) is training… {pct}%',
+  paramsTitle: 'Training settings (Teachable Machine defaults)',
+  params: {
+    epochs: { name: 'Epochs', help: 'How many times the AI looks at all training photos. More means more careful learning but takes longer, and too many can make it just memorize the photos.' },
+    batch: { name: 'Batch size', help: 'How many photos it looks at before each correction. 16 means it corrects itself after every 16 photos.' },
+    lr: { name: 'Learning rate', help: 'How big each correction is. Too big makes it jumpy; too small makes it learn very slowly.' },
+  },
+  valAcc: 'Training check score {p}%', valHelp: 'Score on a part (15%) of the training photos set aside. The real test is step ④ with new photos.',
+  modelList: 'Models made', modelItem: 'Model #{n} · {c} photos',
+  newSince: '{n} new photos since the last training. Train again to include them.',
+  notEvaluated: 'Model #{n} has not been evaluated yet.', evalWith: 'Evaluated with model #{n}',
+  deployModel: 'Model to publish: #{n}', deployNotEval: 'Model #{n} has not been evaluated. Try evaluating it in step ④.',
+  noModelYet: 'No model yet. The leader starts training in step ③.', modelLoadFail: "Couldn't load the model. Please try again shortly.",
   appName: 'AI Lab',
   s1: 'Define', s2: 'Collect', s3: 'Train', s4: 'Evaluate', s5: 'Deploy',
   loading: 'Loading...', error: 'Something went wrong', retry: 'Try again', save: 'Save', cancel: 'Cancel',
@@ -144,7 +155,6 @@ const en = {
   newModelConfirm: 'Make a new model? The current model and web app will stay as they are.',
   stepOpened: 'The next step is open!', go: 'Go', locked: 'Not open yet',
   leaderOnly: 'The leader ({name}) does this part.',
-
   s1Lead: 'Decide what the AI will tell apart',
   topicLabel: 'What will it classify?', topicPh: 'e.g. fruit, vehicles, school supplies',
   labelsLabel: 'Labels (answers the AI can choose)', labelPh: 'Label name', addLabel: '+ Add label', owner: 'Collector',
@@ -159,7 +169,6 @@ const en = {
   e_noOwner: 'A label has no collector.',
   e_fewerThanMembers: 'Make at least as many labels as pair members. Everyone takes at least one.',
   e_memberWithout: 'Someone has no label to collect.',
-
   s2Lead: 'Collect photos for your labels',
   howTo: 'How to add photos',
   howToSteps: ['Put the Google Images window and this window side by side. (Windows key + ← / →)', 'On Google Images, click a photo to open it large.', 'Drag the large photo into your label box.'],
@@ -180,40 +189,20 @@ const en = {
   changeOwner: 'Collector', driveNotSet: 'Photo storage (Google Drive) is not connected yet. Please tell your teacher.',
   deleteConfirm: 'Delete this photo?', s2Next: 'Go to training', notMine: '{name} collects this label.',
   addPhotos: 'Add photos',
-
-  s3Lead: 'Train the AI on Teachable Machine with your photos',
+  s3Lead: 'Train the AI with the photos you collected',
   tabTrain: 'Make the model', tabTest: 'Collect test photos',
   s3TestLead: "Collect new photos that aren't used for training. In the next step, we check if the AI gets them right.",
   s3TestNote: 'They must be different from the training photos.',
   testCount: '{c} test photos ({m}+ per label recommended)',
-  dlTitle: '① Download photos', dlAll: 'Download all photos ({n})', dlNew: 'Download only new photos ({n})',
-  dlWorking: 'Making the zip file...', dlDone: 'Downloaded. Please unzip it.',
-  dlFail: "Couldn't download. Try again in a moment.",
-  guideTitle: '② Train on Teachable Machine',
-  guide: [
-    'Click [Open Teachable Machine] below.',
-    'Rename each class to match your labels exactly. Click [Add a class] if you have 3 or more labels.',
-    'Unzip the downloaded file. (Right-click → [Extract all])',
-    "For each class: [Upload] → [Choose images from your files] → select all photos in that label's folder.",
-    'Click [Train Model] and wait until it finishes.',
-    '[Export Model] → [Upload (shareable link)] → [Upload my model].',
-    '[Copy] the link and paste it below.',
-  ],
-  openTM: 'Open Teachable Machine',
-  keepOpen: "Keep the Teachable Machine tab open until class ends. You'll need it to retrain.",
-  linkTitle: '③ Paste the model link', linkPh: 'https://teachablemachine.withgoogle.com/models/...', linkCheck: 'Check',
-  l_empty: 'Paste the link.',
-  l_downloaded: 'Click [Upload (shareable link)], not [Download].',
-  l_notfound: "Couldn't find a Teachable Machine model link. Copy the link shown after [Upload my model].",
-  l_notimage: 'This is not an image project model.', l_fewclasses: 'The model needs 2 or more classes.',
-  l_badmeta: "Couldn't read the model info.", l_loadFail: "Couldn't load the model. Check that the upload finished.",
-  mapTitle: 'Connect model classes ↔ our labels', mapHint: 'If a class name is different, choose which label it is.',
-  mapPick: 'Choose a label', mapDefault: '"{c}" is a default name. Choose which label it is.',
-  mapDup: 'The same label is chosen twice.', mapMissing: 'Some classes have no label yet.',
-  mapUnused: 'Labels not in the model: {list}', mapSave: 'Save connection',
-  linked: 'Model connected!', relink: 'Reconnect model', modelClasses: '{n} classes in the model',
-  s3Next: 'Go to evaluation',
 
+
+
+
+
+
+
+
+  s3Next: 'Go to evaluation',
   s4Lead: 'Check how well the AI does on the test photos',
   runEval: 'Start evaluation', rerun: 'Evaluate again (new round)', loadingModel: 'Loading the AI model...',
   evaluating: 'Checking {i} / {n}...', noTests: 'No test photos. Collect test photos in step ③ first.',
@@ -229,9 +218,8 @@ const en = {
   fixPh: 'e.g. add 10 more rock photos with different backgrounds', typing: '{name} is typing...', saved: 'Saved',
   goCollect: 'Add more photos (②)', goDeploy: 'Go to deploy (⑤)',
   needStarToDeploy: 'Save your stars and reason to open the deploy step.',
-  retrainHint: 'If you added photos, the leader adds them in Teachable Machine, trains and uploads again, then press [Evaluate again].',
-  modelChanged: 'The model was reconnected. Start a new round with [Evaluate again].',
-
+  retrainHint: 'If you added photos, the leader presses [Train again] in step ③, then press [Evaluate again] here.',
+  modelChanged: 'A new model was made. Start a new round with [Evaluate again].',
   s5Lead: 'Turn your AI into a web app and share it with friends',
   appTitle: 'Web app title', appTitlePh: 'e.g. Fruit Finder', design: 'Design',
   themes: { minimal: 'Minimal', bw: 'Black & White', glass: 'Liquid Glass', neon: 'Neon', warm: 'Warm' },
@@ -247,19 +235,35 @@ const en = {
   postBody: 'This is an AI web app our pair made! Open the link, test it with photos, and leave a comment.\n🔗 {url}\nClasses: {labels}',
   hiddenNote: 'Your teacher hid this message, so the default message is shown.', e_title: 'Write a web app title.',
   sampleNote: 'The preview result is just an example.',
-
   boardTitle: 'Class board', boardEmpty: 'No pairs yet.', photos: 'Photos', done: 'Done!',
   viewApp: 'View app', needPhotos: 'Needs more photos', accuracy: 'Accuracy {p}%', modelReady: 'Model connected',
   stepNow: 'Step {n} · {name}',
-
   appLoading: 'Loading the AI...', notFound: "Can't find this web app.", notPublished: 'This web app is not published yet.',
   modelFail: "Couldn't load the AI model. Please try again later.",
   choosePhoto: 'Add a photo', dropPhoto: 'Drag a photo here, click to choose one, or paste with Ctrl+V.',
   again: 'Try another photo', probability: 'How sure the AI is', madeWith: 'Made in OHinfo AI Lab',
   thinking: 'The AI is thinking...',
 };
-
 const zh = {
+  trainTitle: '训练', trainData: '用于训练的照片', trainStart: '开始训练', retrain: '重新训练（制作第{n}个模型）',
+  phase_photos: '正在加载照片 {i} / {n}', phase_base: '准备中（正在加载基础模型）...',
+  phase_extract: '正在提取照片特征 {i} / {n}', phase_train: '训练中 {i} / {n} 轮', phase_save: '正在保存模型...',
+  trainDone: '第{n}个模型做好了！', trainFail: '训练没有完成。请再点一次。',
+  baseFail: '无法加载基础模型。请告诉老师检查学校网络是否屏蔽了 storage.googleapis.com。',
+  pendingFirst: '还有{n}张照片在保存中。保存完成后就可以训练。',
+  trainingBy: '组长（{name}）正在训练… {pct}%',
+  paramsTitle: '训练设置（Teachable Machine 默认值）',
+  params: {
+    epochs: { name: '训练轮数（Epoch）', help: '把所有训练照片反复看几遍。越多学得越仔细但更慢，太多可能只会死记训练照片。' },
+    batch: { name: '批次大小', help: '每看几张照片修正一次。16 就是每看16张修正一次。' },
+    lr: { name: '学习率', help: '每次出错时修正的幅度。太大会忽高忽低，太小会学得很慢。' },
+  },
+  valAcc: '训练检查分数 {p}%', valHelp: '从训练照片中留出一部分（15%）来测试的分数。真正的能力要在④评估中用新照片检查。',
+  modelList: '做好的模型', modelItem: '第{n}个模型 · 照片{c}张',
+  newSince: '上次训练后新增了{n}张照片。重新训练才会用上。',
+  notEvaluated: '第{n}个模型还没有评估。', evalWith: '用第{n}个模型评估',
+  deployModel: '要发布的模型：第{n}个', deployNotEval: '第{n}个模型还没有评估。建议先在④中评估。',
+  noModelYet: '还没有模型。组长在③训练中开始训练。', modelLoadFail: '无法加载模型。请稍后再试。',
   appName: 'AI实验室',
   s1: '定义问题', s2: '收集数据', s3: '训练', s4: '评估', s5: '发布',
   loading: '加载中...', error: '出现问题了', retry: '重试', save: '保存', cancel: '取消',
@@ -273,7 +277,6 @@ const zh = {
   newModelConfirm: '要做新模型吗？现在的模型和网页应用会保留。',
   stepOpened: '下一步已经开放了！', go: '去看看', locked: '还没开放',
   leaderOnly: '这部分由组长（{name}）来做。',
-
   s1Lead: '决定让AI区分什么',
   topicLabel: '要分类什么？', topicPh: '例如：水果、交通工具、文具',
   labelsLabel: '标签（AI可以选的答案）', labelPh: '标签名称', addLabel: '+ 添加标签', owner: '负责收集',
@@ -288,7 +291,6 @@ const zh = {
   e_noOwner: '有标签还没定负责人。',
   e_fewerThanMembers: '标签数量要不少于组员人数，每人至少负责一个。',
   e_memberWithout: '有人一个标签也没负责。',
-
   s2Lead: '收集自己负责的标签的照片',
   howTo: '添加照片的方法',
   howToSteps: ['把谷歌图片窗口和这个窗口并排放。（Windows键 + ← / →）', '在谷歌图片里点击照片，让它变大。', '把大照片拖到自己的标签框里。'],
@@ -309,40 +311,20 @@ const zh = {
   changeOwner: '负责人', driveNotSet: '照片存储（谷歌云端硬盘）还没连接。请告诉老师。',
   deleteConfirm: '要删除这张照片吗？', s2Next: '去训练', notMine: '这是{name}收集的标签。',
   addPhotos: '添加照片',
-
-  s3Lead: '用收集的照片在Teachable Machine里训练AI',
+  s3Lead: '用收集的照片训练AI',
   tabTrain: '做模型', tabTest: '收集测试照片',
   s3TestLead: '收集没用于训练的新照片。下一步会检查AI能不能认出它们。',
   s3TestNote: '必须是和训练照片不同的照片。',
   testCount: '测试照片{c}张（建议每个标签{m}张以上）',
-  dlTitle: '① 下载照片', dlAll: '下载全部照片（{n}张）', dlNew: '只下载新加的照片（{n}张）',
-  dlWorking: '正在制作压缩文件...', dlDone: '已下载。请解压。',
-  dlFail: '下载失败。请稍后再点一次。',
-  guideTitle: '② 在Teachable Machine里训练',
-  guide: [
-    '点击下面的[打开Teachable Machine]。',
-    '把类别名称改成和我们的标签完全一样。标签有3个以上时，点击[添加类别]。',
-    '解压下载的压缩文件。（右键 → [全部解压缩]）',
-    '每个类别：[上传] → [从文件中选择图片] → 选中该标签文件夹里的全部照片。',
-    '点击[训练模型]，等到完成。',
-    '[导出模型] → [上传（可分享的链接）] → [上传我的模型]。',
-    '[复制]出现的链接，粘贴到下面。',
-  ],
-  openTM: '打开Teachable Machine',
-  keepOpen: '下课前不要关闭Teachable Machine窗口。补充照片重新训练时还要用。',
-  linkTitle: '③ 粘贴模型链接', linkPh: 'https://teachablemachine.withgoogle.com/models/...', linkCheck: '确认',
-  l_empty: '请粘贴链接。',
-  l_downloaded: '要点[上传（可分享的链接）]，不是[下载]。',
-  l_notfound: '没找到Teachable Machine模型链接。请复制[上传我的模型]后出现的链接。',
-  l_notimage: '这不是图像项目的模型。', l_fewclasses: '模型需要2个以上的类别。',
-  l_badmeta: '无法读取模型信息。', l_loadFail: '无法加载模型。请确认上传已完成。',
-  mapTitle: '连接模型类别 ↔ 我们的标签', mapHint: '名称不同的类别，请选择它是哪个标签。',
-  mapPick: '选择标签', mapDefault: '"{c}"是默认名称。请选择它是哪个标签。',
-  mapDup: '同一个标签选了两次。', mapMissing: '还有没选标签的类别。',
-  mapUnused: '模型里没有的标签：{list}', mapSave: '保存连接',
-  linked: '模型已连接！', relink: '重新连接模型', modelClasses: '模型有{n}个类别',
-  s3Next: '去评估',
 
+
+
+
+
+
+
+
+  s3Next: '去评估',
   s4Lead: '用测试照片检查AI认得准不准',
   runEval: '开始评估', rerun: '再评估一次（新一轮）', loadingModel: '正在加载AI模型...',
   evaluating: '正在检查 {i} / {n}张...', noTests: '没有测试照片。请先在③训练步骤收集测试照片。',
@@ -358,9 +340,8 @@ const zh = {
   fixPh: '例如：用不同背景再收集10张石头照片', typing: '{name}正在输入...', saved: '已保存',
   goCollect: '去补充照片（②）', goDeploy: '去发布（⑤）',
   needStarToDeploy: '保存我的星级和理由后，发布步骤就会开放。',
-  retrainHint: '如果补充了照片，组长要把新照片放进Teachable Machine，重新训练并再次上传，然后点[再评估一次]。',
-  modelChanged: '模型已重新连接。请点[再评估一次]开始新一轮。',
-
+  retrainHint: '如果补充了照片，组长在③中点[重新训练]，然后在这里点[再评估一次]。',
+  modelChanged: '做好了新模型。请点[再评估一次]开始新一轮。',
   s5Lead: '把我们的AI做成网页应用，分享给同学',
   appTitle: '网页应用名称', appTitlePh: '例如：水果识别器', design: '设计',
   themes: { minimal: '极简', bw: '黑白', glass: '液态玻璃', neon: '霓虹', warm: '温暖' },
@@ -376,19 +357,35 @@ const zh = {
   postBody: '这是我们组做的AI网页应用！打开下面的链接放照片测试一下，然后在评论里评价吧。\n🔗 {url}\n分类：{labels}',
   hiddenNote: '老师隐藏了这句话，所以显示默认语句。', e_title: '请写网页应用名称。',
   sampleNote: '预览结果只是示例。',
-
   boardTitle: '全班进度', boardEmpty: '还没有小组。', photos: '照片', done: '完成！',
   viewApp: '看网页应用', needPhotos: '还需要更多照片', accuracy: '准确率{p}%', modelReady: '模型已连接',
   stepNow: '第{n}步 · {name}',
-
   appLoading: '正在加载AI...', notFound: '找不到这个网页应用。', notPublished: '这个网页应用还没发布。',
   modelFail: '无法加载AI模型。请稍后再打开。',
   choosePhoto: '放入照片', dropPhoto: '把照片拖到这里，点击选择，或按 Ctrl+V 粘贴。',
   again: '换一张照片', probability: 'AI认为的可能性', madeWith: '在OHinfo AI实验室制作',
   thinking: 'AI正在思考...',
 };
-
 const ru = {
+  trainTitle: 'Обучение', trainData: 'Фото для обучения', trainStart: 'Начать обучение', retrain: 'Обучить заново (модель №{n})',
+  phase_photos: 'Загружаем фото {i} / {n}', phase_base: 'Подготовка (загрузка базовой модели)...',
+  phase_extract: 'Извлекаем признаки фото {i} / {n}', phase_train: 'Обучение {i} / {n} эпох', phase_save: 'Сохраняем модель...',
+  trainDone: 'Модель №{n} готова!', trainFail: 'Обучение не завершилось. Попробуй ещё раз.',
+  baseFail: 'Не удалось загрузить базовую модель. Попроси учителя проверить, не блокирует ли школьная сеть storage.googleapis.com.',
+  pendingFirst: 'Ещё сохраняются фото: {n}. Обучать можно после сохранения.',
+  trainingBy: 'Лидер ({name}) обучает… {pct}%',
+  paramsTitle: 'Настройки обучения (по умолчанию Teachable Machine)',
+  params: {
+    epochs: { name: 'Эпохи', help: 'Сколько раз ИИ просматривает все фото для обучения. Больше — тщательнее, но дольше; слишком много — ИИ просто запомнит фото.' },
+    batch: { name: 'Размер пакета', help: 'Сколько фото ИИ смотрит перед каждым исправлением. 16 — исправляет себя после каждых 16 фото.' },
+    lr: { name: 'Скорость обучения', help: 'Насколько сильно ИИ исправляется за раз. Слишком большая — скачет, слишком маленькая — учится очень медленно.' },
+  },
+  valAcc: 'Проверочный балл {p}%', valHelp: 'Балл на отложенной части (15%) фото для обучения. Настоящая проверка — на шаге ④ с новыми фото.',
+  modelList: 'Сделанные модели', modelItem: 'Модель №{n} · фото: {c}',
+  newSince: 'После обучения добавлено новых фото: {n}. Обучи заново, чтобы их учесть.',
+  notEvaluated: 'Модель №{n} ещё не оценена.', evalWith: 'Оценка моделью №{n}',
+  deployModel: 'Публикуемая модель: №{n}', deployNotEval: 'Модель №{n} ещё не оценена. Лучше сначала оценить её на шаге ④.',
+  noModelYet: 'Модели пока нет. Лидер начинает обучение на шаге ③.', modelLoadFail: 'Не удалось загрузить модель. Попробуй чуть позже.',
   appName: 'ИИ-лаборатория',
   s1: 'Задача', s2: 'Сбор данных', s3: 'Обучение', s4: 'Оценка', s5: 'Публикация',
   loading: 'Загрузка...', error: 'Что-то пошло не так', retry: 'Повторить', save: 'Сохранить', cancel: 'Отмена',
@@ -402,7 +399,6 @@ const ru = {
   newModelConfirm: 'Сделать новую модель? Текущая модель и веб-приложение останутся.',
   stepOpened: 'Следующий шаг открыт!', go: 'Перейти', locked: 'Ещё не открыто',
   leaderOnly: 'Эту часть делает лидер ({name}).',
-
   s1Lead: 'Решите, что ИИ будет различать',
   topicLabel: 'Что будем классифицировать?', topicPh: 'Например: фрукты, транспорт, школьные вещи',
   labelsLabel: 'Метки (ответы, которые выбирает ИИ)', labelPh: 'Название метки', addLabel: '+ Добавить метку', owner: 'Кто собирает',
@@ -417,7 +413,6 @@ const ru = {
   e_noOwner: 'У одной метки не выбран сборщик.',
   e_fewerThanMembers: 'Меток должно быть не меньше, чем людей в паре. Каждый берёт хотя бы одну.',
   e_memberWithout: 'У кого-то нет ни одной метки.',
-
   s2Lead: 'Собирайте фото для своих меток',
   howTo: 'Как добавить фото',
   howToSteps: ['Поставь окно Google Картинок и это окно рядом. (Win + ← / →)', 'В Google Картинках нажми на фото, чтобы оно стало большим.', 'Перетащи большое фото в поле своей метки.'],
@@ -438,40 +433,20 @@ const ru = {
   changeOwner: 'Сборщик', driveNotSet: 'Хранилище фото (Google Диск) ещё не подключено. Скажи учителю.',
   deleteConfirm: 'Удалить это фото?', s2Next: 'К обучению', notMine: 'Эту метку собирает {name}.',
   addPhotos: 'Добавить фото',
-
-  s3Lead: 'Обучите ИИ в Teachable Machine на собранных фото',
+  s3Lead: 'Обучите ИИ на собранных фото',
   tabTrain: 'Сделать модель', tabTest: 'Собрать тестовые фото',
   s3TestLead: 'Соберите новые фото, которые не идут в обучение. На следующем шаге проверим, узнаёт ли их ИИ.',
   s3TestNote: 'Они должны отличаться от фото для обучения.',
   testCount: 'Тестовых фото: {c} (лучше {m}+ на метку)',
-  dlTitle: '① Скачать фото', dlAll: 'Скачать все фото ({n})', dlNew: 'Скачать только новые ({n})',
-  dlWorking: 'Создаём архив...', dlDone: 'Скачано. Распакуй архив.',
-  dlFail: 'Не удалось скачать. Попробуй ещё раз чуть позже.',
-  guideTitle: '② Обучение в Teachable Machine',
-  guide: [
-    'Нажми [Открыть Teachable Machine] ниже.',
-    'Переименуй классы точно как наши метки. Если меток 3 и больше, нажми [Добавить класс].',
-    'Распакуй скачанный архив. (Правый клик → [Извлечь все])',
-    'Для каждого класса: [Загрузить] → [Выбрать изображения из файлов] → выбери все фото из папки этой метки.',
-    'Нажми [Обучить модель] и подожди до конца.',
-    '[Экспортировать модель] → [Загрузить (ссылка для общего доступа)] → [Загрузить мою модель].',
-    '[Скопируй] ссылку и вставь ниже.',
-  ],
-  openTM: 'Открыть Teachable Machine',
-  keepOpen: 'Не закрывай окно Teachable Machine до конца урока. Оно понадобится для переобучения.',
-  linkTitle: '③ Вставьте ссылку на модель', linkPh: 'https://teachablemachine.withgoogle.com/models/...', linkCheck: 'Проверить',
-  l_empty: 'Вставь ссылку.',
-  l_downloaded: 'Нужно нажать [Загрузить (ссылка для общего доступа)], а не [Скачать].',
-  l_notfound: 'Ссылка на модель Teachable Machine не найдена. Скопируй ссылку после [Загрузить мою модель].',
-  l_notimage: 'Это не модель проекта с изображениями.', l_fewclasses: 'В модели должно быть 2 класса или больше.',
-  l_badmeta: 'Не удалось прочитать данные модели.', l_loadFail: 'Не удалось загрузить модель. Проверь, что загрузка завершена.',
-  mapTitle: 'Связать классы модели ↔ наши метки', mapHint: 'Если название класса другое, выбери, какая это метка.',
-  mapPick: 'Выбрать метку', mapDefault: '«{c}» — стандартное название. Выбери, какая это метка.',
-  mapDup: 'Одна метка выбрана дважды.', mapMissing: 'Не у всех классов выбрана метка.',
-  mapUnused: 'Меток нет в модели: {list}', mapSave: 'Сохранить связь',
-  linked: 'Модель подключена!', relink: 'Подключить заново', modelClasses: 'Классов в модели: {n}',
-  s3Next: 'К оценке',
 
+
+
+
+
+
+
+
+  s3Next: 'К оценке',
   s4Lead: 'Проверьте на тестовых фото, хорошо ли угадывает ИИ',
   runEval: 'Начать оценку', rerun: 'Оценить снова (новый раунд)', loadingModel: 'Загрузка модели ИИ...',
   evaluating: 'Проверяем {i} / {n}...', noTests: 'Нет тестовых фото. Сначала соберите их на шаге ③.',
@@ -487,9 +462,8 @@ const ru = {
   fixPh: 'Например: соберём ещё 10 фото камня на другом фоне', typing: '{name} печатает...', saved: 'Сохранено',
   goCollect: 'Добавить фото (②)', goDeploy: 'К публикации (⑤)',
   needStarToDeploy: 'Сохрани свои звёзды и причину — откроется шаг публикации.',
-  retrainHint: 'Если вы добавили фото, лидер добавляет их в Teachable Machine, обучает и загружает снова, а потом нажмите [Оценить снова].',
-  modelChanged: 'Модель подключена заново. Начните новый раунд кнопкой [Оценить снова].',
-
+  retrainHint: 'Если вы добавили фото, лидер нажимает [Обучить заново] на шаге ③, а потом нажмите здесь [Оценить снова].',
+  modelChanged: 'Сделана новая модель. Начните новый раунд кнопкой [Оценить снова].',
   s5Lead: 'Сделайте из ИИ веб-приложение и покажите друзьям',
   appTitle: 'Название приложения', appTitlePh: 'Например: Определитель фруктов', design: 'Дизайн',
   themes: { minimal: 'Минимализм', bw: 'Чёрно-белый', glass: 'Жидкое стекло', neon: 'Неон', warm: 'Тёплый' },
@@ -505,20 +479,16 @@ const ru = {
   postBody: 'Это ИИ-приложение нашей пары! Открой ссылку, проверь его на фото и оставь отзыв в комментариях.\n🔗 {url}\nКлассы: {labels}',
   hiddenNote: 'Учитель скрыл эту фразу, поэтому показана стандартная.', e_title: 'Напиши название приложения.',
   sampleNote: 'Результат в предпросмотре — только пример.',
-
   boardTitle: 'Прогресс класса', boardEmpty: 'Пар пока нет.', photos: 'Фото', done: 'Готово!',
   viewApp: 'Открыть приложение', needPhotos: 'Нужно больше фото', accuracy: 'Точность {p}%', modelReady: 'Модель подключена',
   stepNow: 'Шаг {n} · {name}',
-
   appLoading: 'Загружаем ИИ...', notFound: 'Приложение не найдено.', notPublished: 'Это приложение ещё не опубликовано.',
   modelFail: 'Не удалось загрузить модель ИИ. Попробуй открыть позже.',
   choosePhoto: 'Добавить фото', dropPhoto: 'Перетащи фото сюда, нажми, чтобы выбрать, или вставь через Ctrl+V.',
   again: 'Другое фото', probability: 'Насколько ИИ уверен', madeWith: 'Сделано в ИИ-лаборатории OHinfo',
   thinking: 'ИИ думает...',
 };
-
 export const I18N = { ko, en, zh, ru };
-
 export function getLang() {
   let l = '';
   try { l = localStorage.getItem('ohinfo_lang') || ''; } catch { /* 저장소를 못 쓰면 브라우저 언어로 */ }
@@ -532,7 +502,6 @@ export function getLang() {
 export function setLang(l) {
   try { localStorage.setItem('ohinfo_lang', l); } catch { /* 무시 */ }
 }
-
 export function makeT(lang) {
   const dict = I18N[lang] || ko;
   return (key, vars) => {

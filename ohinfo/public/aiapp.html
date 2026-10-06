@@ -27,7 +27,7 @@ import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase
 import { SAFE_ID } from './escape.js';
 import { makeT, getLang, setLang } from './ai-i18n.js';
 import { appHtml, probsByLabel } from './ai-render.js';
-import { loadModel, predict, imageFromBlob } from './ai-model.js';
+import { loadModel, loadDriveModel, predict } from './ai-model.js';
 import { extractFromTransfer, fetchFirstImage } from './ai-image.js';
 
 const params = new URLSearchParams(location.search);
@@ -67,7 +67,9 @@ async function start() {
   document.title = app.title || 'AI';
   render();
   // 사진을 고르기 전에 모델을 미리 받아 둔다.
-  loadModel(app.modelUrl).then(m => { loaded = m; if (state.status === 'thinking') runPredict(); })
+  // 실험실에서 학습한 모델(배포한 번호)은 드라이브에서, 예전 방식은 티처블머신 링크에서.
+  const loading = app.modelVersion ? loadDriveModel(null, appId, app.modelVersion) : loadModel(app.modelUrl);
+  loading.then(m => { loaded = m; if (state.status === 'thinking') runPredict(); })
     .catch(() => { modelErr = t('modelFail'); if (state.status === 'thinking') { state.status = 'error'; state.msg = modelErr; render(); } });
 }
 

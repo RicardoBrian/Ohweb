@@ -39,10 +39,13 @@ let _dbp = null;
 function idb() {
   if (_dbp) return _dbp;
   _dbp = new Promise((res, rej) => {
-    const r = indexedDB.open(DB_NAME, 1);
+    const r = indexedDB.open(DB_NAME, 2);
     r.onupgradeneeded = () => {
-      const s = r.result.createObjectStore('pending', { keyPath: 'id' });
-      s.createIndex('pid', 'pid');
+      const db = r.result;
+      if (!db.objectStoreNames.contains('pending')) db.createObjectStore('pending', { keyPath: 'id' }).createIndex('pid', 'pid');
+      // 2: 학습용 사진(드라이브 파일 ID → 사진)과 모델(프로젝트_번호 → 파일들)을 이 PC에 보관.
+      //    한 번 받은 건 다시 받지 않는다 — 다시 학습할 때 새 사진만 받으면 된다.
+      if (!db.objectStoreNames.contains('cache')) db.createObjectStore('cache');
     };
     r.onsuccess = () => res(r.result);
     r.onerror = () => rej(r.error);
@@ -184,3 +187,82 @@ export async function downloadZip(getToken, pid, fileIds, filename) {
 export async function trashFile(getToken, pid, fileId) {
   return gasCall(getToken, 'delete', { pid, fileId });
 }
+
+// ── 이 PC에 보관(사진·모델) ──
+async function cacheGet(key) {
+  try {
+    const db = await idb();
+    return await new Promise((res, rej) => { const r = db.transaction('cache').objectStore('cache').get(key); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+  } catch { return undefined; }
+}
+async function cachePut(key, val) {
+  try {
+    const db = await idb();
+    await new Promise((res, rej) => { const t = db.transaction('cache', 'readwrite'); t.objectStore('cache').put(val, key); t.oncomplete = res; t.onerror = () => rej(t.error); });
+  } catch { /* 보관 못 해도 다음에 다시 받으면 된다 */ }
+}
+
+function b64ToBytes(b64) {
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return arr;
+}
+function bytesToB64(buf) {
+  const u = new Uint8Array(buf);
+  let s = '';
+  for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+
+// 학습 사진 받기: 보관된 건 그대로, 없는 것만 드라이브에서 15장씩.
+export async function fetchTrainPhotos(getToken, pid, driveIds, onProgress = () => {}) {
+  const out = new Map();
+  const need = [];
+  for (const id of driveIds) {
+    const hit = await cacheGet('img:' + id);
+    if (hit) out.set(id, hit); else need.push(id);
+  }
+  onProgress(out.size, driveIds.length);
+  for (let i = 0; i < need.length; i += 15) {
+    const chunk = need.slice(i, i + 15);
+    let r, tries = 0;
+    for (;;) {
+      try { r = await gasCall(getToken, 'fetch', { pid, fileIds: chunk }); break; }
+      catch (e) { if (++tries >= 3 || e.code === 'auth' || e.code === 'notConfigured') throw e; await new Promise(z => setTimeout(z, 1500 * tries)); }
+    }
+    for (const f of r.files || []) {
+      const blob = new Blob([b64ToBytes(f.base64)], { type: 'image/jpeg' });
+      out.set(f.id, blob);
+      await cachePut('img:' + f.id, blob);
+    }
+    onProgress(out.size, driveIds.length);
+  }
+  return out;
+}
+
+// 학습한 모델 저장(대표만 — Apps Script가 확인한다). 이 PC에도 보관해 둔다.
+export async function saveModelToDrive(getToken, pid, version, artifacts) {
+  const payload = { modelJson: artifacts.modelJson, metadataJson: artifacts.metadataJson, weightsBase64: bytesToB64(artifacts.weightData) };
+  await gasCall(getToken, 'saveModel', { pid, version, ...payload });
+  await cachePut(`model:${pid}:${version}`, payload);
+}
+
+// 모델 받기: 보관된 게 있으면 그걸로. getToken이 없으면(공개 웹앱) 배포된 번호만 받을 수 있다.
+export async function fetchModelFiles(getToken, pid, version) {
+  const key = `model:${pid}:${version}`;
+  const hit = await cacheGet(key);
+  if (hit && hit.modelJson) return hit;
+  let r;
+  if (getToken) r = await gasCall(getToken, 'getModel', { pid, version });
+  else {
+    if (!AILAB_GAS_URL) throw new DriveError('notConfigured');
+    const res = await fetch(AILAB_GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'getModel', pid, version }) });
+    r = JSON.parse(await res.text());
+    if (r.error) throw new DriveError(r.code || 'server', r.error);
+  }
+  const files = { modelJson: r.modelJson, metadataJson: r.metadataJson, weightsBase64: r.weightsBase64 };
+  await cachePut(key, files);
+  return files;
+}
+export { b64ToBytes };

@@ -181,12 +181,31 @@ export function nextUnlock(project, asg = {}) {
   const minTrain = asg.minPerLabel || DEFAULT_MIN_PER_LABEL;
   if (step === 1) return project.defined ? 2 : 1;
   if (step === 2) return labels.length && labels.every(l => labelCount(project, 'train', l.id) >= minTrain) ? 3 : 2;
-  if (step === 3) return project.modelUrl && project.mappingOk ? 4 : 3;
+  if (step === 3) return hasModel(project) ? 4 : 3;
   if (step === 4) {
     const r = currentEval(project);
     return r && r.stars && Object.keys(r.stars).length ? 5 : 4;
   }
   return step;
+}
+
+// 모델이 있는지: 실험실에서 학습한 모델(modelVersion) — 예전 티처블머신 링크 방식도 인정.
+export function hasModel(project) {
+  return !!(project && ((project.modelVersion || 0) > 0 || (project.modelUrl && project.mappingOk)));
+}
+// 레이블 ID를 클래스 이름으로 학습하므로 연결은 그대로(ID → ID).
+export function identityMapping(labels) {
+  const m = {};
+  (labels || []).forEach(l => { m[l.id] = l.id; });
+  return m;
+}
+// 마지막 학습에 쓰지 않은 학습 사진 수(다시 학습하라고 알려 줄 때). 시계에 기대지 않고
+// 마지막 학습에 쓴 사진 목록(trainedIds)과 비교한다. 아직 학습 전이면 0.
+export function newSinceTraining(project, images) {
+  const ids = project && project.trainedIds;
+  if (!Array.isArray(ids)) return 0;
+  const used = new Set(ids);
+  return images.filter(i => i.kind === 'train' && i.driveId && !used.has(i.id)).length;
 }
 
 export function evalRounds(project) {
@@ -222,7 +241,8 @@ export function buildSummary(project, asg = {}) {
     topic: String(project.topic || '').slice(0, 40),
     labels: labels.map(l => ({ id: l.id, name: l.name, emoji: l.emoji || '', c: labelCount(project, 'train', l.id), t: labelCount(project, 'test', l.id) })),
     minPerLabel: asg.minPerLabel || DEFAULT_MIN_PER_LABEL,
-    model: !!project.modelUrl,
+    model: hasModel(project),
+    modelVersion: project.modelVersion || 0,
     acc: ev && ev.total ? ev.pct : null,
     published: !!project.published,
     title: project.published ? String((project.app && project.app.title) || '').slice(0, 40) : '',

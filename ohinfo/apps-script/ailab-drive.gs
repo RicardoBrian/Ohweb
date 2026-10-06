@@ -5,7 +5,9 @@
  * 학생 화면(ohinfo ailab.html)이 부르는 동작:
  *   upload  사진 한 장 저장(이미 512px JPG로 줄여서 온다)
  *   delete  학생이 지운 사진을 휴지통으로
- *   zip     학습용 사진을 레이블 폴더별로 묶어 돌려준다(대표가 티처블머신에 넣을 것)
+ *   fetch   대표 PC가 학습할 사진을 받아 간다
+ *   saveModel / getModel  실험실에서 학습한 모델 저장(대표만) · 불러오기(짝, 공개 웹앱은 배포 번호만)
+ *   zip     학습용 사진을 레이블 폴더별로 묶어 돌려준다(예전 티처블머신 방식용)
  *   ping    설정 확인용
  *
  * 보안: 페이지에 비밀값을 넣지 않는다. 학생의 Firebase 로그인 토큰(idToken)으로
@@ -28,11 +30,16 @@ function doPost(e) {
   try {
     var req = JSON.parse((e && e.postData && e.postData.contents) || '{}');
     if (req.action === 'ping') return json_({ ok: true });
+    // 공개 웹앱은 로그인 없이 모델을 불러온다(배포된 버전만) — 본인 확인 전에 처리.
+    if (req.action === 'getModel' && !req.idToken) return json_(getPublicModel_(req));
     var info = verify_(req.idToken, req.pid, false);
     switch (req.action) {
       case 'upload': return json_(upload_(req, info));
       case 'delete': return json_(remove_(req, info));
       case 'zip': return json_(zip_(req, info));
+      case 'fetch': return json_(fetchPhotos_(req, info));
+      case 'saveModel': return json_(saveModel_(req, info));
+      case 'getModel': return json_(readModel_(info, req.version));
       default: return json_({ error: 'unknown action', code: 'badRequest' });
     }
   } catch (err) {
@@ -217,4 +224,110 @@ function zip_(req, info) {
   if (!blobs.length) throw new Error('notFound: 사진을 찾지 못했습니다');
   var zip = Utilities.zip(blobs, 'ai_photos.zip');
   return { name: 'ai_photos.zip', count: blobs.length, base64: Utilities.base64Encode(zip.getBytes()) };
+}
+
+// ── 실험실 안에서 학습: 학습 사진 불러오기 · 모델 저장/불러오기 ──
+// 모델은 프로젝트 폴더 안 models/v1, v2 …에 model.json · weights.bin · metadata.json으로 둔다.
+var MAX_FETCH_FILES = 30;
+var MAX_FETCH_BYTES = 6 * 1024 * 1024;
+
+// 대표 PC가 학습할 때 쓸 사진을 돌려준다(고른 것만, 이 프로젝트 폴더 안의 것만).
+function fetchPhotos_(req, info) {
+  var ids = req.fileIds || [];
+  if (!ids.length || ids.length > MAX_FETCH_FILES) throw new Error('badRequest: 사진 수');
+  var want = {};
+  ids.forEach(function (id) { want[id] = true; });
+  var pf = projectFolder_(info);
+  var out = [], total = 0;
+  var it = pf.getFolders();
+  while (it.hasNext()) {
+    var lf = it.next();
+    if (lf.getDescription().indexOf('label=') !== 0) continue;
+    var files = lf.getFiles();
+    while (files.hasNext()) {
+      var f = files.next();
+      if (!want[f.getId()] || f.isTrashed()) continue;
+      var bytes = f.getBlob().getBytes();
+      total += bytes.length;
+      if (total > MAX_FETCH_BYTES) throw new Error('tooBig: 한 번에 너무 많은 사진');
+      out.push({ id: f.getId(), base64: Utilities.base64Encode(bytes) });
+    }
+  }
+  return { files: out };
+}
+
+// 로그인 토큰(JWT) 안의 이메일. 토큰이 진짜인지는 verify_에서 Firestore가 이미 확인했다.
+function tokenEmail_(idToken) {
+  var part = String(idToken).split('.')[1] || '';
+  var json = Utilities.newBlob(Utilities.base64DecodeWebSafe(part + '==='.slice((part.length + 3) % 4))).getDataAsString();
+  return String(JSON.parse(json).email || '').toLowerCase();
+}
+
+function modelsFolder_(info, create) {
+  var props = PropertiesService.getScriptProperties();
+  var id = props.getProperty('mf_' + info.pid);
+  if (id) { try { return DriveApp.getFolderById(id); } catch (e) { /* 지워졌으면 다시 */ } }
+  if (!create) return null;
+  var pf = projectFolder_(info);
+  var mf = withLock_(function () { return childFolder_(pf, 'models', 'models'); });
+  // 공개 웹앱(로그인 없음)이 폴더를 찾을 수 있게 위치를 기록해 둔다.
+  props.setProperty('mf_' + info.pid, mf.getId());
+  return mf;
+}
+
+// 학습한 모델 저장 — 짝의 대표만.
+function saveModel_(req, info) {
+  var v = Number(req.version);
+  if (!(v >= 1 && v <= 999)) throw new Error('badRequest: 모델 번호');
+  var pair = firestoreGet_('ai_pairs/' + info.pairId, req.idToken);
+  var leaderEmail = pair && pair.leaderId ? (pair.leaderId + '@ohinfo.local').toLowerCase() : '';
+  if (!leaderEmail || tokenEmail_(req.idToken) !== leaderEmail) throw new Error('auth: 대표만 모델을 저장할 수 있습니다');
+  var weights = Utilities.base64Decode(String(req.weightsBase64 || ''));
+  if (!weights.length || weights.length > 20 * 1024 * 1024) throw new Error('badRequest: 모델 파일');
+  JSON.parse(req.modelJson); JSON.parse(req.metadataJson); // 형식 확인
+  var mf = modelsFolder_(info, true);
+  var vf = withLock_(function () { return childFolder_(mf, 'v' + v, 'v=' + v); });
+  // 같은 번호로 다시 저장하면 옛 파일은 휴지통으로
+  var old = vf.getFiles();
+  while (old.hasNext()) old.next().setTrashed(true);
+  vf.createFile(Utilities.newBlob(req.modelJson, 'application/json', 'model.json'));
+  vf.createFile(Utilities.newBlob(req.metadataJson, 'application/json', 'metadata.json'));
+  vf.createFile(Utilities.newBlob(weights, 'application/octet-stream', 'weights.bin'));
+  return { ok: true, version: v };
+}
+
+function readModelIn_(mf, version) {
+  var v = Number(version);
+  if (!mf) throw new Error('notFound: 모델이 없습니다');
+  var it = mf.getFolders(), vf = null;
+  while (it.hasNext()) { var f = it.next(); if (f.getDescription() === 'v=' + v) vf = f; }
+  if (!vf) throw new Error('notFound: 모델이 없습니다');
+  var out = {};
+  var files = vf.getFiles();
+  while (files.hasNext()) {
+    var file = files.next();
+    if (file.isTrashed()) continue;
+    var n = file.getName();
+    if (n === 'model.json') out.modelJson = file.getBlob().getDataAsString();
+    else if (n === 'metadata.json') out.metadataJson = file.getBlob().getDataAsString();
+    else if (n === 'weights.bin') out.weightsBase64 = Utilities.base64Encode(file.getBlob().getBytes());
+  }
+  if (!out.modelJson || !out.weightsBase64) throw new Error('notFound: 모델 파일이 없습니다');
+  return out;
+}
+
+function readModel_(info, version) {
+  return readModelIn_(modelsFolder_(info, false), version);
+}
+
+// 공개 웹앱용: ai_apps 문서(누구나 읽기)에서 공개됐고 그 번호가 배포 번호인지 확인한 뒤 돌려준다.
+function getPublicModel_(req) {
+  var pid = String(req.pid || '');
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(pid)) throw new Error('badRequest: 프로젝트 ID');
+  var url = 'https://firestore.googleapis.com/v1/projects/' + FIREBASE_PROJECT + '/databases/(default)/documents/ai_apps/' + pid;
+  var res = UrlFetchApp.fetch(url, { muteHttpExceptions: true });
+  if (res.getResponseCode() !== 200) throw new Error('notFound: 웹앱이 없습니다');
+  var app = fromFields_(JSON.parse(res.getContentText()).fields || {});
+  if (!app.published || Number(app.modelVersion) !== Number(req.version)) throw new Error('auth: 배포된 모델이 아닙니다');
+  return readModelIn_(modelsFolder_({ pid: pid }, false), req.version);
 }
