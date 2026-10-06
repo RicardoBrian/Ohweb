@@ -73,12 +73,14 @@ export const localStore = {
 };
 
 // ── 올리기 대기열 ──
+const PERMANENT = new Set(['badLabel', 'badRequest', 'tooBig', 'auth']);
 // writeRecord(item): Firestore에 사진 기록을 남기는 함수(페이지가 넘겨준다).
 export class Uploader {
-  constructor({ getToken, writeRecord, onChange }) {
+  constructor({ getToken, writeRecord, onChange, onDrop }) {
     this.getToken = getToken;
     this.writeRecord = writeRecord;
     this.onChange = onChange || (() => {});
+    this.onDrop = onDrop || (() => {});
     this.items = [];          // 이 기기에 남아 있는 사진(대기 중)
     this.pid = '';
     this.running = false;
@@ -144,6 +146,14 @@ export class Uploader {
         this.lastError = '';
       } catch (e) {
         if (e.code === 'notConfigured') break;
+        // 다시 해도 안 되는 오류(지워진 레이블, 짝이 아님 등)는 붙잡고 있지 않고 알린다.
+        // 'auth'는 일시적인 연결 문제일 수도 있어서 세 번까지는 다시 해 본다.
+        if (PERMANENT.has(e.code) && (e.code !== 'auth' || (item.tries || 0) >= 3)) {
+          this.items = this.items.filter(i => i.id !== item.id);
+          try { await localStore.del(item.id); } catch { /* 무시 */ }
+          this.onDrop(item, e.code);
+          continue;
+        }
         item.tries = (item.tries || 0) + 1;
         this.lastError = e.code || e.message;
         this.state = 'retrying'; this.onChange();

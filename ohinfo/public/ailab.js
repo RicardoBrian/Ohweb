@@ -49,6 +49,7 @@ const uploader = new Uploader({
     w: item.w || 0, h: item.h || 0, createdAt: serverTimestamp(),
   }),
   onChange: () => schedule(),
+  onDrop: (item, code) => toast(code === 'auth' ? t('error') + ' (auth)' : t('notImage'), 'warn'),
 });
 
 // ── 도움 함수 ──
