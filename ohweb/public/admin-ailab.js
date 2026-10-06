@@ -135,7 +135,7 @@ function assignHtml() {
       <label>학교</label><select class="inp" id="aiT_school"><option value="">학교 선택</option>${schoolOpts}</select>
       <label>학년</label><select class="inp" id="aiT_grade">${[1, 2, 3].map(g => `<option ${String(g) === nv(ed.grade) ? 'selected' : ''}>${g}</option>`).join('')}</select>
       <label>반</label><div class="ai-btns"><select class="inp ai-num" id="aiT_class">${Array.from({ length: 15 }, (_, i) => i + 1).map(c => `<option ${String(c) === nv(ed.class) ? 'selected' : ''}>${c}</option>`).join('')}</select>
-        ${S.editId ? '' : '<button class="btn sm" data-ai="basketAdd">학급 담기</button>'}</div>
+        ${S.editId ? '' : '<button class="btn sm accent" data-ai="basketAdd">+ 학급 담기</button>'}</div>
       ${S.editId ? '' : `<label>담은 학급</label><div id="aiBasket">${basketHtml()}</div>`}
       ${num('aiT_min', '레이블당 학습 사진(최소)', ed.minPerLabel || 15, 3, 200)}
       ${num('aiT_test', '레이블당 테스트 사진(권장)', ed.minTestPerLabel || 3, 1, 50)}
