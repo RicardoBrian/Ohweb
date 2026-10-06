@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI 웹앱</title>
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="ai-themes.css">
+  <style>
+    html, body { margin: 0; min-height: 100%; }
+    body { background: #fafafa; }
+    #root, #root > .ai-app { min-height: 100vh; }
+    .boot { min-height: 100vh; display: grid; place-items: center; font: 500 15px/1.5 "IBM Plex Sans KR", system-ui, sans-serif; color: #71717a; text-align: center; padding: 24px; }
+  </style>
+</head>
+<body>
+<!-- 학생 짝이 AI 실험실에서 만든 웹앱. 로그인 없이 누구나 연다(학생 이름은 싣지 않는다).
+     사진은 이 브라우저 안에서만 쓰고 어디에도 올리지 않는다. -->
+<div id="root"><div class="boot" id="boot">…</div></div>
+<input type="file" id="fileInput" accept="image/*" hidden>
+
+<script type="module">
+import { db } from './firebase-config.js';
+import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { SAFE_ID } from './escape.js';
+import { makeT, getLang, setLang } from './ai-i18n.js';
+import { appHtml, probsByLabel } from './ai-render.js';
+import { loadModel, predict, imageFromBlob } from './ai-model.js';
+import { extractFromTransfer, fetchImageUrl } from './ai-image.js';
+
+const params = new URLSearchParams(location.search);
+const appId = params.get('id') || '';
+const preview = params.get('preview') === '1';
+let lang = getLang();
+let t = makeT(lang);
+const root = document.getElementById('root');
+const boot = document.getElementById('boot');
+boot.textContent = t('appLoading');
+
+let app = null;
+let loaded = null;          // 불러온 모델
+let modelErr = '';
+let photoUrl = '';
+const state = { photo: '', probs: null, status: '', msg: '' };
+
+function render() {
+  if (!app) return;
+  root.innerHTML = appHtml(app, lang, t, state);
+  document.documentElement.lang = lang;
+  const el = root.querySelector('.ai-app');
+  // 화면을 끝까지 당겼을 때도 디자인 배경이 보이게
+  document.body.style.background = getComputedStyle(el).backgroundColor || '';
+}
+
+function fail(msg) { boot.textContent = msg; }
+
+async function start() {
+  if (!SAFE_ID.test(appId)) return fail(t('notFound'));
+  let snap;
+  try { snap = await getDoc(doc(db, 'ai_apps', appId)); }
+  catch { return fail(t('notFound')); }
+  if (!snap.exists()) return fail(t('notFound'));
+  app = snap.data();
+  if (!app.published && !preview) return fail(t('notPublished'));
+  document.title = app.title || 'AI';
+  render();
+  // 사진을 고르기 전에 모델을 미리 받아 둔다.
+  loadModel(app.modelUrl).then(m => { loaded = m; if (state.status === 'thinking') runPredict(); })
+    .catch(() => { modelErr = t('modelFail'); if (state.status === 'thinking') { state.status = 'error'; state.msg = modelErr; render(); } });
+}
+
+async function handleBlob(blob) {
+  if (!app) return;
+  if (!blob || !/^image\//.test(blob.type)) return;
+  if (photoUrl) URL.revokeObjectURL(photoUrl);
+  photoUrl = URL.createObjectURL(blob);
+  state.photo = photoUrl; state.probs = null; state.status = 'thinking'; state.msg = '';
+  render();
+  if (modelErr) { state.status = 'error'; state.msg = modelErr; return render(); }
+  if (loaded) runPredict();
+}
+
+let _seq = 0;
+async function runPredict() {
+  const my = ++_seq;
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = state.photo; });
+    const preds = await predict(loaded, img);
+    if (my !== _seq) return;
+    state.probs = probsByLabel(preds, app.mapping || {});
+    state.status = 'ready';
+  } catch {
+    state.status = 'error'; state.msg = t('modelFail');
+  }
+  render();
+}
+
+async function handleTransfer(dt) {
+  const { files, urls } = extractFromTransfer(dt);
+  if (files.length) return handleBlob(files[0]);
+  if (urls.length) {
+    try { handleBlob(await fetchImageUrl(urls[0])); }
+    catch { state.status = 'error'; state.msg = t('fetchFail'); render(); }
+  }
+}
+
+const fileInput = document.getElementById('fileInput');
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleBlob(fileInput.files[0]); fileInput.value = ''; });
+
+root.addEventListener('click', e => {
+  const langBtn = e.target.closest('[data-lang]');
+  if (!app) return;
+  if (langBtn) { lang = langBtn.dataset.lang; setLang(lang); t = makeT(lang); render(); return; }
+  if (e.target.closest('[data-act="pick"]')) { fileInput.click(); return; }
+  const zone = e.target.closest('[data-act="zone"]');
+  if (zone) { zone.classList.add('active'); if (!state.photo) fileInput.click(); }
+});
+root.addEventListener('dragover', e => { const z = e.target.closest('[data-act="zone"]'); if (z) { e.preventDefault(); z.classList.add('drag'); } });
+root.addEventListener('dragleave', e => { const z = e.target.closest('[data-act="zone"]'); if (z) z.classList.remove('drag'); });
+root.addEventListener('drop', e => { const z = e.target.closest('[data-act="zone"]'); if (z) { e.preventDefault(); handleTransfer(e.dataTransfer); } });
+window.addEventListener('paste', e => { if (app) handleTransfer(e.clipboardData); });
+root.addEventListener('keydown', e => {
+  const z = e.target.closest('[data-act="zone"]');
+  if (z && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); fileInput.click(); }
+});
+
+start();
+</script>
+</body>
+</html>

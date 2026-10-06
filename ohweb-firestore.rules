@@ -252,6 +252,81 @@ service cloud.firestore {
     // 전부 노출됐다.
     match /exam_answers/{id}           { allow read, write: if isAdmin(); }
 
+    // ── AI 실험실(ohinfo ailab.html / aiapp.html) ──
+    // 배정·짝은 관리자가 만들고, 짝 학생들은 자기 짝의 프로젝트만 함께 고친다.
+    // "짝 학생"은 문서에 저장된 memberEmails(합성 이메일, 소문자)로 판별한다 —
+    // 학생 ID는 대소문자가 섞여 있어 isOwnStudentAuth처럼 소문자로 맞춰 비교한다.
+    function isMemberIn(emails) {
+      return request.auth != null
+          && emails is list
+          && request.auth.token.email.lower() in emails;
+    }
+    function aiProject(pid) {
+      return get(/databases/$(database)/documents/ai_projects/$(pid)).data;
+    }
+    // 배정: 학생 화면이 자기 반 배정을 찾아야 하므로 공개 읽기(시험 배정과 같음).
+    match /ai_assignments/{id} { allow read: if true; allow write: if isAdmin(); }
+
+    // 짝: 현황판(반 전체가 봄)을 위해 로그인 사용자 읽기. 짝 구성·대표 지정은
+    // 관리자만. 짝 학생은 진행 요약(summary)과 지금 프로젝트 번호만 고친다.
+    match /ai_pairs/{id} {
+      allow read: if request.auth != null;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+          || (isMemberIn(resource.data.get('memberEmails', []))
+              && request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['summary', 'currentProjectId', 'round']));
+    }
+
+    // 프로젝트(짝의 모델 하나): 짝 학생과 관리자만 읽고 쓴다. 문서 ID는
+    // `${짝ID}_${회차}`. 만들 때는 짝 문서의 구성원과 똑같아야 하고, 누가 속한
+    // 프로젝트인지를 정하는 필드(배정·짝·구성원·회차·학급)와 교사 숨김 표시는
+    // 학생이 바꿀 수 없다.
+    match /ai_projects/{pid} {
+      // 아직 없는 문서(resource == null)는 읽어도 나오는 게 없다 — 짝이 첫 프로젝트를
+      // 만들기 전에 "있는지" 확인(트랜잭션)할 수 있게 허용한다.
+      allow read: if isAdmin() || resource == null || isMemberIn(resource.data.get('memberEmails', []));
+      allow create: if isAdmin()
+          || (isMemberIn(request.resource.data.get('memberEmails', []))
+              && pid == request.resource.data.pairId + '_' + string(request.resource.data.round)
+              && get(/databases/$(database)/documents/ai_pairs/$(request.resource.data.pairId)).data.memberEmails
+                   == request.resource.data.memberEmails
+              && get(/databases/$(database)/documents/ai_pairs/$(request.resource.data.pairId)).data.asId
+                   == request.resource.data.asId
+              && !request.resource.data.keys().hasAny(['hiddenPhrases']));
+      allow update: if isAdmin()
+          || (isMemberIn(resource.data.get('memberEmails', []))
+              && !request.resource.data.diff(resource.data).affectedKeys()
+                   .hasAny(['asId', 'pairId', 'round', 'memberEmails', 'schoolName', 'grade', 'class', 'hiddenPhrases']));
+      allow delete: if isAdmin();
+
+      // 사진 기록(미리보기 + 드라이브 파일 ID). 원본은 선생님 드라이브에 있다.
+      // 미리보기는 아주 작은 data URL만 — 문서가 커지지 않게 크기를 막는다.
+      match /images/{imgId} {
+        allow read: if isAdmin() || isMemberIn(aiProject(pid).get('memberEmails', []));
+        allow create: if isMemberIn(aiProject(pid).get('memberEmails', []))
+            && request.resource.data.kind in ['train', 'test']
+            && request.resource.data.thumb is string
+            && request.resource.data.thumb.size() < 16000
+            && request.resource.data.get('evalImg', '').size() < 60000;
+        allow delete: if isAdmin() || isMemberIn(aiProject(pid).get('memberEmails', []));
+        allow update: if isAdmin();
+      }
+    }
+
+    // 공개 웹앱: 로그인 없이 누구나 연다(그래서 학생 이름은 넣지 않는다).
+    // 고치는 건 그 프로젝트의 짝 학생과 관리자. 교사가 숨긴 문구 표시는 관리자만.
+    match /ai_apps/{pid} {
+      allow read: if true;
+      allow create: if isAdmin()
+          || (isMemberIn(aiProject(pid).get('memberEmails', []))
+              && !request.resource.data.keys().hasAny(['hiddenPhrases']));
+      allow update: if isAdmin()
+          || (isMemberIn(aiProject(pid).get('memberEmails', []))
+              && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['hiddenPhrases']));
+      allow delete: if isAdmin();
+    }
+
     // 명시 안 한 나머지 컬렉션은 전부 거부(기본값)
   }
 }

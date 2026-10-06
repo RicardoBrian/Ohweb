@@ -1,0 +1,167 @@
+/* AI 실험실 공개 웹앱 디자인 5종 — 미니멀 · 블랙앤화이트 · 리퀴드글래스 · 네온 · 따뜻한 느낌.
+   배치는 모두 같고 아래 변수와 몇 가지 장식만 다르다. .ai-app 안에만 적용돼서
+   실험실 화면의 미리보기 상자 안에 넣어도 바깥 화면에 영향을 주지 않는다. */
+
+.ai-app {
+  --aa-font: "IBM Plex Sans KR", -apple-system, BlinkMacSystemFont, "Pretendard", system-ui, sans-serif;
+  position: relative; isolation: isolate; overflow: hidden;
+  min-height: 100%; font-family: var(--aa-font);
+  color: var(--aa-text); background: var(--aa-bg);
+  -webkit-font-smoothing: antialiased;
+}
+.ai-app *, .ai-app *::before, .ai-app *::after { box-sizing: border-box; }
+.ai-app .aa-bg { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.ai-app .aa-wrap { max-width: 560px; margin: 0 auto; padding: 40px 18px 22px; display: flex; flex-direction: column; gap: 18px; }
+
+.ai-app .aa-head { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.ai-app .aa-emojis { font-size: 30px; letter-spacing: 6px; line-height: 1; }
+.ai-app .aa-title { margin: 0; font-size: clamp(26px, 6.4vw, 38px); line-height: 1.2; font-weight: 700; letter-spacing: -0.02em; word-break: keep-all; overflow-wrap: anywhere; }
+.ai-app .aa-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.ai-app .aa-chip { font-size: 13px; padding: 4px 11px; border-radius: 999px; background: var(--aa-chip-bg); color: var(--aa-chip-text); border: var(--aa-chip-border, 0); }
+
+.ai-app .aa-card { background: var(--aa-card); border: var(--aa-border); border-radius: var(--aa-radius); box-shadow: var(--aa-shadow); padding: 22px; }
+.ai-app .aa-drop { min-height: 220px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; cursor: pointer; outline: none; transition: transform .2s, box-shadow .2s; }
+.ai-app .aa-drop:focus-visible, .ai-app .aa-drop.active, .ai-app .aa-drop.drag { box-shadow: var(--aa-shadow), 0 0 0 3px var(--aa-accent); }
+.ai-app .aa-drop.drag { transform: scale(1.01); }
+.ai-app .aa-drop-icon { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; font-size: 28px; color: var(--aa-accent); background: var(--aa-chip-bg); }
+.ai-app .aa-hint { margin: 0; font-size: 13px; color: var(--aa-sub); max-width: 320px; line-height: 1.5; }
+.ai-app .aa-photo { display: block; max-width: 100%; max-height: 300px; border-radius: calc(var(--aa-radius) - 8px); object-fit: contain; }
+.ai-app .aa-btn { font: 600 15px/1 var(--aa-font); padding: 13px 22px; border-radius: var(--aa-btn-radius, 999px); border: var(--aa-btn-border, 0); background: var(--aa-btn-bg); color: var(--aa-btn-text); cursor: pointer; box-shadow: var(--aa-btn-shadow, none); transition: transform .15s, filter .15s; }
+.ai-app .aa-btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.ai-app .aa-btn:active { transform: translateY(1px); }
+
+.ai-app .aa-result { display: flex; flex-direction: column; gap: 12px; }
+.ai-app .aa-verdict { display: flex; align-items: center; justify-content: center; gap: 12px; text-align: center; font-size: clamp(22px, 5.4vw, 30px); font-weight: 700; line-height: 1.3; word-break: keep-all; overflow-wrap: anywhere; animation: aa-pop .45s cubic-bezier(.2, 1.4, .4, 1); }
+.ai-app .aa-vemoji { font-size: 1.6em; line-height: 1; }
+.ai-app .aa-unsure { color: var(--aa-sub); }
+.ai-app .aa-sub { font-size: 12px; color: var(--aa-sub); text-align: center; letter-spacing: .02em; }
+.ai-app .aa-bars { display: flex; flex-direction: column; gap: 10px; }
+.ai-app .aa-row { display: grid; grid-template-columns: minmax(84px, 36%) 1fr 46px; align-items: center; gap: 10px; font-size: 14px; }
+.ai-app .aa-bl { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.ai-app .aa-bl > span:last-child { min-width: 0; overflow-wrap: anywhere; line-height: 1.25; }
+.ai-app .aa-orig { display: block; font-size: 11px; color: var(--aa-sub); }
+.ai-app .aa-be { font-size: 18px; flex-shrink: 0; }
+.ai-app .aa-top .aa-bl { font-weight: 700; }
+.ai-app .aa-track { height: 12px; border-radius: var(--aa-bar-radius, 999px); background: var(--aa-track); overflow: hidden; border: var(--aa-track-border, 0); }
+.ai-app .aa-fill { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--bar); transition: width .7s cubic-bezier(.2, .8, .2, 1); }
+.ai-app .aa-pct { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+.ai-app .aa-note { font-size: 12px; color: var(--aa-sub); text-align: center; }
+.ai-app .aa-wait { display: flex; align-items: center; justify-content: center; gap: 10px; color: var(--aa-sub); font-size: 15px; padding: 8px 0; }
+.ai-app .aa-err { color: var(--aa-err, #d33); }
+.ai-app .aa-spin { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid var(--aa-track); border-top-color: var(--aa-accent); animation: aa-spin .8s linear infinite; }
+
+.ai-app .aa-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; font-size: 12px; color: var(--aa-sub); padding: 4px 2px 0; }
+.ai-app .aa-langs { display: flex; gap: 4px; flex-wrap: wrap; }
+.ai-app .aa-lang { font: 500 12px/1 var(--aa-font); padding: 6px 9px; border-radius: 999px; border: 1px solid transparent; background: transparent; color: var(--aa-sub); cursor: pointer; }
+.ai-app .aa-lang.on { border-color: currentColor; color: var(--aa-text); }
+
+@keyframes aa-spin { to { transform: rotate(360deg); } }
+@keyframes aa-pop { from { transform: scale(.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .ai-app .aa-verdict, .ai-app .aa-bg { animation: none !important; }
+  .ai-app .aa-fill { transition: none; }
+}
+@media (max-width: 420px) {
+  .ai-app .aa-wrap { padding: 28px 14px 18px; }
+  .ai-app .aa-card { padding: 18px 16px; }
+  .ai-app .aa-row { grid-template-columns: minmax(70px, 34%) 1fr 42px; font-size: 13px; }
+}
+
+/* ── 1. 미니멀: 흰 배경, 얇은 선, 여백, 강조색 하나 ── */
+.ai-app[data-theme="minimal"] {
+  --aa-bg: #fafafa; --aa-text: #18181b; --aa-sub: #71717a;
+  --aa-card: #ffffff; --aa-border: 1px solid #e4e4e7; --aa-radius: 16px; --aa-shadow: 0 1px 2px rgba(0,0,0,.04);
+  --aa-accent: #2563eb; --aa-btn-bg: #18181b; --aa-btn-text: #fff;
+  --aa-chip-bg: #f4f4f5; --aa-chip-text: #52525b; --aa-track: #f1f1f3;
+  --c1: #d4d4d8; --c2: #d4d4d8; --c3: #d4d4d8; --c4: #d4d4d8; --c5: #d4d4d8; --c6: #d4d4d8; --c7: #d4d4d8; --c8: #d4d4d8;
+}
+.ai-app[data-theme="minimal"] .aa-title { font-weight: 600; }
+.ai-app[data-theme="minimal"] .aa-top .aa-fill { background: var(--aa-accent); }
+.ai-app[data-theme="minimal"] .aa-track { height: 8px; }
+
+/* ── 2. 블랙앤화이트: 강한 흑백 대비, 굵은 글씨, 포스터 느낌 ── */
+.ai-app[data-theme="bw"] {
+  --aa-bg: #ffffff; --aa-text: #000; --aa-sub: #444;
+  --aa-card: #fff; --aa-border: 3px solid #000; --aa-radius: 0px; --aa-shadow: 7px 7px 0 #000;
+  --aa-accent: #000; --aa-btn-bg: #000; --aa-btn-text: #fff; --aa-btn-radius: 0px;
+  --aa-chip-bg: #fff; --aa-chip-text: #000; --aa-chip-border: 2px solid #000;
+  --aa-track: #fff; --aa-track-border: 2px solid #000; --aa-bar-radius: 0px;
+  --c1: #000; --c2: #000; --c3: #000; --c4: #000; --c5: #000; --c6: #000; --c7: #000; --c8: #000;
+}
+.ai-app[data-theme="bw"] .aa-bg { background: repeating-linear-gradient(-45deg, transparent 0 14px, rgba(0,0,0,.035) 14px 15px); }
+.ai-app[data-theme="bw"] .aa-title { background: #000; color: #fff; padding: 6px 14px 8px; font-weight: 800; text-transform: uppercase; letter-spacing: -0.01em; }
+.ai-app[data-theme="bw"] .aa-chip { border-radius: 0; font-weight: 700; }
+.ai-app[data-theme="bw"] .aa-drop-icon { background: #000; color: #fff; border-radius: 0; }
+.ai-app[data-theme="bw"] .aa-verdict { font-weight: 800; text-decoration: underline; text-decoration-thickness: 5px; text-underline-offset: 7px; }
+.ai-app[data-theme="bw"] .aa-row:not(.aa-top) .aa-fill { background: repeating-linear-gradient(90deg, #000 0 4px, #fff 4px 7px); }
+.ai-app[data-theme="bw"] .aa-track { height: 16px; }
+.ai-app[data-theme="bw"] .aa-lang { border-radius: 0; }
+.ai-app[data-theme="bw"] .aa-drop.active, .ai-app[data-theme="bw"] .aa-drop.drag { box-shadow: 11px 11px 0 #000; }
+
+/* ── 3. 리퀴드글래스: 반투명 유리 카드, 흐린 색 배경, 빛 반사 ── */
+.ai-app[data-theme="glass"] {
+  --aa-bg: linear-gradient(140deg, #dbe4ff 0%, #f6dcf1 45%, #d6f1ff 100%);
+  --aa-text: #1e1b4b; --aa-sub: #5b5a8a;
+  --aa-card: rgba(255,255,255,.38); --aa-border: 1px solid rgba(255,255,255,.7); --aa-radius: 28px;
+  --aa-shadow: inset 0 1px 0 rgba(255,255,255,.9), 0 18px 50px rgba(76,64,160,.18);
+  --aa-accent: #6d5dfc; --aa-btn-bg: rgba(255,255,255,.6); --aa-btn-text: #312e81;
+  --aa-btn-border: 1px solid rgba(255,255,255,.9); --aa-btn-shadow: inset 0 1px 0 #fff, 0 6px 18px rgba(76,64,160,.18);
+  --aa-chip-bg: rgba(255,255,255,.5); --aa-chip-text: #3730a3; --aa-chip-border: 1px solid rgba(255,255,255,.8);
+  --aa-track: rgba(255,255,255,.55);
+  --c1: linear-gradient(90deg, #818cf8, #c084fc); --c2: linear-gradient(90deg, #f472b6, #fb7185);
+  --c3: linear-gradient(90deg, #38bdf8, #22d3ee); --c4: linear-gradient(90deg, #34d399, #a3e635);
+  --c5: linear-gradient(90deg, #fbbf24, #fb923c); --c6: linear-gradient(90deg, #a78bfa, #f0abfc);
+  --c7: linear-gradient(90deg, #2dd4bf, #60a5fa); --c8: linear-gradient(90deg, #f9a8d4, #c4b5fd);
+}
+.ai-app[data-theme="glass"] .aa-bg {
+  background:
+    radial-gradient(38% 30% at 18% 22%, rgba(129,140,248,.55), transparent 70%),
+    radial-gradient(34% 28% at 82% 18%, rgba(244,114,182,.45), transparent 70%),
+    radial-gradient(40% 34% at 70% 86%, rgba(56,189,248,.45), transparent 70%),
+    radial-gradient(30% 26% at 12% 88%, rgba(192,132,252,.4), transparent 70%);
+  filter: blur(18px); animation: aa-drift 18s ease-in-out infinite alternate;
+}
+.ai-app[data-theme="glass"] .aa-card, .ai-app[data-theme="glass"] .aa-btn, .ai-app[data-theme="glass"] .aa-chip { -webkit-backdrop-filter: blur(22px) saturate(180%); backdrop-filter: blur(22px) saturate(180%); }
+.ai-app[data-theme="glass"] .aa-title { background: linear-gradient(90deg, #4338ca, #a21caf); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.ai-app[data-theme="glass"] .aa-fill { box-shadow: inset 0 1px 0 rgba(255,255,255,.6); }
+@keyframes aa-drift { from { transform: translate3d(0,0,0) scale(1); } to { transform: translate3d(2%, -3%, 0) scale(1.06); } }
+
+/* ── 4. 네온: 어두운 배경, 형광 막대, 빛나는 테두리 ── */
+.ai-app[data-theme="neon"] {
+  --aa-bg: #05050c; --aa-text: #eef0ff; --aa-sub: #8b8fb8; --aa-err: #ff5c8a;
+  --aa-card: rgba(14,14,32,.82); --aa-border: 1px solid rgba(0,240,255,.38); --aa-radius: 14px;
+  --aa-shadow: 0 0 0 1px rgba(255,43,214,.12), 0 0 28px rgba(0,240,255,.14);
+  --aa-accent: #00f0ff; --aa-btn-bg: transparent; --aa-btn-text: #00f0ff;
+  --aa-btn-border: 1.5px solid #00f0ff; --aa-btn-shadow: 0 0 14px rgba(0,240,255,.45), inset 0 0 10px rgba(0,240,255,.2);
+  --aa-chip-bg: rgba(255,43,214,.1); --aa-chip-text: #ff8ae8; --aa-chip-border: 1px solid rgba(255,43,214,.45);
+  --aa-track: #15152b;
+  --c1: #00f0ff; --c2: #ff2bd6; --c3: #39ff14; --c4: #ffe600; --c5: #ff7a00; --c6: #a855ff; --c7: #ff3b6b; --c8: #4dffd2;
+}
+.ai-app[data-theme="neon"] .aa-bg {
+  background:
+    radial-gradient(50% 35% at 50% 0%, rgba(0,240,255,.16), transparent 70%),
+    radial-gradient(40% 30% at 100% 100%, rgba(255,43,214,.14), transparent 70%),
+    linear-gradient(rgba(0,240,255,.06) 1px, transparent 1px) 0 0 / 32px 32px,
+    linear-gradient(90deg, rgba(0,240,255,.06) 1px, transparent 1px) 0 0 / 32px 32px;
+}
+.ai-app[data-theme="neon"] .aa-title { color: #fff; text-shadow: 0 0 6px #00f0ff, 0 0 18px rgba(0,240,255,.7), 0 0 34px rgba(255,43,214,.45); }
+.ai-app[data-theme="neon"] .aa-fill { box-shadow: 0 0 10px var(--bar), 0 0 2px #fff inset; }
+.ai-app[data-theme="neon"] .aa-verdict { color: #fff; text-shadow: 0 0 10px rgba(255,43,214,.8); }
+.ai-app[data-theme="neon"] .aa-drop-icon { background: transparent; border: 1.5px solid #ff2bd6; color: #ff2bd6; box-shadow: 0 0 14px rgba(255,43,214,.5); }
+.ai-app[data-theme="neon"] .aa-photo { box-shadow: 0 0 22px rgba(0,240,255,.25); }
+
+/* ── 5. 따뜻한 느낌: 크림 배경, 둥근 모서리, 주황·갈색 ── */
+.ai-app[data-theme="warm"] {
+  --aa-bg: #f8efe2; --aa-text: #4a3426; --aa-sub: #8b6f5a;
+  --aa-card: #fffaf3; --aa-border: 1px solid #efdcc6; --aa-radius: 26px; --aa-shadow: 0 10px 30px rgba(140,90,40,.12);
+  --aa-accent: #e07a3f; --aa-btn-bg: #e07a3f; --aa-btn-text: #fff; --aa-btn-shadow: 0 6px 16px rgba(224,122,63,.35);
+  --aa-chip-bg: #f6e3cf; --aa-chip-text: #8a4b23; --aa-track: #f3e4d2;
+  --c1: #e07a3f; --c2: #d4a373; --c3: #9c6644; --c4: #e9b949; --c5: #c97b63; --c6: #8fa66b; --c7: #b5838d; --c8: #7f6a93;
+}
+.ai-app[data-theme="warm"] .aa-bg {
+  background:
+    radial-gradient(45% 35% at 10% 5%, rgba(255,214,170,.7), transparent 70%),
+    radial-gradient(40% 30% at 95% 95%, rgba(240,190,150,.55), transparent 70%);
+}
+.ai-app[data-theme="warm"] .aa-title { font-weight: 700; color: #6b3d1f; }
+.ai-app[data-theme="warm"] .aa-track { height: 14px; }

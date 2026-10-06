@@ -93,7 +93,9 @@ async function handle(request, env) {
       body: JSON.stringify({
         q: nonEmpty.map(x => x.t),
         target: toGoogleLang(targetLang),
-        source: toGoogleLang(sourceLang),
+        // sourceLang: 'auto'면 원문 언어를 Google이 알아낸다(AI 실험실 레이블처럼
+        // 학생이 어느 언어로 쓸지 모르는 경우). 기존 호출부는 그대로 KO 등을 보낸다.
+        ...(String(sourceLang).toLowerCase() === 'auto' ? {} : { source: toGoogleLang(sourceLang) }),
         format: 'text',
       }),
     });
