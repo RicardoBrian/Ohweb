@@ -14,12 +14,12 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { loadSession, verifyStudentAuth, authReady, clearSession } from './session.js';
 import { escHtml } from './escape.js';
-import * as C from './ai-core.js?v=202610060716';
-import { makeT, getLang, setLang } from './ai-i18n.js?v=202610060716';
-import { prepareImage, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202610060716';
-import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, saveModelToDrive } from './ai-drive.js?v=202610060716';
-import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202610060716';
-import { appHtml, probsByLabel, THEMES } from './ai-render.js?v=202610060716';
+import * as C from './ai-core.js?v=202610070056';
+import { makeT, getLang, setLang } from './ai-i18n.js?v=202610070056';
+import { prepareImage, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202610070056';
+import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, saveModelToDrive } from './ai-drive.js?v=202610070056';
+import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202610070056';
+import { appHtml, probsByLabel, THEMES } from './ai-render.js?v=202610070056';
 
 const E = escHtml;
 const $ = id => document.getElementById(id);
@@ -105,7 +105,11 @@ function render() {
   applyStaticText();
   if (!S.asg) return;
   if (S.asg.status !== 'ON') return screen(t('noAssignment'), t('noAssignmentSub'));
-  if (!S.pair) return screen(t('noPair'), t('noPairSub'));
+  if (!S.pair) {
+    screen(t('noPair'), t('noPairSub'), S.asgs.length > 1 ? `<div class="choose"><button class="btn" id="reChoose">${E(t('otherClass'))}</button></div>` : '');
+    const b = $('reChoose'); if (b) b.addEventListener('click', showChooser);
+    return;
+  }
   if (!S.project) return screen(t('loading'), '');
 
   // 입력 중이던 칸과 커서 위치를 지킨다.
@@ -1169,11 +1173,28 @@ async function start() {
   } catch (e) { console.error(e); return screen(t('error'), e.code || e.message); }
   const mine = list.filter(a => (!a.schoolName || a.schoolName === session.schoolName)
     && (!a.grade || C.nv(a.grade) === C.nv(session.grade)) && (!a.class || C.nv(a.class) === C.nv(session.class)));
-  S.asgs = session.isMaster ? list : mine;
+  // 마스터 계정은 열린 수업이 전부 보인다 — 그중 내가 모둠에 들어 있는 수업을 먼저 고른다.
+  const inPair = new Set();
+  try {
+    const ps = await getDocs(query(collection(db, 'ai_pairs'), where('members', 'array-contains', S.me)));
+    ps.docs.forEach(d => inPair.add(d.data().asId));
+  } catch (e) { console.warn('pairs', e.code); }
+  const all = session.isMaster ? list : mine;
+  const withPair = all.filter(a => inPair.has(a.id));
+  S.asgs = [...withPair, ...all.filter(a => !inPair.has(a.id))];
+  S.inPair = inPair;
   if (!S.asgs.length) { S.asg = { status: 'OFF' }; return render(); }
-  const saved = S.asgs.find(a => a.id === sessionStorage.getItem('ailab_as'));
-  if (S.asgs.length === 1 || saved) return chooseAsg(saved || S.asgs[0]);
-  screen(t('chooseAssignment'), '', `<div class="choose">${S.asgs.map(a => `<button class="btn" data-asg="${E(a.id)}">${E(a.title || a.id)}</button>`).join('')}</div>`);
+  const pool = withPair.length ? withPair : S.asgs;
+  const saved = pool.find(a => a.id === sessionStorage.getItem('ailab_as'));
+  if (pool.length === 1 || saved) return chooseAsg(saved || pool[0]);
+  showChooser();
+}
+
+function showChooser() {
+  stop('pair'); stop('asg'); ['project', 'images', 'app'].forEach(stop);
+  S.asg = null; S.pair = null; S.project = null; S.pid = '';
+  const label = a => `${a.title || a.id} · ${C.nv(a.grade)}-${C.nv(a.class)}${S.inPair && S.inPair.has(a.id) ? '' : ' (' + t('noGroupShort') + ')'}`;
+  screen(t('chooseAssignment'), '', `<div class="choose">${S.asgs.map(a => `<button class="btn" data-asg="${E(a.id)}">${E(label(a))}</button>`).join('')}</div>`);
   $('main').querySelectorAll('[data-asg]').forEach(b => b.addEventListener('click', () => chooseAsg(S.asgs.find(a => a.id === b.dataset.asg))));
 }
 
