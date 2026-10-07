@@ -21,7 +21,7 @@ const $ = id => document.getElementById(id);
 
 const S = {
   tab: 'assign', asgs: [], schools: [], boards: [], asId: sessionStorage.getItem('aiadm_as') || '',
-  students: [], pairs: [], projects: [], apps: {}, sel: new Set(), editId: '', trEdit: '', basket: [],
+  students: [], pairs: [], projects: [], apps: {}, sel: new Set(), editId: '', trEdit: '', draft: null,
 };
 let unsubPairs = null;
 let watchedAs = null;
@@ -95,7 +95,7 @@ function render() {
     b.classList.toggle('ghost', b.dataset.aiTab !== S.tab);
   });
   const picker = S.tab === 'assign' ? '' : asgPicker();
-  if (S.tab === 'assign') pane.innerHTML = assignHtml();
+  if (S.tab === 'assign') { pane.innerHTML = assignHtml(); refreshAssignForm(); }
   else if (!curAsg()) pane.innerHTML = picker + '<div class="empty-state">먼저 [배정 관리]에서 AI 수업을 배정하세요.</div>';
   else if (S.tab === 'pairs') pane.innerHTML = picker + pairsHtml();
   else if (S.tab === 'board') pane.innerHTML = picker + boardHtml();
@@ -107,48 +107,100 @@ function asgPicker() {
     <select class="inp" data-ai="pickAs">${S.asgs.map(a => `<option value="${E(a.id)}" ${a.id === S.asId ? 'selected' : ''}>${E(a.title)} — ${E(a.schoolName)} ${E(a.grade)}학년 ${E(a.class)}반 ${a.status === 'ON' ? '' : '(닫힘)'}</option>`).join('')}</select></div></div>`;
 }
 
+const boardKey = b => b ? `${b.name}|${b.schoolName || ''}|${nv(b.grade)}|${nv(b.group)}` : '';
+const classLabel = a => `${nv(a.grade)}학년 ${nv(a.class)}반`;
+
+// 게시판 목록: 고른 학교·학년·반에 맞는 게시판을 위에 따로 묶어 보여 준다.
+function boardOptions(sel, school, grade, cls) {
+  const fits = b => (b.schoolName || '') === school && (!b.grade || nv(b.grade) === nv(grade)) && (!b.group || nv(b.group) === nv(cls));
+  const opt = b => `<option value="${E(b.id)}" ${boardKey(b) === sel ? 'selected' : ''}>${E(b.name)} · ${E(b.schoolName || '')} ${E(b.grade || '전체')}학년 ${E(b.group || '전체')}반</option>`;
+  const mine = S.boards.filter(fits), rest = S.boards.filter(b => !fits(b));
+  return `<option value="">게시판 없음 (학생이 주소를 직접 올림)</option>`
+    + (mine.length ? `<optgroup label="이 반에서 쓸 수 있는 게시판">${mine.map(opt).join('')}</optgroup>` : '')
+    + (rest.length ? `<optgroup label="다른 게시판">${rest.map(opt).join('')}</optgroup>` : '');
+}
+
 function assignHtml() {
-  const ed = S.asgs.find(a => a.id === S.editId) || {};
-  const schoolOpts = S.schools.map(n => `<option ${n === ed.schoolName ? 'selected' : ''}>${E(n)}</option>`).join('');
-  const num = (id, label, v, min, max) => `<label>${label}</label><input class="inp ai-num" id="${id}" type="number" min="${min}" max="${max}" value="${v}">`;
-  const boardOpts = `<option value="">게시판 없음 (학생이 직접 올림)</option>` + S.boards.map(b => {
-    const on = ed.board && ed.board.name === b.name && ed.board.schoolName === b.schoolName && (ed.board.grade || '') === (b.grade || '') && (ed.board.group || '') === (b.group || '');
-    return `<option value="${E(b.id)}" ${on ? 'selected' : ''}>${E(b.name)} (${E(b.schoolName || '')} ${E(b.grade || '전체')}학년 ${E(b.group || '전체')}반)</option>`;
-  }).join('');
-  const list = S.asgs.map(a => {
-    const n = 0;
-    return `<div class="ai-asg">
-      <div><b>${E(a.title)}</b> <span class="badge ${a.status === 'ON' ? 'on' : 'off'}">${a.status === 'ON' ? '열림' : '닫힘'}</span>
-        <div class="ai-sub">${E(a.schoolName)} ${E(a.grade)}학년 ${E(a.class)}반 · 레이블당 사진 ${a.minPerLabel || 15}장 · 테스트 ${a.minTestPerLabel || 3}장 · 모둠 ${a.groupSize || 2}명 · 레이블 최대 ${a.maxLabels || 5}개 · 게시판: ${a.board ? E(a.board.name) : '없음'}</div></div>
+  // 수정 중이면 그 배정, 아니면 방금 배정한 내용(반만 바꿔 다시 배정하기 쉽게). [초기화]로 비운다.
+  const ed = S.editId ? (S.asgs.find(a => a.id === S.editId) || {}) : (S.draft || {});
+  const sel = (id, opts) => `<select class="inp" id="${id}">${opts}</select>`;
+  const schoolOpts = `<option value="">학교 선택</option>` + S.schools.map(n => `<option ${n === ed.schoolName ? 'selected' : ''}>${E(n)}</option>`).join('');
+  const gradeOpts = [1, 2, 3].map(g => `<option value="${g}" ${String(g) === nv(ed.grade) ? 'selected' : ''}>${g}학년</option>`).join('');
+  const classOpts = Array.from({ length: 15 }, (_, i) => i + 1).map(c => `<option value="${c}" ${String(c) === nv(ed.class) ? 'selected' : ''}>${c}반</option>`).join('');
+  const num = (id, label, v, min, max, unit, help) => `<label class="ai-field"><span>${label}</span>
+      <span class="ai-numwrap"><input class="inp" id="${id}" type="number" min="${min}" max="${max}" value="${v}"><em>${unit}</em></span>
+      <small>${help}</small></label>`;
+  const editing = S.editId && ed.id;
+  return `<div class="card ai-assign">
+    <div class="ai-h"><h2>${editing ? `설정 수정 · ${E(classLabel(ed))}` : 'AI 수업 배정'}</h2>
+      ${editing ? '' : '<button class="btn sm ghost" data-ai="resetForm" title="입력 칸을 처음 상태로 비웁니다">초기화</button>'}</div>
+    <div class="ai-sec"><div class="ai-sec-t">수업 제목</div>
+      <input class="inp" id="aiT_title" placeholder="예: 개와 고양이 분류하기" value="${E(ed.title || '')}"></div>
+    <div class="ai-sec"><div class="ai-sec-t">대상 반</div>
+      <div class="ai-row3">${sel('aiT_school', schoolOpts)}${sel('aiT_grade', gradeOpts)}${sel('aiT_class', classOpts)}</div>
+      <div class="ai-sub" id="aiT_done"></div></div>
+    <div class="ai-sec"><div class="ai-sec-t">활동 설정</div>
+      <div class="ai-nums">
+        ${num('aiT_group', '모둠 인원', ed.groupSize || 2, 1, 8, '명', '1이면 혼자 활동')}
+        ${num('aiT_max', '레이블 최대', ed.maxLabels || 5, 2, 8, '개', '학생이 만들 답의 수')}
+        ${num('aiT_min', '학습 사진', ed.minPerLabel || 15, 3, 200, '장 이상', '레이블마다')}
+        ${num('aiT_test', '테스트 사진', ed.minTestPerLabel || 3, 1, 50, '장 권장', '레이블마다')}
+      </div></div>
+    <div class="ai-sec"><div class="ai-sec-t">웹앱 올릴 ohdlet 게시판</div>
+      ${sel('aiT_board', boardOptions(boardKey(ed.board), ed.schoolName || '', ed.grade || '1', ed.class || '1'))}</div>
+    <div class="ai-foot">
+      <button class="btn accent" data-ai="saveAsg" id="aiT_go">${editing ? '저장' : '배정하기'}</button>
+      ${editing ? '<button class="btn ghost" data-ai="cancelEdit">취소</button>' : ''}
+      <span class="ai-sub">${editing ? '바꾼 설정은 학생 화면에 바로 반영됩니다.' : '배정한 뒤에도 입력 내용이 남습니다. 반만 바꿔 다시 배정하세요.'}</span>
+    </div></div>
+    <div class="card"><div class="ai-h"><h2>배정 목록</h2><span class="ai-sub">학생 홈 카드는 [앱 설정]에서 "AI 실험실"을 켜야 보입니다.</span></div>${asgListHtml()}</div>`;
+}
+
+// 같은 제목·학교끼리 묶어서, 반마다 한 줄.
+function asgListHtml() {
+  if (!S.asgs.length) return '<div class="empty-state">아직 배정한 AI 수업이 없습니다.</div>';
+  const groups = new Map();
+  for (const a of S.asgs) {
+    const k = `${a.title}|${a.schoolName}`;
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(a);
+  }
+  return [...groups.values()].map(list => {
+    list.sort((x, y) => x.grade - y.grade || x.class - y.class);
+    const rows = list.map(a => `<div class="ai-asg">
+      <div class="ai-asg-c"><b>${E(classLabel(a))}</b>
+        <span class="ai-sub">모둠 ${a.groupSize || 2}명 · 레이블 최대 ${a.maxLabels || 5}개 · 사진 ${a.minPerLabel || 15}장 · 테스트 ${a.minTestPerLabel || 3}장 · 게시판 ${a.board ? E(a.board.name) : '없음'}</span></div>
+      <label class="toggle" title="${a.status === 'ON' ? '학생 화면 열림 (누르면 닫기)' : '학생 화면 닫힘 (누르면 열기)'}"><input type="checkbox" data-ai="status" data-id="${E(a.id)}" ${a.status === 'ON' ? 'checked' : ''}><div class="toggle-track"></div></label>
       <div class="ai-btns">
-        <label class="toggle" title="학생 화면 열기/닫기"><input type="checkbox" data-ai="status" data-id="${E(a.id)}" ${a.status === 'ON' ? 'checked' : ''}><div class="toggle-track"></div></label>
         <button class="btn sm" data-ai="goPairs" data-id="${E(a.id)}">모둠 구성</button>
         <button class="btn sm" data-ai="goBoard" data-id="${E(a.id)}">현황판</button>
         <button class="btn sm" data-ai="goResults" data-id="${E(a.id)}">결과</button>
         <button class="btn sm ghost" data-ai="edit" data-id="${E(a.id)}">수정</button>
-        <button class="btn sm danger" data-ai="delAsg" data-id="${E(a.id)}">삭제</button>
-      </div></div>`;
-  }).join('') || '<div class="empty-state">아직 배정한 AI 수업이 없습니다.</div>';
-  return `<div class="card"><h2>${S.editId ? 'AI 수업 설정 수정' : 'AI 수업 배정'}</h2>
-    <div class="ai-form">
-      <label>제목</label><input class="inp" id="aiT_title" placeholder="예: AI 이미지 분류 모델 만들기" value="${E(ed.title || '')}">
-      <label>학교</label><select class="inp" id="aiT_school"><option value="">학교 선택</option>${schoolOpts}</select>
-      <label>학년</label><select class="inp" id="aiT_grade">${[1, 2, 3].map(g => `<option ${String(g) === nv(ed.grade) ? 'selected' : ''}>${g}</option>`).join('')}</select>
-      <label>반</label><div class="ai-btns"><select class="inp ai-num" id="aiT_class">${Array.from({ length: 15 }, (_, i) => i + 1).map(c => `<option ${String(c) === nv(ed.class) ? 'selected' : ''}>${c}</option>`).join('')}</select>
-        ${S.editId ? '' : '<button class="btn sm accent" data-ai="basketAdd">+ 학급 담기</button>'}</div>
-      ${S.editId ? '' : `<label>담은 학급</label><div id="aiBasket">${basketHtml()}</div>`}
-      ${num('aiT_min', '레이블당 학습 사진(최소)', ed.minPerLabel || 15, 3, 200)}
-      ${num('aiT_test', '레이블당 테스트 사진(권장)', ed.minTestPerLabel || 3, 1, 50)}
-      ${num('aiT_group', '모둠 인원', ed.groupSize || 2, 1, 8)}
-      ${num('aiT_max', '레이블 최대 개수', ed.maxLabels || 5, 2, 8)}
-      <label>ohdlet 게시판</label><select class="inp" id="aiT_board">${boardOpts}</select>
-    </div>
-    <div class="ai-btns" style="margin-top:12px;">
-      <button class="btn accent" data-ai="saveAsg">${S.editId ? '저장' : S.basket.length > 1 ? `${S.basket.length}개 학급에 배정하기` : '배정하기'}</button>
-      ${S.editId ? '<button class="btn ghost" data-ai="cancelEdit">취소</button>' : ''}
-    </div>
-    <p class="ai-sub" style="margin-top:8px;">${S.editId ? '' : '같은 내용을 여러 반에 주려면 학년·반을 고르고 [학급 담기]를 반마다 누른 뒤 배정하세요(반마다 따로 배정됩니다). 담지 않으면 고른 반 하나에만 배정합니다. '}배정하면 그 반 학생 화면에 AI 실험실이 열립니다. 홈 화면 카드는 [앱 설정]에서 "AI 실험실"을 켜 주세요.</p></div>
-    <div class="card"><h2>배정 목록</h2>${list}</div>`;
+        <button class="btn sm ghost ai-del" data-ai="delAsg" data-id="${E(a.id)}" title="삭제">삭제</button>
+      </div></div>`).join('');
+    return `<div class="ai-group"><div class="ai-group-h"><b>${E(list[0].title)}</b> <span class="ai-sub">${E(list[0].schoolName)} · ${list.length}개 반</span></div>${rows}</div>`;
+  }).join('');
+}
+
+// 입력이 바뀔 때 폼 일부만 고친다(다시 그리면 입력 중인 칸이 풀리므로).
+function refreshAssignForm(changed) {
+  const t = $('aiT_title'); if (!t) return;
+  const school = $('aiT_school').value, grade = $('aiT_grade').value, cls = $('aiT_class').value;
+  if (['aiT_school', 'aiT_grade', 'aiT_class'].includes(changed)) {
+    // 반 게시판을 쓰고 있었다면 새 반의 같은 이름 게시판으로 바꿔 준다.
+    const cur = S.boards.find(b => b.id === $('aiT_board').value);
+    let key = boardKey(cur);
+    if (cur && cur.group) {
+      const same = S.boards.find(b => b.name === cur.name && (b.schoolName || '') === school && nv(b.grade) === nv(grade) && nv(b.group) === nv(cls));
+      key = same ? boardKey(same) : '';
+    }
+    $('aiT_board').innerHTML = boardOptions(key, school, grade, cls);
+  }
+  const done = S.asgs.filter(a => a.title === t.value.trim() && a.schoolName === school && a.id !== S.editId);
+  const here = done.some(a => nv(a.grade) === nv(grade) && nv(a.class) === nv(cls));
+  $('aiT_done').innerHTML = done.length
+    ? `이 제목으로 배정한 반: ${done.sort((x, y) => x.grade - y.grade || x.class - y.class).map(a => `<span class="ai-pill${nv(a.grade) === nv(grade) && nv(a.class) === nv(cls) ? ' warn' : ''}">${E(classLabel(a))}</span>`).join(' ')}${here ? ' <b class="ai-warn">← 이미 배정한 반이에요</b>' : ''}` : '';
+  if (!S.editId) $('aiT_go').textContent = `${grade}학년 ${cls}반에 배정하기`;
 }
 
 function stuName(id) {
@@ -301,23 +353,6 @@ export function splitGroups(ids, gs) {
 }
 
 const classKey = c => `${nv(c.grade)}-${nv(c.class)}`;
-function basketHtml() {
-  if (!S.basket.length) return '<span class="ai-sub">없음 — 위에서 고른 반 하나에만 배정합니다.</span>';
-  return `<div class="ai-chips">${S.basket.map(c => `<button class="ai-chip on" data-ai="basketDel" data-k="${E(classKey(c))}" title="빼기">${E(c.grade)}학년 ${E(c.class)}반 ×</button>`).join('')}
-    <button class="ai-chip" data-ai="basketClear">모두 비우기</button></div>`;
-}
-// 담기·빼기는 폼 전체를 다시 그리지 않는다(입력해 둔 제목 등이 지워지지 않게).
-function refreshBasket() {
-  const box = $('aiBasket'); if (box) box.innerHTML = basketHtml();
-  const btn = document.querySelector('#section-ailab [data-ai="saveAsg"]');
-  if (btn && !S.editId) btn.textContent = S.basket.length > 1 ? `${S.basket.length}개 학급에 배정하기` : '배정하기';
-}
-// 고른 게시판이 특정 반 게시판이면, 다른 반에는 같은 이름의 그 반 게시판을 찾아 쓴다(없으면 고른 게시판 그대로).
-function boardFor(board, c) {
-  if (!board || !board.group) return board;
-  const b = S.boards.find(x => x.name === board.name && (x.schoolName || '') === board.schoolName && nv(x.grade) === nv(c.grade) && nv(x.group) === nv(c.class));
-  return b ? { name: b.name, schoolName: b.schoolName || '', grade: b.grade || '', group: b.group || '' } : board;
-}
 
 const nextNo = () => S.pairs.reduce((m, p) => Math.max(m, p.no || 0), 0) + 1;
 
@@ -339,14 +374,12 @@ const actions = {
         await updateDoc(doc(db, 'ai_assignments', S.editId), f);
         toast('저장했습니다.', 'ok');
       } else {
-        const classes = S.basket.length ? S.basket : [{ grade: f.grade, class: f.class }];
-        const dup = classes.filter(c => S.asgs.some(a => a.title === f.title && a.schoolName === f.schoolName && classKey(a) === classKey(c)));
-        if (dup.length && !confirm(`같은 제목으로 이미 배정한 반이 있습니다: ${dup.map(c => `${c.grade}-${c.class}`).join(', ')}\n그래도 새로 배정할까요?`)) return;
-        const b = writeBatch(db);
-        classes.forEach(c => b.set(doc(collection(db, 'ai_assignments')), { ...f, grade: c.grade, class: c.class, board: boardFor(f.board, c), status: 'ON', createdAt: serverTimestamp() }));
-        await b.commit();
-        toast(classes.length > 1 ? `${classes.length}개 학급에 배정했습니다.` : '배정했습니다.', 'ok');
-        S.basket = [];
+        if (S.asgs.some(a => a.title === f.title && a.schoolName === f.schoolName && classKey(a) === classKey(f))
+          && !confirm(`${f.grade}학년 ${f.class}반에 같은 제목으로 이미 배정했습니다.\n그래도 새로 배정할까요?`)) return;
+        await addDoc(collection(db, 'ai_assignments'), { ...f, status: 'ON', createdAt: serverTimestamp() });
+        toast(`${f.grade}학년 ${f.class}반에 배정했습니다.`, 'ok');
+        // 내용은 그대로 두고 반만 다음 반으로 넘겨 둔다(여러 반에 연달아 배정하기 쉽게).
+        S.draft = { ...f, class: String(Math.min(15, Number(f.class) + 1)) };
       }
       S.editId = '';
       await loadBase(); render();
@@ -354,15 +387,7 @@ const actions = {
   },
   edit(el) { S.editId = el.dataset.id; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); },
   cancelEdit() { S.editId = ''; render(); },
-  basketAdd() {
-    const c = { grade: $('aiT_grade').value, class: $('aiT_class').value };
-    if (S.basket.some(x => classKey(x) === classKey(c))) return toast(`${c.grade}학년 ${c.class}반은 이미 담았습니다.`);
-    S.basket.push(c);
-    S.basket.sort((x, y) => x.grade - y.grade || x.class - y.class);
-    refreshBasket();
-  },
-  basketDel(el) { S.basket = S.basket.filter(x => classKey(x) !== el.dataset.k); refreshBasket(); },
-  basketClear() { S.basket = []; refreshBasket(); },
+  resetForm() { S.draft = null; render(); },
   async delAsg(el) {
     const a = S.asgs.find(x => x.id === el.dataset.id);
     if (!a || !confirm(`"${a.title}" 배정을 지울까요?\n모둠 구성도 함께 지워집니다. 학생들이 만든 프로젝트와 공개 웹앱은 남습니다.`)) return;
@@ -479,17 +504,15 @@ function bind() {
     if (!el || el.tagName === 'SELECT' || el.type === 'checkbox') return;
     if (actions[el.dataset.ai]) actions[el.dataset.ai](el);
   });
+  sec.addEventListener('input', e => { if (/^aiT_/.test(e.target.id || '')) refreshAssignForm(e.target.id); });
   sec.addEventListener('change', e => {
+    if (/^aiT_(school|grade|class)$/.test(e.target.id || '')) refreshAssignForm(e.target.id);
     const el = e.target.closest('[data-ai]');
     if (el && changeActions[el.dataset.ai]) changeActions[el.dataset.ai](el);
   });
 }
 
 const STYLE = `
-#section-ailab .ai-form { display: grid; grid-template-columns: 160px 1fr; gap: 8px 12px; align-items: center; max-width: 640px; }
-#section-ailab .ai-form label { font-size: .85rem; font-weight: 700; color: var(--sub); }
-@media (max-width: 600px) { #section-ailab .ai-form { grid-template-columns: 1fr; } }
-#section-ailab .ai-num { max-width: 120px; }
 #section-ailab .ai-btns { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 #section-ailab .ai-sub { font-size: .8rem; color: var(--sub); }
 #section-ailab .ai-asg { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 0; border-top: 1px solid var(--border-card); }
@@ -518,6 +541,31 @@ const STYLE = `
 #section-ailab .ai-tr input { width: 110px; padding: 4px 6px; }
 #section-ailab .ai-proj > div { margin: 6px 0; font-size: .9rem; }
 #section-ailab .ai-eval { background: var(--glass); border-radius: 10px; padding: 8px 10px; margin: 6px 0; }
+#section-ailab .ai-h { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
+#section-ailab .ai-h h2 { margin: 0; }
+#section-ailab .ai-sec { padding: 14px 0; border-top: 1px solid var(--border-card); display: flex; flex-direction: column; gap: 8px; }
+#section-ailab .ai-sec:first-of-type { border-top: 0; }
+#section-ailab .ai-sec-t { font-size: .8rem; font-weight: 700; color: var(--sub); }
+#section-ailab .ai-row3 { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 8px; }
+#section-ailab .ai-nums { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+@media (max-width: 700px) { #section-ailab .ai-nums { grid-template-columns: repeat(2, 1fr); } #section-ailab .ai-row3 { grid-template-columns: 1fr 1fr; } #section-ailab .ai-row3 select:first-child { grid-column: 1 / -1; } }
+#section-ailab .ai-field { display: flex; flex-direction: column; gap: 4px; background: var(--glass); border: 1px solid var(--border-card); border-radius: 12px; padding: 10px; }
+#section-ailab .ai-field > span:first-child { font-size: .85rem; font-weight: 700; }
+#section-ailab .ai-field small { font-size: .72rem; color: var(--sub); }
+#section-ailab .ai-numwrap { display: flex; align-items: center; gap: 6px; }
+#section-ailab .ai-numwrap input { width: 72px; padding: 6px 8px; text-align: right; }
+#section-ailab .ai-numwrap em { font-style: normal; font-size: .85rem; color: var(--sub); white-space: nowrap; }
+#section-ailab .ai-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-top: 14px; border-top: 1px solid var(--border-card); }
+#section-ailab .ai-pill { display: inline-block; background: var(--glass); border: 1px solid var(--border-card); border-radius: 999px; padding: 1px 8px; margin: 2px 0; }
+#section-ailab .ai-pill.warn, #section-ailab .ai-warn { color: #e65100; border-color: #e65100; }
+#section-ailab .ai-group { padding: 10px 0; border-top: 1px solid var(--border-card); }
+#section-ailab .ai-group:first-of-type { border-top: 0; }
+#section-ailab .ai-group-h { margin-bottom: 4px; }
+#section-ailab .ai-group .ai-asg { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; padding: 8px 10px; border: 0; border-radius: 10px; }
+#section-ailab .ai-group .ai-asg:hover { background: var(--glass); }
+#section-ailab .ai-asg-c { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+#section-ailab .ai-del:hover { color: #c62828; }
+@media (max-width: 700px) { #section-ailab .ai-group .ai-asg { grid-template-columns: 1fr auto; } #section-ailab .ai-group .ai-asg .ai-btns { grid-column: 1 / -1; } }
 #aiToast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 6px; align-items: center; }
 #aiToast .ai-t { background: #222; color: #fff; padding: 9px 16px; border-radius: 999px; font-size: .88rem; }
 #aiToast .ai-t.err { background: #c62828; } #aiToast .ai-t.ok { background: #2e7d32; }
