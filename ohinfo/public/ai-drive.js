@@ -8,8 +8,8 @@
 // 실패하면 지우지 않고 간격을 늘려 가며 다시 시도한다. 학교 PC는 재부팅하면 브라우저
 // 저장이 지워지는 경우가 많아서, "드라이브에 올라간 것"만 진짜 저장으로 친다.
 
-import { AILAB_GAS_URL } from './ai-config.js?v=202610070056';
-import { blobToBase64 } from './ai-image.js?v=202610070056';
+import { AILAB_GAS_URL } from './ai-config.js?v=202610070137';
+import { blobToBase64 } from './ai-image.js?v=202610070137';
 
 export class DriveError extends Error {
   constructor(code, msg) { super(msg || code); this.code = code; }

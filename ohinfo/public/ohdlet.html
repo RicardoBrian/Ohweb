@@ -2186,7 +2186,24 @@
       document.getElementById('step1Master').classList.remove('hidden');
       loadMasterClassGrid();
     }
+    openBoardFromUrl();
   };
+
+  // 다른 화면(AI 실험실 등)에서 "ohdlet에서 보기"로 들어오면 그 게시판을 바로 연다.
+  // ohdlet.html?board=게시판이름&school=학교&grade=학년&group=반 — 들어갈 수 있는 게시판일 때만.
+  async function openBoardFromUrl() {
+    const q = new URLSearchParams(location.search);
+    const name = q.get('board');
+    if (!name) return;
+    try {
+      const snap = await getDocs(query(collection(db, 'classes'), where('name', '==', name)));
+      const c = snap.docs.map(d => d.data()).find(x => x.status === 'ON'
+        && (x.schoolName || '') === (q.get('school') || '') && (x.grade || '') === (q.get('grade') || '') && (x.group || '') === (q.get('group') || '')
+        && (IS_MASTER || _classAudienceOk(x)));
+      if (c) enterClass(c.name, c.grade || '', c.group || '', c.schoolName || '');
+    } catch (e) { console.warn('openBoardFromUrl', e); }
+    history.replaceState(null, '', location.pathname);
+  }
 
   // ── window 노출 (onclick 속성 호환) ──
   window.toggleDark = toggleDark;

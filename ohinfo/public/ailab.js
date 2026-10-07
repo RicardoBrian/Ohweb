@@ -14,12 +14,12 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { loadSession, verifyStudentAuth, authReady, clearSession } from './session.js';
 import { escHtml } from './escape.js';
-import * as C from './ai-core.js?v=202610070056';
-import { makeT, getLang, setLang } from './ai-i18n.js?v=202610070056';
-import { prepareImage, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202610070056';
-import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, saveModelToDrive } from './ai-drive.js?v=202610070056';
-import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202610070056';
-import { appHtml, probsByLabel, THEMES } from './ai-render.js?v=202610070056';
+import * as C from './ai-core.js?v=202610070137';
+import { makeT, getLang, setLang } from './ai-i18n.js?v=202610070137';
+import { prepareImage, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202610070137';
+import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, saveModelToDrive } from './ai-drive.js?v=202610070137';
+import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202610070137';
+import { appHtml, probsByLabel, THEMES } from './ai-render.js?v=202610070137';
 
 const E = escHtml;
 const $ = id => document.getElementById(id);
@@ -554,9 +554,16 @@ function previewHtml(a) {
   return appHtml(data, S.lang, S.t, { photo: ph ? ph.thumb : '', probs, sample: true, status: 'ready' });
 }
 
+// ohdlet에서 그 게시판을 바로 여는 주소
+function ohdletUrl(b) {
+  const q = new URLSearchParams({ board: b.name, school: b.schoolName || '', grade: b.grade || '', group: b.group || '' });
+  return 'ohdlet.html?' + q.toString();
+}
+
 function postHtml() {
   const b = S.asg.board;
-  if (S.project.postId) return `<div class="note ok">✅ ${E(t('postedAlready'))}</div>`;
+  const link = b && b.name ? ` <a class="btn ghost sm" href="${E(ohdletUrl(b))}" target="_blank" rel="noopener">↗ ${E(t('openOhdlet'))}</a>` : '';
+  if (S.project.postId) return `<div class="note ok">✅ ${E(t('postedAlready'))}${link}</div>`;
   if (!b || !b.name) return `<div class="note">${E(t('noBoard'))}</div>`;
   return `<button class="btn" data-act="post" ${S.busy.post ? 'disabled' : ''}>📌 ${E(t('postOhdlet'))}</button>`;
 }
