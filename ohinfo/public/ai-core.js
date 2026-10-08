@@ -17,6 +17,7 @@ export const DEFAULT_MAX_LABELS = 5;
 export const UNSURE_THRESHOLD = 0.6;
 export const CUSTOM_PHRASE_MAX = 20;
 export const TITLE_MAX = 30;
+export const DESC_MAX = 100;   // 웹앱 설명(대문 아래 한두 줄)
 export const LABEL_NAME_MAX = 20;
 
 // ── 모델 링크 ──

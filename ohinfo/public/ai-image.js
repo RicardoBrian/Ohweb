@@ -4,7 +4,7 @@
 // 768px·품질 90%를 쓴다(아래 TRAIN_MAX). webp·avif·투명 png도 여기서 전부
 // JPG로 바뀌어서, 티처블머신에 안 올라가는 형식 문제도 사라진다.
 
-import { extractImageUrl } from './ai-core.js?v=202610070137';
+import { extractImageUrl } from './ai-core.js?v=202610080150';
 
 // 화질과 용량의 중간: 768px·품질 90%(장당 약 85KB). 512px·80%보다 224px로 줄였을 때
 // 원본에 더 가깝다(합성 사진 측정 PSNR 31→34dB). 한 반 전체 약 80MB.
@@ -94,6 +94,27 @@ export async function prepareImage(blob, kind = 'train') {
   if (img.close) img.close();
   const out = await toBlob(c, TRAIN_Q);
   return { kind, blob: out, thumb, fp, hash: await sha(out), w: c.width, h: c.height, small: Math.min(w, h) < SMALL_SIDE };
+}
+
+// 웹앱 대문 사진: 비율은 그대로, 긴 변 960px 안으로 줄인 JPG data URL(약 50~150KB).
+// 공개 웹앱 문서(Firestore)에 같이 넣으므로 너무 크면 더 줄인다.
+export async function prepareCover(blob) {
+  if (!blob || !/^image\//.test(blob.type || 'image/')) throw new Error('notImage');
+  let img;
+  try { img = await decode(blob); } catch { throw new Error('notImage'); }
+  const w = img.width, h = img.height;
+  if (!w || !h) throw new Error('notImage');
+  if (Math.min(w, h) < MIN_SIDE) throw new Error('tooSmall');
+  let url = '';
+  for (const [max, q] of [[960, 0.82], [800, 0.72], [640, 0.65]]) {
+    const scale = Math.min(1, max / Math.max(w, h));
+    const [c, g] = canvasOf(Math.round(w * scale), Math.round(h * scale));
+    g.drawImage(img, 0, 0, c.width, c.height);
+    url = c.toDataURL('image/jpeg', q);
+    if (url.length < 200000) break;
+  }
+  if (img.close) img.close();
+  return url;
 }
 
 export function blobToBase64(blob) {

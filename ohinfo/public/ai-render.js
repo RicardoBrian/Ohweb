@@ -2,7 +2,7 @@
 // 디자인 5종은 화면 배치가 같고 색·질감만 다르다(ai-themes.css).
 
 import { escHtml } from './escape.js';
-import { labelName, phraseFor, UNSURE, UNSURE_THRESHOLD, LANGS } from './ai-core.js?v=202610070137';
+import { labelName, phraseFor, UNSURE, UNSURE_THRESHOLD, LANGS } from './ai-core.js?v=202610080150';
 
 export const THEMES = ['minimal', 'bw', 'glass', 'neon', 'warm'];
 const LANG_NAMES = { ko: '한국어', en: 'English', zh: '中文', ru: 'Рус' };
@@ -76,14 +76,20 @@ export function appHtml(app, lang, t, state = {}) {
       ${state.sample ? `<div class="aa-note">${escHtml(t('sampleNote'))}</div>` : ''}`;
   }
 
+  // 대문: 학생이 올린 사진과 설명(선생님이 숨기면 안 보인다)
+  const cover = app.cover && !hidden._cover && /^data:image\/(jpeg|png|webp);base64,/.test(app.cover) ? app.cover : '';
+  const descRaw = hidden._desc ? '' : String(app.desc || '');
+  const desc = descRaw && lang !== (app.descLang || app.srcLang || 'ko') && app.descTr && app.descTr[lang] ? app.descTr[lang] : descRaw;
+
   const langs = LANGS.map(l => `<button type="button" class="aa-lang${l === lang ? ' on' : ''}" data-lang="${l}">${LANG_NAMES[l]}</button>`).join('');
 
   return `<div class="ai-app" data-theme="${theme}">
     <div class="aa-bg" aria-hidden="true"></div>
     <div class="aa-wrap">
-      <header class="aa-head">
-        ${emojis ? `<div class="aa-emojis">${escHtml(emojis)}</div>` : ''}
+      <header class="aa-head${cover ? ' has-cover' : ''}">
+        ${cover ? `<img class="aa-cover" src="${escHtml(cover)}" alt="">` : (emojis ? `<div class="aa-emojis">${escHtml(emojis)}</div>` : '')}
         <h1 class="aa-title">${escHtml(app.title || '')}</h1>
+        ${desc ? `<p class="aa-desc">${escHtml(desc)}</p>` : ''}
         <div class="aa-chips">${chips}</div>
       </header>
       <section class="aa-card aa-drop${state.photo ? ' has-photo' : ''}" tabindex="0" data-act="zone">${drop}</section>

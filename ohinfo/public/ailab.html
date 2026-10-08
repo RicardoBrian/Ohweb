@@ -7,7 +7,7 @@
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="stylesheet" href="theme.css">
-  <link rel="stylesheet" href="ai-themes.css?v=202610070137">
+  <link rel="stylesheet" href="ai-themes.css?v=202610080150">
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body { margin: 0; background: var(--bg); background-attachment: fixed; line-height: 1.55; color: var(--text); font-family: var(--font); }
@@ -275,6 +275,13 @@
     #toasts .toast.err { border-color: var(--danger); color: var(--danger); }
     #toasts .toast.ok { border-color: var(--success); }
     #toasts .toast.out { opacity: 0; }
+    .cover-pv { display: flex; gap: 10px; align-items: flex-end; margin: 8px 0; }
+    .cover-pv img { max-width: 100%; max-height: 160px; border-radius: 12px; object-fit: cover; border: 1px solid var(--border-card); }
+    /* 다음에 누를 곳 */
+    .nudge { animation: nudge 1.6s ease-in-out infinite; position: relative; z-index: 1; }
+    @keyframes nudge { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 140, 0, .65); } 60% { box-shadow: 0 0 0 10px rgba(255, 140, 0, 0); } }
+    .stars.nudge { border-radius: 12px; }
+    @media (prefers-reduced-motion: reduce) { .nudge { animation: none; outline: 3px solid rgba(255, 140, 0, .8); outline-offset: 2px; } }
   </style>
 </head>
 <body>
@@ -298,6 +305,6 @@
 <main class="wrap" id="main"></main>
 <div id="toasts" aria-live="polite"></div>
 <input type="file" id="filePick" accept="image/*" multiple hidden>
-<script type="module" src="ailab.js?v=202610070137"></script>
+<script type="module" src="ailab.js?v=202610080150"></script>
 </body>
 </html>

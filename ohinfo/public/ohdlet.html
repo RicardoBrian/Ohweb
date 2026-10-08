@@ -1509,7 +1509,9 @@
       const boardKeyBase = cls.name ? classBoardKeyBase(cls) : '';
       const allPosts = await loadClassPosts(classTitle, currentBoardKey);
       const rawPosts = allPosts
-        .filter(p => !p.deleted && (!p.boardKey || p.boardKey === currentBoardKey || (boardKeyBase && p.boardKey.startsWith(boardKeyBase))));
+        .filter(p => !p.deleted && (!p.boardKey || p.boardKey === currentBoardKey || (boardKeyBase && p.boardKey.startsWith(boardKeyBase))))
+        // AI 실험실 글 중 "반별로 나누기"로 올린 글은 같은 반 학생에게만(마스터는 전부).
+        .filter(p => p.aiScope !== 'class' || IS_MASTER || (_nv(p.aiGrade) === SESSION.grade && _nv(p.aiClass) === SESSION.group));
       // 클라이언트 정렬: pinned desc, createdAt desc
       rawPosts.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (b.createdAt > a.createdAt ? 1 : -1));
 

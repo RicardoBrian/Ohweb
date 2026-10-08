@@ -14,12 +14,12 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { loadSession, verifyStudentAuth, authReady, clearSession } from './session.js';
 import { escHtml } from './escape.js';
-import * as C from './ai-core.js?v=202610070137';
-import { makeT, getLang, setLang } from './ai-i18n.js?v=202610070137';
-import { prepareImage, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202610070137';
-import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, saveModelToDrive } from './ai-drive.js?v=202610070137';
-import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202610070137';
-import { appHtml, probsByLabel, THEMES } from './ai-render.js?v=202610070137';
+import * as C from './ai-core.js?v=202610080150';
+import { makeT, getLang, setLang } from './ai-i18n.js?v=202610080150';
+import { prepareImage, prepareCover, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202610080150';
+import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, saveModelToDrive } from './ai-drive.js?v=202610080150';
+import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202610080150';
+import { appHtml, probsByLabel, THEMES } from './ai-render.js?v=202610080150';
 
 const E = escHtml;
 const $ = id => document.getElementById(id);
@@ -130,6 +130,68 @@ function render() {
   }
   window.scrollTo(0, y);
   S.rendering = false;
+  nudge();
+}
+
+// ── 다음에 누를 곳 안내 ──
+// 지금 상태에서 학생이 다음에 누를 버튼을 골라 반짝이게 하고, 그 버튼이 새로 바뀌는 순간
+// (사진이 다 모였다, 학습이 끝났다 …) 화면을 그 버튼으로 옮겨 준다. 단계를 옮긴 직후나
+// 글을 쓰는 중에는 움직이지 않는다.
+function nextTarget() {
+  if (S.tab !== 'project' || !S.project) return '';
+  const p = S.project, open = p.step || 1, leader = isLeader();
+  const has = sel => (document.querySelector('#main ' + sel) ? sel : '');
+  const nextBtnSel = '.next .btn.primary[data-act="step"]';
+  switch (S.viewStep) {
+    case 1:
+      if (!leader) return open >= 2 ? has(nextBtnSel) : '';
+      return p.defined && open >= 2 && !S.labelsDirty ? has(nextBtnSel) : has('[data-act="s1confirm"]:not([disabled])');
+    case 2: {
+      const mine = labelsOf().filter(isMine);
+      const done = mine.every(l => imgs('train', l.id).length >= minTrain());
+      return done && open >= 3 ? has(nextBtnSel) : '';
+    }
+    case 3: {
+      const tab = S.s3tab || (leader || members().length === 1 ? 'train' : 'test');
+      if (!C.hasModel(p)) return leader && tab === 'train' ? has('[data-act="train"]:not([disabled])') : '';
+      if (S.training && !S.training.done && !S.training.error) return '';
+      const testOk = labelsOf().every(l => imgs('test', l.id).length >= minTest());
+      if (!testOk) return tab === 'test' ? '' : has('[data-act="s3tab"][data-v="test"]');
+      return open >= 4 ? has(nextBtnSel) : '';
+    }
+    case 4: {
+      const rounds = C.evalRounds(p);
+      const cur = rounds[rounds.length - 1];
+      if (!cur || (cur.modelVersion || 0) !== (p.modelVersion || 0)) return has('[data-act="evalrun"]:not([disabled])');
+      const mine = (cur.stars || {})[S.me];
+      if (!mine || !mine.s) return has('.stars');
+      return open >= 5 ? has(nextBtnSel) : '';
+    }
+    case 5: {
+      if (!p.published || p.pubSig !== appSig(appData())) return has('[data-act="publish"]:not([disabled])');
+      if (!p.postId) return has('[data-act="post"]:not([disabled])');
+      return has('a[href^="ohdlet.html?"]');
+    }
+    default: return '';
+  }
+}
+
+function nudge() {
+  document.querySelectorAll('#main .nudge').forEach(el => el.classList.remove('nudge'));
+  let sel = '';
+  try { sel = nextTarget(); } catch (e) { console.warn('nudge', e); }
+  const el = sel ? document.querySelector('#main ' + sel) : null;
+  if (el) el.classList.add('nudge');
+  const key = `${S.pid}|${S.viewStep}|${sel}`;
+  const prev = S.lastNext;
+  S.lastNext = key;
+  if (!el || !prev || prev === key) return;
+  if (prev.split('|').slice(0, 2).join('|') !== key.split('|').slice(0, 2).join('|')) return;   // 단계를 막 옮겼으면 맨 위 그대로
+  const ae = document.activeElement;
+  if (ae && (ae.tagName === 'TEXTAREA' || (ae.tagName === 'INPUT' && !['radio', 'checkbox', 'button'].includes(ae.type)))) return;
+  const r = el.getBoundingClientRect();
+  if (r.top >= 70 && r.bottom <= window.innerHeight - 70) return;   // 이미 보이면 그대로
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
 function applyStaticText() {
@@ -215,7 +277,7 @@ function step1() {
     <div class="field"><label>${E(t('labelsLabel'))}</label>
       <div class="label-rows">${labels.map((l, i) => `<div class="label-row">
         <span class="ln">${i + 1}</span>
-        <input id="f-lname-${E(l.id)}" data-field="lname" data-id="${E(l.id)}" maxlength="${C.LABEL_NAME_MAX}" placeholder="${E(t('labelPh'))}" value="${E(l.name)}" ${hasImg(l.id) ? 'disabled title="🔒"' : ''}>
+        <input id="f-lname-${E(l.id)}" data-field="lname" data-id="${E(l.id)}" maxlength="${C.LABEL_NAME_MAX}" placeholder="${E(t('labelPh'))}" value="${E(l.name)}">
         <button class="icon-btn" data-act="lremove" data-id="${E(l.id)}" ${labels.length <= 2 || hasImg(l.id) ? 'disabled' : ''} aria-label="${E(t('del'))}">×</button>
       </div><div class="owner-line"><span class="muted">${E(t('owner'))}</span>${ownerChips(l, 's1')}</div>${trHtml(l)}`).join('')}</div>
       ${labels.length < maxLabels() ? `<button class="btn ghost sm" data-act="ladd">${E(t('addLabel'))}</button>` : ''}
@@ -484,6 +546,9 @@ function appData() {
     title: (S.drafts.title != null ? S.drafts.title : (p.app && p.app.title)) || '',
     theme: (p.app && p.app.theme) || 'minimal',
     srcLang: p.srcLang || 'ko',
+    cover: (p.app && p.app.cover) || '',
+    desc: (S.drafts.desc != null ? S.drafts.desc : (p.app && p.app.desc)) || '',
+    descLang: (p.app && p.app.descLang) || S.lang, descTr: (p.app && p.app.descTr) || {},
     labels: labelsOf().map(appLabel),
     modelVersion: p.modelVersion || 0, modelUrl: p.modelVersion ? '' : (p.modelUrl || ''), mapping: p.mapping || {},
     hiddenPhrases: (S.appDoc && S.appDoc.hiddenPhrases) || {},
@@ -491,7 +556,7 @@ function appData() {
 }
 // 공개 뒤에 고친 게 있는지 비교하는 서명(번역 결과는 빼고).
 function appSig(a) {
-  return JSON.stringify({ title: a.title, theme: a.theme, v: a.modelVersion, m: a.modelUrl, map: a.mapping, l: a.labels.map(l => [l.id, l.name, l.emoji, l.phrase, l.custom]) });
+  return JSON.stringify({ title: a.title, desc: a.desc, cover: a.cover ? a.cover.length + a.cover.slice(-24) : '', theme: a.theme, v: a.modelVersion, m: a.modelUrl, map: a.mapping, l: a.labels.map(l => [l.id, l.name, l.emoji, l.phrase, l.custom]) });
 }
 
 function step5() {
@@ -503,6 +568,15 @@ function step5() {
   h += `<div class="card"><div class="field"><label for="f-title">${E(t('appTitle'))}</label>
     <input id="f-title" data-field="title" maxlength="${C.TITLE_MAX}" placeholder="${E(t('appTitlePh'))}" value="${E(a.title)}"></div>
     <label>${E(t('design'))}</label><div class="themes">${THEMES.map(th => `<button class="theme-card${a.theme === th ? ' on' : ''}" data-act="theme" data-v="${th}"><span class="sw sw-${th}"></span>${E(t('themes.' + th))}</button>`).join('')}</div></div>`;
+  // 대문 꾸미기: 어떤 앱인지 한눈에 보이게 사진 한 장과 짧은 설명(둘 다 선택)
+  h += `<div class="card"><h3>${E(t('coverTitle'))}</h3><p class="muted sm">${E(t('coverHelp'))}</p>
+    ${a.cover ? `<div class="cover-pv"><img src="${E(a.cover)}" alt=""><button class="btn sm" data-act="cover-del">${E(t('coverDel'))}</button></div>` : ''}
+    <div class="dz" tabindex="0" data-dropzone="cover:x"><span>${E(a.cover ? t('coverChange') : t('coverAdd'))}</span>
+      <button class="btn sm" data-act="pick" data-zone="cover:x">${E(t('chooseFiles'))}</button></div>
+    ${S.busy.cover ? `<div class="muted"><span class="spin"></span>${E(t('uploading'))}</div>` : ''}
+    <div class="field"><label for="f-desc">${E(t('descLabel'))}</label>
+      <textarea id="f-desc" data-field="desc" maxlength="${C.DESC_MAX}" rows="2" placeholder="${E(t('descPh'))}">${E(a.desc)}</textarea></div>
+    ${(S.appDoc && S.appDoc.hiddenPhrases && (S.appDoc.hiddenPhrases._cover || S.appDoc.hiddenPhrases._desc)) ? `<div class="note warn">${E(t('hiddenCover'))}</div>` : ''}</div>`;
   h += `<div class="card"><h3>${E(t('perLabel'))}</h3>${a.labels.map((l, i) => {
     const name = l.name;
     const err = l.phrase === C.CUSTOM_PHRASE ? C.validateCustomPhrase(draftOr('custom-' + l.id, l.custom)) : '';
@@ -622,6 +696,7 @@ function currentModel() {
 // ── 사진 넣기 ──
 async function onPhotos(kind, labelId, files, urls) {
   if (kind === 'try') return tryPhoto(files, urls);
+  if (kind === 'cover') return setCover(files, urls);
   // 파일은 한 장씩, 끌어온 주소들은 "사진 한 장의 후보들"이라 그중 처음 되는 것 하나만.
   const srcs = files.length ? files : (urls.length ? [urls] : []);
   for (const src of srcs) {
@@ -638,6 +713,19 @@ async function onPhotos(kind, labelId, files, urls) {
       toast(t(m === 'tooSmall' ? 'tooSmall' : m === 'fetchFail' ? 'fetchFail' : 'notImage'), 'warn');
     }
   }
+}
+
+async function setCover(files, urls) {
+  if (S.busy.cover) return;
+  S.busy.cover = true; schedule();
+  try {
+    const url = files.length ? await prepareCover(files[0]) : (urls.length ? await fetchFirstImage(urls, prepareCover) : '');
+    if (url) await safeUpdate(pref(), { 'app.cover': url });
+  } catch (e) {
+    const m = e && e.message;
+    toast(t(m === 'tooSmall' ? 'tooSmall' : m === 'fetchFail' ? 'fetchFail' : 'notImage'), 'warn');
+  }
+  S.busy.cover = false; schedule();
 }
 
 async function tryPhoto(files, urls) {
@@ -857,10 +945,11 @@ const actions = {
     const [kind, id] = el.dataset.zone.split(':');
     const inp = $('filePick');
     inp.dataset.zone = `${kind}:${id}`;
-    inp.multiple = kind !== 'try';
+    inp.multiple = kind !== 'try' && kind !== 'cover';
     inp.click();
   },
   'photo-del'(_, el) { deletePhoto(el.dataset.id, el.dataset.pending === '1'); },
+  'cover-del'() { safeUpdate(pref(), { 'app.cover': '' }); },
   // ③ 학습(대표만): 드라이브의 학습 사진 → 이 PC에서 학습 → 드라이브에 N번 모델로 저장.
   async train() {
     if (!isLeader() || (S.training && !S.training.done && !S.training.error)) return;
@@ -992,8 +1081,25 @@ const actions = {
         upd[`appLabels.${l.id}.customTrOf`] = sentence;
         l.customTr = tr;
       }
+      // 앱 설명도 다른 언어로 번역해 둔다(바뀌었을 때만).
+      const desc = fresh.desc.trim().slice(0, C.DESC_MAX);
+      let descTr = (S.project.app && S.project.app.descTr) || {};
+      if (desc && (S.project.app || {}).descTrOf !== desc) {
+        descTr = {};
+        for (const lang of C.LANGS) {
+          if (lang === fresh.descLang) continue;
+          try {
+            const r = await fetch('/api/translate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texts: [desc], targetLang: lang, sourceLang: 'auto' }) });
+            const d = await r.json();
+            if (d.translations && d.translations[0] && d.translations[0].text) descTr[lang] = d.translations[0].text;
+          } catch { /* 번역이 안 되면 원문을 보여 준다 */ }
+        }
+        upd['app.descTr'] = descTr;
+        upd['app.descTrOf'] = desc;
+      }
       const pub = {
         title: fresh.title.trim().slice(0, C.TITLE_MAX), theme: fresh.theme, srcLang: fresh.srcLang,
+        cover: fresh.cover || '', desc, descLang: fresh.descLang, descTr,
         labels: fresh.labels.map(({ id, name, tr, emoji, phrase, custom, customLang, customTr }) => ({ id, name, tr, emoji, phrase, custom, customLang, customTr })),
         modelVersion: fresh.modelVersion, modelUrl: fresh.modelUrl, mapping: fresh.mapping, published: true, updatedAt: serverTimestamp(),
       };
@@ -1022,13 +1128,15 @@ const actions = {
       const texts = {};
       for (const lang of C.LANGS) {
         const tl = makeT(lang);
-        texts['sub' + sx[lang]] = tl('postTitle', { title: a.title });
+        texts['sub' + sx[lang]] = `[${C.nv(S.asg.grade)}-${C.nv(S.asg.class)}] ` + tl('postTitle', { title: a.title });
         texts['msg' + sx[lang]] = tl('postBody', { url, labels: a.labels.map(l => `${l.emoji || ''}${C.labelName(l, lang)}`).join(', ') });
       }
       const ref = await addDoc(collection(db, 'posts'), {
         classTitle: b.name, boardKey: C.classBoardKey(b), grade: b.grade || '', group: b.group || '',
         num: String(S.session.number || ''), name: S.session.name || '', studentId: S.me, srcLang: S.lang,
         ...texts, imgs: [], column: '', likes: 0, pinned: false, deleted: false,
+        // 선생님이 배정에서 "반별로 나누기"를 고르면 ohdlet에서 같은 반 학생에게만 보인다.
+        ...((S.asg.boardScope || 'class') === 'class' ? { aiScope: 'class', aiGrade: C.nv(S.asg.grade), aiClass: C.nv(S.asg.class) } : {}),
         createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
       });
       await updateDoc(pref(), { postId: ref.id });
@@ -1061,6 +1169,7 @@ async function saveField(field, el) {
   switch (field) {
     case 'topic': return safeUpdate(pref(), { topic: v.slice(0, 40), updatedAt: serverTimestamp() });
     case 'title': return safeUpdate(pref(), { 'app.title': v.slice(0, C.TITLE_MAX) });
+    case 'desc': return safeUpdate(pref(), { 'app.desc': v.slice(0, C.DESC_MAX), 'app.descLang': S.lang });
     case 'causeText': case 'fix':
       if (cur) return safeUpdate(pref(), { [`evals.${cur.key}.${field}`]: v.slice(0, 300) });
       return;
@@ -1071,7 +1180,7 @@ async function saveField(field, el) {
     }
   }
 }
-const SAVED_FIELDS = new Set(['topic', 'title', 'causeText', 'fix', 'custom']);
+const SAVED_FIELDS = new Set(['topic', 'title', 'desc', 'causeText', 'fix', 'custom']);
 async function flushDrafts() {
   for (const key of Object.keys(timers)) {
     if (!key.startsWith('field:')) continue;
@@ -1107,10 +1216,13 @@ function bindEvents() {
     if (f === 'lname') {
       S.labels = (S.labels || []).map(l => l.id === el.dataset.id ? { ...l, name: el.value } : l);
       S.labelsDirty = true;
+      // 확정한 뒤(사진을 모으는 중)에는 고친 이름을 바로 저장하지 않는다 — [바뀐 내용 저장]을 눌러야
+      // 이름 검사와 번역을 거쳐 한꺼번에 바뀐다(지우는 도중 빈 이름이 친구 화면에 보이지 않게).
+      if (S.project && S.project.defined) return nudge();
       return debounce('labels-save', () => saveLabels(false), 400);
     }
     S.drafts[draftKey(el)] = el.value;
-    if (f === 'custom' || f === 'title') updatePreview(el); // 입력칸은 그대로 두고 미리보기만
+    if (f === 'custom' || f === 'title' || f === 'desc') updatePreview(el); // 입력칸은 그대로 두고 미리보기만
     if (SAVED_FIELDS.has(f)) debounce('field:' + el.id, () => saveField(f, el), 700);
   });
   main.addEventListener('compositionstart', () => { S.composing = true; });

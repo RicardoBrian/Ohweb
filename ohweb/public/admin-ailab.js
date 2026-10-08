@@ -147,7 +147,11 @@ function assignHtml() {
         ${num('aiT_test', '테스트 사진', ed.minTestPerLabel || 3, 1, 50, '장 권장', '레이블마다')}
       </div></div>
     <div class="ai-sec"><div class="ai-sec-t">웹앱 올릴 ohdlet 게시판</div>
-      ${sel('aiT_board', boardOptions(boardKey(ed.board), ed.schoolName || '', ed.grade || '1', ed.class || '1'))}</div>
+      ${sel('aiT_board', boardOptions(boardKey(ed.board), ed.schoolName || '', ed.grade || '1', ed.class || '1'))}
+      <div class="ai-seg" role="radiogroup" aria-label="게시판 글 보기">
+        ${[['class', '반별로 나누기', '같은 반 학생 글만 보입니다'], ['all', '모든 반 함께', '이 게시판을 쓰는 모든 반 글이 보입니다']].map(([v, l, h]) =>
+          `<label class="ai-opt"><input type="radio" name="aiT_scope" value="${v}" ${(ed.boardScope || 'class') === v ? 'checked' : ''}><span><b>${l}</b><small>${h}</small></span></label>`).join('')}
+      </div></div>
     <div class="ai-foot">
       <button class="btn accent" data-ai="saveAsg" id="aiT_go">${editing ? '저장' : '배정하기'}</button>
       ${editing ? '<button class="btn ghost" data-ai="cancelEdit">취소</button>' : ''}
@@ -169,7 +173,7 @@ function asgListHtml() {
     list.sort((x, y) => x.grade - y.grade || x.class - y.class);
     const rows = list.map(a => `<div class="ai-asg">
       <div class="ai-asg-c"><b>${E(classLabel(a))}</b>
-        <span class="ai-sub">모둠 ${a.groupSize || 2}명 · 레이블 최대 ${a.maxLabels || 5}개 · 사진 ${a.minPerLabel || 15}장 · 테스트 ${a.minTestPerLabel || 3}장 · 게시판 ${a.board ? E(a.board.name) : '없음'}</span></div>
+        <span class="ai-sub">모둠 ${a.groupSize || 2}명 · 레이블 최대 ${a.maxLabels || 5}개 · 사진 ${a.minPerLabel || 15}장 · 테스트 ${a.minTestPerLabel || 3}장 · 게시판 ${a.board ? `${E(a.board.name)}(${(a.boardScope || 'class') === 'all' ? '모든 반 함께' : '반별'})` : '없음'}</span></div>
       <label class="toggle" title="${a.status === 'ON' ? '학생 화면 열림 (누르면 닫기)' : '학생 화면 닫힘 (누르면 열기)'}"><input type="checkbox" data-ai="status" data-id="${E(a.id)}" ${a.status === 'ON' ? 'checked' : ''}><div class="toggle-track"></div></label>
       <div class="ai-btns">
         <button class="btn sm" data-ai="goPairs" data-id="${E(a.id)}">모둠 구성</button>
@@ -285,7 +289,7 @@ function projectHtml(p, pair) {
     const tr = trEditing
       ? LANGS.map(g => `<label class="ai-tr">${g}<input class="inp" data-tr="${E(l.id)}" data-lang="${g}" value="${E((l.tr || {})[g] || '')}"></label>`).join('')
       : LANGS.map(g => `<span class="ai-sub">${g}: ${E((l.tr || {})[g] || '-')}</span>`).join(' ');
-    return `<tr><td><b>${E(l.emoji || al.emoji || '')} ${E(l.name)}</b>${custom}</td><td>${tr}</td><td>${cnt('train', l.id)}</td><td>${cnt('test', l.id)}</td><td>${E(names[l.owner] || l.owner)}</td></tr>`;
+    return `<tr><td><b>${E(l.emoji || al.emoji || '')} ${E(l.name)}</b>${custom}</td><td>${tr}</td><td>${cnt('train', l.id)}</td><td>${cnt('test', l.id)}</td><td>${E((l.owners && l.owners.length ? l.owners : [l.owner]).filter(Boolean).map(id => names[id] || id).join(', '))}</td></tr>`;
   }).join('');
   const evalHtml = evals.map(r => `<div class="ai-eval"><b>${r.n}회차 ${r.pct}%</b> (${r.correct}/${r.total})${r.modelVersion ? ` · ${r.modelVersion}번 모델` : ''}
       ${Object.entries(r.stars || {}).map(([sid, v]) => `<div>${E(names[sid] || sid)}: ${'★'.repeat(v.s || 0)}${'☆'.repeat(5 - (v.s || 0))} — ${E(v.reason || '')}</div>`).join('')}
@@ -300,7 +304,11 @@ function projectHtml(p, pair) {
       : `<button class="btn sm ghost" data-ai="trEdit" data-pid="${E(p.id)}">고치기</button>`}</th><th>학습</th><th>테스트</th><th>담당</th></tr></thead><tbody>${labels}</tbody></table></div>
     <div><b>모델:</b> ${p.modelVersion ? `${p.modelVersion}번 모델${(p.models && p.models['v' + p.modelVersion] && p.models['v' + p.modelVersion].valAcc != null) ? ` (학습 확인 점수 ${p.models['v' + p.modelVersion].valAcc}%)` : ''} · 지금까지 ${Object.keys(p.models || {}).length}번 학습` : (p.modelUrl ? `<a href="${E(p.modelUrl)}" target="_blank" rel="noopener">${E(p.modelId || p.modelUrl)}</a>` : '-')}</div>
     <div><b>평가:</b> ${evalHtml}</div>
-    <div><b>웹앱:</b> ${appLink}</div></div>`;
+    <div><b>웹앱:</b> ${appLink}</div>
+    ${app && (app.cover || app.desc) ? `<div class="ai-cover">${app.cover ? `<img src="${E(app.cover)}" alt="">` : ''}<div>
+      ${app.desc ? `<div>${E(app.desc)}</div>` : ''}
+      <div class="ai-btns">${app.cover ? `<button class="btn sm ${hidden._cover ? 'accent' : 'ghost'}" data-ai="hide" data-pid="${E(p.id)}" data-id="_cover">${hidden._cover ? '대문 사진 숨김 해제' : '대문 사진 숨기기'}</button>` : ''}
+      ${app.desc ? `<button class="btn sm ${hidden._desc ? 'accent' : 'ghost'}" data-ai="hide" data-pid="${E(p.id)}" data-id="_desc">${hidden._desc ? '설명 숨김 해제' : '설명 숨기기'}</button>` : ''}</div></div></div>` : ''}</div>`;
 }
 
 // ── 동작 ──
@@ -313,6 +321,7 @@ function readForm() {
     maxLabels: Math.min(8, Math.max(2, Number(v('aiT_max')) || 5)),
     groupSize: Math.min(8, Math.max(1, Number(v('aiT_group')) || 2)),
     board: board ? { name: board.name, schoolName: board.schoolName || '', grade: board.grade || '', group: board.group || '' } : null,
+    boardScope: (document.querySelector('input[name="aiT_scope"]:checked') || {}).value === 'all' ? 'all' : 'class',
   };
 }
 
@@ -564,6 +573,13 @@ const STYLE = `
 #section-ailab .ai-group .ai-asg { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; padding: 8px 10px; border: 0; border-radius: 10px; }
 #section-ailab .ai-group .ai-asg:hover { background: var(--glass); }
 #section-ailab .ai-asg-c { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+#section-ailab .ai-seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+#section-ailab .ai-opt { display: flex; gap: 8px; align-items: flex-start; border: 1px solid var(--border-card); border-radius: 12px; padding: 10px; cursor: pointer; background: var(--glass); }
+#section-ailab .ai-opt:has(input:checked) { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+#section-ailab .ai-opt span { display: flex; flex-direction: column; gap: 2px; font-size: .85rem; }
+#section-ailab .ai-opt small { font-size: .74rem; color: var(--sub); }
+#section-ailab .ai-cover { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; margin-top: 6px; }
+#section-ailab .ai-cover img { max-width: 220px; max-height: 130px; border-radius: 10px; object-fit: cover; }
 #section-ailab .ai-del:hover { color: #c62828; }
 @media (max-width: 700px) { #section-ailab .ai-group .ai-asg { grid-template-columns: 1fr auto; } #section-ailab .ai-group .ai-asg .ai-btns { grid-column: 1 / -1; } }
 #aiToast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 6px; align-items: center; }
