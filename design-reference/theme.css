@@ -199,3 +199,14 @@ body.dark .dark-toggle::after { transform: translateX(18px); }
 .hidden { display: none !important; }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* ============================================================
+   공통 상단 바 브랜드 — 로고 + 지금 페이지 이름(허브 화면은 로고만)
+   모든 사이트·페이지가 같은 모양을 쓰도록 여기서 정의한다.
+   페이지 안에 .nav-brand 스타일을 따로 만들지 않는다.
+   ============================================================ */
+.nav-brand { display: flex; align-items: center; gap: 10px; min-width: 0; flex-shrink: 1; text-decoration: none; color: var(--text); cursor: pointer; }
+.nav-brand img { height: 30px; width: auto; display: block; flex-shrink: 0; }
+.nav-brand-title { font-weight: 800; font-size: 1rem; letter-spacing: -0.02em; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 로고가 진한 자주색이라 다크 모드의 어두운 상단 바에서 묻힌다 — 밝게 띄운다 */
+body.dark .nav-brand img, body.dark .toolbar-brand img { filter: brightness(1.7) saturate(1.1); }

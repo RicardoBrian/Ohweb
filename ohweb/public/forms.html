@@ -23,8 +23,6 @@
       padding: 0 20px; height: var(--nav-h);
       display: flex; align-items: center; gap: 12px;
     }
-    .nav-brand { display: flex; align-items: center; gap: 8px; flex-shrink: 0; text-decoration: none; }
-    .nav-brand img { height: 30px; width: auto; display: block; }
     .nav-title { font-weight: 800; font-size: 0.95rem; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
     .waffle-btn {
       width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border-card);
@@ -242,7 +240,7 @@
 </svg>
 
 <nav class="nav">
-  <a href="admin.html" class="nav-brand"><img src="logo.png" alt="OHweb"></a>
+  <a href="admin.html" class="nav-brand"><img src="logo.png" alt="OHweb"><span class="nav-brand-title">설문 관리</span></a>
   <div style="flex:1"></div>
   <button class="waffle-btn" id="waffleBtn" title="메뉴" onclick="openAppModal()">
     <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="0" y="0" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="6.5" y="0" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="13" y="0" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="0" y="6.5" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="6.5" y="6.5" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="13" y="6.5" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="0" y="13" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="6.5" y="13" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="13" y="13" width="5" height="5" rx="1.2" fill="currentColor"/></svg>

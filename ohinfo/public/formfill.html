@@ -29,7 +29,6 @@
 
     /* NAV */
     .nav { position: sticky; top: 0; z-index: 200; background: var(--glass-nav); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border-bottom: 1px solid var(--border); box-shadow: 0 1px 0 rgba(255,255,255,0.35),var(--shadow); padding: 0 20px; height: var(--nav-h); display: flex; align-items: center; gap: 10px; }
-    .nav-brand { font-size: 1.1rem; font-weight: 900; letter-spacing: -0.02em; background: linear-gradient(135deg,var(--accent),#7c4dff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; white-space: nowrap; flex-shrink: 0; }
     .nav-end { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 
     /* GLOBE */
@@ -131,7 +130,7 @@
 </svg>
 
 <nav class="nav" onclick="closeAllDD(event)">
-  <div class="nav-brand" id="navBrand"><img src="logo.png" alt="OHinfo" style="height:32px;width:auto;display:block;"></div>
+  <a class="nav-brand" id="navBrand" href="home.html"><img src="logo.png" alt="OHinfo"><span class="nav-brand-title" id="navBrandTitle">설문 참여</span></a>
   <div class="nav-end">
     <div class="lang-globe" id="langGlobe">
       <button class="lang-globe-btn" onclick="event.stopPropagation();toggleLangDD()" title="언어"><svg width="16" height="16"><use href="#ic-globe"/></svg></button>
@@ -208,6 +207,7 @@
 <script type="module">
 import { db, auth } from './firebase-config.js';
 import { escHtml as _escP, safePhotoUrl } from './escape.js';
+import { setPageTitle } from './page-title.js';
 import { doc, getDoc, addDoc, updateDoc, collection, query, where, getDocs, serverTimestamp, increment }
   from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { loadSession, clearSession, verifyStudentAuth, authReady } from './session.js';
@@ -380,6 +380,8 @@ function updateLangCheck(lang) {
   ['ko','zh','ru','en'].forEach(l => {
     document.getElementById('lck-' + l).innerHTML = l === lang ? '<svg width="13" height="13"><use href="#ic-check"/></svg>' : '';
   });
+  // 설문을 불러온 뒤에는 탭 제목을 설문 제목으로
+  setPageTitle('formfill', FORM ? _formTitle() : null, lang);
 }
 updateLangCheck(currentLang);
 
@@ -474,7 +476,7 @@ async function init() {
   const needLogin = !FORM.allowAnon && FORM.requireLogin !== false;
   if (needLogin && !SESSION) {
     sessionStorage.setItem('ohinfo_redirect', location.href);
-    location.href = 'login.html'; return;
+    location.href = 'index.html'; return;
   }
   // 로그인이 필요한 설문만 세션이 실제 로그인 계정과 맞는지 확인한다
   // (안 맞으면 verifyStudentAuth가 로그인 화면으로 보냄).
@@ -529,6 +531,7 @@ function _formDesc()  { return (_trForm()?.description) || FORM.description || '
 
 function renderFormHeader() {
   const t = T[currentLang];
+  setPageTitle('formfill', _formTitle());
   document.getElementById('fillTitle').textContent = _formTitle();
   document.getElementById('fillDesc').textContent  = _formDesc();
   const di = document.getElementById('fillDescImg');
@@ -701,7 +704,7 @@ async function submitForm() {
     btn.disabled = false;
     document.getElementById('btnNextTxt').textContent = t.submit;
     sessionStorage.setItem('ohinfo_redirect', location.href);
-    clearSession(); location.href = 'login.html'; return;
+    clearSession(); location.href = 'index.html'; return;
   }
 
   const allQ = sections.flatMap(s => s.questions);

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>수업 타이머 · OHweb</title>
+  <title>수업 타이머 — OHweb</title>
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="stylesheet" href="theme.css">
@@ -14,9 +14,6 @@
 
     /* ── Nav ── */
     .nav { display: flex; align-items: center; justify-content: space-between; padding: 0 24px; height: 56px; background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
-    .nav-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
-    .nav-brand img { height: 28px; }
-    .nav-brand span { font-size: 0.88rem; font-weight: 700; color: var(--sub); }
     .nav-right { display: flex; align-items: center; gap: 10px; }
     .btn-icon { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border); background: var(--glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; transition: background 0.2s; color: var(--text); }
     .btn-icon:hover { background: var(--glass-strong); }
@@ -43,7 +40,7 @@
     .field-label { font-size: 0.7rem; font-weight: 700; color: var(--sub); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px; }
     .title-row { display: flex; gap: 10px; align-items: center; }
     .title-inp {
-      flex: 1; padding: 11px 16px; border-radius: 12px;
+      flex: 1; min-width: 0; padding: 11px 16px; border-radius: 12px;
       border: 1px solid var(--border-card); background: var(--glass);
       color: var(--text); font-family: var(--font); font-size: 1rem; font-weight: 600;
       backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
@@ -200,7 +197,7 @@
   <nav class="nav">
     <a href="admin.html" class="nav-brand">
       <img src="logo.png" alt="OHweb">
-      <span>수업 타이머</span>
+      <span class="nav-brand-title">수업 타이머</span>
     </a>
     <div class="nav-right">
       <button class="btn-icon" id="soundBtn" onclick="toggleSound()" title="알림음"><svg width="17" height="17"><use href="#ic-bell"/></svg></button>
