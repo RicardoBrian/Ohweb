@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OHweb</title>
+  <title>kakainfo 관리자</title>
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
@@ -447,7 +447,7 @@
 
 <!-- 네비 -->
 <nav class="nav">
-  <a class="nav-brand" href="admin.html"><img src="logo.png" alt="OHweb"></a>
+  <a class="nav-brand" href="admin.html"><img src="logo.png" alt="kakainfo"></a>
   <div class="nav-right">
     <button class="waffle-btn" id="waffleBtn" title="메뉴" onclick="openAppModal()">
       <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="0" y="0" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="6.5" y="0" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="13" y="0" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="0" y="6.5" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="6.5" y="6.5" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="13" y="6.5" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="0" y="13" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="6.5" y="13" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="13" y="13" width="5" height="5" rx="1.2" fill="currentColor"/></svg>
@@ -1024,7 +1024,7 @@
     currentSection = name;
     // 탭 제목도 "지금 화면 — OHweb"으로(다른 관리 페이지와 같은 규칙)
     const h = sec && sec.querySelector('.section-header h1');
-    document.title = h ? `${h.textContent.trim()} — OHweb` : 'OHweb';
+    document.title = h ? `${h.textContent.trim()} — kakainfo 관리자` : 'kakainfo 관리자';
     // firebase 데이터 로딩 훅 (모듈에서 등록, 없으면 그냥 무시)
     if (typeof window.onSectionShow === 'function') window.onSectionShow(name);
   }

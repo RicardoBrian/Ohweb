@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>로그인 — OHweb</title>
+  <title>로그인 — kakainfo 관리자</title>
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
@@ -12,37 +12,6 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: var(--bg); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-    .login-card {
-      width: 100%;
-      max-width: 380px;
-      margin: 24px;
-      background: var(--glass-strong);
-      backdrop-filter: var(--blur);
-      -webkit-backdrop-filter: var(--blur);
-      border: 1px solid var(--border);
-      border-radius: 24px;
-      padding: 40px 36px;
-      box-shadow: var(--highlight), var(--shadow-md);
-    }
-    .logo-area {
-      text-align: center;
-      margin-bottom: 32px;
-    }
-    .logo-area h1 {
-      font-size: 1.8rem;
-      font-weight: 900;
-      letter-spacing: -0.02em;
-      background: linear-gradient(135deg, var(--accent), var(--accent-hover));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .logo-area p {
-      font-size: 0.85rem;
-      color: var(--sub);
-      margin-top: 6px;
-      font-weight: 600;
-    }
     .field { margin-bottom: 14px; }
     .field label {
       display: block;
@@ -133,12 +102,13 @@
 <body>
   <button class="dark-toggle" onclick="toggleDark()" style="position:fixed;top:20px;right:20px;" title="다크모드"></button>
 
-  <div class="login-card">
-    <div class="logo-area">
-      <h1>OHweb</h1>
-      <p>관리자 페이지</p>
+  <div class="auth-card">
+    <div class="auth-head">
+      <img class="auth-logo" src="logo.png" alt="kakainfo">
+      <div class="auth-word">kakainfo</div>
+      <div class="auth-sub">관리자 로그인</div>
     </div>
-    <button class="btn" onclick="login()">Google로 로그인</button>
+    <button class="auth-btn" onclick="login()">Google로 로그인</button>
     <div class="error-msg" id="errMsg"></div>
   </div>
 

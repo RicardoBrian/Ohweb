@@ -1,7 +1,7 @@
 // 학생 사이트(OHinfo) 공통 — 상단 바의 "로고 + 지금 페이지 이름"과 브라우저 탭 제목.
 //
-// 예전엔 페이지마다 제목 규칙이 달랐다("시험 — OHinfo", "설문 참여", "관산중학교
-// 정보 게시판" …). 이제 탭 제목은 항상 "페이지 이름 — OHinfo"(홈은 "OHinfo"),
+// 예전엔 페이지마다 제목 규칙이 달랐다("시험 — kakainfo", "설문 참여", "관산중학교
+// 정보 게시판" …). 이제 탭 제목은 항상 "페이지 이름 — kakainfo"(홈은 "OHinfo"),
 // 이름은 홈 화면 앱 카드(home.html의 TH[...].apps)와 같은 말을 쓴다. 언어를 바꾸면
 // 각 페이지의 언어 전환 함수에서 setPageTitle을 다시 부른다.
 const NAMES = {
@@ -25,5 +25,5 @@ export function setPageTitle(key, override, lang) {
   const name = override || pageName(key, lang);
   const el = document.getElementById('navBrandTitle');
   if (el) el.textContent = name;
-  document.title = name ? `${name} — OHinfo` : 'OHinfo';
+  document.title = name ? `${name} — kakainfo` : 'kakainfo';
 }

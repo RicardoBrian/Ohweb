@@ -148,7 +148,7 @@ ok(gradeBody !== null, '제한시간 지난 뒤 재입장 → 저장된 답으�
   await p2.evaluate(() => window.doLogin());
   await p2.waitForURL(/formfill\.html\?id=F1/, { timeout: 15000 });
   await p2.waitForSelector('#pageFill:not(.hidden)', { timeout: 15000 });
-  ok((await p2.title()) === '좋아하는 과목 — OHinfo', '로그인 후 원래 설문으로 복귀 + 탭 제목 "설문 제목 — OHinfo"');
+  ok((await p2.title()) === '좋아하는 과목 — kakainfo', '로그인 후 원래 설문으로 복귀 + 탭 제목 "설문 제목 — kakainfo"');
   await ctx2.close();
 }
 
