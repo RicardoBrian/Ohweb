@@ -4,7 +4,7 @@
 // 768px·품질 90%를 쓴다(아래 TRAIN_MAX). webp·avif·투명 png도 여기서 전부
 // JPG로 바뀌어서, 티처블머신에 안 올라가는 형식 문제도 사라진다.
 
-import { extractImageUrl } from './ai-core.js?v=202610080150';
+import { extractImageUrl } from './ai-core.js?v=202610100534';
 
 // 화질과 용량의 중간: 768px·품질 90%(장당 약 85KB). 512px·80%보다 224px로 줄였을 때
 // 원본에 더 가깝다(합성 사진 측정 PSNR 31→34dB). 한 반 전체 약 80MB.

@@ -146,7 +146,7 @@ function assignHtml() {
         ${num('aiT_min', '학습 사진', ed.minPerLabel || 15, 3, 200, '장 이상', '레이블마다')}
         ${num('aiT_test', '테스트 사진', ed.minTestPerLabel || 3, 1, 50, '장 권장', '레이블마다')}
       </div></div>
-    <div class="ai-sec"><div class="ai-sec-t">웹앱 올릴 ohdlet 게시판</div>
+    <div class="ai-sec"><div class="ai-sec-t">웹앱 올릴 정보 게시판</div>
       ${sel('aiT_board', boardOptions(boardKey(ed.board), ed.schoolName || '', ed.grade || '1', ed.class || '1'))}
       <div class="ai-seg" role="radiogroup" aria-label="게시판 글 보기">
         ${[['class', '반별로 나누기', '같은 반 학생 글만 보입니다'], ['all', '모든 반 함께', '이 게시판을 쓰는 모든 반 글이 보입니다']].map(([v, l, h]) =>
