@@ -196,7 +196,7 @@ function nudge() {
 
 function applyStaticText() {
   document.documentElement.lang = S.lang;
-  document.title = `${t('appName')} — OHinfo`;
+  document.title = `${t('appName')} — kakainfo`;
   $('navTitle').textContent = t('appName');
   document.querySelectorAll('.lang-item').forEach(el => el.classList.toggle('on', el.dataset.lang === S.lang));
 }

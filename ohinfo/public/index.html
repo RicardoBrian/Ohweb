@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OHinfo — 학생 로그인</title>
+  <title>로그인 — kakainfo</title>
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
@@ -13,72 +13,6 @@
     body { background: var(--bg); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px 16px; }
     .hidden { display: none !important; }
 
-    /* ── 전체 레이아웃 ── */
-    .page-wrap {
-      display: flex; width: 100%; max-width: 940px;
-      background: var(--glass-strong);
-      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
-      border: 1px solid var(--border); border-radius: 30px;
-      box-shadow: var(--highlight), var(--shadow-md);
-      overflow: hidden;
-    }
-
-    /* ── 왼쪽 브랜딩 패널 (PC 전용) ── */
-    .brand-panel {
-      flex: 1; padding: 56px 48px;
-      display: flex; flex-direction: column; justify-content: space-between;
-      background: linear-gradient(145deg, rgba(42,92,230,0.12), rgba(124,77,255,0.1));
-      border-right: 1px solid var(--border-card);
-    }
-    .brand-logo { font-size: 2.4rem; font-weight: 900; letter-spacing: -0.04em;
-      background: linear-gradient(135deg, var(--accent), #7c4dff);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-    }
-    .brand-tagline { font-size: 1.05rem; font-weight: 700; color: var(--text); margin-top: 8px; line-height: 1.5; }
-    .brand-sub { font-size: 0.85rem; color: var(--sub); margin-top: 6px; font-weight: 500; }
-    .brand-apps { display: flex; flex-direction: column; gap: 10px; margin-top: 40px; }
-    .brand-app-item {
-      display: flex; align-items: center; gap: 14px;
-      background: var(--glass); border: 1px solid var(--border-card);
-      border-radius: 14px; padding: 14px 18px;
-      box-shadow: var(--highlight);
-    }
-    .brand-app-icon {
-      width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center; color: #fff;
-    }
-    .bai-ohdlet { background: linear-gradient(135deg, #667eea, #764ba2); }
-    .bai-submit { background: linear-gradient(135deg, #f093fb, #f5576c); }
-    .bai-exam   { background: linear-gradient(135deg, #4facfe, #00f2fe); }
-    .bai-form   { background: linear-gradient(135deg, #43e97b, #38f9d7); }
-    .bai-qna    { background: linear-gradient(135deg, #0071e3, #7c4dff); }
-    .brand-app-name { font-size: 0.88rem; font-weight: 800; }
-    .brand-app-desc { font-size: 0.76rem; color: var(--sub); margin-top: 2px; font-weight: 500; }
-    .brand-footer { font-size: 0.75rem; color: var(--sub); font-weight: 600; }
-
-    @media (max-width: 700px) { .brand-panel { display: none; } }
-
-    /* ── 오른쪽 폼 패널 ── */
-    .form-panel {
-      width: 420px; flex-shrink: 0;
-      padding: 48px 40px;
-    }
-    @media (max-width: 700px) {
-      .page-wrap { border-radius: 22px; }
-      .form-panel { width: 100%; padding: 36px 24px; }
-    }
-    @media (max-width: 480px) {
-      .page-wrap { border-radius: 18px; }
-      .form-panel { padding: 28px 20px; }
-    }
-
-    .logo { margin-bottom: 28px; }
-    .logo h1 {
-      font-size: 1.9rem; font-weight: 900; letter-spacing: -0.03em;
-      background: linear-gradient(135deg, var(--accent), #7c4dff);
-      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-    }
-    .logo p { font-size: 0.85rem; color: var(--sub); margin-top: 4px; font-weight: 600; }
     .lang-bar { display: flex; gap: 8px; margin-top: 12px; }
     .lang-btn {
       font-family: inherit; font-size: 0.75rem; font-weight: 700; cursor: pointer;
@@ -155,6 +89,7 @@
     body.dark .btn { background: #f5f5f7; color: #1d1d1f; }
     .btn:hover { opacity: 0.88; }
     .btn:active { transform: scale(0.98); }
+    .redirect-notice { font-size: 0.82rem; color: var(--accent); background: var(--accent-light); border-radius: 10px; padding: 9px 12px; margin-bottom: 12px; text-align: center; }
     .btn-ghost {
       background: transparent; border: 1px solid var(--border-card);
       color: var(--sub); box-shadow: var(--highlight); margin-top: 6px;
@@ -226,40 +161,13 @@
 <div id="loadingOverlay"><div class="spinner"></div></div>
 <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
 
-<div class="page-wrap">
-  <!-- 왼쪽 브랜딩 패널 -->
-  <div class="brand-panel">
-    <div>
-      <div class="brand-logo">OHinfo</div>
-      <div class="brand-tagline" id="brandTagline">학생 정보 포털</div>
-      <div class="brand-sub" id="brandSub">선생님이 공개한 앱을 바로 이용하세요</div>
-      <div class="brand-apps" id="brandApps">
-        <div class="brand-app-item">
-          <div class="brand-app-icon bai-ohdlet"><svg width="22" height="22"><use href="#ic-board"/></svg></div>
-          <div><div class="brand-app-name" data-ba="ohdlet-name">정보 게시판</div><div class="brand-app-desc" data-ba="ohdlet-desc">정보 공유 게시판</div></div>
-        </div>
-        <div class="brand-app-item">
-          <div class="brand-app-icon bai-exam"><svg width="22" height="22"><use href="#ic-clipboard"/></svg></div>
-          <div><div class="brand-app-name" data-ba="exam-name">시험</div><div class="brand-app-desc" data-ba="exam-desc">온라인 시험</div></div>
-        </div>
-        <div class="brand-app-item">
-          <div class="brand-app-icon bai-form"><svg width="22" height="22"><use href="#ic-chart"/></svg></div>
-          <div><div class="brand-app-name" data-ba="form-name">설문지 만들기</div><div class="brand-app-desc" data-ba="form-desc">설문지를 만들어요</div></div>
-        </div>
-        <div class="brand-app-item">
-          <div class="brand-app-icon bai-qna"><svg width="22" height="22"><use href="#ic-chat"/></svg></div>
-          <div><div class="brand-app-name" data-ba="qna-name">질문하기</div><div class="brand-app-desc" data-ba="qna-desc">선생님께 언제든 질문</div></div>
-        </div>
-      </div>
-    </div>
-    <div class="brand-footer" id="brandFooter">© OHinfo · 학생용 포털</div>
-  </div>
-
+<div class="auth-card">
   <!-- 오른쪽 폼 패널 -->
-  <div class="form-panel">
-    <div class="logo">
-      <h1>OHinfo</h1>
-      <p data-t="subtitle">학생 정보 포털</p>
+  <div>
+    <div class="auth-head">
+      <img class="auth-logo" src="logo.png" alt="kakainfo">
+      <div class="auth-word">kakainfo</div>
+      <div class="auth-sub" data-t="subtitle">학생 로그인</div>
     </div>
 
     <div class="lang-card">
@@ -279,6 +187,7 @@
 
     <!-- 로그인 -->
     <div id="loginPanel">
+      <div class="redirect-notice hidden" id="redirectNotice" data-t="redirectNotice">로그인하면 보던 페이지로 돌아갑니다</div>
       <div class="field">
         <label data-t="school">학교</label>
         <select class="inp" id="loginSchool"><option value="">학교 선택</option></select>
@@ -313,7 +222,7 @@
         <label data-t="password">비밀번호</label>
         <input class="inp" id="loginPw" type="password" data-t-ph="passwordPh" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')doLogin()">
       </div>
-      <button class="btn" onclick="doLogin()" data-t="loginBtn">로그인</button>
+      <button class="auth-btn" onclick="doLogin()" data-t="loginBtn">로그인</button>
       <div class="err" id="loginErr"></div>
     </div>
 
@@ -354,7 +263,7 @@
             <input class="inp" id="joinName" data-t-ph="namePh" placeholder="홍길동" maxlength="10">
           </div>
         </div>
-        <button class="btn" onclick="checkStudent()" data-t="checkBtn">학생 확인</button>
+        <button class="auth-btn" onclick="checkStudent()" data-t="checkBtn">학생 확인</button>
         <div class="err" id="joinErr1"></div>
       </div>
 
@@ -392,7 +301,7 @@
           <label data-t="confirmPw">비밀번호 확인</label>
           <input class="inp" id="joinPw2" type="password" data-t-ph="pwConfirmPh" placeholder="동일하게 입력" onkeydown="if(event.key==='Enter')doRegister()">
         </div>
-        <button class="btn" onclick="doRegister()" data-t="registerBtn">가입 완료</button>
+        <button class="auth-btn" onclick="doRegister()" data-t="registerBtn">가입 완료</button>
         <button class="btn btn-ghost" onclick="resetJoin()" data-t="backBtn">← 다시 입력</button>
         <div class="err" id="joinErr2"></div>
       </div>
@@ -403,13 +312,13 @@
 <script>
   const T = {
     ko: {
-      subtitle: '학생 정보 포털',
+      subtitle: '학생 로그인',
       tabLogin: '로그인', tabJoin: '회원가입',
       school: '학교', selectSchool: '학교 선택...',
       grade: '학년', class: '반', number: '번호', name: '이름',
       gradeLabel: n => `${n}학년`, classLabel: n => `${n}반`,
       selectNum: '선택',
-      password: '비밀번호', passwordPh: '비밀번호 입력', loginBtn: '로그인',
+      password: '비밀번호', passwordPh: '비밀번호 입력', loginBtn: '로그인', redirectNotice: '로그인하면 보던 페이지로 돌아갑니다',
       numPh: '예: 3', namePh: '홍길동',
       checkBtn: '학생 확인',
       newPw: '새 비밀번호', pwPh: '4자리 이상',
@@ -428,17 +337,17 @@
       errAlready: '이미 가입된 학생입니다.\n로그인 탭을 이용하세요.',
       errPwShort: '비밀번호는 4자리 이상이어야 합니다.',
       errPwMismatch: '비밀번호가 일치하지 않습니다.',
-      brand: { tagline: '학생 정보 포털', sub: '선생님이 공개한 앱을 바로 이용하세요', footer: '© OHinfo · 학생용 포털',
+      brand: { tagline: '학생 정보 포털', sub: '선생님이 공개한 앱을 바로 이용하세요', footer: '© kakainfo · 학생용 포털',
         apps: { 'ohdlet-name':'정보 게시판','ohdlet-desc':'정보 공유 게시판','exam-name':'시험','exam-desc':'온라인 시험','form-name':'설문지 만들기','form-desc':'설문지를 만들어요','qna-name':'질문하기','qna-desc':'선생님께 언제든 질문' } },
     },
     zh: {
-      subtitle: '学生信息门户',
+      subtitle: '学生登录',
       tabLogin: '登录', tabJoin: '注册',
       school: '学校', selectSchool: '选择学校...',
       grade: '年级', class: '班', number: '学号', name: '姓名',
       gradeLabel: n => `${n}年级`, classLabel: n => `${n}班`,
       selectNum: '选择',
-      password: '密码', passwordPh: '输入密码', loginBtn: '登录',
+      password: '密码', passwordPh: '输入密码', loginBtn: '登录', redirectNotice: '登录后将返回刚才的页面',
       numPh: '例: 3', namePh: '张三',
       checkBtn: '确认学生信息',
       newPw: '新密码', pwPh: '至少4位',
@@ -457,17 +366,17 @@
       errAlready: '该学生已注册。\n请切换到登录选项卡。',
       errPwShort: '密码至少需要4位。',
       errPwMismatch: '两次输入的密码不一致。',
-      brand: { tagline: '学生信息门户', sub: '使用老师开放的应用', footer: '© OHinfo · 学生门户',
+      brand: { tagline: '学生信息门户', sub: '使用老师开放的应用', footer: '© kakainfo · 学生门户',
         apps: { 'ohdlet-name':'共享白板','ohdlet-desc':'课堂共享空间','exam-name':'在线考试','exam-desc':'参加在线测试','form-name':'问卷练习','form-desc':'问卷与课堂练习','qna-name':'提问','qna-desc':'随时向老师提问' } },
     },
     ru: {
-      subtitle: 'Портал для учеников',
+      subtitle: 'Вход для учеников',
       tabLogin: 'Вход', tabJoin: 'Регистрация',
       school: 'Школа', selectSchool: 'Выберите школу...',
       grade: 'Год', class: 'Класс', number: '№', name: 'Имя',
       gradeLabel: n => `${n}-й год`, classLabel: n => `${n} кл.`,
       selectNum: 'Выбрать',
-      password: 'Пароль', passwordPh: 'Введите пароль', loginBtn: 'Войти',
+      password: 'Пароль', passwordPh: 'Введите пароль', loginBtn: 'Войти', redirectNotice: 'После входа вы вернётесь на предыдущую страницу',
       numPh: 'Пр: 3', namePh: 'Иванов И.',
       checkBtn: 'Найти ученика',
       newPw: 'Новый пароль', pwPh: 'Минимум 4 символа',
@@ -486,17 +395,17 @@
       errAlready: 'Ученик уже зарегистрирован.\nПерейдите на вкладку «Вход».',
       errPwShort: 'Пароль должен содержать не менее 4 символов.',
       errPwMismatch: 'Пароли не совпадают.',
-      brand: { tagline: 'Портал для учеников', sub: 'Используйте приложения от учителя', footer: '© OHinfo · Ученический портал',
+      brand: { tagline: 'Портал для учеников', sub: 'Используйте приложения от учителя', footer: '© kakainfo · Ученический портал',
         apps: { 'ohdlet-name':'Доска','ohdlet-desc':'Общая классная доска','exam-name':'Тест','exam-desc':'Онлайн-тестирование','form-name':'Опрос','form-desc':'Опросы и практика','qna-name':'Вопрос','qna-desc':'Вопрос учителю в любое время' } },
     },
     en: {
-      subtitle: 'Student Portal',
+      subtitle: 'Student login',
       tabLogin: 'Login', tabJoin: 'Sign Up',
       school: 'School', selectSchool: 'Select school...',
       grade: 'Grade', class: 'Class', number: 'Number', name: 'Name',
       gradeLabel: n => `Grade ${n}`, classLabel: n => `Class ${n}`,
       selectNum: 'Select',
-      password: 'Password', passwordPh: 'Enter password', loginBtn: 'Login',
+      password: 'Password', passwordPh: 'Enter password', loginBtn: 'Login', redirectNotice: 'You will return to the previous page after login',
       numPh: 'e.g. 3', namePh: 'John Doe',
       checkBtn: 'Find Student',
       newPw: 'New Password', pwPh: 'At least 4 characters',
@@ -515,7 +424,7 @@
       errAlready: 'This student is already registered.\nPlease use the Login tab.',
       errPwShort: 'Password must be at least 4 characters.',
       errPwMismatch: 'Passwords do not match.',
-      brand: { tagline: 'Student Portal', sub: 'Use apps shared by your teacher', footer: '© OHinfo · Student Portal',
+      brand: { tagline: 'Student Portal', sub: 'Use apps shared by your teacher', footer: '© kakainfo · Student Portal',
         apps: { 'ohdlet-name':'Paddlet','ohdlet-desc':'Shared board space','exam-name':'Exam','exam-desc':'Online exam','form-name':'Survey','form-desc':'Surveys and practice','qna-name':'Ask a Question','qna-desc':'Ask your teacher anytime' } },
     }
   };
@@ -569,7 +478,16 @@
   const load = v => document.getElementById('loadingOverlay').style.display = v ? 'flex' : 'none';
   const nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
 
-  if (loadSession()) window.location.href = 'home.html';
+  // 로그인 뒤 돌아갈 곳 — 설문 링크처럼 로그인이 필요한 페이지가 sessionStorage에
+  // 넣어둔다(login.html은 이제 이 화면으로 넘어오기만 한다). 같은 사이트 주소만 따른다.
+  function takeRedirect() {
+    const dest = sessionStorage.getItem('ohinfo_redirect');
+    sessionStorage.removeItem('ohinfo_redirect');
+    try { const u = new URL(dest, location.href); if (dest && u.origin === location.origin) return u.href; } catch {}
+    return 'home.html';
+  }
+  if (sessionStorage.getItem('ohinfo_redirect')) document.getElementById('redirectNotice')?.classList.remove('hidden');
+  if (loadSession()) window.location.href = takeRedirect();
 
   // 학교 드롭다운 로드
   let _students = [];
@@ -687,7 +605,7 @@
       }
       // 공개 명단엔 이름 등이 없다 — 로그인된 상태로 본인 문서를 읽어 세션을 만든다.
       saveSession(await fetchOwnStudent(matchId));
-      window.location.href = 'home.html';
+      window.location.href = takeRedirect();
     } catch(e) { console.error('login:', e); err.innerText = t.errGeneric; }
     load(false);
   };
@@ -782,7 +700,7 @@
       const fresh = await registerStudent(foundStudentId, extra, pw, foundStudent.name);
       delete fresh.password;
       saveSession(fresh);
-      window.location.href = 'home.html';
+      window.location.href = takeRedirect();
     } catch(e) {
       if (e instanceof AuthError && e.code === 'name-mismatch') {
         resetJoin();

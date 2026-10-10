@@ -22,6 +22,7 @@ await env.withSecurityRulesDisabled(async c => {
   await setDoc(doc(db, 'exams/EX1'), { title: '중간고사' });
   await setDoc(doc(db, 'exam_questions/Q1'), { examId: 'EX1', order: 1, type: 'mc', title: '1+1?', options: ['2', '3'], points: 10 });
   await setDoc(doc(db, 'exam_questions/Q2'), { examId: 'EX1', order: 2, type: 'essay', title: '서술', points: 20 });
+  await setDoc(doc(db, 'student_forms/F1'), { ownerId: 'StuA', title: '좋아하는 과목', status: 'open', responseCount: 0, questions: [{ id: 'q1', type: 'mc', text: '좋아하는 과목은?', options: ['정보', '수학'] }] });
   await setDoc(doc(db, 'exam_assignments/AS1'), { examId: 'EX1', code: 'ABC', status: 'ON', grade: '1', class: '2', schoolName: 'S중', duration: 10 });
 });
 const sr = await fetch('http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=fake', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'stua@ohinfo.local', password: 'pass99', returnSecureToken: true }) });
@@ -120,7 +121,38 @@ await page.evaluate(() => enterExamWithCode('AS1', 'ABC'));
 await page.waitForSelector('#step3:not(.hidden)', { timeout: 15000 });
 ok(gradeBody !== null, '제한시간 지난 뒤 재입장 → 저장된 답으로 즉시 자동 제출');
 
-const realErr = errors.filter(e => !/net::ERR_FAILED|Failed to load resource|ERR_BLOCKED|CodeMirror script not ready/.test(e));
+// 6) 로그인 화면 통합: 로그아웃 상태로 설문 링크 → 로그인 화면(index) → 로그인 → 다시 그 설문
+{
+  const ctx2 = await browser.newContext();
+  await ctx2.route('**/*', async route => {
+    const u = route.request().url();
+    const m = u.match(/^https:\/\/www\.gstatic\.com\/firebasejs\/10\.12\.2\/([A-Za-z0-9_-]+\.js)$/);
+    if (m) return route.fulfill({ status: 200, contentType: 'text/javascript', body: readFileSync(path.join(FB, m[1])) });
+    if (u.startsWith('http://localhost:8099') || u.startsWith('http://127.0.0.1')) return route.continue();
+    return route.abort();
+  });
+  const p2 = await ctx2.newPage();
+  p2.on('pageerror', e => errors.push(e.message));
+  await p2.goto('http://localhost:8099/formfill.html?id=F1');
+  await p2.waitForURL(/index\.html/, { timeout: 15000 });
+  ok(await p2.isVisible('#redirectNotice'), '로그아웃 상태 설문 링크 → 통합 로그인 화면 + "보던 페이지로 돌아갑니다" 안내');
+  await p2.goto('http://localhost:8099/login.html');
+  await p2.waitForURL(/index\.html/, { timeout: 15000 });
+  ok(true, '옛 login.html 주소 → 통합 로그인 화면으로 이동');
+  await p2.waitForFunction(() => document.querySelectorAll('#loginSchool option').length > 1, null, { timeout: 15000 });
+  await p2.selectOption('#loginSchool', 'S중'); await p2.waitForTimeout(300);
+  await p2.selectOption('#loginGrade', '1'); await p2.waitForTimeout(200);
+  await p2.selectOption('#loginClass', '2'); await p2.waitForTimeout(300);
+  await p2.selectOption('#loginNumber', '3');
+  await p2.fill('#loginPw', 'pass99');
+  await p2.evaluate(() => window.doLogin());
+  await p2.waitForURL(/formfill\.html\?id=F1/, { timeout: 15000 });
+  await p2.waitForSelector('#pageFill:not(.hidden)', { timeout: 15000 });
+  ok((await p2.title()) === '좋아하는 과목 — kakainfo', '로그인 후 원래 설문으로 복귀 + 탭 제목 "설문 제목 — kakainfo"');
+  await ctx2.close();
+}
+
+const realErr = errors.filter(e => !/net::ERR_FAILED|Failed to load resource|ERR_BLOCKED|CodeMirror script not ready|Could not reach Cloud Firestore backend/.test(e));
 ok(realErr.length === 0, '페이지 스크립트 오류 없음' + (realErr.length ? ' — ' + realErr.slice(0, 5).join(' | ') : ''));
 console.log(fails ? `실패 ${fails}건` : '전부 통과');
 await browser.close(); server.close(); await env.cleanup(); process.exit(fails ? 1 : 0);

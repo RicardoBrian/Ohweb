@@ -65,10 +65,13 @@ function showToast(message, type = 'success') {
 function renderLogin(errorMessage = '') {
   app.innerHTML = `
     <div class="login-wrap">
-      <div class="login-card">
-        <p class="brand">OHshrt</p>
-        <p class="brand-sub">계속하려면 로그인하세요</p>
-        <button class="btn accent" id="loginBtn">Google로 로그인</button>
+      <div class="auth-card">
+        <div class="auth-head">
+          <img class="auth-logo" src="/logo.png" alt="kakainfo">
+          <div class="auth-word">kakainfo</div>
+          <div class="auth-sub">단축 URL 관리 · 관리자 로그인</div>
+        </div>
+        <button class="auth-btn" id="loginBtn">Google로 로그인</button>
         <p class="error-msg" id="loginError">${errorMessage ? escapeHtml(errorMessage) : ''}</p>
       </div>
     </div>
@@ -93,7 +96,7 @@ function renderLogin(errorMessage = '') {
 async function renderDashboard() {
   app.innerHTML = `
     <div class="topbar">
-      <p class="brand">OHshrt</p>
+      <a class="nav-brand" href="/"><img src="/logo.png" alt="kakainfo"><span class="nav-brand-title">단축 URL</span></a>
       <div class="topbar-actions">
         <div class="dark-toggle" onclick="toggleDark()" title="다크모드"></div>
         <button class="btn ghost sm" id="logoutBtn">로그아웃</button>

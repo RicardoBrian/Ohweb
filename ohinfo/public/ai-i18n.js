@@ -121,7 +121,7 @@ const ko = {
   appLoading: 'AI를 불러오는 중...', notFound: '웹앱을 찾을 수 없어요.', notPublished: '아직 공개되지 않은 웹앱이에요.',
   modelFail: 'AI 모델을 불러오지 못했어요. 잠시 후 다시 열어 주세요.',
   choosePhoto: '사진 넣기', dropPhoto: '사진을 끌어다 놓거나, 눌러서 고르거나, Ctrl+V로 붙여넣으세요.',
-  again: '다른 사진 넣기', probability: 'AI가 생각한 가능성', madeWith: 'OHinfo AI 실험실에서 만들었어요',
+  again: '다른 사진 넣기', probability: 'AI가 생각한 가능성', madeWith: 'kakainfo AI 실험실에서 만들었어요',
   thinking: 'AI가 생각하는 중...',
 };
 const en = {
@@ -245,7 +245,7 @@ const en = {
   appLoading: 'Loading the AI...', notFound: "Can't find this web app.", notPublished: 'This web app is not published yet.',
   modelFail: "Couldn't load the AI model. Please try again later.",
   choosePhoto: 'Add a photo', dropPhoto: 'Drag a photo here, click to choose one, or paste with Ctrl+V.',
-  again: 'Try another photo', probability: 'How sure the AI is', madeWith: 'Made in OHinfo AI Lab',
+  again: 'Try another photo', probability: 'How sure the AI is', madeWith: 'Made in kakainfo AI Lab',
   thinking: 'The AI is thinking...',
 };
 const zh = {
@@ -369,7 +369,7 @@ const zh = {
   appLoading: '正在加载AI...', notFound: '找不到这个网页应用。', notPublished: '这个网页应用还没发布。',
   modelFail: '无法加载AI模型。请稍后再打开。',
   choosePhoto: '放入照片', dropPhoto: '把照片拖到这里，点击选择，或按 Ctrl+V 粘贴。',
-  again: '换一张照片', probability: 'AI认为的可能性', madeWith: '在OHinfo AI实验室制作',
+  again: '换一张照片', probability: 'AI认为的可能性', madeWith: '在kakainfo AI实验室制作',
   thinking: 'AI正在思考...',
 };
 const ru = {
@@ -493,7 +493,7 @@ const ru = {
   appLoading: 'Загружаем ИИ...', notFound: 'Приложение не найдено.', notPublished: 'Это приложение ещё не опубликовано.',
   modelFail: 'Не удалось загрузить модель ИИ. Попробуй открыть позже.',
   choosePhoto: 'Добавить фото', dropPhoto: 'Перетащи фото сюда, нажми, чтобы выбрать, или вставь через Ctrl+V.',
-  again: 'Другое фото', probability: 'Насколько ИИ уверен', madeWith: 'Сделано в ИИ-лаборатории OHinfo',
+  again: 'Другое фото', probability: 'Насколько ИИ уверен', madeWith: 'Сделано в ИИ-лаборатории kakainfo',
   thinking: 'ИИ думает...',
 };
 export const I18N = { ko, en, zh, ru };

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>AI 실험실 — OHinfo</title>
+  <title>AI 실험실 — kakainfo</title>
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="stylesheet" href="theme.css">
@@ -16,9 +16,6 @@
 
     /* 상단 메뉴 */
     .nav { position: sticky; top: 0; z-index: 200; display: flex; align-items: center; gap: 10px; padding: 0 18px; height: var(--nav-h); }
-    .nav-brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); min-width: 0; }
-    .nav-brand img { height: 30px; width: auto; display: block; }
-    .nav-brand span { font-weight: 700; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .nav-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
     .nav-name { font-size: .85rem; color: var(--text-2); max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .icon-round { width: 32px; height: 32px; border-radius: 50%; border: 1px solid var(--border-card); background: var(--glass); color: var(--sub); cursor: pointer; display: grid; place-items: center; font-size: 15px; }
@@ -27,7 +24,7 @@
     .lang-item { display: block; width: 100%; text-align: left; padding: 10px 14px; font-size: .85rem; font-weight: 600; background: none; border: 0; color: var(--text); cursor: pointer; }
     .lang-item:hover { background: var(--accent-light); }
     .lang-item.on::after { content: ' ✓'; color: var(--accent); }
-    @media (max-width: 560px) { .nav { padding: 0 12px; } .nav-name { display: none; } .nav-brand img { display: none; } }
+    @media (max-width: 560px) { .nav { padding: 0 12px; } .nav-name { display: none; } }
 
     .wrap { max-width: 1040px; margin: 0 auto; padding: 22px 18px 120px; }
     .btn.primary { background: var(--accent-grad); color: #fff; border-color: transparent; }
@@ -286,11 +283,11 @@
 </head>
 <body>
 <nav class="nav">
-  <a class="nav-brand" href="home.html"><img src="logo.png" alt="OHinfo"><span id="navTitle">AI 실험실</span></a>
+  <a class="nav-brand" href="home.html"><img src="logo.png" alt="kakainfo"><span class="nav-brand-title" id="navTitle">AI 실험실</span></a>
   <div class="nav-right">
     <span class="nav-name" id="navName"></span>
     <div class="lang">
-      <button class="icon-round" id="langBtn" title="Language" aria-label="Language">🌐</button>
+      <button class="icon-round" id="langBtn" title="Language" aria-label="Language"><svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7"/><ellipse cx="12" cy="12" rx="3.6" ry="8.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="3.5" y1="12" x2="20.5" y2="12" stroke="currentColor" stroke-width="1.5"/></svg></button>
       <div class="lang-dd hidden" id="langDD">
         <button class="lang-item" data-lang="ko">한국어</button>
         <button class="lang-item" data-lang="zh">中文</button>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>공지 메모 · OHweb</title>
+  <title>공지 메모 — kakainfo 관리자</title>
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="stylesheet" href="theme.css">
@@ -25,7 +25,7 @@
     .toolbar.hidden { opacity: 0; pointer-events: none; transform: translateY(-10px); }
     .toolbar-brand { display: flex; align-items: center; gap: 8px; text-decoration: none; margin-right: 4px; flex-shrink: 0; }
     .toolbar-brand img { height: 22px; }
-    .toolbar-brand span { font-size: 0.8rem; font-weight: 700; color: var(--sub); }
+    .toolbar-brand span { font-size: 0.95rem; font-weight: 800; color: var(--text); letter-spacing: -0.02em; }
     .tb-sep { width: 1px; height: 20px; background: var(--border-card); flex-shrink: 0; }
     .tb-group { display: flex; align-items: center; gap: 6px; }
     .tb-label { font-size: 0.68rem; font-weight: 700; color: var(--sub); white-space: nowrap; }
@@ -48,6 +48,8 @@
 
     /* ── 편집 모드 ── */
     #editMode { position: fixed; inset: 0; padding-top: 50px; display: flex; flex-direction: column; }
+    /* 좁은 화면: 툴바가 여러 줄로 접히고(높이는 아래 스크립트가 맞춤) 세 칸은 위아래로 쌓는다 */
+    @media (max-width: 700px) { .edit-cols { flex-direction: column; } .edit-col { min-height: 160px; } }
     #viewMode { position: fixed; inset: 0; display: none; background: var(--bg); }
     #viewMode.active { display: block; }
 
@@ -164,7 +166,7 @@
   <!-- ── 툴바 ── -->
   <div class="toolbar" id="toolbar">
     <a href="admin.html" class="toolbar-brand">
-      <img src="logo.png" alt="OHweb">
+      <img src="logo.png" alt="kakainfo">
       <span>공지 메모</span>
     </a>
     <div class="tb-sep"></div>
@@ -444,6 +446,16 @@
 
     function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
     function escHtmlNl(s) { return escHtml(s).replace(/\n/g,'<br>'); }
-  </script>
+  
+// 툴바는 화면이 좁으면 여러 줄로 접힌다 — 편집 영역 윗여백을 실제 툴바 높이에 맞춘다
+// (예전엔 50px 고정이라 모바일에서 툴바가 입력칸을 덮었다).
+(() => {
+  const tb = document.getElementById('toolbar'), em = document.getElementById('editMode');
+  if (!tb || !em) return;
+  const fit = () => { em.style.paddingTop = tb.offsetHeight + 'px'; };
+  fit();
+  if ('ResizeObserver' in window) new ResizeObserver(fit).observe(tb); else window.addEventListener('resize', fit);
+})();
+</script>
 </body>
 </html>

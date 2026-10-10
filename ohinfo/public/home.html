@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OHinfo</title>
+  <title>kakainfo</title>
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
@@ -22,10 +22,6 @@
       padding: 0 20px; height: var(--nav-h);
       display: flex; align-items: center; gap: 10px;
     }
-    .nav-brand {
-      flex-shrink: 0; display: flex; align-items: center;
-    }
-    .nav-brand img { height: 32px; width: auto; display: block; }
     /* 글로브 언어 선택 */
     .lang-globe { position: relative; flex-shrink: 0; }
     .lang-globe-btn { font-family: inherit; font-size: 1rem; cursor: pointer; border-radius: 50%; width: 32px; height: 32px; border: 1px solid var(--border-card); background: var(--glass); color: var(--sub); display: flex; align-items: center; justify-content: center; transition: 0.2s; box-shadow: var(--highlight); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
@@ -267,7 +263,7 @@
 <div id="loadingOverlay"><div class="spinner"></div></div>
 
 <nav class="nav">
-  <div class="nav-brand"><img src="logo.png" alt="OHinfo"></div>
+  <a class="nav-brand" href="home.html"><img src="logo.png" alt="kakainfo"></a>
   <div class="nav-right">
     <div class="lang-globe" id="langGlobe">
       <button class="lang-globe-btn" onclick="toggleLangDD()" title="언어"><svg width="16" height="16"><use href="#ic-globe"/></svg></button>

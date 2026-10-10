@@ -23,7 +23,6 @@
     .hidden { display: none !important; }
     /* NAV */
     .nav { position: sticky; top: 0; z-index: 200; background: var(--glass-nav); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border-bottom: 1px solid var(--border); box-shadow: 0 1px 0 rgba(255,255,255,0.35),var(--shadow); padding: 0 20px; height: var(--nav-h); display: flex; align-items: center; gap: 10px; }
-    .nav-brand { font-size: 1.1rem; font-weight: 900; letter-spacing: -0.02em; background: linear-gradient(135deg,var(--accent),#7c4dff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; white-space: nowrap; flex-shrink: 0; cursor: pointer; }
     .nav-end { margin-left: auto; display: flex; align-items: center; gap: 8px; }
     .dark-toggle { width: 42px; height: 24px; border-radius: 50px; background: var(--glass); border: 1px solid var(--border); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--highlight); cursor: pointer; position: relative; transition: 0.3s; flex-shrink: 0; }
     body.dark .dark-toggle { background: rgba(42,92,230,0.6); border-color: rgba(100,140,255,0.4); }
@@ -210,8 +209,7 @@
 <div id="loadingOverlay"><div class="spinner"></div></div>
 
 <nav class="nav" onclick="closeAllDD(event)">
-  <div class="nav-brand" onclick="location.href='home.html'" style="cursor:pointer"><img src="logo.png" alt="OHinfo" style="height:32px;width:auto;display:block;"></div>
-  <span id="navSub" style="font-size:0.82rem;color:var(--sub);font-weight:600;display:inline-flex;align-items:center;gap:5px;"><svg width="14" height="14"><use href="#ic-doc"/></svg>설문지 만들기</span>
+  <a class="nav-brand" href="home.html"><img src="logo.png" alt="kakainfo"><span class="nav-brand-title" id="navBrandTitle">설문지 만들기</span></a>
   <div class="nav-end">
     <button class="btn sm ghost" id="navBack" onclick="showPage('pageList')" style="display:none;">← 목록</button>
     <div class="lang-globe" id="langGlobe">
@@ -320,6 +318,7 @@
 <script type="module">
 import { db } from './firebase-config.js';
 import { escHtml, jsArg, safeHttpsUrl, safeImgUrl, safePhotoUrl, SAFE_ID } from './escape.js';
+import { setPageTitle } from './page-title.js';
 import {
   collection, query, where, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, doc, serverTimestamp, onSnapshot, increment
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
@@ -350,7 +349,7 @@ function uid() { return Math.random().toString(36).slice(2,10); }
 
 // ── 글로브/프로필 nav ──
 const _lang = localStorage.getItem('ohinfo_lang') || 'ko';
-function updateLangCheck(l) { ['ko','zh','ru','en'].forEach(k => { const el = document.getElementById('lck-'+k); if(el) el.innerHTML = k===l?'<svg width="13" height="13"><use href="#ic-check"/></svg>':''; }); }
+function updateLangCheck(l) { ['ko','zh','ru','en'].forEach(k => { const el = document.getElementById('lck-'+k); if(el) el.innerHTML = k===l?'<svg width="13" height="13"><use href="#ic-check"/></svg>':''; }); setPageTitle('formlab', null, l); }
 updateLangCheck(_lang);
 window.setLang = (l) => { localStorage.setItem('ohinfo_lang', l); updateLangCheck(l); };
 window.toggleLangDD = () => document.getElementById('langGlobeDD').classList.toggle('hidden');
