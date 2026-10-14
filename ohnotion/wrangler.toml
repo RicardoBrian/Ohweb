@@ -1,0 +1,4 @@
+# Pages 전용 설정 — 빌드 결과물 위치를 대시보드 수동 입력에 의존하지 않고
+# 레포에 못박아 둔다(ohshrt/wrangler.toml과 같은 방식). Workers 전용 키는 안 쓴다.
+name = "ohnotion"
+pages_build_output_dir = "public"
