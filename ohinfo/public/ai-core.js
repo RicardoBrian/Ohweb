@@ -216,6 +216,17 @@ export function newSinceTraining(project, images) {
   return images.filter(i => i.kind === 'train' && i.driveId && !used.has(i.id)).length;
 }
 
+// 지난 학습과 사진(학습용, 드라이브에 저장된 것)과 레이블이 똑같은지 — 같으면 다시 학습해도 같은 모델이 나온다.
+export function sameTrainingData(project, images, labels) {
+  if (!project || !project.modelVersion || !Array.isArray(project.trainedIds)) return false;
+  const labelIds = new Set((labels || []).map(l => l.id));
+  const trainedLabels = Object.keys(project.mapping || {});
+  if (trainedLabels.length !== labelIds.size || trainedLabels.some(id => !labelIds.has(id))) return false;
+  const now = images.filter(i => i.kind === 'train' && i.driveId && labelIds.has(i.labelId)).map(i => i.id);
+  const before = new Set(project.trainedIds);
+  return now.length === before.size && now.every(id => before.has(id));
+}
+
 export function evalRounds(project) {
   const ev = (project && project.evals) || {};
   return Object.keys(ev).filter(k => /^r\d+$/.test(k))

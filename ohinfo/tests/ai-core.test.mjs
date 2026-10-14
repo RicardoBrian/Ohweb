@@ -154,4 +154,15 @@ test('4개 언어 문장 키가 모두 같다', () => {
   assert.equal(t('causes.few'), 'Too few photos');
   assert.equal(t('nope'), 'nope');
 });
+await test('sameTrainingData: 사진·레이블이 그대로면 true', () => {
+  const labels = [{ id: 'a' }, { id: 'b' }];
+  const imgs = [{ id: '1', kind: 'train', driveId: 'd1', labelId: 'a' }, { id: '2', kind: 'train', driveId: 'd2', labelId: 'b' }, { id: '3', kind: 'test', labelId: 'a' }];
+  const p = { modelVersion: 1, trainedIds: ['1', '2'], mapping: { a: 'a', b: 'b' } };
+  assert.equal(C.sameTrainingData(p, imgs, labels), true);
+  assert.equal(C.sameTrainingData(p, [...imgs, { id: '4', kind: 'train', driveId: 'd4', labelId: 'a' }], labels), false, '사진 추가');
+  assert.equal(C.sameTrainingData(p, imgs.slice(1), labels), false, '사진 삭제');
+  assert.equal(C.sameTrainingData(p, imgs, [...labels, { id: 'c' }]), false, '레이블 추가');
+  assert.equal(C.sameTrainingData({ trainedIds: ['1', '2'] }, imgs, labels), false, '모델 없음');
+  assert.equal(C.sameTrainingData(p, [...imgs, { id: '5', kind: 'train', labelId: 'a' }], labels), true, '아직 저장 안 된 사진은 셈에서 빠짐');
+});
 console.log(`\n${n}개 통과`);

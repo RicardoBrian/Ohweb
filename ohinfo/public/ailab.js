@@ -14,12 +14,12 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { loadSession, verifyStudentAuth, authReady, clearSession } from './session.js';
 import { escHtml } from './escape.js';
-import * as C from './ai-core.js?v=202610100537';
-import { makeT, getLang, setLang } from './ai-i18n.js?v=202610100537';
-import { prepareImage, prepareCover, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202610100537';
-import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, saveModelToDrive } from './ai-drive.js?v=202610100537';
-import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202610100537';
-import { appHtml, probsByLabel, THEMES } from './ai-render.js?v=202610100537';
+import * as C from './ai-core.js?v=202610140054';
+import { makeT, getLang, setLang } from './ai-i18n.js?v=202610140054';
+import { prepareImage, prepareCover, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202610140054';
+import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, saveModelToDrive } from './ai-drive.js?v=202610140054';
+import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202610140054';
+import { appHtml, probsByLabel, THEMES } from './ai-render.js?v=202610140054';
 
 const E = escHtml;
 const $ = id => document.getElementById(id);
@@ -412,7 +412,10 @@ function trainTab(leader) {
     const label = busy ? t('phase_' + tr.phase, { i: tr.i, n: tr.n }) : t('trainingBy', { name: nameOf(remote.by), pct });
     h += `<div class="tprog"><div class="bar"><span style="width:${pct}%"></span></div><div class="muted"><span class="spin"></span>${E(label)}</div></div>`;
   }
-  if (tr && tr.error) h += `<div class="err">${E(t(tr.error))}</div>`;
+  if (tr && tr.error === 'noChange') {
+    // 사진을 보충했으면 경고는 저절로 사라진다.
+    if (C.sameTrainingData(p, S.images, labels)) h += `<div class="note warn">${E(t('noChange', { n: v }))}<div class="next"><button class="btn" data-act="step" data-v="2">← ${E(t('goCollect'))}</button></div></div>`;
+  } else if (tr && tr.error) h += `<div class="err">${E(t(tr.error))}</div>`;
   if (tr && tr.done) h += `<div class="note ok">✅ ${E(t('trainDone', { n: tr.v }))}</div>`;
   const models = Object.values(p.models || {}).filter(m => m && m.v).sort((a, b) => b.v - a.v);
   if (models.length) {
@@ -957,6 +960,12 @@ const actions = {
     const v = (S.project.modelVersion || 0) + 1;
     const list = imgs('train').filter(i => i.driveId && labels.some(l => l.id === i.labelId));
     if (!list.length) return;
+    // 사진이 지난 학습 때와 똑같으면 다시 학습해도 같은 모델이 나온다 — 학습하지 않고 알려 준다.
+    if (C.sameTrainingData(S.project, S.images, labels)) {
+      S.training = { error: 'noChange' };
+      toast(t('noChange', { n: S.project.modelVersion }), 'warn');
+      return schedule();
+    }
     const getToken = () => auth.currentUser.getIdToken();
     setPhase('photos', 0, list.length, true);
     try {
