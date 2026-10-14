@@ -33,6 +33,16 @@ function isNotionUrl(value) {
   }
 }
 
+// 노션 "임베드"가 주는 <iframe src="…"> 코드를 붙여넣어도 받는다 — src만 꺼낸다.
+// (뷰어가 어차피 iframe으로 띄우므로 저장하는 건 링크뿐이다.)
+function urlFromInput(raw) {
+  const v = raw.trim();
+  if (!/<iframe/i.test(v)) return v;
+  const m = v.match(/\bsrc\s*=\s*(["'])(.*?)\1/i) || v.match(/\bsrc\s*=\s*([^\s>]+)/i);
+  const src = m ? (m[2] ?? m[1]) : '';
+  return src.replace(/&amp;/g, '&').trim();
+}
+
 const RESULT_LABELS = { ok: '열림', slow: '느림', timeout: '안 열림', loop: '무한 새로고침', report: '안 열려요 신고' };
 const PROBLEM_KEYS = ['timeout', 'loop', 'report'];
 
@@ -134,9 +144,9 @@ async function renderDashboard() {
             </div>
           </div>
           <div class="field">
-            <label for="url">노션 게시 링크</label>
-            <input id="url" class="inp" type="url" placeholder="https://xxxx.notion.site/페이지-…" required>
-            <p class="hint">노션 페이지 → 오른쪽 위 <b>공유</b> → <b>게시</b> 탭 → <b>웹에 게시</b> 후 나오는 <code>notion.site</code> 링크. <code>notion.so</code> 링크는 학교 PC에서 안 열릴 수 있어 받지 않아요.</p>
+            <label for="url">노션 게시 링크 또는 iframe 코드</label>
+            <input id="url" class="inp" type="text" placeholder="https://xxxx.notion.site/…  또는  <iframe src=&quot;…&quot;></iframe>" required>
+            <p class="hint">노션 페이지 → 오른쪽 위 <b>공유</b> → <b>게시</b> 탭 → <b>웹에 게시</b> 후 나오는 <code>notion.site</code> 링크나, <b>임베드</b>의 <code>&lt;iframe&gt;</code> 코드를 그대로 붙여넣어도 돼요(링크만 꺼내서 저장). <code>notion.so</code> 링크는 학교 PC에서 안 열릴 수 있어 받지 않아요.</p>
           </div>
           <label class="check"><input type="checkbox" id="hidden"> 학생 목록에서 숨기기 (주소로는 열림)</label>
           <div class="form-actions">
@@ -414,7 +424,7 @@ async function onSave(e) {
   errEl.textContent = '';
   const slug = document.getElementById('slug').value.trim().replace(/\s+/g, '-').normalize('NFC');
   const title = document.getElementById('title').value.trim();
-  const url = document.getElementById('url').value.trim();
+  const url = urlFromInput(document.getElementById('url').value);
   const hidden = document.getElementById('hidden').checked;
 
   try {
