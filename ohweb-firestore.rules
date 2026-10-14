@@ -61,6 +61,31 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
+    // notion.kakainfo.com (ohnotion) — 노션 "웹에 게시" 페이지를 내 도메인에서
+    // 띄우는 주소 목록. 학생 화면(Pages Function)이 로그인 없이 REST로 목록·개별
+    // 문서를 읽으므로 읽기는 공개. 등록/수정/삭제는 관리자만.
+    // URL 조건은 ohnotion/lib/shared.js의 isNotionUrl과 같게 유지한다.
+    function validNotionPage() {
+      let d = request.resource.data;
+      return d.keys().hasAll(['title', 'url'])
+          && d.keys().hasOnly(['title', 'url', 'order', 'hidden', 'createdAt', 'updatedAt'])
+          && d.title is string && d.title.size() > 0 && d.title.size() <= 100
+          && d.url is string && d.url.size() <= 2000
+          && d.url.matches('https://([A-Za-z0-9-]+[.])*notion[.]site([/?#].*)?')
+          && (!('order' in d) || d.order is number)
+          && (!('hidden' in d) || d.hidden is bool);
+    }
+    match /notion_pages/{slug} {
+      allow read: if true;
+      allow create, update: if isAdmin() && validNotionPage();
+      allow delete: if isAdmin();
+    }
+    // 학생 PC에서 노션이 열렸는지 기록한 일별 통계. 쓰기는 ohnotion의
+    // /api/report(서비스 계정 — 규칙을 우회)만 한다. 클라이언트 쓰기는 전부 막음.
+    match /notion_stats/{id} {
+      allow read, delete: if isAdmin();
+    }
+
     // 학생이 직접 쓰는 데이터 — 학생 인증(Phase 2) 전까지는 기존과 동일하게 열어둠.
     // 단, 로그인 5회 실패 잠금(failedAttempts/locked)만은 예외 — 학생 계정
     // 자체가 Firestore write 권한을 열어두고 있어서, 이 필드까지 그대로

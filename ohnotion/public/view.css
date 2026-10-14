@@ -1,0 +1,106 @@
+/* 학생 화면(목록·뷰어) 전용. theme.css는 웹 폰트를 @import 해서 첫 화면이
+   늦게 뜰 수 있어, 학생 화면은 시스템 글꼴과 이 파일 하나로만 그린다.
+   색은 theme.css(사이트 공통 디자인)의 값과 맞춘다. */
+
+:root {
+  --bg: #f4f5fa;
+  --card: #ffffff;
+  --text: #1a1c22;
+  --sub: #5b606b;
+  --line: rgba(0, 0, 0, 0.08);
+  --accent: #0071e3;
+  --accent-light: rgba(0, 113, 227, 0.12);
+  --warn: #c2410c;
+  --warn-light: rgba(234, 88, 12, 0.12);
+  --notice: #fff7e6;
+  --font: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Pretendard", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d0e13;
+    --card: #1c1d24;
+    --text: #f2f4f8;
+    --sub: #aab0bd;
+    --line: rgba(255, 255, 255, 0.1);
+    --accent: #0a84ff;
+    --accent-light: rgba(10, 132, 255, 0.18);
+    --warn: #fb923c;
+    --warn-light: rgba(251, 146, 60, 0.16);
+    --notice: #2a2214;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; }
+a { color: var(--accent); }
+[hidden] { display: none !important; }
+
+/* ---------- 상단 바 ---------- */
+.bar {
+  display: flex; align-items: center; gap: 12px;
+  height: 52px; padding: 0 16px;
+  background: var(--card); border-bottom: 1px solid var(--line);
+}
+.brand { display: flex; align-items: center; gap: 8px; text-decoration: none; color: var(--text); font-weight: 800; white-space: nowrap; flex-shrink: 0; }
+.brand img { display: block; }
+.bar-title {
+  flex: 1; min-width: 0; margin: 0; font-size: 15px; font-weight: 600; color: var(--sub);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.bar-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 34px; padding: 0 12px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--card); color: var(--text);
+  font: inherit; font-size: 13px; font-weight: 600; text-decoration: none; cursor: pointer; white-space: nowrap;
+}
+.btn:hover { background: var(--accent-light); color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: transparent; color: #fff; }
+.btn.warn { color: var(--warn); background: var(--warn-light); border-color: transparent; }
+.btn.ghost { border-color: transparent; background: transparent; }
+
+/* ---------- 목록 ---------- */
+.list { max-width: 720px; margin: 0 auto; padding: 28px 16px 60px; }
+.list h1 { font-size: 22px; margin: 0 0 18px; }
+.items { display: flex; flex-direction: column; gap: 10px; }
+.item {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 16px 18px; border-radius: 14px;
+  background: var(--card); border: 1px solid var(--line);
+  text-decoration: none; color: var(--text);
+}
+.item:hover { border-color: var(--accent); }
+.item-title { font-weight: 700; font-size: 16px; }
+.item-path { font-size: 13px; color: var(--sub); }
+.empty { color: var(--sub); line-height: 1.7; }
+
+/* ---------- 뷰어 ---------- */
+body.viewer { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
+.frame-wrap { position: relative; flex: 1; min-height: 0; }
+.frame-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #fff; }
+.loading {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  color: var(--sub); font-size: 14px; background: var(--bg);
+}
+.spinner {
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 3px solid var(--line); border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.notice {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  padding: 10px 16px; background: var(--notice); border-bottom: 1px solid var(--line);
+  font-size: 14px; font-weight: 600;
+}
+.notice-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+@media (max-width: 560px) {
+  .brand span { display: none; }
+  .bar { gap: 8px; padding: 0 10px; }
+  .btn { padding: 0 10px; }
+}
