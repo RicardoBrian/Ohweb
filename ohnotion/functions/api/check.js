@@ -42,6 +42,12 @@ export async function onRequestGet(context) {
     return json({ statsEnabled, ok: false, level: 'bad', message: '노션 "웹에 게시" 링크(https://….notion.site/…)가 아니에요' }, 400);
   }
 
+  // 노션은 일반 게시 주소에 X-Frame-Options: sameorigin을 보내 iframe을 막는다.
+  // iframe이 되는 건 임베드 전용 주소(/ebd/{ID})뿐이라 노션에 묻지 않고 바로 알려 준다.
+  if (!new URL(target).pathname.startsWith('/ebd/')) {
+    return json({ statsEnabled, ok: false, level: 'bad', message: '임베드 주소(/ebd/)가 아니라 노션이 iframe을 막아요 — 수정에서 임베드 iframe 코드로 다시 넣어 주세요' });
+  }
+
   const t0 = Date.now();
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS);

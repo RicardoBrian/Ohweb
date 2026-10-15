@@ -19,7 +19,9 @@
 ## 페이지 등록하는 법
 
 1. 노션 페이지 → 오른쪽 위 **공유** → **게시** 탭 → **웹에 게시**.
-2. 나온 `https://….notion.site/…` 링크를 복사. 노션 **임베드**의 `<iframe src="…">` 코드를
+2. **임베드**의 `<iframe src="https://….notion.site/ebd/…">` 코드를 복사(권장). 노션은 일반
+   게시 주소의 iframe을 막고(X-Frame-Options) `/ebd/` 주소만 허용한다. 주소에 페이지 ID가
+   있는 일반 게시 링크는 관리 페이지가 `/ebd/`로 바꿔 저장한다. iframe 코드는
    그대로 붙여넣어도 된다(관리 페이지가 src 링크만 꺼내서 저장).
 3. `notion.kakainfo.com/admin` → Google 로그인 → 주소·제목·링크 넣고 **등록**.
 
