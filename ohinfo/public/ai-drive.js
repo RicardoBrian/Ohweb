@@ -8,8 +8,8 @@
 // 실패하면 지우지 않고 간격을 늘려 가며 다시 시도한다. 학교 PC는 재부팅하면 브라우저
 // 저장이 지워지는 경우가 많아서, "드라이브에 올라간 것"만 진짜 저장으로 친다.
 
-import { AILAB_GAS_URL } from './ai-config.js?v=202610140054';
-import { blobToBase64 } from './ai-image.js?v=202610140054';
+import { AILAB_GAS_URL } from './ai-config.js?v=202610150517';
+import { blobToBase64 } from './ai-image.js?v=202610150517';
 
 export class DriveError extends Error {
   constructor(code, msg) { super(msg || code); this.code = code; }
@@ -202,6 +202,20 @@ async function cachePut(key, val) {
   } catch { /* 보관 못 해도 다음에 다시 받으면 된다 */ }
 }
 
+// 사진은 Blob이 아니라 바이트(ArrayBuffer)로 보관한다. 크롬은 IndexedDB의 Blob을 따로 된 파일로
+// 두는데, 사진이 많이 쌓이거나 PC 정리·복원 프로그램이 그 파일을 지우면 꺼낼 때 열리지 않는 사진이
+// 되어 학습이 멈췄다(img error). 바이트로 넣으면 데이터베이스 안에 같이 들어간다.
+async function imgGet(id) {
+  const hit = await cacheGet('img:' + id);
+  if (!hit) return undefined;
+  if (hit.buf instanceof ArrayBuffer && hit.buf.byteLength) return new Blob([hit.buf], { type: hit.type || 'image/jpeg' });
+  return undefined;   // 예전 방식(Blob)으로 보관된 건 믿지 않고 드라이브에서 다시 받는다
+}
+async function imgPut(id, bytes) {
+  const buf = bytes.buffer.byteLength === bytes.byteLength ? bytes.buffer : bytes.slice().buffer;
+  await cachePut('img:' + id, { buf, type: 'image/jpeg' });
+}
+
 function b64ToBytes(b64) {
   const bin = atob(b64);
   const arr = new Uint8Array(bin.length);
@@ -220,7 +234,7 @@ export async function fetchTrainPhotos(getToken, pid, driveIds, onProgress = () 
   const out = new Map();
   const need = [];
   for (const id of driveIds) {
-    const hit = await cacheGet('img:' + id);
+    const hit = await imgGet(id);
     if (hit) out.set(id, hit); else need.push(id);
   }
   onProgress(out.size, driveIds.length);
@@ -232,13 +246,23 @@ export async function fetchTrainPhotos(getToken, pid, driveIds, onProgress = () 
       catch (e) { if (++tries >= 3 || e.code === 'auth' || e.code === 'notConfigured') throw e; await new Promise(z => setTimeout(z, 1500 * tries)); }
     }
     for (const f of r.files || []) {
-      const blob = new Blob([b64ToBytes(f.base64)], { type: 'image/jpeg' });
-      out.set(f.id, blob);
-      await cachePut('img:' + f.id, blob);
+      const bytes = b64ToBytes(f.base64);
+      out.set(f.id, new Blob([bytes], { type: 'image/jpeg' }));
+      await imgPut(f.id, bytes);
     }
     onProgress(out.size, driveIds.length);
   }
   return out;
+}
+
+// 이 PC에 보관한 사진이 깨져 열리지 않을 때: 보관본을 버리고 드라이브에서 한 장만 다시 받는다.
+export async function refetchTrainPhoto(getToken, pid, driveId) {
+  const r = await gasCall(getToken, 'fetch', { pid, fileIds: [driveId] });
+  const f = (r.files || [])[0];
+  if (!f) return null;
+  const bytes = b64ToBytes(f.base64);
+  await imgPut(driveId, bytes);
+  return new Blob([bytes], { type: 'image/jpeg' });
 }
 
 // 학습한 모델 저장(대표만 — Apps Script가 확인한다). 이 PC에도 보관해 둔다.

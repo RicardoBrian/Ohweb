@@ -14,12 +14,12 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { loadSession, verifyStudentAuth, authReady, clearSession } from './session.js';
 import { escHtml } from './escape.js';
-import * as C from './ai-core.js?v=202610140054';
-import { makeT, getLang, setLang } from './ai-i18n.js?v=202610140054';
-import { prepareImage, prepareCover, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202610140054';
-import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, saveModelToDrive } from './ai-drive.js?v=202610140054';
-import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202610140054';
-import { appHtml, probsByLabel, THEMES } from './ai-render.js?v=202610140054';
+import * as C from './ai-core.js?v=202610150517';
+import { makeT, getLang, setLang } from './ai-i18n.js?v=202610150517';
+import { prepareImage, prepareCover, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202610150517';
+import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, refetchTrainPhoto, saveModelToDrive } from './ai-drive.js?v=202610150517';
+import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202610150517';
+import { appHtml, probsByLabel, THEMES } from './ai-render.js?v=202610150517';
 
 const E = escHtml;
 const $ = id => document.getElementById(id);
@@ -970,12 +970,16 @@ const actions = {
     setPhase('photos', 0, list.length, true);
     try {
       const blobs = await fetchTrainPhotos(getToken, S.pid, list.map(i => i.driveId), (i, n) => setPhase('photos', i, n));
-      const used = list.filter(i => blobs.has(i.driveId));
+      const got = list.filter(i => blobs.has(i.driveId));
       const res = await trainModel({
         labelIds: labels.map(l => l.id),
-        samples: used.map(i => ({ labelId: i.labelId, blob: blobs.get(i.driveId) })),
+        samples: got.map(i => ({ id: i.id, driveId: i.driveId, labelId: i.labelId, blob: blobs.get(i.driveId) })),
         onPhase: (ph, i, n) => setPhase(ph, i, n),
+        retry: s => refetchTrainPhoto(getToken, S.pid, s.driveId),
       });
+      const skipped = new Set(res.skipped || []);
+      const used = got.filter(i => !skipped.has(i.id));
+      if (skipped.size) toast(t('skippedPhotos', { n: skipped.size }), 'warn');
       setPhase('save', 0, 1, true);
       await saveModelToDrive(getToken, S.pid, v, res.files);
       rememberModel(S.pid, v, res.loaded);
@@ -991,7 +995,7 @@ const actions = {
       toast(t('trainDone', { n: v }), 'ok');
     } catch (e) {
       console.error(e);
-      S.training = { error: e.code === 'baseFail' ? 'baseFail' : 'trainFail' };
+      S.training = { error: e.code === 'baseFail' || e.code === 'photoFail' ? e.code : 'trainFail' };
       updateDoc(pref(), { training: { state: 'error', by: S.me, at: serverTimestamp() } }).catch(() => {});
     }
     schedule();

@@ -1,8 +1,8 @@
 // 티처블머신 모델 불러오기·예측 (브라우저 전용).
 // 라이브러리는 필요할 때만 받는다 — tfjs가 커서(약 1MB) 실험실 첫 화면엔 싣지 않는다.
 
-import { TFJS_URL, TMIMAGE_URL, checkMetadata } from './ai-core.js?v=202610140054';
-import { fetchModelFiles, b64ToBytes } from './ai-drive.js?v=202610140054';
+import { TFJS_URL, TMIMAGE_URL, checkMetadata } from './ai-core.js?v=202610150517';
+import { fetchModelFiles, b64ToBytes } from './ai-drive.js?v=202610150517';
 
 let _libs = null;
 function loadScript(src) {
@@ -91,7 +91,9 @@ const baseOptions = () => (globalThis.window && window.__AILAB_BASE) || { versio
 
 // samples: [{ labelId, blob }] · 레이블 ID를 그대로 클래스 이름으로 쓴다(이름이 바뀌어도 연결이 안 깨지게).
 // onPhase(단계, 지금, 전체): 'base'(기본 모델 받기) → 'extract'(사진 특징 뽑기) → 'train'(에포크)
-export async function trainModel({ labelIds, samples, onPhase = () => {} }) {
+// retry(sample): 사진이 열리지 않으면 한 번 다시 받아 보는 함수(없으면 그 사진은 빼고 학습한다).
+// 돌려주는 skipped: 끝내 열리지 않아 뺀 사진들의 id.
+export async function trainModel({ labelIds, samples, onPhase = () => {}, retry = null }) {
   try { await loadLibs(); } catch { throw new ModelError('libFail'); }
   const tf = window.tf;
   onPhase('base', 0, 1);
@@ -101,14 +103,23 @@ export async function trainModel({ labelIds, samples, onPhase = () => {} }) {
   } catch { throw new ModelError('baseFail'); }
   tm.setLabels(labelIds);
   let i = 0;
+  const skipped = [], perLabel = {};
   for (const s of samples) {
-    const img = await imageFromBlob(s.blob);
+    // 사진 한 장이 깨졌다고 학습 전체가 멈추지 않게: 다시 받아 보고, 그래도 안 되면 빼고 간다.
+    let img = await imageFromBlob(s.blob).catch(() => null);
+    if (!img && retry) {
+      const b = await retry(s).catch(() => null);
+      if (b) img = await imageFromBlob(b).catch(() => null);
+    }
+    if (!img) { skipped.push(s.id); onPhase('extract', ++i, samples.length); continue; }
+    perLabel[s.labelId] = (perLabel[s.labelId] || 0) + 1;
     // addExample은 예측(predict)과 달리 사진을 잘라 주지 않는다 — 224×224 입력만 받는다.
     // 예측할 때와 똑같이 가운데 정사각형을 224px로 줄여서 넘긴다(티처블머신 사이트도 이렇게 한다).
     await tm.addExample(labelIds.indexOf(s.labelId), cropSquare(img, 224));
     onPhase('extract', ++i, samples.length);
     if (i % 5 === 0) await tf.nextFrame();
   }
+  if (labelIds.some(id => !perLabel[id])) throw new ModelError('photoFail');
   let valAcc = null;
   await tm.train(TRAIN_PARAMS, {
     onEpochEnd: async (ep, logs) => {
@@ -125,7 +136,7 @@ export async function trainModel({ labelIds, samples, onPhase = () => {} }) {
     weightsManifest: [{ paths: ['weights.bin'], weights: art.weightSpecs }],
   });
   const metadataJson = JSON.stringify({ ...tm.getMetadata(), labels: labelIds });
-  return { loaded: { model: tm, labels: labelIds }, valAcc, files: { modelJson, metadataJson, weightData: art.weightData } };
+  return { skipped, loaded: { model: tm, labels: labelIds }, valAcc, files: { modelJson, metadataJson, weightData: art.weightData } };
 }
 
 function cropSquare(img, size) {
