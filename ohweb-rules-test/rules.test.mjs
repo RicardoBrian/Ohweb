@@ -101,6 +101,7 @@ await T('노션: 비로그인이 페이지 등록', setDoc(doc(anon, 'notion_pag
 await T('노션: 학생이 페이지 주소 바꿔치기', setDoc(doc(A, 'notion_pages/공지'), { title: 't', url: 'https://evil.com/a' }), false);
 await T('노션(admin): notion.site가 아닌 링크 등록', setDoc(doc(admin, 'notion_pages/x1'), { title: 't', url: 'https://evil.com/notion.site' }), false);
 await T('노션(admin): notion.site 흉내 도메인 등록', setDoc(doc(admin, 'notion_pages/x2'), { title: 't', url: 'https://notion.site.evil.com/a' }), false);
+await T('노션(admin): 페이지 ID 형식 위반', setDoc(doc(admin, 'notion_pages/x3'), { title: 't', url: 'https://www.notion.so/a', pageId: '../short_links/x' }), false);
 await T('노션: 비로그인이 통계 조작', setDoc(doc(anon, 'notion_stats/2026-01-01_공지'), { ok: 999 }), false);
 await T('노션: 비로그인이 통계 읽기', getDocs(collection(anon, 'notion_stats')), false);
 console.log('── 정상 기능 ──');
@@ -210,7 +211,7 @@ await T('AI: 짝 학생이 공개 웹앱 만들기·수정', (async () => { awai
 await T('AI: 비로그인이 공개 웹앱 열기', getDoc(doc(anon, 'ai_apps/P1_1')), true);
 await T('AI(admin): 배정·짝 구성·대표 변경·숨김·전체 조회', (async () => { await setDoc(doc(admin, 'ai_assignments/AI2'), { title: 't', status: 'OFF' }); await setDoc(doc(admin, 'ai_pairs/P3'), { asId: 'AI2', memberEmails: [] }); await updateDoc(doc(admin, 'ai_pairs/P1'), { leaderId: 'StuB' }); await updateDoc(doc(admin, 'ai_apps/P1_1'), { hiddenPhrases: { l1: true } }); await updateDoc(doc(admin, 'ai_projects/P1_1'), { memberEmails: ['stua@ohinfo.local'] }); await getDocs(collection(admin, 'ai_projects')); await getDocs(collection(admin, 'ai_projects/P1_1/images')); })(), true);
 
-await T('노션(admin): 페이지 등록·순서·숨김·삭제, 통계 조회', (async () => { await setDoc(doc(admin, 'notion_pages/공지'), { title: '공지', url: 'https://kakainfo.notion.site/abc123?pvs=4', order: 0, hidden: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); await updateDoc(doc(admin, 'notion_pages/공지'), { order: 1, updatedAt: serverTimestamp() }); await setDoc(doc(admin, 'notion_pages/tmp'), { title: 't', url: 'https://notion.site/x' }); await deleteDoc(doc(admin, 'notion_pages/tmp')); await getDocs(query(collection(admin, 'notion_stats'), where('day', '>=', '2026-01-01'))); })(), true);
+await T('노션(admin): 페이지 등록·순서·숨김·삭제, 통계 조회', (async () => { await setDoc(doc(admin, 'notion_pages/공지'), { title: '공지', url: 'https://kakainfo.notion.site/abc123?pvs=4', order: 0, hidden: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); await updateDoc(doc(admin, 'notion_pages/공지'), { order: 1, updatedAt: serverTimestamp() }); await setDoc(doc(admin, 'notion_pages/tmp'), { title: 't', url: 'https://notion.site/x' }); await setDoc(doc(admin, 'notion_pages/so'), { title: 't', url: 'https://www.notion.so/ws/Page-1a2b3c4d5e6f708192a3b4c5d6e7f809', pageId: '1a2b3c4d5e6f708192a3b4c5d6e7f809' }); await deleteDoc(doc(admin, 'notion_pages/tmp')); await getDocs(query(collection(admin, 'notion_stats'), where('day', '>=', '2026-01-01'))); })(), true);
 await T('노션: 비로그인이 페이지 목록·개별 읽기(학생 화면)', (async () => { await getDocs(collection(anon, 'notion_pages')); await getDoc(doc(anon, 'notion_pages/공지')); })(), true);
 
 console.log(fails ? `\n실패 ${fails}건` : '\n전부 통과'); process.exitCode = fails ? 1 : 0;
