@@ -43,6 +43,17 @@ function urlFromInput(raw) {
   return src.replace(/&amp;/g, '&').trim();
 }
 
+// 노션은 일반 게시 주소(…notion.site/페이지-제목-ID)를 다른 사이트 iframe에
+// 못 넣게 막는다(X-Frame-Options: sameorigin). iframe이 허용되는 건 임베드 전용
+// 주소 …notion.site/ebd/{ID} 뿐이라, 주소에 페이지 ID(32자리)가 있으면 그걸로
+// 바꿔 저장한다. ID가 없으면(사이트 첫 화면 등) 바꿀 수 없어 null.
+function toEmbedUrl(url) {
+  const u = new URL(url);
+  if (u.pathname.startsWith('/ebd/')) return url;
+  const m = u.pathname.replace(/-/g, '').match(/([0-9a-f]{32})\/?$/i);
+  return m ? `${u.origin}/ebd/${m[1].toLowerCase()}` : null;
+}
+
 const RESULT_LABELS = { ok: '열림', slow: '느림', timeout: '안 열림', loop: '무한 새로고침', report: '안 열려요 신고' };
 const PROBLEM_KEYS = ['timeout', 'loop', 'report'];
 
@@ -424,7 +435,7 @@ async function onSave(e) {
   errEl.textContent = '';
   const slug = document.getElementById('slug').value.trim().replace(/\s+/g, '-').normalize('NFC');
   const title = document.getElementById('title').value.trim();
-  const url = urlFromInput(document.getElementById('url').value);
+  let url = urlFromInput(document.getElementById('url').value);
   const hidden = document.getElementById('hidden').checked;
 
   try {
@@ -433,6 +444,9 @@ async function onSave(e) {
     if (!title) throw new Error('제목을 입력해 주세요');
     if (/notion\.so\//.test(url)) throw new Error('notion.so 링크 말고, "웹에 게시"를 켜면 나오는 notion.site 링크를 넣어 주세요');
     if (!isNotionUrl(url)) throw new Error('https://….notion.site/… 형태의 노션 게시 링크를 넣어 주세요');
+    const embedUrl = toEmbedUrl(url);
+    if (!embedUrl) throw new Error('이 주소는 노션이 다른 사이트 안에 넣는 걸 막아요. 노션 페이지 → 공유 → 게시 → "임베드"의 iframe 코드를 붙여넣어 주세요');
+    url = embedUrl;
 
     btn.disabled = true;
     btn.textContent = '확인 중...';
