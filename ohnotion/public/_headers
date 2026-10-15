@@ -1,0 +1,9 @@
+# CSS/JS/HTML은 매번 바뀌었는지 확인하게 한다(안 바뀌었으면 304라 빠르다).
+# 이게 없으면 예전 view.css가 브라우저/Cloudflare에 남아 학생 화면이 깨져 보였다.
+# 화면에서 부르는 주소에는 ?v=버전도 붙어 있다(functions/[[slug]].js의 ASSET_V).
+/*.css
+  Cache-Control: no-cache
+/*.js
+  Cache-Control: no-cache
+/*.html
+  Cache-Control: no-cache
