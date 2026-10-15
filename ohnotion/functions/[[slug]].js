@@ -26,7 +26,7 @@ const SITE = 'notion.kakainfo.com';
 // 학생 화면의 CSS/JS 주소 뒤에 붙는 버전. view.css나 view.js를 고치면 이 값을 바꾼다 —
 // 그래야 브라우저·Cloudflare에 남은 예전 파일 대신 새 파일을 받는다(첫 iframe 버전의
 // view.css가 남아 여백·HTML 창 크기가 다 깨져 보였던 일이 있었다).
-const ASSET_V = '2026101502';
+const ASSET_V = '2026101503';
 
 function html(body, status = 200) {
   return new Response(body, {
@@ -113,12 +113,13 @@ ${staleNote}
 ${data.coverUrl ? `<div class="cover" style="background-image:url('${escapeHtml(data.coverUrl)}')"></div>` : ''}
 <main class="doc">
   ${crumbs ? `<nav class="crumbs">${crumbs}</nav>` : ''}
-  <h1 class="doc-title">${data.icon ? `<span class="doc-icon">${escapeHtml(data.icon)}</span>` : ''}${escapeHtml(pageTitle)}</h1>
+  ${data.icon ? `<div class="doc-icon${data.coverUrl ? ' on-cover' : ''}">${escapeHtml(data.icon)}</div>` : ''}
+  <h1 class="doc-title">${escapeHtml(pageTitle)}</h1>
   <div class="notion">${data.html}</div>
   <footer class="doc-foot">노션 수정 ${escapeHtml(fmt(data.lastEdited))} · 동기화 ${escapeHtml(fmt(data.renderedAt))}</footer>
 </main>
 <div class="notice floating" id="notice" hidden><span id="noticeText"></span><button type="button" class="btn ghost" id="closeNotice" aria-label="닫기">✕</button></div>
-<script src="/view.js?v=${ASSET_V}" defer></script>`, { head, bodyAttrs: ` data-slug="${escapeHtml(page.slug)}"` });
+<script src="/view.js?v=${ASSET_V}" defer></script>`, { head, bodyAttrs: ` class="doc-page" data-slug="${escapeHtml(page.slug)}"` });
 }
 
 export async function onRequest(context) {
