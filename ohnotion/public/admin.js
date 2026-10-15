@@ -1,6 +1,8 @@
-// notion.kakainfo.com/admin — 노션 페이지 등록 + 모니터링.
+// note.kakainfo.com (첫 화면 = 이 관리 페이지) — 정보 학습지(노션 페이지) 등록 + 모니터링.
+// 학생용 목록 화면은 없다. 학생은 여기서 복사한 /{주소} 링크로만 들어온다.
 //
-// 등록: notion_pages/{주소} 문서 = { title, url, pageId, order, hidden, createdAt, updatedAt }.
+// 등록: notion_pages/{주소} 문서 = { title, url, pageId, order, createdAt, updatedAt }.
+//       (hidden은 학생 목록이 있던 시절의 필드 — 예전 문서엔 남아 있을 수 있고 규칙도 허용한다.)
 //       학생 화면은 서버가 Notion API로 pageId의 내용을 읽어 그린다(lib/notion.js).
 //       등록 정보는 최대 2분, 노션 내용은 2분마다 새로 반영된다.
 // 모니터링: 두 가지를 같이 본다.
@@ -14,7 +16,8 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const app = document.getElementById('app');
-const PUBLIC_BASE = 'https://notion.kakainfo.com';
+const PUBLIC_BASE = 'https://note.kakainfo.com';
+const PUBLIC_HOST = new URL(PUBLIC_BASE).host;
 const REFRESH_MS = 60 * 1000;
 
 // ⚠ lib/shared.js의 SLUG_RE / RESERVED, lib/notion.js의 extractPageId와 같아야 한다(브라우저라 import 불가).
@@ -104,7 +107,7 @@ function renderLogin(errorMessage = '') {
         <div class="auth-head">
           <img class="auth-logo" src="/logo.png" alt="kakainfo">
           <div class="auth-word">kakainfo</div>
-          <div class="auth-sub">노션 페이지 관리 · 관리자 로그인</div>
+          <div class="auth-sub">정보 학습지 · 관리자 로그인</div>
         </div>
         <button class="auth-btn" id="loginBtn">Google로 로그인</button>
         <p class="error-msg" id="loginError">${escapeHtml(errorMessage)}</p>
@@ -127,9 +130,8 @@ function renderLogin(errorMessage = '') {
 async function renderDashboard() {
   app.innerHTML = `
     <div class="topbar">
-      <a class="nav-brand" href="/admin"><img src="/logo.png" alt="kakainfo"><span class="nav-brand-title">노션 페이지 관리</span></a>
+      <a class="nav-brand" href="/"><img src="/logo.png" alt="kakainfo"><span class="nav-brand-title">정보 학습지 관리</span></a>
       <div class="topbar-actions">
-        <a class="btn ghost sm" href="/" target="_blank" rel="noopener">학생 화면</a>
         <div class="dark-toggle" id="darkToggle" title="다크모드"></div>
         <button class="btn ghost sm" id="logoutBtn">로그아웃</button>
       </div>
@@ -153,7 +155,7 @@ async function renderDashboard() {
           <div class="form-row">
             <div class="field">
               <label for="slug">주소</label>
-              <div class="slug-input"><span class="slug-prefix">notion.kakainfo.com/</span><input id="slug" class="inp" placeholder="공지" maxlength="40" required></div>
+              <div class="slug-input"><span class="slug-prefix">${PUBLIC_HOST}/</span><input id="slug" class="inp" placeholder="공지" maxlength="40" required></div>
             </div>
             <div class="field">
               <label for="title">제목</label>
@@ -166,7 +168,6 @@ async function renderDashboard() {
             <p class="hint">노션에서 그 페이지를 열고 <b>공유 → 링크 복사</b>한 주소면 돼요(<code>notion.so</code>, <code>notion.site</code>, 임베드 iframe 코드 모두 OK). 사이트 첫 화면 주소(<code>xxx.notion.site/</code>)에는 페이지 ID가 없어서 안 돼요.
             <b>그 페이지에 통합이 연결돼 있어야</b> 읽을 수 있어요(··· → 연결). 웹에 게시는 안 해도 돼요.</p>
           </div>
-          <label class="check"><input type="checkbox" id="hidden"> 학생 목록에서 숨기기 (주소로는 열림)</label>
           <div class="form-actions">
             <button type="button" class="btn ghost" id="cancelEdit" hidden>취소</button>
             <button type="submit" class="btn accent" id="saveBtn">등록</button>
@@ -355,9 +356,8 @@ function renderList() {
           <div class="page-top">
             <span class="pill ${st.cls}">${escapeHtml(st.label)}</span>
             <span class="page-title">${escapeHtml(p.title || p.slug)}</span>
-            ${p.hidden ? '<span class="pill muted">목록에서 숨김</span>' : ''}
           </div>
-          <a class="page-public" href="${escapeHtml(publicUrl)}" target="_blank" rel="noopener">notion.kakainfo.com/${escapeHtml(p.slug)}</a>
+          <a class="page-public" href="${escapeHtml(publicUrl)}" target="_blank" rel="noopener">${PUBLIC_HOST}/${escapeHtml(p.slug)}</a>
           <div class="page-url" title="${escapeHtml(p.url)}">${escapeHtml(p.url)}</div>
           ${st.why ? `<div class="page-why">${escapeHtml(st.why)}</div>` : ''}
           <div class="page-stats">
@@ -396,7 +396,7 @@ async function onAction(act, p, i) {
     } else if (act === 'edit') {
       startEdit(p);
     } else if (act === 'delete') {
-      if (!confirm(`"${p.title || p.slug}" 페이지를 삭제할까요?\n노션 원본은 그대로 남고, notion.kakainfo.com/${p.slug} 주소만 사라져요.`)) return;
+      if (!confirm(`"${p.title || p.slug}" 페이지를 삭제할까요?\n노션 원본은 그대로 남고, ${PUBLIC_HOST}/${p.slug} 주소만 사라져요.`)) return;
       await deleteDoc(doc(db, 'notion_pages', p.slug));
       delete checks[p.slug];
       showToast('삭제했어요');
@@ -428,7 +428,6 @@ function startEdit(p) {
   slugEl.disabled = true;
   document.getElementById('title').value = p.title || '';
   document.getElementById('url').value = p.url || '';
-  document.getElementById('hidden').checked = !!p.hidden;
   document.getElementById('formTitle').textContent = `수정: ${p.slug}`;
   document.getElementById('saveBtn').textContent = '저장';
   document.getElementById('cancelEdit').hidden = false;
@@ -455,7 +454,6 @@ async function onSave(e) {
   let title = document.getElementById('title').value.trim();
   const url = linkFromInput(document.getElementById('url').value);
   const pageId = extractPageId(url);
-  const hidden = document.getElementById('hidden').checked;
 
   try {
     if (!SLUG_RE.test(slug)) throw new Error('주소는 한글/영문/숫자/-/_ 로 40자까지 쓸 수 있어요');
@@ -484,7 +482,8 @@ async function onSave(e) {
     btn.textContent = '저장 중...';
     const existing = editing ? pages.find((p) => p.slug === editing) : null;
     const data = {
-      title, url, pageId, hidden,
+      title, url, pageId,
+      ...(existing && 'hidden' in existing ? { hidden: existing.hidden } : {}),
       order: existing?.order ?? (pages.length ? Math.max(...pages.map((p) => p.order ?? 0)) + 1 : 0),
       createdAt: existing?.createdAt ?? serverTimestamp(),
       updatedAt: serverTimestamp(),
