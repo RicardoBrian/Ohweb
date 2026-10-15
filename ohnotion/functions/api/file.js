@@ -1,5 +1,5 @@
 /**
- * Cloudflare Pages Function — GET /api/file?b={블록ID} | ?p={페이지ID}(표지)
+ * Cloudflare Pages Function — GET /api/file?b={블록ID} | ?p={페이지ID}(표지)  (&k=icon: 아이콘)
  *
  * 노션에 올린 이미지·파일을 우리 도메인으로 내려 준다.
  *   - 노션 업로드 파일 주소는 1시간이면 만료되는 서명 주소라 HTML에 그대로 못
@@ -44,7 +44,7 @@ export async function onRequestGet(context) {
   if (!/^[0-9a-f]{32}$/.test(id) || !env.NOTION_TOKEN) return new Response('잘못된 요청', { status: 400 });
 
   const cache = caches.default;
-  const cacheKey = new Request(new URL(`/__notion-file/${b ? 'b' : 'p'}/${id}`, request.url));
+  const cacheKey = new Request(new URL(`/__notion-file/${b ? 'b' : 'p'}/${id}/${params.get('k') || ''}`, request.url));
   const hit = await cache.match(cacheKey);
   if (hit) return hit;
 
@@ -52,14 +52,17 @@ export async function onRequestGet(context) {
     const client = makeClient(env.NOTION_TOKEN);
     let url;
     let name = '';
+    const kind = params.get('k');   // 'icon'이면 콜아웃/페이지 아이콘
     if (b) {
       const block = await client.block(id);
       const v = block[block.type] || {};
-      if (block.type === 'embed') url = v.url;
+      if (kind === 'icon') url = fileUrlOf(v.icon);
+      else if (block.type === 'embed') url = v.url;
       else url = fileUrlOf(v);
       name = v.name || '';
     } else {
-      url = fileUrlOf((await client.page(id)).cover);
+      const page = await client.page(id);
+      url = fileUrlOf(kind === 'icon' ? page.icon : page.cover);
     }
     if (!url || !/^https:/i.test(url)) return new Response('파일이 없어요', { status: 404 });
     if (!name) {

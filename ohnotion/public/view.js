@@ -30,6 +30,25 @@
   });
   document.getElementById('closeNotice')?.addEventListener('click', () => { notice.hidden = true; });
 
+  // 코드 블록 "복사" 버튼(노션처럼 코드 위에 마우스를 올리면 보임).
+  document.querySelectorAll('.code-copy').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const code = btn.closest('figure.code')?.querySelector('code')?.textContent || '';
+      try {
+        await navigator.clipboard.writeText(code);
+      } catch {
+        const ta = document.createElement('textarea');
+        ta.value = code;
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); } catch { /* 무시 */ }
+        ta.remove();
+      }
+      btn.textContent = '복사됨';
+      setTimeout(() => { btn.textContent = '복사'; }, 1500);
+    });
+  });
+
   // 수식(KaTeX는 수식이 있는 페이지에서만 불러온다).
   function renderMath() {
     if (!window.katex) return;

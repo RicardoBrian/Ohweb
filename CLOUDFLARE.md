@@ -150,7 +150,7 @@ Custom domain: **`short.kakainfo.com`** — 단, 이건 **관리 페이지**의 
 Build watch paths도 다른 4개와 동일하게 `ohshrt/*`로 좁힌다. 자세한 내용은
 `ohshrt/README.md`.
 
-## 8. ohnotion — 노션 페이지를 내 도메인에서 (notion.kakainfo.com)
+## 8. ohnotion — 정보 학습지 (note.kakainfo.com)
 
 학교에서 노션이 429(요청 제한)로 깨지는 문제 때문에, 서버가 Notion API로 읽어
 HTML로 보여 주는 앱. 설정은 1번 섹션과 같다:
@@ -159,14 +159,16 @@ HTML로 보여 주는 앱. 설정은 1번 섹션과 같다:
 > Root directory `ohnotion`, Build output directory `public`, Build command 비움
 
 1. Build watch paths: `ohnotion/*`
-2. Custom domain: **`notion.kakainfo.com`**
+2. Custom domain: **`note.kakainfo.com`**. 예전 주소 `notion.kakainfo.com`은 이미 나간 링크가 있으면
+   지우지 말고 같이 붙여 두거나, Cloudflare Rules → Redirect Rules로 `note.kakainfo.com`에 301.
+   첫 화면(`/`)이 관리 페이지다(학생용 목록 없음).
 3. 환경변수(Secret, **Production**), 넣은 뒤 재배포:
    - **`NOTION_TOKEN`** — 노션 내부 통합 시크릿. **없으면 학생 화면이 안 나온다.**
      만드는 법과 페이지에 통합을 연결하는 법은 `ohnotion/README.md`.
    - `FIREBASE_SERVICE_ACCOUNT_KEY` — ohweb/ohinfo와 같은 값. 학생 기록(모니터링)용.
      없어도 사이트는 동작한다.
 4. Firebase 콘솔 → Authentication → Settings → Authorized domains에
-   `notion.kakainfo.com` 추가 (관리 페이지 Google 로그인).
+   `note.kakainfo.com` 추가 (관리 페이지 Google 로그인).
 5. **`ohweb-firestore.rules`의 notion 블록을 Firebase 콘솔에 반영** (`notion_pages`,
    `notion_stats`). `pageId` 필드가 추가됐으니 예전에 붙여넣었다면 다시 붙여넣는다.
 
