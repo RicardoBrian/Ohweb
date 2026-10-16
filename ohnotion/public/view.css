@@ -428,3 +428,63 @@ body.doc-page .notion .htmlfile-bar a { text-decoration: none; }
   body.doc-page .notion .bm-image { display: none; }
   body.doc-page .notion .embed-tall .embed-frame { height: 70vh; }
 }
+
+/* ---------- 발표 모드(present.js) ----------
+   1280×720 캔버스를 화면에 맞춰 통째로 확대/축소한다. 슬라이드 글씨는 문서보다 크게. */
+body.presenting { overflow: hidden; }
+.deck { position: fixed; inset: 0; z-index: 1000; background: #000; color: var(--n-text); }
+.deck-stage { position: absolute; inset: 0; overflow: hidden; }
+.deck-canvas { position: absolute; left: 50%; top: 50%; width: 1280px; height: 720px; transform-origin: center center; }
+.deck .slide {
+  position: absolute; inset: 0; background: var(--n-bg); overflow: hidden;
+  opacity: 0; visibility: hidden; transform: translateX(24px);
+  transition: opacity 0.25s ease, transform 0.25s ease, visibility 0s linear 0.25s;
+}
+.deck .slide.before { transform: translateX(-24px); }
+.deck .slide.active { opacity: 1; visibility: visible; transform: none; transition: opacity 0.25s ease, transform 0.25s ease; }
+.deck .slide-inner { position: absolute; left: 72px; top: 72px; right: 72px; transform-origin: top left; font-size: 28px; line-height: 1.5; }
+.deck .slide-scroll .slide-inner { bottom: 72px; overflow-y: auto; }
+
+/* 슬라이드 안의 노션 블록: 글씨를 키우고, 첫 제목은 위 여백 없이 */
+.deck .slide-inner.notion > :first-child,
+.deck .slide-inner.notion > details:first-child > summary > * { margin-top: 0 !important; }
+.deck .slide-inner.notion h2 { font-size: 1.9em; margin: 0.9em 0 0.35em; }
+.deck .slide-inner.notion h3 { font-size: 1.45em; margin: 0.8em 0 0.3em; }
+.deck .slide-inner.notion h4 { font-size: 1.2em; }
+.deck .slide-inner.notion p, .deck .slide-inner.notion li { padding: 4px 2px; }
+.deck .slide-inner.notion img { max-height: 520px; width: auto; max-width: 100%; margin: 0 auto; }
+.deck .slide-inner.notion figure.code pre code { font-size: 0.8em; }
+.deck .slide-inner.notion table { font-size: 0.75em; }
+.deck .slide-inner.notion .embed-tall .embed-frame, .deck .slide-inner.notion .htmlfile iframe { height: 520px; min-height: 0; }
+.deck .slide-inner.notion .callout { font-size: 0.95em; }
+.deck .slide-inner.notion .embed-link, .deck .slide-inner.notion .code-copy { font-size: 14px; }
+
+/* 표지 */
+.deck .slide-title { background: var(--n-bg) var(--cover, none) center / cover no-repeat; }
+.deck .slide-title::before { content: ""; position: absolute; inset: 0; background: var(--n-bg); opacity: 0.86; }
+.deck .slide-title .slide-inner { top: 50%; transform: translateY(-50%); }
+.deck .slide-title h1 { font-size: 72px; line-height: 1.15; font-weight: 700; margin: 0; word-break: keep-all; }
+.deck .slide-title .slide-icon { font-size: 110px; line-height: 1.1; margin-bottom: 24px; height: auto; }
+.deck .slide-title .slide-icon .icon-img { width: 110px; height: 110px; }
+.deck .slide-title .slide-sub { font-size: 30px; color: var(--n-sub); margin: 20px 0 0; }
+
+/* 조작 버튼·진행 막대(마우스를 움직이면 잠깐 보임) */
+.deck-ui {
+  position: absolute; right: 16px; bottom: 16px; display: flex; align-items: center; gap: 4px;
+  padding: 4px 6px; border-radius: 8px; background: rgba(15, 15, 15, 0.72); color: #fff;
+  font: 500 14px var(--font); opacity: 0; transition: opacity 0.2s; pointer-events: none;
+}
+.deck.show-ui .deck-ui { opacity: 1; pointer-events: auto; }
+.deck-ui button { background: transparent; border: 0; color: #fff; font: inherit; font-size: 18px; width: 34px; height: 30px; border-radius: 6px; cursor: pointer; }
+.deck-ui button:hover { background: rgba(255, 255, 255, 0.15); }
+.deck-count { min-width: 64px; text-align: center; font-variant-numeric: tabular-nums; }
+.deck-progress { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: transparent; }
+.deck-progress span { display: block; height: 100%; width: 0; background: rgb(35, 131, 226); transition: width 0.25s ease; }
+.deck-blank { position: absolute; inset: 0; background: #000; z-index: 2; }
+
+/* 문서 상단 바의 발표 버튼 */
+body.doc-page #presentBtn { color: var(--n-text); }
+@media (max-width: 560px) { body.doc-page #presentBtn { display: none; } }
+@media print { .deck { display: none; } }
+/* 슬라이드 안의 동영상·슬라이드 임베드는 한 화면에 들어오게(가로 최대 960px) */
+.deck .slide-inner.notion .embed-ratio .embed-frame { width: min(100%, 960px); margin: 0 auto; }

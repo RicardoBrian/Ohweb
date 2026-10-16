@@ -203,7 +203,7 @@ body.dark .pill.warn { color: #fbbf24; }
 @media (max-width: 640px) {
   .tiles { grid-template-columns: repeat(2, 1fr); }
   .page-card { flex-direction: column; }
-  .page-actions { grid-template-columns: repeat(6, 36px); }
+  .page-actions { grid-template-columns: repeat(7, 36px); }
   .slug-input { flex-direction: column; align-items: stretch; }
   .slug-prefix { padding: 0 0 4px; }
 }
