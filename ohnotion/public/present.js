@@ -141,6 +141,11 @@
     document.addEventListener('keydown', onKey, true);
 
     layout();
+    // 이미지·글꼴이 늦게 오면 높이가 바뀌므로 그때 다시 맞춘다(세로 가운데 유지).
+    let relayout = null;
+    const later = () => { clearTimeout(relayout); relayout = setTimeout(layout, 50); };
+    canvas.addEventListener('load', later, true);
+    document.fonts?.ready?.then(later);
     go(Math.min(Math.max(start, 0), slides.length - 1), true);
     showUi();
   }
@@ -170,17 +175,23 @@
     inner.style.transform = '';
     inner.style.width = '';
     inner.style.right = '';
+    inner.style.top = '';
     s.classList.remove('slide-scroll');
     const avail = H - PAD * 2;
     const need = inner.scrollHeight;
-    if (need <= avail) return;
+    if (need <= avail) {
+      // 남는 높이의 절반만큼 내려서 세로 가운데에 둔다(PPT처럼).
+      inner.style.top = `${PAD + Math.floor((avail - need) / 2)}px`;
+      return;
+    }
     const f = avail / need;
     if (f < MIN_FIT) {
-      // 너무 많이 줄여야 하면 글씨는 그대로 두고 슬라이드 안에서 스크롤한다.
+      // 너무 많이 줄여야 하면 글씨는 그대로 두고 슬라이드 안에서 스크롤한다(위에서부터).
       s.classList.add('slide-scroll');
       return;
     }
     // 줄인 뒤에도 가로 폭이 슬라이드 폭과 같도록, 줄이기 전 폭을 1/f 만큼 넓혀 둔다.
+    // 줄이면 높이가 꼭 맞으므로 위쪽 여백 그대로.
     inner.style.right = 'auto';
     inner.style.width = `${(W - PAD * 2) / f}px`;
     inner.style.transform = `scale(${f})`;
