@@ -369,6 +369,7 @@ function renderList() {
         <div class="page-actions">
           <button class="icon-btn" data-act="up" data-i="${i}" title="위로" ${i === 0 ? 'disabled' : ''}>↑</button>
           <button class="icon-btn" data-act="down" data-i="${i}" title="아래로" ${i === pages.length - 1 ? 'disabled' : ''}>↓</button>
+          <button class="icon-btn" data-act="present" data-i="${i}" title="발표 모드로 열기">▶</button>
           <button class="icon-btn" data-act="copy" data-i="${i}" title="주소 복사">⧉</button>
           <button class="icon-btn" data-act="check" data-i="${i}" title="지금 새로 불러오기">⟳</button>
           <button class="icon-btn" data-act="edit" data-i="${i}" title="수정">✎</button>
@@ -386,7 +387,9 @@ function renderList() {
 async function onAction(act, p, i) {
   if (!p) return;
   try {
-    if (act === 'copy') {
+    if (act === 'present') {
+      window.open(`${PUBLIC_BASE}/${encodeURIComponent(p.slug)}#present`, '_blank', 'noopener');
+    } else if (act === 'copy') {
       await navigator.clipboard.writeText(`${PUBLIC_BASE}/${p.slug}`);
       showToast('주소를 복사했어요');
     } else if (act === 'check') {
