@@ -169,3 +169,106 @@
 }
 .ai-app[data-theme="warm"] .aa-title { font-weight: 700; color: #6b3d1f; }
 .ai-app[data-theme="warm"] .aa-track { height: 14px; }
+
+/* ── 6. 파스텔: 연분홍·민트·라벤더, 아주 둥글게 ── */
+.ai-app[data-theme="pastel"] {
+  --aa-bg: #fff6fb; --aa-text: #4b3a5a; --aa-sub: #8f7ea3;
+  --aa-card: #ffffff; --aa-border: 2px solid #f5d9ec; --aa-radius: 30px; --aa-shadow: 0 10px 26px rgba(214,150,200,.18);
+  --aa-accent: #ff8fc7; --aa-btn-bg: #ff8fc7; --aa-btn-text: #fff; --aa-btn-shadow: 0 6px 14px rgba(255,143,199,.35);
+  --aa-chip-bg: #e8f8f1; --aa-chip-text: #3f8c70; --aa-track: #f7eef6;
+  --c1: #ff8fc7; --c2: #8fd3c1; --c3: #b9a7ff; --c4: #ffd28f; --c5: #8fc1ff; --c6: #ffb3a7; --c7: #c4e38f; --c8: #e3a7ff;
+}
+.ai-app[data-theme="pastel"] .aa-bg {
+  background:
+    radial-gradient(30% 25% at 12% 10%, #ffe1f0, transparent 70%),
+    radial-gradient(30% 25% at 90% 18%, #dcf7ee, transparent 70%),
+    radial-gradient(35% 30% at 50% 100%, #ece5ff, transparent 70%);
+}
+.ai-app[data-theme="pastel"] .aa-title { color: #d35d9f; }
+.ai-app[data-theme="pastel"] .aa-track { height: 14px; }
+
+/* ── 7. 숲: 초록 잎, 나무색 ── */
+.ai-app[data-theme="forest"] {
+  --aa-bg: #eef5ea; --aa-text: #1f3a24; --aa-sub: #5c7a5f;
+  --aa-card: #fbfdf8; --aa-border: 1px solid #cfe2c6; --aa-radius: 18px; --aa-shadow: 0 8px 22px rgba(40,90,40,.12);
+  --aa-accent: #2f8f46; --aa-btn-bg: #2f8f46; --aa-btn-text: #fff;
+  --aa-chip-bg: #dcefd5; --aa-chip-text: #2d6b37; --aa-track: #e3eedd;
+  --c1: #2f8f46; --c2: #8bbf4a; --c3: #a0763d; --c4: #d8b23a; --c5: #4f9d8f; --c6: #6c8f3c; --c7: #c26f45; --c8: #7a6a4f;
+}
+.ai-app[data-theme="forest"] .aa-bg {
+  background:
+    radial-gradient(40% 30% at 0% 0%, rgba(120,180,90,.35), transparent 70%),
+    radial-gradient(40% 30% at 100% 100%, rgba(60,130,70,.28), transparent 70%),
+    repeating-linear-gradient(115deg, transparent 0 22px, rgba(47,143,70,.05) 22px 24px);
+}
+.ai-app[data-theme="forest"] .aa-title { color: #23683a; }
+
+/* ── 8. 바다: 하늘색에서 짙은 파랑으로, 물결 ── */
+.ai-app[data-theme="ocean"] {
+  --aa-bg: linear-gradient(180deg, #e3f4ff 0%, #b9e2ff 55%, #7cc4f2 100%); --aa-text: #0b3355; --aa-sub: #3f6b8f;
+  --aa-card: rgba(255,255,255,.85); --aa-border: 1px solid rgba(255,255,255,.9); --aa-radius: 22px; --aa-shadow: 0 10px 30px rgba(10,80,140,.18);
+  --aa-accent: #0077cc; --aa-btn-bg: #0077cc; --aa-btn-text: #fff;
+  --aa-chip-bg: rgba(255,255,255,.7); --aa-chip-text: #0b5a8f; --aa-track: #dbeefb;
+  --c1: #0077cc; --c2: #00b3b3; --c3: #ff8a65; --c4: #ffd166; --c5: #5c6bc0; --c6: #26c6da; --c7: #ef5350; --c8: #8d6e63;
+}
+.ai-app[data-theme="ocean"] .aa-bg {
+  background:
+    radial-gradient(120% 40% at 50% 115%, rgba(255,255,255,.35) 0 30%, transparent 31%),
+    radial-gradient(120% 40% at 20% 125%, rgba(255,255,255,.25) 0 30%, transparent 31%);
+}
+.ai-app[data-theme="ocean"] .aa-title { color: #0a4f86; }
+
+/* ── 9. 우주: 짙은 남색, 별 ── */
+.ai-app[data-theme="space"] {
+  --aa-bg: #0b1026; --aa-text: #eef1ff; --aa-sub: #9aa3d6; --aa-err: #ff7a90;
+  --aa-card: rgba(22,28,64,.85); --aa-border: 1px solid rgba(150,160,255,.25); --aa-radius: 20px; --aa-shadow: 0 10px 40px rgba(0,0,0,.4);
+  --aa-accent: #ffcc4d; --aa-btn-bg: #6c5ce7; --aa-btn-text: #fff;
+  --aa-chip-bg: rgba(108,92,231,.25); --aa-chip-text: #d2ccff; --aa-track: #1d2550;
+  --c1: #ffcc4d; --c2: #6c5ce7; --c3: #00d1ff; --c4: #ff6bcb; --c5: #7bed9f; --c6: #ff9f43; --c7: #a29bfe; --c8: #70a1ff;
+}
+.ai-app[data-theme="space"] .aa-bg {
+  background:
+    radial-gradient(1.5px 1.5px at 20% 30%, #fff 50%, transparent 51%) 0 0 / 120px 120px,
+    radial-gradient(1px 1px at 70% 60%, #fff 50%, transparent 51%) 0 0 / 90px 90px,
+    radial-gradient(2px 2px at 40% 80%, #ffe9a8 50%, transparent 51%) 0 0 / 160px 160px,
+    radial-gradient(45% 30% at 85% 10%, rgba(108,92,231,.35), transparent 70%);
+}
+.ai-app[data-theme="space"] .aa-title { color: #fff; text-shadow: 0 0 18px rgba(255,204,77,.45); }
+
+/* ── 10. 레트로 게임: 네모난 칸, 검은 굵은 테두리, 노랑 ── */
+.ai-app[data-theme="retro"] {
+  --aa-bg: #fff4c2; --aa-text: #1a1a1a; --aa-sub: #5b5236;
+  --aa-card: #ffffff; --aa-border: 3px solid #1a1a1a; --aa-radius: 0px; --aa-shadow: 6px 6px 0 #1a1a1a;
+  --aa-accent: #ff4d4d; --aa-btn-bg: #ff4d4d; --aa-btn-text: #fff; --aa-btn-radius: 0px; --aa-btn-border: 3px solid #1a1a1a; --aa-btn-shadow: 4px 4px 0 #1a1a1a;
+  --aa-chip-bg: #1a1a1a; --aa-chip-text: #fff4c2; --aa-track: #ece3b5; --aa-bar-radius: 0px; --aa-track-border: 2px solid #1a1a1a;
+  --c1: #ff4d4d; --c2: #3d7bff; --c3: #2ecc71; --c4: #ffb400; --c5: #9b59b6; --c6: #00b8d4; --c7: #ff7f50; --c8: #607d8b;
+}
+.ai-app[data-theme="retro"] .aa-bg { background: linear-gradient(rgba(0,0,0,.05) 2px, transparent 2px) 0 0 / 100% 8px; }
+.ai-app[data-theme="retro"] .aa-title { letter-spacing: .02em; text-shadow: 3px 3px 0 #ffb400; }
+.ai-app[data-theme="retro"] .aa-chip, .ai-app[data-theme="retro"] .aa-lang, .ai-app[data-theme="retro"] .aa-drop-icon, .ai-app[data-theme="retro"] .aa-photo, .ai-app[data-theme="retro"] .aa-cover { border-radius: 0; }
+
+/* ── 11. 만화: 흰 바탕 점무늬, 굵은 선, 빨강·노랑 ── */
+.ai-app[data-theme="comic"] {
+  --aa-bg: #ffffff; --aa-text: #111; --aa-sub: #444;
+  --aa-card: #ffffff; --aa-border: 3px solid #111; --aa-radius: 14px; --aa-shadow: 5px 5px 0 #111;
+  --aa-accent: #e63946; --aa-btn-bg: #ffd60a; --aa-btn-text: #111; --aa-btn-border: 3px solid #111; --aa-btn-shadow: 3px 3px 0 #111;
+  --aa-chip-bg: #ffd60a; --aa-chip-text: #111; --aa-chip-border: 2px solid #111; --aa-track: #f1f1f1; --aa-track-border: 2px solid #111;
+  --c1: #e63946; --c2: #1d4ed8; --c3: #16a34a; --c4: #f59e0b; --c5: #9333ea; --c6: #0891b2; --c7: #db2777; --c8: #57534e;
+}
+.ai-app[data-theme="comic"] .aa-bg { background: radial-gradient(circle, rgba(230,57,70,.16) 1.6px, transparent 2px) 0 0 / 14px 14px; }
+.ai-app[data-theme="comic"] .aa-title { color: #e63946; -webkit-text-stroke: 1.5px #111; text-shadow: 3px 3px 0 #111; font-weight: 800; }
+.ai-app[data-theme="comic"] .aa-verdict { font-weight: 800; }
+
+/* ── 강조색(학생이 고름): 버튼·1등 막대·테두리 강조 ── */
+.ai-app[data-accent] .aa-top .aa-fill { background: var(--aa-accent); }
+.ai-app[data-accent] .aa-btn { background: var(--aa-accent); color: #fff; }
+
+/* ── 글꼴(학생이 고름) ── */
+.ai-app[data-font="round"] { --aa-font: "Gowun Dodum", "IBM Plex Sans KR", system-ui, sans-serif; }
+.ai-app[data-font="cute"] { --aa-font: "Jua", "IBM Plex Sans KR", system-ui, sans-serif; }
+.ai-app[data-font="hand"] { --aa-font: "Nanum Pen Script", "IBM Plex Sans KR", system-ui, sans-serif; }
+.ai-app[data-font="hand"] .aa-title { font-size: clamp(34px, 8vw, 48px); }
+.ai-app[data-font="hand"] .aa-verdict { font-size: clamp(28px, 7vw, 38px); }
+.ai-app[data-font="hand"] .aa-desc, .ai-app[data-font="hand"] .aa-row { font-size: 18px; }
+.ai-app[data-font="bold"] { --aa-font: "Black Han Sans", "IBM Plex Sans KR", system-ui, sans-serif; }
+.ai-app[data-font="bold"] .aa-title { font-weight: 400; }

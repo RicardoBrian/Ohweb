@@ -9,7 +9,8 @@
 const DRAW_SIZE = 384;      // 그리기 판 크기(정사각형). 학습 사진 최소 크기(120px)보다 넉넉하게
 const CAM_MAX = 640;        // 카메라 사진 긴 변
 const BURST_N = 10;         // 연속 찍기 장수
-const BURST_GAP = 350;      // 연속 찍기 간격(ms)
+const BURST_GAP = 1000;     // 연속 찍기 간격(ms) — 1초마다 한 장. 자세·각도를 바꿀 시간
+const COUNTDOWN = 3;        // 연속 찍기 전 3·2·1
 
 let styled = false;
 function style() {
@@ -22,6 +23,9 @@ function style() {
 .cap-h b { font-size: 16px; }
 .cap-x { border: 0; background: none; font-size: 26px; line-height: 1; cursor: pointer; color: #666; padding: 2px 6px; }
 .cap-pad { width: 100%; aspect-ratio: 1; border: 2px solid #d6d9e3; border-radius: 12px; background: #fff; touch-action: none; display: block; cursor: crosshair; }
+.cap-stage { position: relative; }
+.cap-cd { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; color: #fff; font-weight: 800; font-size: 72px; text-shadow: 0 2px 12px rgba(0,0,0,.6); }
+.cap-cd small { display: block; font-size: 18px; font-weight: 600; text-align: center; }
 .cap-vid { width: 100%; border-radius: 12px; background: #111; display: block; max-height: 60vh; object-fit: contain; }
 .cap-vid.mirror { transform: scaleX(-1); }
 .cap-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
@@ -122,7 +126,7 @@ export function openCamera({ t, title, onAdd, single = false, note = '' }) {
   const ov = shell(t, title || t('capCamera'));
   const body = ov.querySelector('.cap-body');
   body.innerHTML = `
-    <video class="cap-vid" playsinline muted autoplay></video>
+    <div class="cap-stage"><video class="cap-vid" playsinline muted autoplay></video><div class="cap-cd" aria-live="assertive"></div></div>
     <div class="cap-err" hidden></div>
     <div class="cap-row">
       <button type="button" class="cap-btn" data-a="flip">${t('capFlip')}</button>
@@ -137,6 +141,7 @@ export function openCamera({ t, title, onAdd, single = false, note = '' }) {
   const shotBtn = body.querySelector('[data-a="shot"]');
   const burstBtn = body.querySelector('[data-a="burst"]');
   const countEl = body.querySelector('.cap-count');
+  const cd = body.querySelector('.cap-cd');
   let stream = null, facing = 'user', added = 0, closed = false, busy = false;
 
   const stop = () => { if (stream) { stream.getTracks().forEach(tr => tr.stop()); stream = null; } };
@@ -181,10 +186,17 @@ export function openCamera({ t, title, onAdd, single = false, note = '' }) {
   if (burstBtn) burstBtn.addEventListener('click', async () => {
     if (busy) return;
     busy = true; burstBtn.disabled = true; shotBtn.disabled = true;
-    for (let i = 0; i < BURST_N && !closed; i++) {
-      await shoot();
-      await new Promise(r => setTimeout(r, BURST_GAP));
+    // 3·2·1 세고 나서 1초마다 한 장 — 화면 가운데에 몇 번째인지 크게 보여 준다
+    for (let k = COUNTDOWN; k > 0 && !closed; k--) {
+      cd.innerHTML = `${k}<small>${t('capReady')}</small>`;
+      await new Promise(r => setTimeout(r, 1000));
     }
+    for (let i = 0; i < BURST_N && !closed; i++) {
+      cd.innerHTML = `${i + 1}/${BURST_N}<small>${t('capEverySec')}</small>`;
+      await shoot();
+      if (i < BURST_N - 1) await new Promise(r => setTimeout(r, BURST_GAP));
+    }
+    cd.textContent = '';
     busy = false;
     if (!closed) { burstBtn.disabled = false; shotBtn.disabled = false; }
   });

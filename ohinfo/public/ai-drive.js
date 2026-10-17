@@ -8,8 +8,8 @@
 // 실패하면 지우지 않고 간격을 늘려 가며 다시 시도한다. 학교 PC는 재부팅하면 브라우저
 // 저장이 지워지는 경우가 많아서, "드라이브에 올라간 것"만 진짜 저장으로 친다.
 
-import { AILAB_GAS_URL } from './ai-config.js?v=202610170210';
-import { blobToBase64 } from './ai-image.js?v=202610170210';
+import { AILAB_GAS_URL } from './ai-config.js?v=202610170240';
+import { blobToBase64 } from './ai-image.js?v=202610170240';
 
 export class DriveError extends Error {
   constructor(code, msg) { super(msg || code); this.code = code; }
@@ -78,6 +78,8 @@ export const localStore = {
 // ── 올리기 대기열 ──
 const PERMANENT = new Set(['badLabel', 'badRequest', 'tooBig', 'auth']);
 // writeRecord(item): Firestore에 사진 기록을 남기는 함수(페이지가 넘겨준다).
+const UPLOAD_PARALLEL = 3;
+
 export class Uploader {
   constructor({ getToken, writeRecord, onChange, onDrop }) {
     this.getToken = getToken;
@@ -123,50 +125,64 @@ export class Uploader {
     if (!this.running) this._loop();
   }
 
+  // 사진은 먼저 이 기기(브라우저)에 저장되고(add), 여기서 뒤에서 차례로 올린다.
+  // 한 장씩 기다리면 사진이 많을 때 밀리므로 UPLOAD_PARALLEL장까지 동시에 올린다.
   async _loop() {
     this.running = true;
+    const inflight = new Set();
+    const ready = i => i.pid === this.pid && !inflight.has(i.id) && !(i.waitUntil > Date.now())
+      && (i.kind !== 'train' || i.driveId || AILAB_GAS_URL);
     for (;;) {
-      this.items = this.items.filter(i => i.pid === this.pid);
-      // 드라이브 주소가 아직 설정되지 않았으면 학습용 사진은 기기에 남겨 두고,
-      // 평가용(test) 사진처럼 드라이브가 필요 없는 것만 먼저 저장한다.
-      const idx = this.items.findIndex(i => i.kind !== 'train' || i.driveId || AILAB_GAS_URL);
-      if (idx < 0) break;
-      const item = this.items[idx];
-      try {
+      while (inflight.size < UPLOAD_PARALLEL) {
+        const item = this.items.find(ready);
+        if (!item) break;
+        inflight.add(item.id);
         this.state = 'uploading'; this.onChange();
-        if (item.kind === 'train' && !item.driveId) {
-          const r = await gasCall(this.getToken, 'upload', {
-            pid: item.pid, labelId: item.labelId, filename: `${item.id}.jpg`,
-            base64: await blobToBase64(item.blob),
-          });
-          item.driveId = r.id;
-          // 드라이브엔 올라갔는데 기록 쓰기에서 실패하면, 다시 시도할 때 드라이브에 또 올리지 않게.
-          try { await localStore.put(item); } catch { /* 무시 */ }
-        }
-        await this.writeRecord(item);
-        this.items = this.items.filter(i => i.id !== item.id);
-        try { await localStore.del(item.id); } catch { /* 무시 */ }
-        this.lastError = '';
-      } catch (e) {
-        if (e.code === 'notConfigured') break;
-        // 다시 해도 안 되는 오류(지워진 레이블, 짝이 아님 등)는 붙잡고 있지 않고 알린다.
-        // 'auth'는 일시적인 연결 문제일 수도 있어서 세 번까지는 다시 해 본다.
-        if (PERMANENT.has(e.code) && (e.code !== 'auth' || (item.tries || 0) >= 3)) {
-          this.items = this.items.filter(i => i.id !== item.id);
-          try { await localStore.del(item.id); } catch { /* 무시 */ }
-          this.onDrop(item, e.code);
-          continue;
-        }
-        item.tries = (item.tries || 0) + 1;
-        this.lastError = e.code || e.message;
-        this.state = 'retrying'; this.onChange();
-        const wait = Math.min(60000, 2000 * 2 ** Math.min(item.tries - 1, 5));
-        await new Promise(r => { this._wake = r; setTimeout(r, wait); });
+        this._one(item).finally(() => { inflight.delete(item.id); this.kick(); });
       }
+      const waiting = this.items.filter(i => i.pid === this.pid && i.waitUntil > Date.now());
+      if (!inflight.size && !waiting.length) break;
+      const next = waiting.length ? Math.min(...waiting.map(i => i.waitUntil)) - Date.now() : 0;
+      await new Promise(r => { this._wake = r; if (next > 0) setTimeout(r, next); });
+      this._wake = null;
     }
     this.state = this.items.some(i => i.kind === 'train' && !i.driveId) && !AILAB_GAS_URL ? 'notConfigured' : 'idle';
     this.running = false;
     this.onChange();
+  }
+
+  async _one(item) {
+    try {
+      if (item.kind === 'train' && !item.driveId) {
+        const r = await gasCall(this.getToken, 'upload', {
+          pid: item.pid, labelId: item.labelId, filename: `${item.id}.jpg`,
+          base64: await blobToBase64(item.blob),
+        });
+        item.driveId = r.id;
+        // 드라이브엔 올라갔는데 기록 쓰기에서 실패하면, 다시 시도할 때 드라이브에 또 올리지 않게.
+        try { await localStore.put(item); } catch { /* 무시 */ }
+      }
+      await this.writeRecord(item);
+      this.items = this.items.filter(i => i.id !== item.id);
+      try { await localStore.del(item.id); } catch { /* 무시 */ }
+      this.lastError = '';
+      if (!this.items.some(i => i.tries)) this.state = 'uploading';
+    } catch (e) {
+      // 다시 해도 안 되는 오류(지워진 레이블, 짝이 아님 등)는 붙잡고 있지 않고 알린다.
+      // 'auth'는 일시적인 연결 문제일 수도 있어서 세 번까지는 다시 해 본다.
+      if (PERMANENT.has(e.code) && (e.code !== 'auth' || (item.tries || 0) >= 3)) {
+        this.items = this.items.filter(i => i.id !== item.id);
+        try { await localStore.del(item.id); } catch { /* 무시 */ }
+        this.onDrop(item, e.code);
+        return;
+      }
+      item.tries = (item.tries || 0) + 1;
+      this.lastError = e.code || e.message;
+      this.state = 'retrying';
+      item.waitUntil = Date.now() + Math.min(60000, 2000 * 2 ** Math.min(item.tries - 1, 5));
+    } finally {
+      this.onChange();
+    }
   }
 }
 

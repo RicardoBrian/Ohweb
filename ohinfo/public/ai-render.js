@@ -2,9 +2,23 @@
 // 디자인 5종은 화면 배치가 같고 색·질감만 다르다(ai-themes.css).
 
 import { escHtml } from './escape.js';
-import { labelName, phraseFor, UNSURE, UNSURE_THRESHOLD, LANGS } from './ai-core.js?v=202610170210';
+import { labelName, phraseFor, UNSURE, UNSURE_THRESHOLD, LANGS } from './ai-core.js?v=202610170240';
 
-export const THEMES = ['minimal', 'bw', 'glass', 'neon', 'warm'];
+export const THEMES = ['minimal', 'bw', 'glass', 'neon', 'warm', 'pastel', 'forest', 'ocean', 'space', 'retro', 'comic'];
+// 강조색·글꼴은 디자인과 따로 고른다. 공개 웹앱에 그대로 쓰이므로 이 목록에 있는 값만 받는다.
+export const ACCENTS = ['#e5484d', '#f76b15', '#ffb224', '#30a46c', '#12a594', '#0090ff', '#6e56cf', '#e93d82', '#1c1c1f'];
+export const FONTS = ['round', 'cute', 'hand', 'bold'];
+const FONT_CSS = { round: 'Gowun+Dodum', cute: 'Jua', hand: 'Nanum+Pen+Script', bold: 'Black+Han+Sans' };
+// 고른 글꼴만 그때 받는다(기본 글꼴이면 아무것도 받지 않는다).
+export function ensureFont(font) {
+  if (!FONT_CSS[font] || typeof document === 'undefined') return;
+  const id = 'aa-font-' + font;
+  if (document.getElementById(id)) return;
+  const l = document.createElement('link');
+  l.id = id; l.rel = 'stylesheet';
+  l.href = `https://fonts.googleapis.com/css2?family=${FONT_CSS[font]}&display=swap`;
+  document.head.appendChild(l);
+}
 const LANG_NAMES = { ko: '한국어', en: 'English', zh: '中文', ru: 'Рус' };
 
 // 모델 예측([{className, probability}]) → 레이블별 확률 { labelId: p }
@@ -37,6 +51,9 @@ export function appHtml(app, lang, t, state = {}) {
   const labels = app.labels || [];
   const hidden = app.hiddenPhrases || {};
   const theme = THEMES.includes(app.theme) ? app.theme : 'minimal';
+  const accent = ACCENTS.includes(app.accent) ? app.accent : '';
+  const font = FONTS.includes(app.font) ? app.font : '';
+  ensureFont(font);
   const emojis = labels.map(l => l.emoji).filter(Boolean).join(' ');
   const chips = labels.map(l => `<span class="aa-chip">${l.emoji ? escHtml(l.emoji) + ' ' : ''}${escHtml(labelName(l, lang))}</span>`).join('');
 
@@ -88,7 +105,7 @@ export function appHtml(app, lang, t, state = {}) {
 
   const langs = LANGS.map(l => `<button type="button" class="aa-lang${l === lang ? ' on' : ''}" data-lang="${l}">${LANG_NAMES[l]}</button>`).join('');
 
-  return `<div class="ai-app" data-theme="${theme}">
+  return `<div class="ai-app" data-theme="${theme}"${font ? ` data-font="${font}"` : ''}${accent ? ` data-accent style="--aa-accent:${accent}"` : ''}>
     <div class="aa-bg" aria-hidden="true"></div>
     <div class="aa-wrap">
       <header class="aa-head${cover ? ' has-cover' : ''}">

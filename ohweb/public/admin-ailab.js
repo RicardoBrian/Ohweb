@@ -11,7 +11,7 @@ import {
 const OHINFO = 'https://kakainfo.com';
 const STEP = ['', '① 문제 정의', '② 데이터 수집', '③ 학습', '④ 평가', '⑤ 배포'];
 const CAUSES = { few: '사진 수가 적어요', unbalanced: '레이블끼리 사진 수 차이가 커요', similarPhotos: '비슷한 사진만 모았어요', mixed: '다른 물건이 섞인 사진', similarLabels: '레이블끼리 너무 비슷해요', unknown: '잘 모르겠어요' };
-const THEME_NAMES = { minimal: '미니멀', bw: '블랙앤화이트', glass: '리퀴드글래스', neon: '네온', warm: '따뜻한 느낌' };
+const THEME_NAMES = { minimal: '미니멀', bw: '블랙앤화이트', glass: '리퀴드글래스', neon: '네온', warm: '따뜻한 느낌', pastel: '파스텔', forest: '숲', ocean: '바다', space: '우주', retro: '레트로 게임', comic: '만화' };
 const LANGS = ['ko', 'en', 'zh', 'ru'];
 
 const E = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');

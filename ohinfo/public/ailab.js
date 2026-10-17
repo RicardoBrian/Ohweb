@@ -14,12 +14,12 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { loadSession, verifyStudentAuth, authReady, clearSession } from './session.js';
 import { escHtml } from './escape.js';
-import * as C from './ai-core.js?v=202610170210';
-import { makeT, getLang, setLang } from './ai-i18n.js?v=202610170210';
-import { prepareImage, prepareCover, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202610170210';
-import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, refetchTrainPhoto, saveModelToDrive, deviceId, devPhotoPut, devPhotoGet, devPhotoDel } from './ai-drive.js?v=202610170210';
-import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202610170210';
-import { appHtml, probsByLabel, THEMES } from './ai-render.js?v=202610170210';
+import * as C from './ai-core.js?v=202610170240';
+import { makeT, getLang, setLang } from './ai-i18n.js?v=202610170240';
+import { prepareImage, prepareCover, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202610170240';
+import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, refetchTrainPhoto, saveModelToDrive, deviceId, devPhotoPut, devPhotoGet, devPhotoDel } from './ai-drive.js?v=202610170240';
+import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202610170240';
+import { appHtml, probsByLabel, THEMES, ACCENTS, FONTS, ensureFont } from './ai-render.js?v=202610170240';
 
 const E = escHtml;
 const $ = id => document.getElementById(id);
@@ -369,7 +369,8 @@ function step2() {
   if (C.isUnbalanced(counts)) body += `<div class="note warn">⚖️ ${E(t('unbalanced'))}</div>`;
   body += `<div class="lgrid">${labels.map(l => {
     const mine = isMine(l);
-    const c = imgs('train', l.id).length;
+    // 이 기기에 저장되어 올라가기를 기다리는 사진도 바로 센다(올라가는 동안 막대가 멈춰 보이지 않게)
+    const c = imgs('train', l.id).length + uploader.pendingFor('train', l.id).length;
     const pct = Math.min(100, Math.round(c * 100 / min));
     return `<div class="lcard${mine ? ' mine' : ''}"${mine ? ` data-dropzone="train:${E(l.id)}"` : ''}>
       <div class="lc-head"><b>${E(l.name)}</b>${ownerTag(l)}</div>
@@ -463,7 +464,7 @@ function testTab() {
   let h = `<div class="note">${E(t('s3TestLead'))}<br><b>${E(t('s3TestNote'))}</b></div>
     <div class="muted">${E(t('testCount', { c: total, m: min }))}</div>`;
   h += `<div class="lgrid">${labels.map(l => {
-    const c = imgs('test', l.id).length;
+    const c = imgs('test', l.id).length + uploader.pendingFor('test', l.id).length;
     return `<div class="lcard test" data-dropzone="test:${E(l.id)}"><div class="lc-head"><b>${E(l.name)}</b><span class="cnt ${c >= min ? 'ok' : ''}">${c} / ${min}</span></div>
       ${zoneHtml('test', l.id)}
       ${photoGrid('test', l.id, () => true)}</div>`;
@@ -576,6 +577,7 @@ function appData() {
   return {
     title: (S.drafts.title != null ? S.drafts.title : (p.app && p.app.title)) || '',
     theme: (p.app && p.app.theme) || 'minimal',
+    accent: (p.app && p.app.accent) || '', font: (p.app && p.app.font) || '',
     srcLang: p.srcLang || 'ko',
     cover: (p.app && p.app.cover) || '',
     desc: (S.drafts.desc != null ? S.drafts.desc : (p.app && p.app.desc)) || '',
@@ -588,10 +590,11 @@ function appData() {
 }
 // 공개 뒤에 고친 게 있는지 비교하는 서명(번역 결과는 빼고).
 function appSig(a) {
-  return JSON.stringify({ title: a.title, desc: a.desc, cover: a.cover ? a.cover.length + a.cover.slice(-24) : '', theme: a.theme, v: a.modelVersion, m: a.modelUrl, map: a.mapping, l: a.labels.map(l => [l.id, l.name, l.emoji, l.phrase, l.custom]) });
+  return JSON.stringify({ accent: a.accent, font: a.font, title: a.title, desc: a.desc, cover: a.cover ? a.cover.length + a.cover.slice(-24) : '', theme: a.theme, v: a.modelVersion, m: a.modelUrl, map: a.mapping, l: a.labels.map(l => [l.id, l.name, l.emoji, l.phrase, l.custom]) });
 }
 
 function step5() {
+  FONTS.forEach(ensureFont);   // 글꼴 고르기 견본용(⑤ 화면에서만)
   const p = S.project;
   const a = appData();
   const hidden = a.hiddenPhrases;
@@ -599,12 +602,18 @@ function step5() {
   h += `<div class="deploy"><div class="deploy-form">`;
   h += `<div class="card"><div class="field"><label for="f-title">${E(t('appTitle'))}</label>
     <input id="f-title" data-field="title" maxlength="${C.TITLE_MAX}" placeholder="${E(t('appTitlePh'))}" value="${E(a.title)}"></div>
-    <label>${E(t('design'))}</label><div class="themes">${THEMES.map(th => `<button class="theme-card${a.theme === th ? ' on' : ''}" data-act="theme" data-v="${th}"><span class="sw sw-${th}"></span>${E(t('themes.' + th))}</button>`).join('')}</div></div>`;
+    <label>${E(t('design'))}</label><div class="themes">${THEMES.map(th => `<button class="theme-card${a.theme === th ? ' on' : ''}" data-act="theme" data-v="${th}"><span class="sw sw-${th}"></span>${E(t('themes.' + th))}</button>`).join('')}</div>
+    <label>${E(t('accentLabel'))}</label><div class="accents">
+      <button class="acc def${!a.accent ? ' on' : ''}" data-act="accent" data-v="" title="${E(t('accentDefault'))}">${E(t('accentDefault'))}</button>
+      ${ACCENTS.map(c => `<button class="acc${a.accent === c ? ' on' : ''}" data-act="accent" data-v="${c}" style="--c:${c}" aria-label="${c}"></button>`).join('')}</div>
+    <label>${E(t('fontLabel'))}</label><div class="fonts">
+      ${['', ...FONTS].map(f => `<button class="font-card${a.font === f ? ' on' : ''}" data-act="font" data-v="${f}"><span class="ff ff-${f || 'base'}">가나다 Abc</span>${E(t('fonts.' + (f || 'base')))}</button>`).join('')}</div></div>`;
   // 대문 꾸미기: 어떤 앱인지 한눈에 보이게 사진 한 장과 짧은 설명(둘 다 선택)
   h += `<div class="card"><h3>${E(t('coverTitle'))}</h3><p class="muted sm">${E(t('coverHelp'))}</p>
     ${a.cover ? `<div class="cover-pv"><img src="${E(a.cover)}" alt=""><button class="btn sm" data-act="cover-del">${E(t('coverDel'))}</button></div>` : ''}
     <div class="dz" tabindex="0" data-dropzone="cover:x"><span>${E(a.cover ? t('coverChange') : t('coverAdd'))}</span>
-      <button class="btn sm" data-act="pick" data-zone="cover:x">${E(t('chooseFiles'))}</button></div>
+      <button class="btn sm" data-act="pick" data-zone="cover:x">${E(t('chooseFiles'))}</button>
+      <button class="btn sm" data-act="cap" data-v="draw" data-zone="cover:x">✍️ ${E(t('capDraw'))}</button></div>
     ${S.busy.cover ? `<div class="muted"><span class="spin"></span>${E(t('uploading'))}</div>` : ''}
     <div class="field"><label for="f-desc">${E(t('descLabel'))}</label>
       <textarea id="f-desc" data-field="desc" maxlength="${C.DESC_MAX}" rows="2" placeholder="${E(t('descPh'))}">${E(a.desc)}</textarea></div>
@@ -726,7 +735,7 @@ function currentModel() {
 }
 
 // ── 사진 넣기 ──
-async function onPhotos(kind, labelId, files, urls) {
+async function onPhotos(kind, labelId, files, urls, { captured = false } = {}) {
   if (kind === 'try') return tryPhoto(files, urls);
   if (kind === 'cover') return setCover(files, urls);
   // 파일은 한 장씩, 끌어온 주소들은 "사진 한 장의 후보들"이라 그중 처음 되는 것 하나만.
@@ -737,7 +746,9 @@ async function onPhotos(kind, labelId, files, urls) {
         ? await fetchFirstImage(src, b => prepareImage(b, kind))
         : await prepareImage(src, kind);
       const fps = [...S.images.map(i => i.fp), ...uploader.items.map(i => i.fp)].filter(Boolean);
-      if (C.isDuplicate(prep.fp, fps)) { toast(t('dupPhoto'), 'warn'); continue; }
+      // 그리기·카메라로 직접 만든 사진은 하나하나 일부러 만든 것이라 '같은 사진' 검사를 하지 않는다
+      // (연속 찍기는 비슷한 장면이 많아 검사하면 거의 다 걸러진다)
+      if (!captured && C.isDuplicate(prep.fp, fps)) { toast(t('dupPhoto'), 'warn'); continue; }
       await uploader.add({ id: C.newId('im'), pid: S.pid, labelId, kind, owner: S.me, ...prep });
       if (prep.small) toast(t('smallPhoto'), 'warn');
     } catch (e) {
@@ -793,12 +804,6 @@ async function addDevicePhoto(kind, labelId, blob) {
   let prep;
   try { prep = await prepareImage(blob, kind); }
   catch (e) { return toast(t(e && e.message === 'tooSmall' ? 'tooSmall' : 'notImage'), 'warn'); }
-  const fps = [...S.images.map(i => i.fp), ...uploader.items.map(i => i.fp)].filter(Boolean);
-  if (C.isDuplicate(prep.fp, fps)) {
-    // 연속 찍기에서 같은 장면이 여러 번 걸려도 안내는 한 번만
-    if (Date.now() - (S.dupToastAt || 0) > 3000) { S.dupToastAt = Date.now(); toast(t('dupPhoto'), 'warn'); }
-    return;
-  }
   const id = C.newId('im');
   await devPhotoPut(id, { blob: prep.blob, thumb: prep.thumb, evalImg: prep.evalImg });
   S.dev[id] = { thumb: prep.thumb, evalImg: prep.evalImg || '' };
@@ -1022,10 +1027,11 @@ const actions = {
   // ✍️ 그리기 · 📸 카메라: 필요할 때만 불러온다.
   async cap(mode, el) {
     const [kind, labelId] = el.dataset.zone.split(':');
-    const M = await import('./ai-capture.js?v=202610170210');
+    const M = await import('./ai-capture.js?v=202610170240');
+    if (kind === 'cover') return M.openDraw({ t, title: t('coverTitle'), single: true, onAdd: blob => setCover([blob], []) });
     const lab = labelById(labelId);
     const local = mode === 'camera' && camLocal() && kind !== 'try';
-    const onAdd = blob => (kind === 'try' ? onPhotos('try', labelId, [blob], []) : local ? addDevicePhoto(kind, labelId, blob) : onPhotos(kind, labelId, [blob], []));
+    const onAdd = blob => (kind === 'try' ? onPhotos('try', labelId, [blob], []) : local ? addDevicePhoto(kind, labelId, blob) : onPhotos(kind, labelId, [blob], [], { captured: true }));
     const opts = { t, title: kind === 'try' ? t('tryOne') : `${lab ? lab.name : ''}${kind === 'test' ? ' · ' + t('tabTest') : ''}`, onAdd, single: kind === 'try', note: local ? t('capLocalNote') : '' };
     (mode === 'draw' ? M.openDraw : M.openCamera)(opts);
   },
@@ -1148,6 +1154,8 @@ const actions = {
     await safeUpdate(pref(), { [`evals.${cur.key}.cause`]: [...set] });
   },
   async theme(v) { await safeUpdate(pref(), { 'app.theme': v }); },
+  async accent(v) { await safeUpdate(pref(), { 'app.accent': ACCENTS.includes(v) ? v : '' }); },
+  async font(v) { await safeUpdate(pref(), { 'app.font': FONTS.includes(v) ? v : '' }); },
   async emoji(v, el) { await safeUpdate(pref(), { [`appLabels.${el.dataset.id}.emoji`]: v }); },
   async phrase(v, el) { await safeUpdate(pref(), { [`appLabels.${el.dataset.id}.phrase`]: Number(v) }); },
   'preview-label'(v) { S.previewLabel = Number(v); schedule(); },
@@ -1155,6 +1163,9 @@ const actions = {
     const a = appData();
     const err = $('s5err');
     if (!a.title.trim()) { err.textContent = t('e_title'); $('f-title') && $('f-title').focus(); return; }
+    // 대문(사진 + 설명)은 꼭 넣는다 — 어떤 앱인지 한눈에 보이게
+    if (!a.cover) { err.textContent = t('e_cover'); return; }
+    if (!a.desc.trim()) { err.textContent = t('e_desc'); $('f-desc') && $('f-desc').focus(); return; }
     for (const l of a.labels) {
       if (l.phrase === C.CUSTOM_PHRASE) {
         const v = C.validateCustomPhrase(S.drafts['custom-' + l.id] != null ? S.drafts['custom-' + l.id] : l.custom);
@@ -1204,7 +1215,7 @@ const actions = {
         upd['app.descTrOf'] = desc;
       }
       const pub = {
-        title: fresh.title.trim().slice(0, C.TITLE_MAX), theme: fresh.theme, srcLang: fresh.srcLang,
+        title: fresh.title.trim().slice(0, C.TITLE_MAX), theme: fresh.theme, accent: fresh.accent, font: fresh.font, srcLang: fresh.srcLang,
         cover: fresh.cover || '', desc, descLang: fresh.descLang, descTr, inputs: fresh.inputs,
         labels: fresh.labels.map(({ id, name, tr, emoji, phrase, custom, customLang, customTr }) => ({ id, name, tr, emoji, phrase, custom, customLang, customTr })),
         modelVersion: fresh.modelVersion, modelUrl: fresh.modelUrl, mapping: fresh.mapping, published: true, updatedAt: serverTimestamp(),
