@@ -8,8 +8,8 @@
 // 실패하면 지우지 않고 간격을 늘려 가며 다시 시도한다. 학교 PC는 재부팅하면 브라우저
 // 저장이 지워지는 경우가 많아서, "드라이브에 올라간 것"만 진짜 저장으로 친다.
 
-import { AILAB_GAS_URL } from './ai-config.js?v=202610150517';
-import { blobToBase64 } from './ai-image.js?v=202610150517';
+import { AILAB_GAS_URL } from './ai-config.js?v=202610170210';
+import { blobToBase64 } from './ai-image.js?v=202610170210';
 
 export class DriveError extends Error {
   constructor(code, msg) { super(msg || code); this.code = code; }
@@ -253,6 +253,35 @@ export async function fetchTrainPhotos(getToken, pid, driveIds, onProgress = () 
     onProgress(out.size, driveIds.length);
   }
   return out;
+}
+
+// ── 카메라 사진(이 기기에만) ──
+// 사람 얼굴이 나올 수 있는 카메라 사진은 드라이브에도 Firestore에도 그림을 올리지 않는다.
+// 사진(학습용 바이트, 미리보기, 평가용 224px)은 찍은 기기의 브라우저 안에만 두고,
+// Firestore에는 그림 없는 기록(레이블·장수 계산용)만 남긴다.
+export function deviceId() {
+  let id = '';
+  try { id = localStorage.getItem('ailab_dev') || ''; } catch { /* 무시 */ }
+  if (!id) {
+    id = 'd' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+    try { localStorage.setItem('ailab_dev', id); } catch { /* 무시 */ }
+  }
+  return id;
+}
+export async function devPhotoPut(id, { blob, thumb, evalImg }) {
+  const buf = blob ? await blob.arrayBuffer() : null;
+  await cachePut('dev:' + id, { buf, thumb: thumb || '', evalImg: evalImg || '' });
+}
+export async function devPhotoGet(id) {
+  const v = await cacheGet('dev:' + id);
+  if (!v) return null;
+  return { thumb: v.thumb || '', evalImg: v.evalImg || '', blob: v.buf && v.buf.byteLength ? new Blob([v.buf], { type: 'image/jpeg' }) : null };
+}
+export async function devPhotoDel(id) {
+  try {
+    const db = await idb();
+    await new Promise((res, rej) => { const t = db.transaction('cache', 'readwrite'); t.objectStore('cache').delete('dev:' + id); t.oncomplete = res; t.onerror = () => rej(t.error); });
+  } catch { /* 무시 */ }
 }
 
 // 이 PC에 보관한 사진이 깨져 열리지 않을 때: 보관본을 버리고 드라이브에서 한 장만 다시 받는다.

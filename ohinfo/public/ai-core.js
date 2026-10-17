@@ -213,7 +213,7 @@ export function newSinceTraining(project, images) {
   const ids = project && project.trainedIds;
   if (!Array.isArray(ids)) return 0;
   const used = new Set(ids);
-  return images.filter(i => i.kind === 'train' && i.driveId && !used.has(i.id)).length;
+  return images.filter(i => i.kind === 'train' && (i.driveId || i.local) && !used.has(i.id)).length;
 }
 
 // 지난 학습과 사진(학습용, 드라이브에 저장된 것)과 레이블이 똑같은지 — 같으면 다시 학습해도 같은 모델이 나온다.
@@ -222,7 +222,7 @@ export function sameTrainingData(project, images, labels) {
   const labelIds = new Set((labels || []).map(l => l.id));
   const trainedLabels = Object.keys(project.mapping || {});
   if (trainedLabels.length !== labelIds.size || trainedLabels.some(id => !labelIds.has(id))) return false;
-  const now = images.filter(i => i.kind === 'train' && i.driveId && labelIds.has(i.labelId)).map(i => i.id);
+  const now = images.filter(i => i.kind === 'train' && (i.driveId || i.local) && labelIds.has(i.labelId)).map(i => i.id);
   const before = new Set(project.trainedIds);
   return now.length === before.size && now.every(id => before.has(id));
 }

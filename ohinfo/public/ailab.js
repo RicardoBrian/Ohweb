@@ -14,12 +14,12 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { loadSession, verifyStudentAuth, authReady, clearSession } from './session.js';
 import { escHtml } from './escape.js';
-import * as C from './ai-core.js?v=202610150517';
-import { makeT, getLang, setLang } from './ai-i18n.js?v=202610150517';
-import { prepareImage, prepareCover, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202610150517';
-import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, refetchTrainPhoto, saveModelToDrive } from './ai-drive.js?v=202610150517';
-import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202610150517';
-import { appHtml, probsByLabel, THEMES } from './ai-render.js?v=202610150517';
+import * as C from './ai-core.js?v=202610170210';
+import { makeT, getLang, setLang } from './ai-i18n.js?v=202610170210';
+import { prepareImage, prepareCover, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202610170210';
+import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, refetchTrainPhoto, saveModelToDrive, deviceId, devPhotoPut, devPhotoGet, devPhotoDel } from './ai-drive.js?v=202610170210';
+import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202610170210';
+import { appHtml, probsByLabel, THEMES } from './ai-render.js?v=202610170210';
 
 const E = escHtml;
 const $ = id => document.getElementById(id);
@@ -35,6 +35,7 @@ const S = {
   training: null,                                  // ③ 이 PC에서 하는 학습 진행 상황(대표)
   evalRun: null, tryOne: null, previewLabel: 0,
   busy: {}, bannerFor: 0,
+  dev: {},                                         // 이 기기에만 있는 카메라 사진 { id: { thumb, evalImg } }
 };
 S.t = makeT(S.lang);
 const t = (k, v) => S.t(k, v);
@@ -61,6 +62,13 @@ const labelsOf = () => (S.project && S.project.labels) || [];
 const minTrain = () => (S.asg && S.asg.minPerLabel) || C.DEFAULT_MIN_PER_LABEL;
 const minTest = () => (S.asg && S.asg.minTestPerLabel) || C.DEFAULT_MIN_TEST_PER_LABEL;
 const maxLabels = () => Math.min((S.asg && S.asg.maxLabels) || C.DEFAULT_MAX_LABELS, C.MAX_LABELS_HARD);
+// 사진 모으는 방법(선생님이 배정에서 정함): search(구글 이미지) · draw(그리기) · camera(카메라). 없으면 지금처럼 검색만.
+const sources = () => (S.asg && Array.isArray(S.asg.sources) && S.asg.sources.length ? S.asg.sources : ['search']);
+// 카메라 사진은 기본으로 찍은 기기에만 둔다(사람 얼굴). 선생님이 '올리기 허용'을 켜면 지금처럼 드라이브로.
+const camLocal = () => sources().includes('camera') && !(S.asg && S.asg.cameraUpload);
+const DEV = deviceId();
+// 이 기기에만 있는 사진의 미리보기·평가용 그림(Firestore 기록에는 그림이 없다)
+const thumbOf = im => (im.local ? ((S.dev[im.id] && S.dev[im.id].thumb) || '') : im.thumb);
 const imgs = (kind, labelId) => S.images.filter(i => i.kind === kind && (!labelId || i.labelId === labelId));
 const ms = ts => (ts && ts.toMillis ? ts.toMillis() : (typeof ts === 'number' ? ts : 0));
 // Cloudflare는 /ailab.html을 /ailab로 바꿔 보여 주므로 경로를 직접 자르지 않고 상대 주소로 만든다.
@@ -316,20 +324,40 @@ function nextBtn(step, key) {
 function photoGrid(kind, labelId, canDelete) {
   const done = imgs(kind, labelId).sort((a, b) => ms(b.createdAt) - ms(a.createdAt));
   const pend = uploader.pendingFor(kind, labelId);
-  const cell = (im, pending) => `<div class="ph${pending ? ' pend' : ''}${im.small ? ' small' : ''}"${im.small ? ` title="${E(t('smallPhoto'))}"` : ''}><img src="${E(im.thumb)}" alt="" loading="lazy">
+  const cell = (im, pending) => `<div class="ph${pending ? ' pend' : ''}${im.small ? ' small' : ''}"${im.small ? ` title="${E(t('smallPhoto'))}"` : ''}>${thumbOf(im) ? `<img src="${E(thumbOf(im))}" alt="" loading="lazy">` : `<span class="ph-dev" title="${E(t('devPhoto'))}">📱</span>`}
     ${im.small ? `<span class="ph-small">${E(t('smallBadge'))}</span>` : ''}
     ${pending ? '<span class="ph-spin"></span>' : ''}
     ${canDelete(im) ? `<button class="ph-x" data-act="photo-del" data-id="${E(im.id)}" data-pending="${pending ? 1 : 0}" aria-label="${E(t('del'))}">×</button>` : ''}</div>`;
   return `<div class="photos">${pend.map(i => cell(i, true)).join('')}${done.map(i => cell(i, false)).join('')}</div>`;
 }
 
+// 그리기·카메라 버튼(선생님이 배정에서 켠 것만). only: 'camera'면 카메라만.
+function captureBtns(kind, labelId, only = '') {
+  const src = sources();
+  const z = `${kind}:${E(labelId)}`;
+  return [
+    src.includes('draw') && only !== 'camera' ? `<button class="btn sm" data-act="cap" data-v="draw" data-zone="${z}">✍️ ${E(t('capDraw'))}</button>` : '',
+    src.includes('camera') ? `<button class="btn sm" data-act="cap" data-v="camera" data-zone="${z}">📸 ${E(t('capCamera'))}</button>` : '',
+  ].join('');
+}
+
 function zoneHtml(kind, labelId, standalone = false) {
+  const src = sources();
+  if (!src.includes('search')) {
+    // 태블릿 수업: 끌어다 놓기 대신 그리기·카메라만
+    return `<div class="dz cap-only"><span>${E(t('capHint'))}</span><div class="cap-btns">${captureBtns(kind, labelId)}</div></div>`;
+  }
+  const extra = captureBtns(kind, labelId);
   return `<div class="dz" tabindex="0"${standalone ? ` data-dropzone="${kind}:${E(labelId)}"` : ''}>
     <span>${E(t('dropHere'))}</span>
-    <button class="btn sm" data-act="pick" data-zone="${kind}:${E(labelId)}">${E(t('chooseFiles'))}</button></div>`;
+    <button class="btn sm" data-act="pick" data-zone="${kind}:${E(labelId)}">${E(t('chooseFiles'))}</button>${extra ? `<div class="cap-btns">${extra}</div>` : ''}</div>`;
 }
 
 function howToHtml() {
+  if (!sources().includes('search')) {
+    const steps = [sources().includes('draw') ? t('capHowDraw') : '', sources().includes('camera') ? t('capHowCam') : '', camLocal() ? t('capLocalNote') : ''].filter(Boolean);
+    return `<div class="howto"><b>${E(t('howTo'))}</b><ol>${steps.map(x => `<li>${E(x)}</li>`).join('')}</ol></div>`;
+  }
   return `<div class="howto"><b>${E(t('howTo'))}</b><ol>${t('howToSteps').map(x => `<li>${E(x)}</li>`).join('')}</ol><p>${E(t('howToAlt'))}</p></div>`;
 }
 
@@ -349,7 +377,7 @@ function step2() {
       <div class="prog"><div class="bar"><span style="width:${pct}%"></span></div>
         <span class="cnt">${E(t('countOf', { c, m: min }))}</span></div>
       <div class="lc-state ${c >= min ? 'ok' : ''}">${E(c >= min ? t('enough') : t('needMore', { n: min - c }))}${imgs('train', l.id).some(i => i.small) ? ` <span class="warn-txt">· ${E(t('smallCount', { n: imgs('train', l.id).filter(i => i.small).length }))}</span>` : ''}</div>
-      ${mine ? zoneHtml('train', l.id) : `<div class="not-mine">${E(t('notMine', { name: namesOf(l) }))}</div>`}
+      ${mine ? zoneHtml('train', l.id) : `<div class="not-mine">${E(t('notMine', { name: namesOf(l) }))}</div>${camLocal() ? `<div class="cap-btns">${captureBtns('train', l.id, 'camera')}</div>` : ''}`}
       ${photoGrid('train', l.id, im => im.owner === S.me || isLeader())}
     </div>`;
   }).join('')}</div>`;
@@ -390,7 +418,7 @@ function trainTab(leader) {
   let h = leader ? '' : `<div class="note">${E(t('leaderOnly', { name: leaderName() }))}</div>`;
 
   h += `<div class="card"><h3>${E(t('trainData'))}</h3><div class="tdata">${labels.map(l => {
-    const list = imgs('train', l.id).filter(i => i.driveId);
+    const list = imgs('train', l.id).filter(i => i.driveId || i.local);
     const small = list.filter(i => i.small).length;
     return `<div class="trow"><b>${E(l.name)}</b><span class="cnt">${E(t('countOf', { c: list.length, m: minTrain() }))}</span>${small ? `<span class="warn-txt">${E(t('smallCount', { n: small }))}</span>` : ''}</div>`;
   }).join('')}</div>
@@ -482,7 +510,7 @@ function evalResultHtml(r) {
   }).join('');
   const wrong = (r.wrong || []).map(w => {
     const im = S.images.find(i => i.id === w.imgId);
-    return `<div class="wcard">${im ? `<img src="${E(im.thumb)}" alt="">` : '<div class="ph-gone">?</div>'}
+    return `<div class="wcard">${im && thumbOf(im) ? `<img src="${E(thumbOf(im))}" alt="">` : `<div class="ph-gone">${im && im.local ? '📱' : '?'}</div>`}
       <div><span class="muted">${E(t('answer'))}</span> <b>${E((labelById(w.labelId) || {}).name || '?')}</b></div>
       <div><span class="muted">${E(t('aiSaid'))}</span> <b class="bad">${E((labelById(w.got) || {}).name || '?')}</b> ${w.p}%</div></div>`;
   }).join('');
@@ -554,6 +582,7 @@ function appData() {
     descLang: (p.app && p.app.descLang) || S.lang, descTr: (p.app && p.app.descTr) || {},
     labels: labelsOf().map(appLabel),
     modelVersion: p.modelVersion || 0, modelUrl: p.modelVersion ? '' : (p.modelUrl || ''), mapping: p.mapping || {},
+    inputs: sources().filter(x => x !== 'search'),
     hiddenPhrases: (S.appDoc && S.appDoc.hiddenPhrases) || {},
   };
 }
@@ -628,7 +657,7 @@ function previewHtml(a) {
   const data = { ...a, labels: ls.map(l => ({ ...l, custom: S.drafts['custom-' + l.id] != null ? S.drafts['custom-' + l.id] : l.custom, customLang: l.customLang || S.lang })) };
   // 미리보기 사진 자리: 고른 레이블의 첫 사진
   const ph = imgs('train', top && top.id)[0] || imgs('test', top && top.id)[0];
-  return appHtml(data, S.lang, S.t, { photo: ph ? ph.thumb : '', probs, sample: true, status: 'ready' });
+  return appHtml(data, S.lang, S.t, { photo: ph ? thumbOf(ph) : '', probs, sample: true, status: 'ready' });
 }
 
 // ohdlet에서 그 게시판을 바로 여는 주소
@@ -754,7 +783,45 @@ async function deletePhoto(id, pending) {
   if (!im) return;
   if (im.driveId) trashFile(() => auth.currentUser.getIdToken(), S.pid, im.driveId).catch(() => { /* 드라이브에 남아도 기록이 없으면 내려받기에 안 들어간다 */ });
   try { await deleteDoc(doc(db, 'ai_projects', S.pid, 'images', id)); }
-  catch (e) { toast(t('error'), 'err'); }
+  catch (e) { toast(t('error'), 'err'); return; }
+  if (im.local) { devPhotoDel(id); delete S.dev[id]; }
+}
+
+// ── 카메라 사진(이 기기에만) ──
+// 그림은 이 기기의 브라우저에만 저장하고, Firestore에는 그림 없는 기록만 쓴다(장수·단계 계산은 그대로 된다).
+async function addDevicePhoto(kind, labelId, blob) {
+  let prep;
+  try { prep = await prepareImage(blob, kind); }
+  catch (e) { return toast(t(e && e.message === 'tooSmall' ? 'tooSmall' : 'notImage'), 'warn'); }
+  const fps = [...S.images.map(i => i.fp), ...uploader.items.map(i => i.fp)].filter(Boolean);
+  if (C.isDuplicate(prep.fp, fps)) {
+    // 연속 찍기에서 같은 장면이 여러 번 걸려도 안내는 한 번만
+    if (Date.now() - (S.dupToastAt || 0) > 3000) { S.dupToastAt = Date.now(); toast(t('dupPhoto'), 'warn'); }
+    return;
+  }
+  const id = C.newId('im');
+  await devPhotoPut(id, { blob: prep.blob, thumb: prep.thumb, evalImg: prep.evalImg });
+  S.dev[id] = { thumb: prep.thumb, evalImg: prep.evalImg || '' };
+  try {
+    await setDoc(doc(db, 'ai_projects', S.pid, 'images', id), {
+      labelId, kind, owner: S.me, thumb: '', fp: prep.fp || '', driveId: '', local: true, dev: DEV,
+      w: prep.w || 0, h: prep.h || 0, small: !!prep.small, createdAt: serverTimestamp(),
+    });
+  } catch (e) {
+    console.error(e); devPhotoDel(id); delete S.dev[id]; toast(t('error'), 'err');
+  }
+}
+
+// 이 기기에서 찍은 사진의 미리보기를 불러온다(다른 기기에서 찍은 건 📱 표시만).
+async function loadDevPhotos() {
+  const need = S.images.filter(i => i.local && i.dev === DEV && !(i.id in S.dev));
+  if (!need.length) return;
+  for (const im of need) S.dev[im.id] = { thumb: '', evalImg: '' };
+  for (const im of need) {
+    const v = await devPhotoGet(im.id);
+    if (v) S.dev[im.id] = { thumb: v.thumb, evalImg: v.evalImg };
+  }
+  schedule();
 }
 
 // ── 동기화: 장수·열린 단계·현황판 요약 ──
@@ -802,6 +869,7 @@ function watchProject(pid) {
   unsub.images = onSnapshot(collection(db, 'ai_projects', pid, 'images'), snap => {
     S.images = snap.docs.map(d => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) }));
     S.imagesReady = true;
+    loadDevPhotos();
     sync(); schedule();
   });
   unsub.app = onSnapshot(doc(db, 'ai_apps', pid), snap => { S.appDoc = snap.exists() ? snap.data() : null; schedule(); }, () => {});
@@ -951,6 +1019,16 @@ const actions = {
     inp.multiple = kind !== 'try' && kind !== 'cover';
     inp.click();
   },
+  // ✍️ 그리기 · 📸 카메라: 필요할 때만 불러온다.
+  async cap(mode, el) {
+    const [kind, labelId] = el.dataset.zone.split(':');
+    const M = await import('./ai-capture.js?v=202610170210');
+    const lab = labelById(labelId);
+    const local = mode === 'camera' && camLocal() && kind !== 'try';
+    const onAdd = blob => (kind === 'try' ? onPhotos('try', labelId, [blob], []) : local ? addDevicePhoto(kind, labelId, blob) : onPhotos(kind, labelId, [blob], []));
+    const opts = { t, title: kind === 'try' ? t('tryOne') : `${lab ? lab.name : ''}${kind === 'test' ? ' · ' + t('tabTest') : ''}`, onAdd, single: kind === 'try', note: local ? t('capLocalNote') : '' };
+    (mode === 'draw' ? M.openDraw : M.openCamera)(opts);
+  },
   'photo-del'(_, el) { deletePhoto(el.dataset.id, el.dataset.pending === '1'); },
   'cover-del'() { safeUpdate(pref(), { 'app.cover': '' }); },
   // ③ 학습(대표만): 드라이브의 학습 사진 → 이 PC에서 학습 → 드라이브에 N번 모델로 저장.
@@ -959,7 +1037,9 @@ const actions = {
     const labels = labelsOf();
     const v = (S.project.modelVersion || 0) + 1;
     const list = imgs('train').filter(i => i.driveId && labels.some(l => l.id === i.labelId));
-    if (!list.length) return;
+    // 카메라 사진(이 기기에만)은 드라이브가 아니라 이 기기에서 꺼낸다.
+    const devList = imgs('train').filter(i => i.local && !i.driveId && labels.some(l => l.id === i.labelId));
+    if (!list.length && !devList.length) return;
     // 사진이 지난 학습 때와 똑같으면 다시 학습해도 같은 모델이 나온다 — 학습하지 않고 알려 준다.
     if (C.sameTrainingData(S.project, S.images, labels)) {
       S.training = { error: 'noChange' };
@@ -967,18 +1047,25 @@ const actions = {
       return schedule();
     }
     const getToken = () => auth.currentUser.getIdToken();
-    setPhase('photos', 0, list.length, true);
+    setPhase('photos', 0, list.length + devList.length, true);
     try {
-      const blobs = await fetchTrainPhotos(getToken, S.pid, list.map(i => i.driveId), (i, n) => setPhase('photos', i, n));
+      const blobs = list.length ? await fetchTrainPhotos(getToken, S.pid, list.map(i => i.driveId), (i, n) => setPhase('photos', i, n + devList.length)) : new Map();
       const got = list.filter(i => blobs.has(i.driveId));
+      const devSamples = [];
+      for (const i of devList) {
+        const v = await devPhotoGet(i.id);
+        if (v && v.blob) devSamples.push({ id: i.id, labelId: i.labelId, blob: v.blob, local: true });
+      }
+      if (devSamples.length < devList.length) toast(t('devMissing', { n: devList.length - devSamples.length }), 'warn');
       const res = await trainModel({
         labelIds: labels.map(l => l.id),
-        samples: got.map(i => ({ id: i.id, driveId: i.driveId, labelId: i.labelId, blob: blobs.get(i.driveId) })),
+        samples: [...got.map(i => ({ id: i.id, driveId: i.driveId, labelId: i.labelId, blob: blobs.get(i.driveId) })), ...devSamples],
         onPhase: (ph, i, n) => setPhase(ph, i, n),
-        retry: s => refetchTrainPhoto(getToken, S.pid, s.driveId),
+        retry: s => (s.local ? Promise.resolve(null) : refetchTrainPhoto(getToken, S.pid, s.driveId)),
       });
       const skipped = new Set(res.skipped || []);
-      const used = got.filter(i => !skipped.has(i.id));
+      const devUsed = new Set(devSamples.map(x => x.id));
+      const used = [...got, ...devList.filter(i => devUsed.has(i.id))].filter(i => !skipped.has(i.id));
       if (skipped.size) toast(t('skippedPhotos', { n: skipped.size }), 'warn');
       setPhase('save', 0, 1, true);
       await saveModelToDrive(getToken, S.pid, v, res.files);
@@ -1008,14 +1095,20 @@ const actions = {
       const loaded = await currentModel();
       const mapping = S.project.mapping || {};
       const results = [];
+      let missing = 0;
       for (const im of tests) {
-        const img = await imageFromSrc(im.evalImg);
+        // 카메라 사진(이 기기에만)은 그 사진을 찍은 기기에서만 평가할 수 있다.
+        const src = im.local ? (S.dev[im.id] && S.dev[im.id].evalImg) : im.evalImg;
+        if (!src) { missing++; S.evalRun.i++; continue; }
+        const img = await imageFromSrc(src);
         const probs = probsByLabel(await predict(loaded, img), mapping);
         let best = '', bp = -1;
         for (const l of labelsOf()) { const p = probs[l.id] || 0; if (p > bp) { bp = p; best = l.id; } }
         results.push({ imgId: im.id, labelId: im.labelId, got: best, p: Math.round(bp * 100), ok: best === im.labelId });
         S.evalRun.i++; schedule();
       }
+      if (missing) toast(t('devMissing', { n: missing }), 'warn');
+      if (!results.length) throw new Error('noTests');
       const sc = C.scoreResults(results);
       const rounds = C.evalRounds(S.project);
       const n = rounds.length ? rounds[rounds.length - 1].n + 1 : 1;
@@ -1112,7 +1205,7 @@ const actions = {
       }
       const pub = {
         title: fresh.title.trim().slice(0, C.TITLE_MAX), theme: fresh.theme, srcLang: fresh.srcLang,
-        cover: fresh.cover || '', desc, descLang: fresh.descLang, descTr,
+        cover: fresh.cover || '', desc, descLang: fresh.descLang, descTr, inputs: fresh.inputs,
         labels: fresh.labels.map(({ id, name, tr, emoji, phrase, custom, customLang, customTr }) => ({ id, name, tr, emoji, phrase, custom, customLang, customTr })),
         modelVersion: fresh.modelVersion, modelUrl: fresh.modelUrl, mapping: fresh.mapping, published: true, updatedAt: serverTimestamp(),
       };

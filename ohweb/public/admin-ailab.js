@@ -107,6 +107,8 @@ function asgPicker() {
     <select class="inp" data-ai="pickAs">${S.asgs.map(a => `<option value="${E(a.id)}" ${a.id === S.asId ? 'selected' : ''}>${E(a.title)} — ${E(a.schoolName)} ${E(a.grade)}학년 ${E(a.class)}반 ${a.status === 'ON' ? '' : '(닫힘)'}</option>`).join('')}</select></div></div>`;
 }
 
+const SRC_NAMES = { search: '구글 이미지', draw: '그리기', camera: '카메라' };
+const srcOf = a => (Array.isArray(a.sources) && a.sources.length ? a.sources : ['search']);
 const boardKey = b => b ? `${b.name}|${b.schoolName || ''}|${nv(b.grade)}|${nv(b.group)}` : '';
 const classLabel = a => `${nv(a.grade)}학년 ${nv(a.class)}반`;
 
@@ -146,6 +148,12 @@ function assignHtml() {
         ${num('aiT_min', '학습 사진', ed.minPerLabel || 15, 3, 200, '장 이상', '레이블마다')}
         ${num('aiT_test', '테스트 사진', ed.minTestPerLabel || 3, 1, 50, '장 권장', '레이블마다')}
       </div></div>
+    <div class="ai-sec"><div class="ai-sec-t">사진 모으는 방법</div>
+      <div class="ai-seg ai-seg3">
+        ${[['search', '🔍 구글 이미지', 'PC: 검색 사진을 끌어다 놓기'], ['draw', '✍️ 그리기', '태블릿·PC: 손글씨, 도형 그리기'], ['camera', '📸 카메라', '태블릿: 표정, 손 모양, 물건 찍기']].map(([v, l, h]) =>
+          `<label class="ai-opt"><input type="checkbox" name="aiT_src" value="${v}" ${srcOf(ed).includes(v) ? 'checked' : ''}><span><b>${l}</b><small>${h}</small></span></label>`).join('')}
+      </div>
+      <label class="ai-sub ai-camup"><input type="checkbox" id="aiT_camUp" ${ed.cameraUpload ? 'checked' : ''}> 카메라 사진도 드라이브에 저장하기 <b>(사람이 나오지 않는 물건·식물을 찍을 때만)</b> — 끄면 사진은 찍은 기기에만 남고, 모둠은 기기 한 대를 같이 써요.</label></div>
     <div class="ai-sec"><div class="ai-sec-t">웹앱 올릴 정보 게시판</div>
       ${sel('aiT_board', boardOptions(boardKey(ed.board), ed.schoolName || '', ed.grade || '1', ed.class || '1'))}
       <div class="ai-seg" role="radiogroup" aria-label="게시판 글 보기">
@@ -173,7 +181,7 @@ function asgListHtml() {
     list.sort((x, y) => x.grade - y.grade || x.class - y.class);
     const rows = list.map(a => `<div class="ai-asg">
       <div class="ai-asg-c"><b>${E(classLabel(a))}</b>
-        <span class="ai-sub">모둠 ${a.groupSize || 2}명 · 레이블 최대 ${a.maxLabels || 5}개 · 사진 ${a.minPerLabel || 15}장 · 테스트 ${a.minTestPerLabel || 3}장 · 게시판 ${a.board ? `${E(a.board.name)}(${(a.boardScope || 'class') === 'all' ? '모든 반 함께' : '반별'})` : '없음'}</span></div>
+        <span class="ai-sub">모둠 ${a.groupSize || 2}명 · 사진: ${srcOf(a).map(x => SRC_NAMES[x] || x).join('·')}${srcOf(a).includes('camera') && !a.cameraUpload ? '(기기에만)' : ''} · 레이블 최대 ${a.maxLabels || 5}개 · 사진 ${a.minPerLabel || 15}장 · 테스트 ${a.minTestPerLabel || 3}장 · 게시판 ${a.board ? `${E(a.board.name)}(${(a.boardScope || 'class') === 'all' ? '모든 반 함께' : '반별'})` : '없음'}</span></div>
       <label class="toggle" title="${a.status === 'ON' ? '학생 화면 열림 (누르면 닫기)' : '학생 화면 닫힘 (누르면 열기)'}"><input type="checkbox" data-ai="status" data-id="${E(a.id)}" ${a.status === 'ON' ? 'checked' : ''}><div class="toggle-track"></div></label>
       <div class="ai-btns">
         <button class="btn sm" data-ai="goPairs" data-id="${E(a.id)}">모둠 구성</button>
@@ -322,6 +330,8 @@ function readForm() {
     groupSize: Math.min(8, Math.max(1, Number(v('aiT_group')) || 2)),
     board: board ? { name: board.name, schoolName: board.schoolName || '', grade: board.grade || '', group: board.group || '' } : null,
     boardScope: (document.querySelector('input[name="aiT_scope"]:checked') || {}).value === 'all' ? 'all' : 'class',
+    sources: [...document.querySelectorAll('input[name="aiT_src"]:checked')].map(x => x.value),
+    cameraUpload: !!($('aiT_camUp') && $('aiT_camUp').checked),
   };
 }
 
@@ -378,6 +388,7 @@ const actions = {
   async saveAsg() {
     const f = readForm();
     if (!f.title || !f.schoolName) return toast('제목과 학교를 입력하세요.', 'err');
+    if (!f.sources.length) return toast('사진 모으는 방법을 하나 이상 고르세요.', 'err');
     await guard(async () => {
       if (S.editId) {
         await updateDoc(doc(db, 'ai_assignments', S.editId), f);
@@ -580,6 +591,9 @@ const STYLE = `
 #section-ailab .ai-opt small { font-size: .74rem; color: var(--sub); }
 #section-ailab .ai-cover { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; margin-top: 6px; }
 #section-ailab .ai-cover img { max-width: 220px; max-height: 130px; border-radius: 10px; object-fit: cover; }
+#section-ailab .ai-seg3 { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 700px) { #section-ailab .ai-seg3 { grid-template-columns: 1fr; } }
+#section-ailab .ai-camup { display: block; margin-top: 4px; line-height: 1.5; }
 #section-ailab .ai-del:hover { color: #c62828; }
 @media (max-width: 700px) { #section-ailab .ai-group .ai-asg { grid-template-columns: 1fr auto; } #section-ailab .ai-group .ai-asg .ai-btns { grid-column: 1 / -1; } }
 #aiToast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 6px; align-items: center; }

@@ -26,6 +26,8 @@
 .ai-app .aa-drop:focus-visible, .ai-app .aa-drop.active, .ai-app .aa-drop.drag { box-shadow: var(--aa-shadow), 0 0 0 3px var(--aa-accent); }
 .ai-app .aa-drop.drag { transform: scale(1.01); }
 .ai-app .aa-drop-icon { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; font-size: 28px; color: var(--aa-accent); background: var(--aa-chip-bg); }
+.ai-app .aa-caps { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.ai-app .aa-cap { font-size: 14px; padding: 10px 16px; }
 .ai-app .aa-hint { margin: 0; font-size: 13px; color: var(--aa-sub); max-width: 320px; line-height: 1.5; }
 .ai-app .aa-photo { display: block; max-width: 100%; max-height: 300px; border-radius: calc(var(--aa-radius) - 8px); object-fit: contain; }
 .ai-app .aa-btn { font: 600 15px/1 var(--aa-font); padding: 13px 22px; border-radius: var(--aa-btn-radius, 999px); border: var(--aa-btn-border, 0); background: var(--aa-btn-bg); color: var(--aa-btn-text); cursor: pointer; box-shadow: var(--aa-btn-shadow, none); transition: transform .15s, filter .15s; }

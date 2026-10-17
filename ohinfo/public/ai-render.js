@@ -2,7 +2,7 @@
 // 디자인 5종은 화면 배치가 같고 색·질감만 다르다(ai-themes.css).
 
 import { escHtml } from './escape.js';
-import { labelName, phraseFor, UNSURE, UNSURE_THRESHOLD, LANGS } from './ai-core.js?v=202610150517';
+import { labelName, phraseFor, UNSURE, UNSURE_THRESHOLD, LANGS } from './ai-core.js?v=202610170210';
 
 export const THEMES = ['minimal', 'bw', 'glass', 'neon', 'warm'];
 const LANG_NAMES = { ko: '한국어', en: 'English', zh: '中文', ru: 'Рус' };
@@ -40,14 +40,19 @@ export function appHtml(app, lang, t, state = {}) {
   const emojis = labels.map(l => l.emoji).filter(Boolean).join(' ');
   const chips = labels.map(l => `<span class="aa-chip">${l.emoji ? escHtml(l.emoji) + ' ' : ''}${escHtml(labelName(l, lang))}</span>`).join('');
 
+  // 학생이 그리기·카메라로 만든 모델이면 웹앱에서도 그렇게 넣어 볼 수 있다.
+  const ins = Array.isArray(app.inputs) ? app.inputs : [];
+  const caps = [ins.includes('draw') ? `<button type="button" class="aa-btn aa-cap" data-act="cap" data-v="draw">✍️ ${escHtml(t('capDraw'))}</button>` : '',
+    ins.includes('camera') ? `<button type="button" class="aa-btn aa-cap" data-act="cap" data-v="camera">📸 ${escHtml(t('capCamera'))}</button>` : ''].join('');
+  const capRow = caps ? `<div class="aa-caps">${caps}</div>` : '';
   let drop;
   if (state.photo) {
     drop = `<img class="aa-photo" src="${escHtml(state.photo)}" alt="">
-      <button type="button" class="aa-btn aa-again" data-act="pick">${escHtml(t('again'))}</button>`;
+      <button type="button" class="aa-btn aa-again" data-act="pick">${escHtml(t('again'))}</button>${capRow}`;
   } else {
     drop = `<div class="aa-drop-icon" aria-hidden="true">＋</div>
       <button type="button" class="aa-btn" data-act="pick">${escHtml(t('choosePhoto'))}</button>
-      <p class="aa-hint">${escHtml(t('dropPhoto'))}</p>`;
+      <p class="aa-hint">${escHtml(t('dropPhoto'))}</p>${capRow}`;
   }
 
   let result = '';
