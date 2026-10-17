@@ -1,7 +1,8 @@
 /**
- * Cloudflare Pages Function — notion.kakainfo.com 의 학생 화면.
+ * Cloudflare Pages Function — note.kakainfo.com ("정보 학습지")의 화면.
  *
- *   /                 등록된 노션 페이지 목록
+ *   /                 관리 페이지(admin.html). 학생용 목록은 따로 없다 —
+ *                     학생은 선생님이 준 /{주소} 링크로만 들어온다.
  *   /{주소}            그 노션 페이지
  *   /{주소}/{페이지ID}  그 안의 하위 페이지(본문 링크로 이동)
  *
@@ -18,15 +19,15 @@
  * 먼저 실행). 우리 주소일 수 없는 요청(점이 들어간 파일, admin 등 예약어)은 바로
  * next()로 넘기고, 어떤 예외도 밖으로 던지지 않는다.
  */
-import { escapeHtml, getPage, listPages, parsePath, recordStat } from '../lib/shared.js';
+import { escapeHtml, getPage, parsePath, recordStat } from '../lib/shared.js';
 import { getRendered } from '../lib/render.js';
 import { explainError } from '../lib/notion.js';
 
-const SITE = 'notion.kakainfo.com';
+const BRAND = '정보 학습지';
 // 학생 화면의 CSS/JS 주소 뒤에 붙는 버전. view.css나 view.js를 고치면 이 값을 바꾼다 —
 // 그래야 브라우저·Cloudflare에 남은 예전 파일 대신 새 파일을 받는다(첫 iframe 버전의
 // view.css가 남아 여백·HTML 창 크기가 다 깨져 보였던 일이 있었다).
-const ASSET_V = '2026101503';
+const ASSET_V = '2026101603';
 
 function html(body, status = 200) {
   return new Response(body, {
@@ -48,6 +49,9 @@ function shell(title, body, { head = '', bodyAttrs = '' } = {}) {
 <title>${escapeHtml(title)}</title>
 <link rel="icon" type="image/svg+xml" href="/icon.svg">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="/view.css?v=${ASSET_V}">
 ${head}
 </head>
@@ -58,30 +62,15 @@ ${body}
 }
 
 function topbar(inner = '') {
+  // 학생용 목록 화면이 없으므로 브랜드는 링크가 아니다(누르면 관리 로그인으로 가지 않게).
   return `<header class="bar">
-  <a class="brand" href="/"><img src="/logo.png" alt="" width="26" height="26"><span>kakainfo 노션</span></a>
+  <span class="brand"><img src="/logo.png" alt="" width="26" height="26"><span>${BRAND}</span></span>
   ${inner}
 </header>`;
 }
 
-function renderIndex(pages) {
-  const visible = (pages || []).filter((p) => !p.hidden);
-  const items = visible.length
-    ? visible.map((p) => `
-      <a class="item" href="/${encodeURIComponent(p.slug)}">
-        <span class="item-title">${escapeHtml(p.title || p.slug)}</span>
-        <span class="item-path">${SITE}/${escapeHtml(p.slug)}</span>
-      </a>`).join('')
-    : `<p class="empty">${pages ? '아직 등록된 페이지가 없어요.' : '목록을 불러오지 못했어요. 잠시 후 새로고침해 주세요.'}</p>`;
-  return shell('kakainfo 노션', `${topbar()}
-<main class="list">
-  <h1>노션 페이지</h1>
-  <div class="items">${items}</div>
-</main>`);
-}
-
 function renderMessage(title, message, status) {
-  return html(shell(`${title} — kakainfo 노션`, `${topbar()}
+  return html(shell(`${title} — ${BRAND}`, `${topbar()}
 <main class="list">
   <h1>${escapeHtml(title)}</h1>
   <p class="empty">${message}</p>
@@ -89,7 +78,7 @@ function renderMessage(title, message, status) {
 }
 
 const KATEX = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist';
-
+const PRISM = 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0';
 function renderDoc(page, sub, { data, source }) {
   const pageTitle = data.title;
   const fmt = (iso) => iso ? new Date(iso).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
@@ -101,25 +90,31 @@ function renderDoc(page, sub, { data, source }) {
   const old = source === 'stale' && Date.now() - Date.parse(data.renderedAt || 0) > 30 * 60 * 1000;
   const staleNote = old
     ? '<div class="notice">노션 연결이 잠시 원활하지 않아 마지막으로 저장된 내용을 보여 주고 있어요.</div>' : '';
-  const head = data.hasEquation
-    ? `<link rel="stylesheet" href="${KATEX}/katex.min.css">
-<script defer src="${KATEX}/katex.min.js"></script>` : '';
-  return shell(`${pageTitle} — kakainfo 노션`, `${topbar(`
+  // 수식·코드가 있는 페이지에서만 KaTeX / Prism(코드 색칠)을 불러온다.
+  let head = '';
+  if (data.hasEquation) head += `<link rel="stylesheet" href="${KATEX}/katex.min.css">
+<script defer src="${KATEX}/katex.min.js"></script>`;
+  if (data.hasCode) head += `<script defer src="${PRISM}/components/prism-core.min.js"></script>
+<script defer src="${PRISM}/plugins/autoloader/prism-autoloader.min.js"></script>`;
+  const icon = data.icon ? escapeHtml(data.icon) : (data.iconImg || '');
+  return shell(`${pageTitle} — ${BRAND}`, `${topbar(`
   <span class="bar-title">${escapeHtml(page.title || page.slug)}</span>
   <div class="bar-actions">
+    <button type="button" class="btn" id="presentBtn" title="슬라이드로 발표하기 (구분선/제목 1마다 한 장)">▶ 발표</button>
     <button type="button" class="btn warn" id="reportBtn">이상해요</button>
   </div>`)}
 ${staleNote}
 ${data.coverUrl ? `<div class="cover" style="background-image:url('${escapeHtml(data.coverUrl)}')"></div>` : ''}
 <main class="doc">
   ${crumbs ? `<nav class="crumbs">${crumbs}</nav>` : ''}
-  ${data.icon ? `<div class="doc-icon${data.coverUrl ? ' on-cover' : ''}">${escapeHtml(data.icon)}</div>` : ''}
+  ${icon ? `<div class="doc-icon${data.coverUrl ? ' on-cover' : ''}">${icon}</div>` : ''}
   <h1 class="doc-title">${escapeHtml(pageTitle)}</h1>
   <div class="notion">${data.html}</div>
   <footer class="doc-foot">노션 수정 ${escapeHtml(fmt(data.lastEdited))} · 동기화 ${escapeHtml(fmt(data.renderedAt))}</footer>
 </main>
 <div class="notice floating" id="notice" hidden><span id="noticeText"></span><button type="button" class="btn ghost" id="closeNotice" aria-label="닫기">✕</button></div>
-<script src="/view.js?v=${ASSET_V}" defer></script>`, { head, bodyAttrs: ` class="doc-page" data-slug="${escapeHtml(page.slug)}"` });
+<script src="/view.js?v=${ASSET_V}" defer></script>
+<script src="/present.js?v=${ASSET_V}" defer></script>`, { head, bodyAttrs: ` class="doc-page" data-slug="${escapeHtml(page.slug)}"` });
 }
 
 export async function onRequest(context) {
@@ -128,8 +123,9 @@ export async function onRequest(context) {
     if (request.method !== 'GET' && request.method !== 'HEAD') return next();
     const { pathname } = new URL(request.url);
 
+    // 첫 화면은 관리 페이지. Pages의 정적 파일(admin.html)을 그대로 내려 준다.
     if (pathname === '/' || pathname === '') {
-      return html(renderIndex(await listPages(context).catch(() => null)));
+      return env.ASSETS ? env.ASSETS.fetch(new URL('/admin', request.url)) : next();
     }
 
     const route = parsePath(pathname);
@@ -138,7 +134,7 @@ export async function onRequest(context) {
     const page = await getPage(context, route.slug).catch(() => null);
     if (!page) {
       return renderMessage('페이지를 찾을 수 없어요',
-        `<b>${escapeHtml(route.slug)}</b> 주소로 등록된 노션 페이지가 없어요.<br>주소를 다시 확인하거나 <a href="/">전체 목록</a>에서 찾아보세요.`, 404);
+        `<b>${escapeHtml(route.slug)}</b> 주소로 등록된 노션 페이지가 없어요.<br>주소를 다시 확인하거나 선생님께 받은 링크로 다시 들어와 주세요.`, 404);
     }
     if (!env.NOTION_TOKEN) {
       return renderMessage('준비 중이에요', '관리자가 노션 연결 설정을 마치면 열려요. (NOTION_TOKEN 없음)', 503);
