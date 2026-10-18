@@ -2,7 +2,7 @@
 // 디자인 5종은 화면 배치가 같고 색·질감만 다르다(ai-themes.css).
 
 import { escHtml } from './escape.js';
-import { labelName, phraseFor, UNSURE, UNSURE_THRESHOLD, LANGS } from './ai-core.js?v=202610180059';
+import { labelName, phraseFor, UNSURE, UNSURE_THRESHOLD, LANGS } from './ai-core.js?v=202610180700';
 
 export const THEMES = ['minimal', 'bw', 'glass', 'neon', 'warm', 'pastel', 'forest', 'ocean', 'space', 'retro', 'comic'];
 // 강조색·글꼴은 디자인과 따로 고른다. 공개 웹앱에 그대로 쓰이므로 이 목록에 있는 값만 받는다.
@@ -66,17 +66,33 @@ function tableForm(tb, lang, t, state) {
   return `<section class="aa-card aa-form">${fields}<button type="button" class="aa-btn aa-ask" data-act="tpredict">${escHtml(t('tAsk'))}</button></section>`;
 }
 
+// 문장 앱: 문장 칸 + [물어보기]. 결과에 단어마다 영향 준 레이블 색을 칠한다(state.words).
+function textForm(lang, t, state) {
+  return `<section class="aa-card aa-form"><textarea class="aa-text" maxlength="100" rows="3" placeholder="${escHtml(t('xAppPh'))}">${escHtml(state.text || '')}</textarea>
+    <button type="button" class="aa-btn aa-ask" data-act="xpredict">${escHtml(t('tAsk'))}</button></section>`;
+}
+// 레이블 색(실험실 화면과 같은 순서)
+export const WORD_COLORS = ['0,144,255', '229,72,77', '48,164,108', '247,107,21', '110,86,207', '233,61,130', '18,165,148', '255,178,36'];
+function wordsHtml(app, words, t) {
+  const idx = id => (app.labels || []).findIndex(l => l.id === id);
+  return `<div class="aa-words">${words.map(x => (x.id && x.s > 0.05 && idx(x.id) >= 0
+    ? `<span class="aa-w" style="background:rgba(${WORD_COLORS[idx(x.id) % 8]},${(0.15 + 0.45 * x.s).toFixed(2)});border-color:rgb(${WORD_COLORS[idx(x.id) % 8]})">${escHtml(x.w)}</span>`
+    : `<span class="aa-w0">${escHtml(x.w)}</span>`)).join(' ')}</div><div class="aa-sub">${escHtml(t('xWordsApp'))}</div>`;
+}
+
 // state: { photo: 이미지 주소|null, probs: {labelId:p}|null, status: 'idle'|'loading'|'thinking'|'error'|'ready', msg }
 export function appHtml(app, lang, t, state = {}) {
   const labels = app.labels || [];
   const tb = app.table && Array.isArray(app.table.features) ? app.table : null;
+  const tx = !tb && app.text && app.text.model ? app.text : null;
   const hidden = app.hiddenPhrases || {};
   const theme = THEMES.includes(app.theme) ? app.theme : 'minimal';
   const accent = ACCENTS.includes(app.accent) ? app.accent : '';
   const font = FONTS.includes(app.font) ? app.font : '';
   ensureFont(font);
   const emojis = labels.map(l => l.emoji).filter(Boolean).join(' ');
-  const chips = tb && tb.prob === 'reg' ? `<span class="aa-chip">🎯 ${escHtml(trName(tb.target, lang))}</span>` : labels.map(l => `<span class="aa-chip">${l.emoji ? escHtml(l.emoji) + ' ' : ''}${escHtml(labelName(l, lang))}</span>`).join('');
+  const txChip = (l, i) => (app.text && app.text.model ? ` style="box-shadow:inset 0 -3px 0 rgb(${WORD_COLORS[i % 8]})"` : '');
+  const chips = tb && tb.prob === 'reg' ? `<span class="aa-chip">🎯 ${escHtml(trName(tb.target, lang))}</span>` : labels.map((l, i) => `<span class="aa-chip"${txChip(l, i)}>${l.emoji ? escHtml(l.emoji) + ' ' : ''}${escHtml(labelName(l, lang))}</span>`).join('');
 
   // 학생이 그리기·카메라로 만든 모델이면 웹앱에서도 그렇게 넣어 볼 수 있다.
   const ins = Array.isArray(app.inputs) ? app.inputs : [];
@@ -117,6 +133,7 @@ export function appHtml(app, lang, t, state = {}) {
     result = `<div class="aa-verdict${unsure ? ' aa-unsure' : ''}">
         ${!unsure && label.emoji ? `<span class="aa-vemoji">${escHtml(label.emoji)}</span>` : ''}
         <span class="aa-phrase">${escHtml(phrase)}</span></div>
+      ${tx && Array.isArray(state.words) ? wordsHtml(app, state.words, t) : ''}
       <div class="aa-sub">${escHtml(t('probability'))}</div>
       <div class="aa-bars">${bars}</div>
       ${state.sample ? `<div class="aa-note">${escHtml(t('sampleNote'))}</div>` : ''}`;
@@ -138,7 +155,7 @@ export function appHtml(app, lang, t, state = {}) {
         ${desc ? `<p class="aa-desc">${escHtml(desc)}</p>` : ''}
         <div class="aa-chips">${chips}</div>
       </header>
-      ${tb ? tableForm(tb, lang, t, state) : `<section class="aa-card aa-drop${state.photo ? ' has-photo' : ''}" tabindex="0" data-act="zone">${drop}</section>`}
+      ${tb ? tableForm(tb, lang, t, state) : tx ? textForm(lang, t, state) : `<section class="aa-card aa-drop${state.photo ? ' has-photo' : ''}" tabindex="0" data-act="zone">${drop}</section>`}
       ${result ? `<section class="aa-card aa-result" aria-live="polite">${result}</section>` : ''}
       <footer class="aa-foot"><span>${escHtml(t('madeWith'))}</span><div class="aa-langs">${langs}</div></footer>
     </div>

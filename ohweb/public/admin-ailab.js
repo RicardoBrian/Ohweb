@@ -28,7 +28,8 @@ const DS_ERR = {
   fewClasses: '맞힐 열에 서로 다른 값이 2개 이상 있어야 해요.', manyClasses: '맞힐 열의 서로 다른 값은 8개까지만 돼요(숫자 열이면 예측 문제가 돼요).',
   noNumFeature: '숫자를 예측하려면 숫자로 된 다른 열이 하나 이상 있어야 해요.',
 };
-const CAUSES = { few: '사진 수가 적어요', unbalanced: '레이블끼리 사진 수 차이가 커요', similarPhotos: '비슷한 사진만 모았어요', mixed: '다른 물건이 섞인 사진', similarLabels: '레이블끼리 너무 비슷해요', unknown: '잘 모르겠어요' };
+const CAUSES = { few: '사진 수가 적어요', unbalanced: '레이블끼리 사진 수 차이가 커요', similarPhotos: '비슷한 사진만 모았어요', mixed: '다른 물건이 섞인 사진', similarLabels: '레이블끼리 너무 비슷해요', unknown: '잘 모르겠어요',
+  sameWords: '비슷한 표현만 반복', negation: '뒤집는 말(안 좋아)을 잘 모름', fewData: '데이터가 적음', badData: '이상한 값이 남음', badFeature: '도움 안 되는 정보를 씀', missFeature: '중요한 정보를 뺌', tooDeep: '질문이 너무 많아 외움', notLine: '직선으로 나타내기 어려움' };
 const THEME_NAMES = { minimal: '미니멀', bw: '블랙앤화이트', glass: '리퀴드글래스', neon: '네온', warm: '따뜻한 느낌', pastel: '파스텔', forest: '숲', ocean: '바다', space: '우주', retro: '레트로 게임', comic: '만화' };
 const LANGS = ['ko', 'en', 'zh', 'ru'];
 
@@ -152,7 +153,7 @@ function assignHtml() {
       <span class="ai-numwrap"><input class="inp" id="${id}" type="number" min="${min}" max="${max}" value="${v}"><em>${unit}</em></span>
       <small>${help}</small></label>`;
   const editing = S.editId && ed.id;
-  const kind = isTbl(ed) ? 'table' : (S.kindDraft && !editing ? S.kindDraft : 'image');
+  const kind = editing ? (ed.kind === 'table' || ed.kind === 'text' ? ed.kind : 'image') : (S.kindDraft || 'image');
   if (S.tblFor !== (S.editId || 'new')) { S.tbl = ed.table ? { ...ed.table } : (S.draft && S.draft.table ? { ...S.draft.table } : null); S.tblFor = S.editId || 'new'; }
   return `<div class="card ai-assign" data-kind="${kind}">
     <div class="ai-h"><h2>${editing ? `설정 수정 · ${E(classLabel(ed))}` : 'AI 수업 배정'}</h2>
@@ -160,8 +161,8 @@ function assignHtml() {
     <div class="ai-sec"><div class="ai-sec-t">수업 제목</div>
       <input class="inp" id="aiT_title" placeholder="예: 개와 고양이 분류하기" value="${E(ed.title || '')}"></div>
     <div class="ai-sec"><div class="ai-sec-t">활동 종류${editing ? ' <span class="ai-sub">(배정한 뒤에는 바꿀 수 없어요)</span>' : ''}</div>
-      <div class="ai-seg">
-        ${[['image', '🖼 이미지 분류', '사진을 모아 분류하는 모델을 만들어요'], ['table', '📊 표 데이터 (CSV)', '표를 보고 답을 고르거나(분류) 숫자를 맞혀요(예측)']].map(([v, l, h]) =>
+      <div class="ai-seg ai-seg3">
+        ${[['image', '🖼 이미지 분류', '사진을 모아 분류하는 모델을 만들어요'], ['text', '💬 문장 분류', '예시 문장을 직접 써서 감정·종류를 분류해요'], ['table', '📊 표 데이터 (CSV)', '표를 보고 답을 고르거나(분류) 숫자를 맞혀요(예측)']].map(([v, l, h]) =>
           `<label class="ai-opt"><input type="radio" name="aiT_kind" data-ai="kind" value="${v}" ${kind === v ? 'checked' : ''} ${editing ? 'disabled' : ''}><span><b>${l}</b><small>${h}</small></span></label>`).join('')}
       </div></div>
     <div class="ai-sec ai-tbl"><div class="ai-sec-t">표 데이터</div>
@@ -175,10 +176,10 @@ function assignHtml() {
       <div class="ai-nums">
         ${num('aiT_group', '모둠 인원', ed.groupSize || 2, 1, 8, '명', '1이면 혼자 활동')}
         ${num('aiT_max', '레이블 최대', ed.maxLabels || 5, 2, 8, '개', '학생이 만들 답의 수', 'ai-img')}
-        ${num('aiT_min', '학습 사진', ed.minPerLabel || 15, 3, 200, '장 이상', '레이블마다', 'ai-img')}
-        ${num('aiT_test', '테스트 사진', ed.minTestPerLabel || 3, 1, 50, '장 권장', '레이블마다', 'ai-img')}
+        ${num('aiT_min', '<i class="k-img">학습 사진</i><i class="k-txt">학습 문장</i>', ed.minPerLabel || (kind === 'text' ? 10 : 15), 3, 200, '<i class="k-img">장</i><i class="k-txt">개</i> 이상', '레이블마다', 'ai-img')}
+        ${num('aiT_test', '<i class="k-img">테스트 사진</i><i class="k-txt">테스트 문장</i>', ed.minTestPerLabel || 3, 1, 50, '<i class="k-img">장</i><i class="k-txt">개</i> 권장', '레이블마다', 'ai-img')}
       </div></div>
-    <div class="ai-sec ai-img"><div class="ai-sec-t">사진 모으는 방법</div>
+    <div class="ai-sec ai-img ai-photo"><div class="ai-sec-t">사진 모으는 방법</div>
       <div class="ai-seg ai-seg3">
         ${[['search', '🔍 구글 이미지', 'PC: 검색 사진을 끌어다 놓기'], ['draw', '✍️ 그리기', '태블릿·PC: 손글씨, 도형 그리기'], ['camera', '📸 카메라', '태블릿: 표정, 손 모양, 물건 찍기']].map(([v, l, h]) =>
           `<label class="ai-opt"><input type="checkbox" name="aiT_src" value="${v}" ${srcOf(ed).includes(v) ? 'checked' : ''}><span><b>${l}</b><small>${h}</small></span></label>`).join('')}
@@ -211,7 +212,7 @@ function asgListHtml() {
     list.sort((x, y) => x.grade - y.grade || x.class - y.class);
     const rows = list.map(a => `<div class="ai-asg">
       <div class="ai-asg-c"><b>${E(classLabel(a))}</b>
-        <span class="ai-sub">모둠 ${a.groupSize || 2}명 · ${isTbl(a) ? `📊 ${E((a.table || {}).name || '표 데이터')} → 🎯 ${E((a.table || {}).target || '')} · ` : ''}${isTbl(a) ? '' : `사진: ${srcOf(a).map(x => SRC_NAMES[x] || x).join('·')}${srcOf(a).includes('camera') && !a.cameraUpload ? '(기기에만)' : ''} · 레이블 최대 ${a.maxLabels || 5}개 · 사진 ${a.minPerLabel || 15}장 · 테스트 ${a.minTestPerLabel || 3}장 · `}게시판 ${a.board ? `${E(a.board.name)}(${(a.boardScope || 'class') === 'all' ? '모든 반 함께' : '반별'})` : '없음'}</span></div>
+        <span class="ai-sub">모둠 ${a.groupSize || 2}명 · ${isTbl(a) ? `📊 ${E((a.table || {}).name || '표 데이터')} → 🎯 ${E((a.table || {}).target || '')} · ` : ''}${isTbl(a) ? '' : a.kind === 'text' ? `💬 문장 분류 · 레이블 최대 ${a.maxLabels || 5}개 · 문장 ${a.minPerLabel || 10}개 · 테스트 ${a.minTestPerLabel || 3}개 · ` : `사진: ${srcOf(a).map(x => SRC_NAMES[x] || x).join('·')}${srcOf(a).includes('camera') && !a.cameraUpload ? '(기기에만)' : ''} · 레이블 최대 ${a.maxLabels || 5}개 · 사진 ${a.minPerLabel || 15}장 · 테스트 ${a.minTestPerLabel || 3}장 · `}게시판 ${a.board ? `${E(a.board.name)}(${(a.boardScope || 'class') === 'all' ? '모든 반 함께' : '반별'})` : '없음'}</span></div>
       <label class="toggle" title="${a.status === 'ON' ? '학생 화면 열림 (누르면 닫기)' : '학생 화면 닫힘 (누르면 열기)'}"><input type="checkbox" data-ai="status" data-id="${E(a.id)}" ${a.status === 'ON' ? 'checked' : ''}><div class="toggle-track"></div></label>
       <div class="ai-btns">
         <button class="btn sm" data-ai="goPairs" data-id="${E(a.id)}">모둠 구성</button>
@@ -437,7 +438,7 @@ function readForm() {
     boardScope: (document.querySelector('input[name="aiT_scope"]:checked') || {}).value === 'all' ? 'all' : 'class',
     sources: [...document.querySelectorAll('input[name="aiT_src"]:checked')].map(x => x.value),
     cameraUpload: !!($('aiT_camUp') && $('aiT_camUp').checked),
-    kind: (document.querySelector('input[name="aiT_kind"]:checked') || {}).value === 'table' ? 'table' : 'image',
+    kind: (v => (v === 'table' || v === 'text' ? v : 'image'))((document.querySelector('input[name="aiT_kind"]:checked') || {}).value),
   };
 }
 
@@ -494,7 +495,7 @@ const actions = {
   async saveAsg() {
     const f = readForm();
     if (!f.title || !f.schoolName) return toast('제목과 학교를 입력하세요.', 'err');
-    if (S.editId) f.kind = isTbl(curEdit()) ? 'table' : 'image';   // 배정한 뒤에는 종류를 바꾸지 않는다
+    if (S.editId) f.kind = ['table', 'text'].includes(curEdit().kind) ? curEdit().kind : 'image';   // 배정한 뒤에는 종류를 바꾸지 않는다
     if (f.kind === 'image' && !f.sources.length) return toast('사진 모으는 방법을 하나 이상 고르세요.', 'err');
     if (f.kind === 'table') {
       const tb = S.tbl;
@@ -627,7 +628,15 @@ const actions = {
 
 const curEdit = () => S.asgs.find(a => a.id === S.editId) || {};
 const changeActions = {
-  kind(el) { S.kindDraft = el.value; const box = document.querySelector('#section-ailab .ai-assign'); if (box) box.dataset.kind = el.value; refreshTable(); },
+  kind(el) {
+    S.kindDraft = el.value;
+    const box = document.querySelector('#section-ailab .ai-assign'); if (box) box.dataset.kind = el.value;
+    // 문장은 사진보다 쓰는 데 오래 걸려서 기본 개수를 줄인다(선생님이 바꾼 값은 그대로)
+    const mn = $('aiT_min');
+    if (mn && el.value === 'text' && mn.value === '15') mn.value = '10';
+    if (mn && el.value === 'image' && mn.value === '10') mn.value = '15';
+    refreshTable();
+  },
   async sample(el) {
     const x = SAMPLES.find(s => s.f === el.value);
     if (!x) return;
@@ -738,7 +747,9 @@ const STYLE = `
 #section-ailab .ai-seg3 { grid-template-columns: repeat(3, 1fr); }
 @media (max-width: 700px) { #section-ailab .ai-seg3 { grid-template-columns: 1fr; } }
 #section-ailab .ai-camup { display: block; margin-top: 4px; line-height: 1.5; }
-#section-ailab .ai-assign[data-kind="table"] .ai-img, #section-ailab .ai-assign[data-kind="image"] .ai-tbl { display: none; }
+#section-ailab .ai-assign[data-kind="table"] .ai-img, #section-ailab .ai-assign:not([data-kind="table"]) .ai-tbl, #section-ailab .ai-assign[data-kind="text"] .ai-photo { display: none; }
+#section-ailab .ai-assign i.k-img, #section-ailab .ai-assign i.k-txt { font-style: normal; }
+#section-ailab .ai-assign[data-kind="text"] i.k-img, #section-ailab .ai-assign:not([data-kind="text"]) i.k-txt { display: none; }
 #section-ailab .ai-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 @media (max-width: 700px) { #section-ailab .ai-row2 { grid-template-columns: 1fr; } }
 #section-ailab .ai-sample { flex: 1 1 280px; width: auto; }

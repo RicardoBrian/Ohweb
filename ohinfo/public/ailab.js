@@ -14,12 +14,12 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { loadSession, verifyStudentAuth, authReady, clearSession } from './session.js';
 import { escHtml } from './escape.js';
-import * as C from './ai-core.js?v=202610180059';
-import { makeT, getLang, setLang } from './ai-i18n.js?v=202610180059';
-import { prepareImage, prepareCover, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202610180059';
-import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, refetchTrainPhoto, saveModelToDrive, deviceId, devPhotoPut, devPhotoGet, devPhotoDel } from './ai-drive.js?v=202610180059';
-import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202610180059';
-import { appHtml, probsByLabel, THEMES, ACCENTS, FONTS, ensureFont } from './ai-render.js?v=202610180059';
+import * as C from './ai-core.js?v=202610180700';
+import { makeT, getLang, setLang } from './ai-i18n.js?v=202610180700';
+import { prepareImage, prepareCover, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202610180700';
+import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, refetchTrainPhoto, saveModelToDrive, deviceId, devPhotoPut, devPhotoGet, devPhotoDel } from './ai-drive.js?v=202610180700';
+import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202610180700';
+import { appHtml, probsByLabel, THEMES, ACCENTS, FONTS, ensureFont } from './ai-render.js?v=202610180700';
 
 const E = escHtml;
 const $ = id => document.getElementById(id);
@@ -73,7 +73,7 @@ let TB = null, _tbLoading = null;
 const TBon = () => (isTable() && TB ? TB : null);
 function loadTable() {
   if (_tbLoading) return _tbLoading;
-  _tbLoading = import('./ai-table.js?v=202610180059').then(M => {
+  _tbLoading = import('./ai-table.js?v=202610180700').then(M => {
     TB = M.makeTable({
       S, E, t: (k, v) => t(k, v), $, C, isLeader, members, nameOf, leaderName, pref, safeUpdate, schedule, toast, nextBtn, draftOr,
       ratingHtml, causeHtml, debounce, serverTimestamp, go: n => actions.step(n),
@@ -82,6 +82,23 @@ function loadTable() {
   }).catch(e => { console.error(e); _tbLoading = null; screen(t('error'), e.message); });
   return _tbLoading;
 }
+// 문장(텍스트) 분류 활동: ①·⑤는 이미지 화면 그대로, ②~④는 ai-text.js가 그린다(그때만 불러온다).
+const isText = () => !!(S.asg && S.asg.kind === 'text');
+let TX = null, _txLoading = null;
+const TXon = () => (isText() && TX ? TX : null);
+function loadText() {
+  if (_txLoading) return _txLoading;
+  _txLoading = import('./ai-text.js?v=202610180700').then(M => {
+    TX = M.makeText({
+      S, E, t: (k, v) => t(k, v), $, C, isLeader, members, leaderName, pref, safeUpdate, schedule, toast, nextBtn, tipsHtml,
+      ratingHtml, causeHtml, serverTimestamp, setDoc, deleteDoc, doc, db, labelsOf, imgs, isMine, ownerTag, ownerChips, namesOf, minTrain, minTest, ms,
+    });
+    schedule();
+  }).catch(e => { console.error(e); _txLoading = null; screen(t('error'), e.message); });
+  return _txLoading;
+}
+// 문장 활동의 ① 안내 문구(없으면 이미지 문구)
+const tk = k => (isText() ? 'x_' + k : k);
 // 단계 이름: 표 데이터는 ②가 "데이터 살펴보기"
 const stepName = n => t(isTable() && n === 2 ? 'ts2' : 's' + n);
 // 이 기기에만 있는 사진의 미리보기·평가용 그림(Firestore 기록에는 그림이 없다)
@@ -137,6 +154,7 @@ function render() {
   }
   if (!S.project) return screen(t('loading'), '');
   if (isTable() && !TB) { loadTable(); return screen(t('loading'), ''); }
+  if (isText() && !TX) { loadText(); return screen(t('loading'), ''); }
 
   // 입력 중이던 칸과 커서 위치를 지킨다.
   const ae = document.activeElement;
@@ -169,6 +187,7 @@ function nextTarget() {
   const has = sel => (document.querySelector('#main ' + sel) ? sel : '');
   const nextBtnSel = '.next .btn.primary[data-act="step"]';
   if (TBon() && S.viewStep <= 4) return TBon().nextTarget(has);
+  if (TXon() && S.viewStep >= 2 && S.viewStep <= 4) return TXon().nextTarget(has);
   switch (S.viewStep) {
     case 1:
       if (!leader) return open >= 2 ? has(nextBtnSel) : '';
@@ -268,6 +287,7 @@ function statusHtml() {
 
 function stepHtml() {
   if (TBon() && S.viewStep >= 1 && S.viewStep <= 4) return TBon().step(S.viewStep);
+  if (TXon() && S.viewStep >= 2 && S.viewStep <= 4) return TXon().step(S.viewStep);
   switch (S.viewStep) {
     case 1: return step1();
     case 2: return step2();
@@ -290,18 +310,18 @@ function step1() {
   const labels = S.labels || labelsOf();
   const leader = isLeader();
   const hasImg = id => imgs('train', id).length + imgs('test', id).length > 0;
-  let body = lead('s1Lead') + tipsHtml(t('s1Tips'));
+  let body = lead('s1Lead') + tipsHtml(t(tk('s1Tips')));
   if (!leader) {
     body += `<div class="note">${E(t('s1Wait', { name: leaderName() }))}</div>`;
-    body += `<div class="card"><div class="field"><label>${E(t('topicLabel'))}</label><div class="ro">${E(p.topic || '…')}</div></div>
+    body += `<div class="card"><div class="field"><label>${E(t(tk('topicLabel')))}</label><div class="ro">${E(p.topic || '…')}</div></div>
       <div class="field"><label>${E(t('labelsLabel'))}</label>
       <div class="ro-labels">${labels.length ? labels.map(l => `<div class="ro-label"><b>${E(l.name || '…')}</b>${ownerTag(l)}${trHtml(l)}</div>`).join('') : '<div class="ro">…</div>'}</div></div></div>`;
     if (p.defined && p.step >= 2) body += nextBtn(2, 's2');
     return body;
   }
   body += `<div class="card">
-    <div class="field"><label for="f-topic">${E(t('topicLabel'))}</label>
-      <input id="f-topic" data-field="topic" maxlength="40" placeholder="${E(t('topicPh'))}" value="${E(draftOr('topic', p.topic))}"></div>
+    <div class="field"><label for="f-topic">${E(t(tk('topicLabel')))}</label>
+      <input id="f-topic" data-field="topic" maxlength="40" placeholder="${E(t(tk('topicPh')))}" value="${E(draftOr('topic', p.topic))}"></div>
     <div class="field"><label>${E(t('labelsLabel'))}</label>
       <div class="label-rows">${labels.map((l, i) => `<div class="label-row">
         <span class="ln">${i + 1}</span>
@@ -604,8 +624,9 @@ function appData() {
     descLang: (p.app && p.app.descLang) || S.lang, descTr: (p.app && p.app.descTr) || {},
     labels: labelsOf().map(appLabel),
     modelVersion: p.modelVersion || 0, modelUrl: p.modelVersion ? '' : (p.modelUrl || ''), mapping: p.mapping || {},
-    inputs: isTable() ? [] : sources().filter(x => x !== 'search'),
+    inputs: isTable() || isText() ? [] : sources().filter(x => x !== 'search'),
     ...(TBon() ? { table: TBon().appTable() } : {}),
+    ...(TXon() ? { text: TXon().appText() } : {}),
     hiddenPhrases: (S.appDoc && S.appDoc.hiddenPhrases) || {},
   };
 }
@@ -687,6 +708,7 @@ function previewHtml(a) {
     if (!a.table) return `<div class="note warn">${E(t('tNoPick'))}</div>`;
     return appHtml(a, S.lang, S.t, { ...TBon().sampleState(a.table), sample: true });
   }
+  if (TXon()) return appHtml(a, S.lang, S.t, { ...TXon().sampleState(a, S.previewLabel), sample: true });
   const ls = a.labels;
   const top = ls[Math.min(S.previewLabel, ls.length - 1)] || ls[0];
   const probs = {};
@@ -727,7 +749,7 @@ function boardHtml() {
       ${s.topic ? `<div class="bc-topic">${E(s.topic)}</div>` : ''}
       <div class="bc-labels">${(s.labels || []).map(l => `<span>${E(l.emoji || '')}${E(l.name)} <b>${l.c}</b></span>`).join('')}</div>
       <div class="bc-state">${s.published ? `<span class="ok">🎉 ${E(t('done'))}</span> <a href="aiapp.html?id=${encodeURIComponent(pr.currentProjectId || '')}" target="_blank" rel="noopener">${E(t('viewApp'))} ↗</a>`
-        : needPhotos ? `<span class="soft">📷 ${E(t('needPhotos'))}</span>`
+        : needPhotos ? `<span class="soft">${isText() ? '✍️' : '📷'} ${E(t(isText() ? 'xNeedSent' : 'needPhotos'))}</span>`
         : s.acc != null ? `<span>${E(t('accuracy', { p: s.acc }))}</span>`
         : s.mae != null ? `<span>${E(t('tMaeBoard', { v: s.mae }))}</span>`
         : s.model ? `<span>${E(t('modelReady'))}</span>` : ''}</div>
@@ -1058,7 +1080,7 @@ const actions = {
   // ✍️ 그리기 · 📸 카메라: 필요할 때만 불러온다.
   async cap(mode, el) {
     const [kind, labelId] = el.dataset.zone.split(':');
-    const M = await import('./ai-capture.js?v=202610180059');
+    const M = await import('./ai-capture.js?v=202610180700');
     if (kind === 'cover') return M.openDraw({ t, title: t('coverTitle'), single: true, onAdd: blob => setCover([blob], []) });
     const lab = labelById(labelId);
     const local = mode === 'camera' && camLocal() && kind !== 'try';
@@ -1195,6 +1217,7 @@ const actions = {
     const err = $('s5err');
     if (!a.title.trim()) { err.textContent = t('e_title'); $('f-title') && $('f-title').focus(); return; }
     if (isTable() && !a.table) { err.textContent = t('tNoPick'); return; }
+    if (isText() && !a.text) { err.textContent = t('noModelYet'); return; }
     // 대문(사진 + 설명)은 꼭 넣는다 — 어떤 앱인지 한눈에 보이게
     if (!a.cover) { err.textContent = t('e_cover'); return; }
     if (!a.desc.trim()) { err.textContent = t('e_desc'); $('f-desc') && $('f-desc').focus(); return; }
@@ -1252,10 +1275,11 @@ const actions = {
         labels: fresh.labels.map(({ id, name, tr, emoji, phrase, custom, customLang, customTr }) => ({ id, name, tr, emoji, phrase, custom, customLang, customTr })),
         modelVersion: fresh.modelVersion, modelUrl: fresh.modelUrl, mapping: fresh.mapping, published: true, updatedAt: serverTimestamp(),
         ...(fresh.table ? { table: (({ key, ...rest }) => rest)(fresh.table) } : {}),
+        ...(fresh.text ? { text: fresh.text } : {}),
       };
       await setDoc(doc(db, 'ai_apps', S.pid), pub, { merge: true });
       // 서버(/api/ai-model)가 모델을 미리 받아 두게 한 번 불러 둔다 — 첫 방문자가 기다리지 않게.
-      if (pub.modelVersion) fetch(`/api/ai-model?pid=${encodeURIComponent(S.pid)}&v=${pub.modelVersion}`).then(r => r.arrayBuffer()).catch(() => {});
+      if (pub.modelVersion && !pub.text) fetch(`/api/ai-model?pid=${encodeURIComponent(S.pid)}&v=${pub.modelVersion}`).then(r => r.arrayBuffer()).catch(() => {});
       await updateDoc(pref(), { ...upd, published: true, pubSig: appSig(fresh), 'app.publishedAt': serverTimestamp() });
       toast(t('published'), 'ok');
     } catch (e) {
@@ -1353,7 +1377,7 @@ function bindEvents() {
     const act = el.dataset.act;
     if (el.type === 'checkbox' || el.type === 'radio') return; // change에서 처리
     if (el.tagName === 'SELECT') return; // change에서 처리
-    const fn = actions[act] || (TBon() && TBon().actions[act]);
+    const fn = actions[act] || (TBon() && TBon().actions[act]) || (TXon() && TXon().actions[act]);
     if (fn) { e.preventDefault(); fn(el.dataset.v, el); }
   });
   main.addEventListener('change', e => {
@@ -1374,6 +1398,7 @@ function bindEvents() {
       if (S.project && S.project.defined) return nudge();
       return debounce('labels-save', () => saveLabels(false), 400);
     }
+    if (TXon() && TXon().onInput(el)) return;
     if (TBon()) {
       const r = TBon().onInput(el);
       if (r === 'preview') updatePreview(el);
@@ -1383,6 +1408,7 @@ function bindEvents() {
     if (f === 'custom' || f === 'title' || f === 'desc') updatePreview(el); // 입력칸은 그대로 두고 미리보기만
     if (SAVED_FIELDS.has(f)) debounce('field:' + el.id, () => saveField(f, el), 700);
   });
+  main.addEventListener('keydown', e => { if (TXon()) TXon().onKey(e); });
   main.addEventListener('compositionstart', () => { S.composing = true; });
   main.addEventListener('compositionend', () => { S.composing = false; if (S.renderPending) schedule(); });
   main.addEventListener('focusin', e => {

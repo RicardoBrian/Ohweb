@@ -7,7 +7,7 @@
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="ai-themes.css?v=202610180059">
+  <link rel="stylesheet" href="ai-themes.css?v=202610180700">
   <style>
     html, body { margin: 0; min-height: 100%; }
     body { background: #fafafa; }
@@ -25,10 +25,10 @@
 import { db } from './firebase-config.js';
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { SAFE_ID } from './escape.js';
-import { makeT, getLang, setLang } from './ai-i18n.js?v=202610180059';
-import { appHtml, probsByLabel } from './ai-render.js?v=202610180059';
-import { loadModel, loadDriveModel, predict, loadLibs } from './ai-model.js?v=202610180059';
-import { extractFromTransfer, fetchFirstImage } from './ai-image.js?v=202610180059';
+import { makeT, getLang, setLang } from './ai-i18n.js?v=202610180700';
+import { appHtml, probsByLabel } from './ai-render.js?v=202610180700';
+import { loadModel, loadDriveModel, predict, loadLibs } from './ai-model.js?v=202610180700';
+import { extractFromTransfer, fetchFirstImage } from './ai-image.js?v=202610180700';
 
 const params = new URLSearchParams(location.search);
 const appId = params.get('id') || '';
@@ -70,7 +70,14 @@ async function start() {
   if (app.table && Array.isArray(app.table.features)) {
     state.tIn = app.table.features.map(f => f.def);
     render();
-    tableCore = await import('./ai-table-core.js?v=202610180059');
+    tableCore = await import('./ai-table-core.js?v=202610180700');
+    return;
+  }
+  // 문장 앱: 단어 조각 개수를 센 작은 모델이 문서 안에 들어 있다.
+  if (app.text && app.text.model) {
+    state.text = '';
+    render();
+    textCore = await import('./ai-text-core.js?v=202610180700');
     return;
   }
   render();
@@ -95,7 +102,21 @@ async function handleBlob(blob) {
   if (loaded) runPredict();
 }
 
-let tableCore = null;
+let tableCore = null, textCore = null;
+function textPredict() {
+  const box = root.querySelector('.aa-text');
+  const txt = box ? box.value.trim() : '';
+  if (!textCore || !txt) return;
+  const r = textCore.predictText(app.text.model, txt);
+  state.text = txt; state.probs = r.probs; state.words = r.words; state.status = 'ready';
+  render();
+  const res = root.querySelector('.aa-result');
+  if (res) res.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+root.addEventListener('input', e => { if (e.target.classList && e.target.classList.contains('aa-text')) state.text = e.target.value; });
+root.addEventListener('keydown', e => {
+  if (e.target.classList && e.target.classList.contains('aa-text') && e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); textPredict(); }
+});
 function tablePredict() {
   if (!tableCore) return;
   const r = tableCore.appPredict(app.table, state.tIn);
@@ -151,11 +172,12 @@ root.addEventListener('click', e => {
   const opt = e.target.closest('[data-act="topt"]');
   if (opt) { state.tIn[Number(opt.dataset.ti)] = opt.dataset.v; render(); return; }
   if (e.target.closest('[data-act="tpredict"]')) { tablePredict(); return; }
+  if (e.target.closest('[data-act="xpredict"]')) { textPredict(); return; }
   if (e.target.closest('[data-act="pick"]')) { fileInput.click(); return; }
   const cap = e.target.closest('[data-act="cap"]');
   if (cap) {
     // 그리기·카메라는 누를 때만 불러온다
-    import('./ai-capture.js?v=202610180059').then(M => (cap.dataset.v === 'draw' ? M.openDraw : M.openCamera)({ t, onAdd: blob => handleBlob(blob), single: true }));
+    import('./ai-capture.js?v=202610180700').then(M => (cap.dataset.v === 'draw' ? M.openDraw : M.openCamera)({ t, onAdd: blob => handleBlob(blob), single: true }));
     return;
   }
   const zone = e.target.closest('[data-act="zone"]');
@@ -164,8 +186,8 @@ root.addEventListener('click', e => {
 // 화면 어디에 떨어뜨려도 사진으로 받는다(칸 밖에 놓으면 브라우저가 그 사진으로 페이지를 바꿔 버리므로).
 window.addEventListener('dragover', e => { e.preventDefault(); const z = root.querySelector('[data-act="zone"]'); if (z) z.classList.add('drag'); });
 window.addEventListener('dragleave', e => { if (!e.relatedTarget) { const z = root.querySelector('[data-act="zone"]'); if (z) z.classList.remove('drag'); } });
-window.addEventListener('drop', e => { e.preventDefault(); const z = root.querySelector('[data-act="zone"]'); if (z) z.classList.remove('drag'); if (app && !app.table) handleTransfer(e.dataTransfer); });
-window.addEventListener('paste', e => { if (app && !app.table) handleTransfer(e.clipboardData); });
+window.addEventListener('drop', e => { e.preventDefault(); const z = root.querySelector('[data-act="zone"]'); if (z) z.classList.remove('drag'); if (app && !app.table && !app.text) handleTransfer(e.dataTransfer); });
+window.addEventListener('paste', e => { if (app && !app.table && !app.text) handleTransfer(e.clipboardData); });
 root.addEventListener('keydown', e => {
   const z = e.target.closest('[data-act="zone"]');
   if (z && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); fileInput.click(); }
