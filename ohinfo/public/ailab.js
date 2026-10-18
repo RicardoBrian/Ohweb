@@ -14,12 +14,12 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { loadSession, verifyStudentAuth, authReady, clearSession } from './session.js';
 import { escHtml } from './escape.js';
-import * as C from './ai-core.js?v=202610180700';
-import { makeT, getLang, setLang } from './ai-i18n.js?v=202610180700';
-import { prepareImage, prepareCover, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202610180700';
-import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, refetchTrainPhoto, saveModelToDrive, deviceId, devPhotoPut, devPhotoGet, devPhotoDel } from './ai-drive.js?v=202610180700';
-import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202610180700';
-import { appHtml, probsByLabel, THEMES, ACCENTS, FONTS, ensureFont } from './ai-render.js?v=202610180700';
+import * as C from './ai-core.js?v=202610182234';
+import { makeT, getLang, setLang } from './ai-i18n.js?v=202610182234';
+import { prepareImage, prepareCover, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202610182234';
+import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, refetchTrainPhoto, saveModelToDrive, deviceId, devPhotoPut, devPhotoGet, devPhotoDel } from './ai-drive.js?v=202610182234';
+import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202610182234';
+import { appHtml, probsByLabel, THEMES, ACCENTS, FONTS, ensureFont } from './ai-render.js?v=202610182234';
 
 const E = escHtml;
 const $ = id => document.getElementById(id);
@@ -73,7 +73,7 @@ let TB = null, _tbLoading = null;
 const TBon = () => (isTable() && TB ? TB : null);
 function loadTable() {
   if (_tbLoading) return _tbLoading;
-  _tbLoading = import('./ai-table.js?v=202610180700').then(M => {
+  _tbLoading = import('./ai-table.js?v=202610182234').then(M => {
     TB = M.makeTable({
       S, E, t: (k, v) => t(k, v), $, C, isLeader, members, nameOf, leaderName, pref, safeUpdate, schedule, toast, nextBtn, draftOr,
       ratingHtml, causeHtml, debounce, serverTimestamp, go: n => actions.step(n),
@@ -88,7 +88,7 @@ let TX = null, _txLoading = null;
 const TXon = () => (isText() && TX ? TX : null);
 function loadText() {
   if (_txLoading) return _txLoading;
-  _txLoading = import('./ai-text.js?v=202610180700').then(M => {
+  _txLoading = import('./ai-text.js?v=202610182234').then(M => {
     TX = M.makeText({
       S, E, t: (k, v) => t(k, v), $, C, isLeader, members, leaderName, pref, safeUpdate, schedule, toast, nextBtn, tipsHtml,
       ratingHtml, causeHtml, serverTimestamp, setDoc, deleteDoc, doc, db, labelsOf, imgs, isMine, ownerTag, ownerChips, namesOf, minTrain, minTest, ms,
@@ -686,6 +686,7 @@ function step5() {
       <input id="f-url" readonly value="${E(appUrl())}"><button class="btn sm" data-act="copy">${E(t('copy'))}</button>
       <a class="btn sm" href="${E(appUrl())}" target="_blank" rel="noopener">${E(t('open'))} ↗</a></div></div>
       ${postHtml()}
+      <div class="note"><a class="btn sm" href="${E(new URL(`aicode.html?id=${encodeURIComponent(S.pid)}`, location.href).href)}" target="_blank" rel="noopener">${E(t('codeWithAi'))} ↗</a> <span class="muted sm">${E(t('codeHelp'))}</span></div>
       <button class="btn ghost" data-act="newmodel">＋ ${E(t('newModel'))}</button>` : ''}</div>`;
   h += `</div><div class="deploy-preview"><div class="pv-label">${E(t('previewAs'))}</div>
     <div class="pv-tabs">${TBon() ? '' : a.labels.map((l, i) => `<button class="${i === S.previewLabel ? 'on' : ''}" data-act="preview-label" data-v="${i}">${E(l.emoji || '')} ${E(C.labelName(l, S.lang))}</button>`).join('')}</div>
@@ -1080,7 +1081,7 @@ const actions = {
   // ✍️ 그리기 · 📸 카메라: 필요할 때만 불러온다.
   async cap(mode, el) {
     const [kind, labelId] = el.dataset.zone.split(':');
-    const M = await import('./ai-capture.js?v=202610180700');
+    const M = await import('./ai-capture.js?v=202610182234');
     if (kind === 'cover') return M.openDraw({ t, title: t('coverTitle'), single: true, onAdd: blob => setCover([blob], []) });
     const lab = labelById(labelId);
     const local = mode === 'camera' && camLocal() && kind !== 'try';

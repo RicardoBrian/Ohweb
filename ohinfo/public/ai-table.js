@@ -5,7 +5,7 @@
 //  ④ 평가: 시험용 줄로 모든 실험을 채점해 공부 점수와 비교하고, 웹앱에 쓸 모델을 고른다.
 // 데이터: ai_projects/{pid}의 tFeat · tHyp · tDrop · tChecked · tTrials · evals · tModel
 
-import * as T from './ai-table-core.js?v=202610180700';
+import * as T from './ai-table-core.js?v=202610182234';
 
 export function makeTable(X) {
   const { S, E } = X;

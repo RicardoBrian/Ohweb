@@ -6,7 +6,7 @@
 //  ④ 평가: 테스트 문장 채점 + 틀린 문장의 "영향 준 단어" 색칠, 직접 써 보기.
 // 문장 기록은 사진과 같은 자리(ai_projects/{pid}/images)에 thumb 없이 text로 둔다 — 장수 세기·단계 열림이 그대로 된다.
 
-import * as X_ from './ai-text-core.js?v=202610180700';
+import * as X_ from './ai-text-core.js?v=202610182234';
 
 export function makeText(X) {
   const { S, E } = X;
