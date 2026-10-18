@@ -7,9 +7,27 @@ import {
   collection, addDoc, getDocs, getDoc, doc, query, where, updateDoc, deleteDoc, onSnapshot,
   serverTimestamp, writeBatch,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+// 표 데이터(CSV) 공용 로직 — ohinfo/public/ai-table-core.js와 똑같은 파일(tests/ai-table-core.test.mjs가 확인)
+import { makeDataset, validateDataset, CSV_MAX_BYTES } from './ai-table-core.js?v=20261018a';
 
 const OHINFO = 'https://kakainfo.com';
 const STEP = ['', '① 문제 정의', '② 데이터 수집', '③ 학습', '④ 평가', '⑤ 배포'];
+const isTbl = a => !!(a && a.kind === 'table');
+const stepOf = (a, n) => (isTbl(a) && n === 2 ? '② 데이터 살펴보기' : STEP[n]);
+// 표 데이터 예시(연습용 가상 데이터) — ohinfo/tools/make-ai-samples.mjs로 만든다
+const SAMPLES = [
+  { f: 'penguin.csv', name: '펭귄 종류 맞히기', target: '펭귄 종류', help: '분류 · 125줄 · 부리·날개·몸무게·섬' },
+  { f: 'fruit.csv', name: '과일 이름 맞히기', target: '과일', help: '분류 · 75줄 · 쉬운 예시' },
+  { f: 'foot.csv', name: '키로 발 크기 예측하기', target: '발 크기(mm)', help: '예측 · 50줄 · 정보 1개(직선 보기)' },
+  { f: 'icecream.csv', name: '아이스크림 판매량 예측하기', target: '판매량(개)', help: '예측 · 60줄 · 기온·습도·비' },
+  { f: 'study.csv', name: '공부 습관으로 점수 예측하기', target: '점수', help: '예측 · 80줄 · 공부·잠·스마트폰' },
+];
+const DS_ERR = {
+  tooBig: `파일이 너무 커요(최대 ${CSV_MAX_BYTES / 1000}KB).`, fewCols: '열이 2개 이상이어야 해요.', manyCols: '열은 12개까지만 쓸 수 있어요.',
+  fewRows: '데이터가 10줄 이상이어야 해요.', manyRows: '데이터는 1000줄까지만 쓸 수 있어요.', noTarget: 'AI가 맞힐 열을 고르세요.',
+  fewClasses: '맞힐 열에 서로 다른 값이 2개 이상 있어야 해요.', manyClasses: '맞힐 열의 서로 다른 값은 8개까지만 돼요(숫자 열이면 예측 문제가 돼요).',
+  noNumFeature: '숫자를 예측하려면 숫자로 된 다른 열이 하나 이상 있어야 해요.',
+};
 const CAUSES = { few: '사진 수가 적어요', unbalanced: '레이블끼리 사진 수 차이가 커요', similarPhotos: '비슷한 사진만 모았어요', mixed: '다른 물건이 섞인 사진', similarLabels: '레이블끼리 너무 비슷해요', unknown: '잘 모르겠어요' };
 const THEME_NAMES = { minimal: '미니멀', bw: '블랙앤화이트', glass: '리퀴드글래스', neon: '네온', warm: '따뜻한 느낌', pastel: '파스텔', forest: '숲', ocean: '바다', space: '우주', retro: '레트로 게임', comic: '만화' };
 const LANGS = ['ko', 'en', 'zh', 'ru'];
@@ -22,6 +40,7 @@ const $ = id => document.getElementById(id);
 const S = {
   tab: 'assign', asgs: [], schools: [], boards: [], asId: sessionStorage.getItem('aiadm_as') || '',
   students: [], pairs: [], projects: [], apps: {}, sel: new Set(), editId: '', trEdit: '', draft: null,
+  tbl: null,   // 배정 폼의 표 데이터 { name, csv, target }
 };
 let unsubPairs = null;
 let watchedAs = null;
@@ -129,26 +148,37 @@ function assignHtml() {
   const schoolOpts = `<option value="">학교 선택</option>` + S.schools.map(n => `<option ${n === ed.schoolName ? 'selected' : ''}>${E(n)}</option>`).join('');
   const gradeOpts = [1, 2, 3].map(g => `<option value="${g}" ${String(g) === nv(ed.grade) ? 'selected' : ''}>${g}학년</option>`).join('');
   const classOpts = Array.from({ length: 15 }, (_, i) => i + 1).map(c => `<option value="${c}" ${String(c) === nv(ed.class) ? 'selected' : ''}>${c}반</option>`).join('');
-  const num = (id, label, v, min, max, unit, help) => `<label class="ai-field"><span>${label}</span>
+  const num = (id, label, v, min, max, unit, help, cls = '') => `<label class="ai-field ${cls}"><span>${label}</span>
       <span class="ai-numwrap"><input class="inp" id="${id}" type="number" min="${min}" max="${max}" value="${v}"><em>${unit}</em></span>
       <small>${help}</small></label>`;
   const editing = S.editId && ed.id;
-  return `<div class="card ai-assign">
+  const kind = isTbl(ed) ? 'table' : (S.kindDraft && !editing ? S.kindDraft : 'image');
+  if (S.tblFor !== (S.editId || 'new')) { S.tbl = ed.table ? { ...ed.table } : (S.draft && S.draft.table ? { ...S.draft.table } : null); S.tblFor = S.editId || 'new'; }
+  return `<div class="card ai-assign" data-kind="${kind}">
     <div class="ai-h"><h2>${editing ? `설정 수정 · ${E(classLabel(ed))}` : 'AI 수업 배정'}</h2>
       ${editing ? '' : '<button class="btn sm ghost" data-ai="resetForm" title="입력 칸을 처음 상태로 비웁니다">초기화</button>'}</div>
     <div class="ai-sec"><div class="ai-sec-t">수업 제목</div>
       <input class="inp" id="aiT_title" placeholder="예: 개와 고양이 분류하기" value="${E(ed.title || '')}"></div>
+    <div class="ai-sec"><div class="ai-sec-t">활동 종류${editing ? ' <span class="ai-sub">(배정한 뒤에는 바꿀 수 없어요)</span>' : ''}</div>
+      <div class="ai-seg">
+        ${[['image', '🖼 이미지 분류', '사진을 모아 분류하는 모델을 만들어요'], ['table', '📊 표 데이터 (CSV)', '표를 보고 답을 고르거나(분류) 숫자를 맞혀요(예측)']].map(([v, l, h]) =>
+          `<label class="ai-opt"><input type="radio" name="aiT_kind" data-ai="kind" value="${v}" ${kind === v ? 'checked' : ''} ${editing ? 'disabled' : ''}><span><b>${l}</b><small>${h}</small></span></label>`).join('')}
+      </div></div>
+    <div class="ai-sec ai-tbl"><div class="ai-sec-t">표 데이터</div>
+      ${editing ? '' : `<div class="ai-btns"><select class="inp ai-sample" data-ai="sample"><option value="">예시 데이터 고르기 (연습용 가상 데이터)</option>${SAMPLES.map(x => `<option value="${x.f}">${E(x.name)} — ${E(x.help)}</option>`).join('')}</select>
+        <label class="btn sm">내 CSV 파일 올리기<input type="file" data-ai="csvFile" accept=".csv,text/csv,text/plain" hidden></label></div>`}
+      <div id="aiT_tbl"></div></div>
     <div class="ai-sec"><div class="ai-sec-t">대상 반</div>
       <div class="ai-row3">${sel('aiT_school', schoolOpts)}${sel('aiT_grade', gradeOpts)}${sel('aiT_class', classOpts)}</div>
       <div class="ai-sub" id="aiT_done"></div></div>
     <div class="ai-sec"><div class="ai-sec-t">활동 설정</div>
       <div class="ai-nums">
         ${num('aiT_group', '모둠 인원', ed.groupSize || 2, 1, 8, '명', '1이면 혼자 활동')}
-        ${num('aiT_max', '레이블 최대', ed.maxLabels || 5, 2, 8, '개', '학생이 만들 답의 수')}
-        ${num('aiT_min', '학습 사진', ed.minPerLabel || 15, 3, 200, '장 이상', '레이블마다')}
-        ${num('aiT_test', '테스트 사진', ed.minTestPerLabel || 3, 1, 50, '장 권장', '레이블마다')}
+        ${num('aiT_max', '레이블 최대', ed.maxLabels || 5, 2, 8, '개', '학생이 만들 답의 수', 'ai-img')}
+        ${num('aiT_min', '학습 사진', ed.minPerLabel || 15, 3, 200, '장 이상', '레이블마다', 'ai-img')}
+        ${num('aiT_test', '테스트 사진', ed.minTestPerLabel || 3, 1, 50, '장 권장', '레이블마다', 'ai-img')}
       </div></div>
-    <div class="ai-sec"><div class="ai-sec-t">사진 모으는 방법</div>
+    <div class="ai-sec ai-img"><div class="ai-sec-t">사진 모으는 방법</div>
       <div class="ai-seg ai-seg3">
         ${[['search', '🔍 구글 이미지', 'PC: 검색 사진을 끌어다 놓기'], ['draw', '✍️ 그리기', '태블릿·PC: 손글씨, 도형 그리기'], ['camera', '📸 카메라', '태블릿: 표정, 손 모양, 물건 찍기']].map(([v, l, h]) =>
           `<label class="ai-opt"><input type="checkbox" name="aiT_src" value="${v}" ${srcOf(ed).includes(v) ? 'checked' : ''}><span><b>${l}</b><small>${h}</small></span></label>`).join('')}
@@ -181,7 +211,7 @@ function asgListHtml() {
     list.sort((x, y) => x.grade - y.grade || x.class - y.class);
     const rows = list.map(a => `<div class="ai-asg">
       <div class="ai-asg-c"><b>${E(classLabel(a))}</b>
-        <span class="ai-sub">모둠 ${a.groupSize || 2}명 · 사진: ${srcOf(a).map(x => SRC_NAMES[x] || x).join('·')}${srcOf(a).includes('camera') && !a.cameraUpload ? '(기기에만)' : ''} · 레이블 최대 ${a.maxLabels || 5}개 · 사진 ${a.minPerLabel || 15}장 · 테스트 ${a.minTestPerLabel || 3}장 · 게시판 ${a.board ? `${E(a.board.name)}(${(a.boardScope || 'class') === 'all' ? '모든 반 함께' : '반별'})` : '없음'}</span></div>
+        <span class="ai-sub">모둠 ${a.groupSize || 2}명 · ${isTbl(a) ? `📊 ${E((a.table || {}).name || '표 데이터')} → 🎯 ${E((a.table || {}).target || '')} · ` : ''}${isTbl(a) ? '' : `사진: ${srcOf(a).map(x => SRC_NAMES[x] || x).join('·')}${srcOf(a).includes('camera') && !a.cameraUpload ? '(기기에만)' : ''} · 레이블 최대 ${a.maxLabels || 5}개 · 사진 ${a.minPerLabel || 15}장 · 테스트 ${a.minTestPerLabel || 3}장 · `}게시판 ${a.board ? `${E(a.board.name)}(${(a.boardScope || 'class') === 'all' ? '모든 반 함께' : '반별'})` : '없음'}</span></div>
       <label class="toggle" title="${a.status === 'ON' ? '학생 화면 열림 (누르면 닫기)' : '학생 화면 닫힘 (누르면 열기)'}"><input type="checkbox" data-ai="status" data-id="${E(a.id)}" ${a.status === 'ON' ? 'checked' : ''}><div class="toggle-track"></div></label>
       <div class="ai-btns">
         <button class="btn sm" data-ai="goPairs" data-id="${E(a.id)}">모둠 구성</button>
@@ -197,6 +227,7 @@ function asgListHtml() {
 // 입력이 바뀔 때 폼 일부만 고친다(다시 그리면 입력 중인 칸이 풀리므로).
 function refreshAssignForm(changed) {
   const t = $('aiT_title'); if (!t) return;
+  if (changed === 'aiT_tname' && S.tbl) { S.tbl.name = $('aiT_tname').value; return; }
   const school = $('aiT_school').value, grade = $('aiT_grade').value, cls = $('aiT_class').value;
   if (['aiT_school', 'aiT_grade', 'aiT_class'].includes(changed)) {
     // 반 게시판을 쓰고 있었다면 새 반의 같은 이름 게시판으로 바꿔 준다.
@@ -213,6 +244,51 @@ function refreshAssignForm(changed) {
   $('aiT_done').innerHTML = done.length
     ? `이 제목으로 배정한 반: ${done.sort((x, y) => x.grade - y.grade || x.class - y.class).map(a => `<span class="ai-pill${nv(a.grade) === nv(grade) && nv(a.class) === nv(cls) ? ' warn' : ''}">${E(classLabel(a))}</span>`).join(' ')}${here ? ' <b class="ai-warn">← 이미 배정한 반이에요</b>' : ''}` : '';
   if (!S.editId) $('aiT_go').textContent = `${grade}학년 ${cls}반에 배정하기`;
+  if (changed !== 'aiT_tname') refreshTable();
+}
+
+// 표 데이터 칸: 미리보기, 맞힐 열 고르기, 검사 결과
+function refreshTable() {
+  const box = $('aiT_tbl');
+  if (!box) return;
+  const tb = S.tbl;
+  if (!tb || !tb.csv) { box.innerHTML = '<div class="ai-sub">예시 데이터를 고르거나 CSV 파일을 올리세요. 첫 줄은 열 이름이어야 해요. (엑셀: 다른 이름으로 저장 → CSV)</div>'; return; }
+  const ds = makeDataset(tb.csv, tb.target);
+  const errs = validateDataset(ds, new Blob([tb.csv]).size);
+  const editing = !!S.editId;
+  const kindTxt = ds.ti < 0 ? '' : ds.prob === 'class' ? `분류 문제 — 답 ${ds.classes.length}개: ${ds.classes.slice(0, 8).map(E).join(', ')}` : '예측(회귀) 문제 — 숫자를 맞혀요';
+  box.innerHTML = `<div class="ai-row2">
+      <label class="ai-field"><span>데이터 이름</span><input class="inp" id="aiT_tname" maxlength="40" value="${E(tb.name || '')}"></label>
+      <label class="ai-field"><span>AI가 맞힐 열 🎯</span><select class="inp" data-ai="target" ${editing ? 'disabled' : ''}><option value="">고르세요</option>${ds.cols.map((c, i) => `<option value="${E(c)}" ${c === tb.target ? 'selected' : ''}>${E(c)} (${ds.types[i] === 'num' ? '숫자' : '글자'})</option>`).join('')}</select></label></div>
+    <div class="ai-sub">${ds.rows.length}줄 · 열 ${ds.cols.length}개${kindTxt ? ' · <b>' + kindTxt + '</b>' : ''}</div>
+    ${errs.length ? `<div class="ai-warn">${errs.map(e => E(DS_ERR[e] || e)).join(' ')}</div>` : ''}
+    <div class="table-wrap"><table class="ai-table"><thead><tr>${ds.cols.map((c, i) => `<th>${E(c)}${i === ds.ti ? ' 🎯' : ''}</th>`).join('')}</tr></thead>
+      <tbody>${ds.rows.slice(0, 5).map(r => `<tr>${r.map(v => `<td>${E(v || '—')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+    ${editing ? '<div class="ai-sub">수업 중에는 데이터를 바꿀 수 없어요. 다른 데이터를 쓰려면 새로 배정하세요.</div>' : ''}`;
+}
+
+// CSV 파일 글자: UTF-8이 아니면 엑셀 한글 기본(EUC-KR)으로 읽는다.
+async function readCsvFile(file) {
+  const buf = await file.arrayBuffer();
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(buf); }
+  catch { return new TextDecoder('euc-kr').decode(buf); }
+}
+
+// 열 이름·글자 값을 4개 언어로 번역해 둔다(학생 화면·웹앱에서 씀). 실패하면 원문.
+async function translateTable(ds) {
+  const vals = [];
+  ds.cols.forEach((_, c) => { if (ds.types[c] === 'cat') ds.rows.forEach(r => { if (r[c] !== '' && !vals.includes(r[c])) vals.push(r[c]); }); });
+  const texts = [...ds.cols, ...vals.slice(0, 80)];
+  const out = {};
+  for (const lang of LANGS) {
+    try {
+      const r = await fetch('/api/translate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texts, targetLang: lang, sourceLang: 'auto' }) });
+      const d = await r.json();
+      if (Array.isArray(d.translations)) out[lang] = d.translations.map(x => x.text);
+    } catch { /* 원문으로 */ }
+  }
+  const pick = i => Object.fromEntries(LANGS.filter(l => out[l] && out[l][i]).map(l => [l, out[l][i]]));
+  return { cols: ds.cols.map((_, i) => pick(i)), vals: vals.slice(0, 80).map((v, k) => ({ v, tr: pick(ds.cols.length + k) })) };
 }
 
 function stuName(id) {
@@ -251,27 +327,28 @@ function boardHtml() {
   const min = a.minPerLabel || 15;
   const steps = [0, 0, 0, 0, 0, 0];
   S.pairs.forEach(p => { steps[(p.summary && p.summary.step) || 1]++; });
+  const tbl = isTbl(a);
   const done = S.pairs.filter(p => p.summary && p.summary.published).length;
   const cards = S.pairs.map(p => {
     const s = p.summary || {};
     const step = s.step || 1;
     const labels = (s.labels || []).map(l => `<span class="${l.c < min ? 'low' : ''}">${E(l.emoji || '')}${E(l.name)} ${l.c}/${min}${l.t ? ` · 테스트 ${l.t}` : ''}</span>`).join('');
     const lead = (p.members || []).map(id => `<option value="${E(id)}" ${id === p.leaderId ? 'selected' : ''}>${E((p.memberNames || {})[id] || id)}</option>`).join('');
-    const needHelp = step === 2 && (s.labels || []).some(l => l.c < min / 2);
+    const needHelp = !tbl && step === 2 && (s.labels || []).some(l => l.c < min / 2);
     return `<div class="ai-bcard${needHelp ? ' help' : ''}">
-      <div class="ai-pair-h"><b>${p.no}모둠</b><span class="ai-step">${STEP[step]}</span></div>
+      <div class="ai-pair-h"><b>${p.no}모둠</b><span class="ai-step">${stepOf(a, step)}</span></div>
       <div class="ai-sub">${(p.members || []).map(id => E((p.memberNames || {})[id] || id) + (id === p.leaderId ? '★' : '')).join(' · ')}</div>
       ${s.topic ? `<div><b>${E(s.topic)}</b>${s.round > 1 ? ` <span class="ai-sub">${s.round}번째 모델</span>` : ''}</div>` : ''}
       <div class="ai-lc">${labels}</div>
-      <div class="ai-sub">${s.model ? '모델 연결 ✓' : ''}${s.acc != null ? ` · 정확도 ${s.acc}%` : ''}</div>
+      <div class="ai-sub">${tbl ? `살펴보기 ${(s.tb || {}).checked || 0}/${(p.members || []).length}명 · 실험 ${(s.tb || {}).trials || 0}개` : (s.model ? '모델 연결 ✓' : '')}${s.acc != null ? ` · 정확도 ${s.acc}%` : ''}${s.mae != null ? ` · 평균 오차 ${s.mae}` : ''}</div>
       ${s.published ? `<a href="${OHINFO}/aiapp.html?id=${encodeURIComponent(p.currentProjectId || '')}" target="_blank" rel="noopener">🎉 ${E(s.title || '웹앱')} ↗</a>` : ''}
       <label class="ai-sub">대표 <select class="inp ai-lead" data-ai="leaderSel" data-pair="${E(p.id)}">${lead}</select></label>
     </div>`;
   }).join('');
-  return `<div class="stats-grid">${[1, 2, 3, 4, 5].map(n => `<div class="stat-card"><div class="stat-num">${steps[n]}</div><div class="stat-label">${STEP[n]}</div></div>`).join('')}
+  return `<div class="stats-grid">${[1, 2, 3, 4, 5].map(n => `<div class="stat-card"><div class="stat-num">${steps[n]}</div><div class="stat-label">${stepOf(a, n)}</div></div>`).join('')}
       <div class="stat-card"><div class="stat-num">${done}</div><div class="stat-label">공개 완료</div></div></div>
     <div class="ai-btns" style="margin-bottom:10px;"><button class="btn sm" data-ai="full">전체 화면</button>
-      <span class="ai-sub">빨간 숫자 = 아직 ${min}장 미만 · 노란 카드 = 사진이 절반도 안 모인 모둠(도움 필요)</span></div>
+      <span class="ai-sub">${tbl ? '표 데이터 수업: 살펴보기 = [다 봤어요]를 누른 모둠원 수' : `빨간 숫자 = 아직 ${min}장 미만 · 노란 카드 = 사진이 절반도 안 모인 모둠(도움 필요)`}</span></div>
     <div class="ai-board" id="aiBoard">${cards || '<div class="empty-state">모둠이 없습니다.</div>'}</div>`;
 }
 
@@ -299,10 +376,11 @@ function projectHtml(p, pair) {
       : LANGS.map(g => `<span class="ai-sub">${g}: ${E((l.tr || {})[g] || '-')}</span>`).join(' ');
     return `<tr><td><b>${E(l.emoji || al.emoji || '')} ${E(l.name)}</b>${custom}</td><td>${tr}</td><td>${cnt('train', l.id)}</td><td>${cnt('test', l.id)}</td><td>${E((l.owners && l.owners.length ? l.owners : [l.owner]).filter(Boolean).map(id => names[id] || id).join(', '))}</td></tr>`;
   }).join('');
-  const evalHtml = evals.map(r => `<div class="ai-eval"><b>${r.n}회차 ${r.pct}%</b> (${r.correct}/${r.total})${r.modelVersion ? ` · ${r.modelVersion}번 모델` : ''}
+  const evalHtml = evals.map(r => `<div class="ai-eval"><b>${r.n}회차 ${r.pct != null ? r.pct + '%' : '평균 오차 ' + (r.mae != null ? r.mae : '-')}</b>${r.total ? ` (${r.correct}/${r.total})` : ''}${r.modelVersion ? ` · ${r.modelVersion}번 모델` : ''}
       ${Object.entries(r.stars || {}).map(([sid, v]) => `<div>${E(names[sid] || sid)}: ${'★'.repeat(v.s || 0)}${'☆'.repeat(5 - (v.s || 0))} — ${E(v.reason || '')}</div>`).join('')}
       ${(r.cause || []).length ? `<div>원인: ${(r.cause || []).map(c => E(CAUSES[c] || c)).join(', ')}${r.causeText ? ` — ${E(r.causeText)}` : ''}</div>` : ''}
       ${r.fix ? `<div>고칠 점: ${E(r.fix)}</div>` : ''}</div>`).join('') || '<span class="ai-sub">평가 전</span>';
+  if (isTbl(curAsg())) return tableProjectHtml(p, pair, names, app, hidden, evalHtml);
   const appLink = p.published ? `<a href="${OHINFO}/aiapp.html?id=${encodeURIComponent(p.id)}" target="_blank" rel="noopener">${E((app && app.title) || '웹앱')} ↗</a> <span class="ai-sub">${E(THEME_NAMES[(app && app.theme)] || '')}</span>` : '<span class="ai-sub">공개 전</span>';
   return `<div class="card ai-proj">
  <h2>${pair.no || '?'}모둠 · ${(pair.members || []).map(id => E(names[id] || id)).join(', ')} <span class="ai-sub">${p.round || 1}번째 모델 · ${STEP[p.step || 1]}</span></h2>
@@ -311,6 +389,33 @@ function projectHtml(p, pair) {
       ? `<button class="btn sm accent" data-ai="trSave" data-pid="${E(p.id)}">저장</button><button class="btn sm ghost" data-ai="trCancel">취소</button>`
       : `<button class="btn sm ghost" data-ai="trEdit" data-pid="${E(p.id)}">고치기</button>`}</th><th>학습</th><th>테스트</th><th>담당</th></tr></thead><tbody>${labels}</tbody></table></div>
     <div><b>모델:</b> ${p.modelVersion ? `${p.modelVersion}번 모델${(p.models && p.models['v' + p.modelVersion] && p.models['v' + p.modelVersion].valAcc != null) ? ` (학습 확인 점수 ${p.models['v' + p.modelVersion].valAcc}%)` : ''} · 지금까지 ${Object.keys(p.models || {}).length}번 학습` : (p.modelUrl ? `<a href="${E(p.modelUrl)}" target="_blank" rel="noopener">${E(p.modelId || p.modelUrl)}</a>` : '-')}</div>
+    <div><b>평가:</b> ${evalHtml}</div>
+    <div><b>웹앱:</b> ${appLink}</div>
+    ${app && (app.cover || app.desc) ? `<div class="ai-cover">${app.cover ? `<img src="${E(app.cover)}" alt="">` : ''}<div>
+      ${app.desc ? `<div>${E(app.desc)}</div>` : ''}
+      <div class="ai-btns">${app.cover ? `<button class="btn sm ${hidden._cover ? 'accent' : 'ghost'}" data-ai="hide" data-pid="${E(p.id)}" data-id="_cover">${hidden._cover ? '대문 사진 숨김 해제' : '대문 사진 숨기기'}</button>` : ''}
+      ${app.desc ? `<button class="btn sm ${hidden._desc ? 'accent' : 'ghost'}" data-ai="hide" data-pid="${E(p.id)}" data-id="_desc">${hidden._desc ? '설명 숨김 해제' : '설명 숨기기'}</button>` : ''}</div></div></div>` : ''}</div>`;
+}
+
+// 표 데이터 프로젝트: 쓴 정보, 모둠원 실험, 고른 모델
+function tableProjectHtml(p, pair, names, app, hidden, evalHtml) {
+  const a = curAsg(), tb = a.table || {};
+  const ds = makeDataset(tb.csv || '', tb.target || '');
+  const col = c => ds.cols[c] || '?';
+  const isC = ds.prob === 'class';
+  const sc = v => (v == null ? '-' : isC ? v + '%' : '평균 오차 ' + v);
+  const trials = Object.entries(p.tTrials || {}).map(([m, x]) => `<tr><td>${E(names[m] || m)}</td><td>${E((x.features || []).map(col).join(', '))}</td>${isC ? `<td>${x.depth || ''}</td>` : ''}<td>${E(sc(x.score))}</td><td>${x.v || ''}번째</td></tr>`).join('');
+  const hyp = Object.entries(p.tHyp || {}).map(([m, h]) => `${E(names[m] || m)}: ${E(h.c != null ? col(h.c) : '-')}${h.why ? ` (${E(h.why)})` : ''}`).join(' · ');
+  const appLink = p.published ? `<a href="${OHINFO}/aiapp.html?id=${encodeURIComponent(p.id)}" target="_blank" rel="noopener">${E((app && app.title) || '웹앱')} ↗</a> <span class="ai-sub">${E(THEME_NAMES[(app && app.theme)] || '')}</span>` : '<span class="ai-sub">공개 전</span>';
+  const m = p.tModel;
+  return `<div class="card ai-proj">
+    <h2>${pair.no || '?'}모둠 · ${(pair.members || []).map(id => E(names[id] || id)).join(', ')} <span class="ai-sub">${p.round || 1}번째 모델 · ${stepOf(a, p.step || 1)}</span></h2>
+    <div><b>우리 AI가 하는 일:</b> ${E(p.topic || '-')}</div>
+    <div><b>쓴 정보:</b> ${E((p.tFeat || []).map(col).join(', ') || '-')} · <b>맞힐 값:</b> ${E(ds.target)}</div>
+    ${hyp ? `<div><b>예상:</b> ${hyp}</div>` : ''}
+    <div><b>뺀 줄:</b> ${Object.values(p.tDrop || {}).filter(v => v === true).length}줄 · <b>살펴보기 완료:</b> ${Object.keys(p.tChecked || {}).map(id => E(names[id] || id)).join(', ') || '-'}</div>
+    <div class="table-wrap"><table class="ai-table"><thead><tr><th>실험한 사람</th><th>쓴 정보</th>${isC ? '<th>깊이</th>' : ''}<th>공부 점수</th><th>회차</th></tr></thead><tbody>${trials || '<tr><td colspan="5" class="ai-sub">아직 실험 없음</td></tr>'}</tbody></table></div>
+    <div><b>고른 모델:</b> ${m ? `${E(names[m.uid] || m.uid)}의 ${m.v}번째 실험 · 시험 ${E(sc(m.score))}` : '-'}</div>
     <div><b>평가:</b> ${evalHtml}</div>
     <div><b>웹앱:</b> ${appLink}</div>
     ${app && (app.cover || app.desc) ? `<div class="ai-cover">${app.cover ? `<img src="${E(app.cover)}" alt="">` : ''}<div>
@@ -332,6 +437,7 @@ function readForm() {
     boardScope: (document.querySelector('input[name="aiT_scope"]:checked') || {}).value === 'all' ? 'all' : 'class',
     sources: [...document.querySelectorAll('input[name="aiT_src"]:checked')].map(x => x.value),
     cameraUpload: !!($('aiT_camUp') && $('aiT_camUp').checked),
+    kind: (document.querySelector('input[name="aiT_kind"]:checked') || {}).value === 'table' ? 'table' : 'image',
   };
 }
 
@@ -388,7 +494,20 @@ const actions = {
   async saveAsg() {
     const f = readForm();
     if (!f.title || !f.schoolName) return toast('제목과 학교를 입력하세요.', 'err');
-    if (!f.sources.length) return toast('사진 모으는 방법을 하나 이상 고르세요.', 'err');
+    if (S.editId) f.kind = isTbl(curEdit()) ? 'table' : 'image';   // 배정한 뒤에는 종류를 바꾸지 않는다
+    if (f.kind === 'image' && !f.sources.length) return toast('사진 모으는 방법을 하나 이상 고르세요.', 'err');
+    if (f.kind === 'table') {
+      const tb = S.tbl;
+      if (!tb || !tb.csv) return toast('표 데이터를 고르거나 올리세요.', 'err');
+      const ds = makeDataset(tb.csv, tb.target);
+      const errs = validateDataset(ds, new Blob([tb.csv]).size);
+      if (errs.length) return toast(DS_ERR[errs[0]] || errs[0], 'err');
+      const name = ($('aiT_tname') && $('aiT_tname').value.trim()) || tb.name || '표 데이터';
+      const old = S.editId && curEdit().table;
+      // 같은 데이터면 번역을 다시 하지 않는다
+      const trd = old && old.csv === tb.csv && old.tr ? old.tr : (toast('열 이름을 번역하는 중...'), await translateTable(ds));
+      f.table = { name, csv: tb.csv, target: tb.target, tr: trd };
+    }
     await guard(async () => {
       if (S.editId) {
         await updateDoc(doc(db, 'ai_assignments', S.editId), f);
@@ -400,14 +519,16 @@ const actions = {
         toast(`${f.grade}학년 ${f.class}반에 배정했습니다.`, 'ok');
         // 내용은 그대로 두고 반만 다음 반으로 넘겨 둔다(여러 반에 연달아 배정하기 쉽게).
         S.draft = { ...f, class: String(Math.min(15, Number(f.class) + 1)) };
+        S.kindDraft = f.kind;
       }
       S.editId = '';
       await loadBase(); render();
     });
   },
   edit(el) { S.editId = el.dataset.id; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); },
+  csvFile() { /* 파일 고르기는 change에서 */ },
   cancelEdit() { S.editId = ''; render(); },
-  resetForm() { S.draft = null; render(); },
+  resetForm() { S.draft = null; S.tbl = null; S.tblFor = ''; S.kindDraft = ''; render(); },
   async delAsg(el) {
     const a = S.asgs.find(x => x.id === el.dataset.id);
     if (!a || !confirm(`"${a.title}" 배정을 지울까요?\n모둠 구성도 함께 지워집니다. 학생들이 만든 프로젝트와 공개 웹앱은 남습니다.`)) return;
@@ -487,11 +608,11 @@ const actions = {
       const pair = pairOf(p.pairId);
       const evals = Object.keys(p.evals || {}).filter(k => /^r\d+$/.test(k)).map(k => p.evals[k]).sort((a, b) => a.n - b.n);
       const last = evals[evals.length - 1] || {};
-      const labels = (p.labels || []).map(l => `${l.name}(${(p.counts && p.counts.train && p.counts.train[l.id]) || 0})`).join(' / ');
+      const labels = isTbl(curAsg()) ? `정보: ${(p.tFeat || []).length}개 · 실험 ${Object.keys(p.tTrials || {}).length}개` : (p.labels || []).map(l => `${l.name}(${(p.counts && p.counts.train && p.counts.train[l.id]) || 0})`).join(' / ');
       for (const id of (pair.members || [])) {
         const st = (last.stars || {})[id] || {};
         rows.push([pair.no || '', (pair.memberNames || {})[id] || id, id === pair.leaderId ? '대표' : '', p.round || 1, p.topic || '', labels,
-          STEP[p.step || 1], evals.map(r => `${r.n}회 ${r.pct}%`).join(' → '), st.s || '', st.reason || '',
+          stepOf(curAsg(), p.step || 1), evals.map(r => `${r.n}회 ${r.pct != null ? r.pct + '%' : '오차 ' + r.mae}`).join(' → '), st.s || '', st.reason || '',
           (last.cause || []).map(c => CAUSES[c] || c).join(', ') + (last.causeText ? ` (${last.causeText})` : ''), last.fix || '',
           p.published ? `${OHINFO}/aiapp.html?id=${p.id}` : '']);
       }
@@ -504,7 +625,30 @@ const actions = {
   },
 };
 
+const curEdit = () => S.asgs.find(a => a.id === S.editId) || {};
 const changeActions = {
+  kind(el) { S.kindDraft = el.value; const box = document.querySelector('#section-ailab .ai-assign'); if (box) box.dataset.kind = el.value; refreshTable(); },
+  async sample(el) {
+    const x = SAMPLES.find(s => s.f === el.value);
+    if (!x) return;
+    await guard(async () => {
+      const r = await fetch('ai-data/' + x.f, { cache: 'no-cache' });
+      if (!r.ok) throw new Error('예시 데이터를 받지 못했어요 (' + r.status + ')');
+      S.tbl = { name: x.name, csv: await r.text(), target: x.target };
+      const t = $('aiT_title'); if (t && !t.value.trim()) t.value = x.name;
+      refreshTable();
+    });
+  },
+  async csvFile(el) {
+    const file = el.files && el.files[0];
+    el.value = '';
+    if (!file) return;
+    if (file.size > CSV_MAX_BYTES) return toast(DS_ERR.tooBig, 'err');
+    const csv = await readCsvFile(file);
+    S.tbl = { name: file.name.replace(/\.(csv|txt)$/i, '').slice(0, 40), csv, target: '' };
+    refreshTable();
+  },
+  target(el) { if (S.tbl) { S.tbl.target = el.value; refreshTable(); } },
   async status(el) { await guard(async () => { await updateDoc(doc(db, 'ai_assignments', el.dataset.id), { status: el.checked ? 'ON' : 'OFF' }); await loadBase(); render(); }); },
   pickAs(el) { go(S.tab, el.value); },
   async addMem(el) {
@@ -594,6 +738,11 @@ const STYLE = `
 #section-ailab .ai-seg3 { grid-template-columns: repeat(3, 1fr); }
 @media (max-width: 700px) { #section-ailab .ai-seg3 { grid-template-columns: 1fr; } }
 #section-ailab .ai-camup { display: block; margin-top: 4px; line-height: 1.5; }
+#section-ailab .ai-assign[data-kind="table"] .ai-img, #section-ailab .ai-assign[data-kind="image"] .ai-tbl { display: none; }
+#section-ailab .ai-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+@media (max-width: 700px) { #section-ailab .ai-row2 { grid-template-columns: 1fr; } }
+#section-ailab .ai-sample { flex: 1 1 280px; width: auto; }
+#section-ailab .ai-tbl .table-wrap { max-height: 220px; overflow: auto; }
 #section-ailab .ai-del:hover { color: #c62828; }
 @media (max-width: 700px) { #section-ailab .ai-group .ai-asg { grid-template-columns: 1fr auto; } #section-ailab .ai-group .ai-asg .ai-btns { grid-column: 1 / -1; } }
 #aiToast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 6px; align-items: center; }

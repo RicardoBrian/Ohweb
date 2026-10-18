@@ -5,6 +5,6 @@
 set -e
 cd "$(dirname "$0")/../public"
 V=${1:-$(date +%Y%m%d%H%M)}
-sed -i -E "s#'\./(ai-[a-z0-9]+|ailab)\.js(\?v=[^']*)?'#'./\1.js?v=$V'#g" ai-*.js ailab.js aiapp.html ailab.html
+sed -i -E "s#'\./(ai-[a-z0-9-]+|ailab)\.js(\?v=[^']*)?'#'./\1.js?v=$V'#g" ai-*.js ailab.js aiapp.html ailab.html
 sed -i -E "s#src=\"ailab\.js(\?v=[^\"]*)?\"#src=\"ailab.js?v=$V\"#; s#href=\"ai-themes\.css(\?v=[^\"]*)?\"#href=\"ai-themes.css?v=$V\"#" aiapp.html ailab.html
 echo "AI 실험실 버전: $V"

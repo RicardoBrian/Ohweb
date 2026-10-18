@@ -7,7 +7,7 @@
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="ai-themes.css?v=202610170240">
+  <link rel="stylesheet" href="ai-themes.css?v=202610180059">
   <style>
     html, body { margin: 0; min-height: 100%; }
     body { background: #fafafa; }
@@ -25,10 +25,10 @@
 import { db } from './firebase-config.js';
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { SAFE_ID } from './escape.js';
-import { makeT, getLang, setLang } from './ai-i18n.js?v=202610170240';
-import { appHtml, probsByLabel } from './ai-render.js?v=202610170240';
-import { loadModel, loadDriveModel, predict, loadLibs } from './ai-model.js?v=202610170240';
-import { extractFromTransfer, fetchFirstImage } from './ai-image.js?v=202610170240';
+import { makeT, getLang, setLang } from './ai-i18n.js?v=202610180059';
+import { appHtml, probsByLabel } from './ai-render.js?v=202610180059';
+import { loadModel, loadDriveModel, predict, loadLibs } from './ai-model.js?v=202610180059';
+import { extractFromTransfer, fetchFirstImage } from './ai-image.js?v=202610180059';
 
 const params = new URLSearchParams(location.search);
 const appId = params.get('id') || '';
@@ -66,6 +66,13 @@ async function start() {
   app = snap.data();
   if (!app.published && !preview) return fail(t('notPublished'));
   document.title = app.title || 'AI';
+  // 표 데이터 앱: 모델이 작은 식·나무라서 문서 안에 들어 있다(받을 파일 없음). 칸을 채우고 [물어보기]를 누른다.
+  if (app.table && Array.isArray(app.table.features)) {
+    state.tIn = app.table.features.map(f => f.def);
+    render();
+    tableCore = await import('./ai-table-core.js?v=202610180059');
+    return;
+  }
   render();
   // 사진을 고르기 전에 모델을 미리 받아 둔다.
   // 실험실에서 학습한 모델(배포한 번호)은 드라이브에서, 예전 방식은 티처블머신 링크에서.
@@ -87,6 +94,28 @@ async function handleBlob(blob) {
   if (modelErr) { state.status = 'error'; state.msg = modelErr; return render(); }
   if (loaded) runPredict();
 }
+
+let tableCore = null;
+function tablePredict() {
+  if (!tableCore) return;
+  const r = tableCore.appPredict(app.table, state.tIn);
+  if (app.table.prob === 'class') state.probs = Object.fromEntries(r.p.map((p, i) => ['c' + i, p]));
+  else state.tv = r.v;
+  state.status = 'ready';
+  render();
+  const res = root.querySelector('.aa-result');
+  if (res) res.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+// 숫자 칸: 밀기와 숫자 칸을 서로 맞춘다(다시 그리면 밀던 손이 끊기므로 칸만 고친다).
+root.addEventListener('input', e => {
+  const el = e.target.closest('[data-ti]');
+  if (!el || !app || !app.table) return;
+  const i = Number(el.dataset.ti), f = app.table.features[i];
+  let v = Number(el.value);
+  if (Number.isNaN(v)) return;
+  state.tIn[i] = v;
+  root.querySelectorAll(`[data-ti="${i}"]`).forEach(x => { if (x !== el && x.tagName === 'INPUT') x.value = String(Math.min(f.max, Math.max(f.min, v))); });
+});
 
 let _seq = 0;
 async function runPredict() {
@@ -119,11 +148,14 @@ root.addEventListener('click', e => {
   const langBtn = e.target.closest('[data-lang]');
   if (!app) return;
   if (langBtn) { lang = langBtn.dataset.lang; setLang(lang); t = makeT(lang); render(); return; }
+  const opt = e.target.closest('[data-act="topt"]');
+  if (opt) { state.tIn[Number(opt.dataset.ti)] = opt.dataset.v; render(); return; }
+  if (e.target.closest('[data-act="tpredict"]')) { tablePredict(); return; }
   if (e.target.closest('[data-act="pick"]')) { fileInput.click(); return; }
   const cap = e.target.closest('[data-act="cap"]');
   if (cap) {
     // 그리기·카메라는 누를 때만 불러온다
-    import('./ai-capture.js?v=202610170240').then(M => (cap.dataset.v === 'draw' ? M.openDraw : M.openCamera)({ t, onAdd: blob => handleBlob(blob), single: true }));
+    import('./ai-capture.js?v=202610180059').then(M => (cap.dataset.v === 'draw' ? M.openDraw : M.openCamera)({ t, onAdd: blob => handleBlob(blob), single: true }));
     return;
   }
   const zone = e.target.closest('[data-act="zone"]');
@@ -132,8 +164,8 @@ root.addEventListener('click', e => {
 // 화면 어디에 떨어뜨려도 사진으로 받는다(칸 밖에 놓으면 브라우저가 그 사진으로 페이지를 바꿔 버리므로).
 window.addEventListener('dragover', e => { e.preventDefault(); const z = root.querySelector('[data-act="zone"]'); if (z) z.classList.add('drag'); });
 window.addEventListener('dragleave', e => { if (!e.relatedTarget) { const z = root.querySelector('[data-act="zone"]'); if (z) z.classList.remove('drag'); } });
-window.addEventListener('drop', e => { e.preventDefault(); const z = root.querySelector('[data-act="zone"]'); if (z) z.classList.remove('drag'); if (app) handleTransfer(e.dataTransfer); });
-window.addEventListener('paste', e => { if (app) handleTransfer(e.clipboardData); });
+window.addEventListener('drop', e => { e.preventDefault(); const z = root.querySelector('[data-act="zone"]'); if (z) z.classList.remove('drag'); if (app && !app.table) handleTransfer(e.dataTransfer); });
+window.addEventListener('paste', e => { if (app && !app.table) handleTransfer(e.clipboardData); });
 root.addEventListener('keydown', e => {
   const z = e.target.closest('[data-act="zone"]');
   if (z && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); fileInput.click(); }

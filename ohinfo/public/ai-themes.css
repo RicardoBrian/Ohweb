@@ -272,3 +272,17 @@
 .ai-app[data-font="hand"] .aa-desc, .ai-app[data-font="hand"] .aa-row { font-size: 18px; }
 .ai-app[data-font="bold"] { --aa-font: "Black Han Sans", "IBM Plex Sans KR", system-ui, sans-serif; }
 .ai-app[data-font="bold"] .aa-title { font-weight: 400; }
+
+/* 표 데이터 앱: 정보 입력 칸 */
+.ai-app .aa-form { display: flex; flex-direction: column; gap: 16px; }
+.ai-app .aa-f { display: flex; flex-direction: column; gap: 6px; }
+.ai-app .aa-fl { font-weight: 700; font-size: 15px; }
+.ai-app .aa-frow { display: flex; align-items: center; gap: 10px; }
+.ai-app .aa-range { flex: 1; min-width: 0; accent-color: var(--aa-accent); height: 28px; }
+.ai-app .aa-num { width: 96px; font: 600 16px/1.2 var(--aa-font); padding: 8px 10px; border-radius: 10px; border: 1px solid var(--aa-track); background: var(--aa-card); color: var(--aa-text); text-align: right; }
+.ai-app .aa-range-hint { font-size: 12px; color: var(--aa-sub); }
+.ai-app .aa-opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.ai-app .aa-opt { font: 600 14px/1 var(--aa-font); padding: 10px 14px; border-radius: 999px; border: 1.5px solid var(--aa-track); background: transparent; color: var(--aa-text); cursor: pointer; }
+.ai-app .aa-opt.on { border-color: var(--aa-accent); background: var(--aa-chip-bg); color: var(--aa-chip-text); }
+.ai-app .aa-ask { align-self: center; margin-top: 4px; }
+.ai-app .aa-val { color: var(--aa-accent); font-size: 1.25em; }

@@ -14,12 +14,12 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { loadSession, verifyStudentAuth, authReady, clearSession } from './session.js';
 import { escHtml } from './escape.js';
-import * as C from './ai-core.js?v=202610170240';
-import { makeT, getLang, setLang } from './ai-i18n.js?v=202610170240';
-import { prepareImage, prepareCover, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202610170240';
-import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, refetchTrainPhoto, saveModelToDrive, deviceId, devPhotoPut, devPhotoGet, devPhotoDel } from './ai-drive.js?v=202610170240';
-import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202610170240';
-import { appHtml, probsByLabel, THEMES, ACCENTS, FONTS, ensureFont } from './ai-render.js?v=202610170240';
+import * as C from './ai-core.js?v=202610180059';
+import { makeT, getLang, setLang } from './ai-i18n.js?v=202610180059';
+import { prepareImage, prepareCover, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202610180059';
+import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, refetchTrainPhoto, saveModelToDrive, deviceId, devPhotoPut, devPhotoGet, devPhotoDel } from './ai-drive.js?v=202610180059';
+import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202610180059';
+import { appHtml, probsByLabel, THEMES, ACCENTS, FONTS, ensureFont } from './ai-render.js?v=202610180059';
 
 const E = escHtml;
 const $ = id => document.getElementById(id);
@@ -67,6 +67,23 @@ const sources = () => (S.asg && Array.isArray(S.asg.sources) && S.asg.sources.le
 // 카메라 사진은 기본으로 찍은 기기에만 둔다(사람 얼굴). 선생님이 '올리기 허용'을 켜면 지금처럼 드라이브로.
 const camLocal = () => sources().includes('camera') && !(S.asg && S.asg.cameraUpload);
 const DEV = deviceId();
+// 표 데이터(CSV) 활동: 선생님이 배정에서 고른다. 화면 ①~④는 ai-table.js가 그린다(그때만 불러온다).
+const isTable = () => !!(S.asg && S.asg.kind === 'table');
+let TB = null, _tbLoading = null;
+const TBon = () => (isTable() && TB ? TB : null);
+function loadTable() {
+  if (_tbLoading) return _tbLoading;
+  _tbLoading = import('./ai-table.js?v=202610180059').then(M => {
+    TB = M.makeTable({
+      S, E, t: (k, v) => t(k, v), $, C, isLeader, members, nameOf, leaderName, pref, safeUpdate, schedule, toast, nextBtn, draftOr,
+      ratingHtml, causeHtml, debounce, serverTimestamp, go: n => actions.step(n),
+    });
+    sync(); schedule();
+  }).catch(e => { console.error(e); _tbLoading = null; screen(t('error'), e.message); });
+  return _tbLoading;
+}
+// 단계 이름: 표 데이터는 ②가 "데이터 살펴보기"
+const stepName = n => t(isTable() && n === 2 ? 'ts2' : 's' + n);
 // 이 기기에만 있는 사진의 미리보기·평가용 그림(Firestore 기록에는 그림이 없다)
 const thumbOf = im => (im.local ? ((S.dev[im.id] && S.dev[im.id].thumb) || '') : im.thumb);
 const imgs = (kind, labelId) => S.images.filter(i => i.kind === kind && (!labelId || i.labelId === labelId));
@@ -119,6 +136,7 @@ function render() {
     return;
   }
   if (!S.project) return screen(t('loading'), '');
+  if (isTable() && !TB) { loadTable(); return screen(t('loading'), ''); }
 
   // 입력 중이던 칸과 커서 위치를 지킨다.
   const ae = document.activeElement;
@@ -150,6 +168,7 @@ function nextTarget() {
   const p = S.project, open = p.step || 1, leader = isLeader();
   const has = sel => (document.querySelector('#main ' + sel) ? sel : '');
   const nextBtnSel = '.next .btn.primary[data-act="step"]';
+  if (TBon() && S.viewStep <= 4) return TBon().nextTarget(has);
   switch (S.viewStep) {
     case 1:
       if (!leader) return open >= 2 ? has(nextBtnSel) : '';
@@ -225,14 +244,14 @@ function stepperHtml() {
   return `<ol class="stepper">${C.STEPS.map(n => {
     const cls = [n === S.viewStep ? 'cur' : '', n < open ? 'done' : '', n > open ? 'lock' : ''].join(' ');
     return `<li><button class="${cls}" data-act="step" data-v="${n}" ${n > open ? `disabled title="${E(t('locked'))}"` : ''}>
-      <span class="sn">${n < open ? '✓' : n}</span><span class="st">${E(t('s' + n))}</span></button></li>`;
+      <span class="sn">${n < open ? '✓' : n}</span><span class="st">${E(stepName(n))}</span></button></li>`;
   }).join('')}</ol>`;
 }
 
 function bannerHtml() {
   const open = S.project.step || 1;
   if (open <= S.viewStep || S.bannerFor === open) return '';
-  return `<div class="banner"><span>🎉 ${E(t('stepOpened'))} <b>${open}. ${E(t('s' + open))}</b></span>
+  return `<div class="banner"><span>🎉 ${E(t('stepOpened'))} <b>${open}. ${E(stepName(open))}</b></span>
     <button class="btn sm" data-act="step" data-v="${open}">${E(t('go'))} →</button>
     <button class="x" data-act="banner-x" aria-label="${E(t('close'))}">×</button></div>`;
 }
@@ -248,6 +267,7 @@ function statusHtml() {
 }
 
 function stepHtml() {
+  if (TBon() && S.viewStep >= 1 && S.viewStep <= 4) return TBon().step(S.viewStep);
   switch (S.viewStep) {
     case 1: return step1();
     case 2: return step2();
@@ -540,14 +560,14 @@ function editingNote(field) {
   return `<span class="typing">✎ ${E(t('typing', { name: nameOf(ed.by) }))}</span>`;
 }
 
-function causeHtml(r) {
-  const causes = t('causes');
+function causeHtml(r, key = 'causes', fixPh = 'fixPh') {
+  const causes = t(key);
   const sel = new Set(r.cause || []);
   return `<div class="card"><h3>${E(t('causeTitle'))}</h3>
     <div class="checks">${Object.keys(causes).map(k => `<label class="check"><input type="checkbox" data-act="cause" data-v="${k}" ${sel.has(k) ? 'checked' : ''}> ${E(causes[k])}</label>`).join('')}</div>
     <div class="field">${editingNote('causeText')}<textarea id="f-causeText" data-field="causeText" maxlength="300" rows="2" placeholder="${E(t('causeTextPh'))}">${E(draftOr('causeText', r.causeText))}</textarea></div>
     <h3>${E(t('fixTitle'))}</h3>
-    <div class="field">${editingNote('fix')}<textarea id="f-fix" data-field="fix" maxlength="300" rows="2" placeholder="${E(t('fixPh'))}">${E(draftOr('fix', r.fix))}</textarea></div></div>`;
+    <div class="field">${editingNote('fix')}<textarea id="f-fix" data-field="fix" maxlength="300" rows="2" placeholder="${E(t(fixPh))}">${E(draftOr('fix', r.fix))}</textarea></div></div>`;
 }
 
 function tryOneHtml() {
@@ -584,13 +604,16 @@ function appData() {
     descLang: (p.app && p.app.descLang) || S.lang, descTr: (p.app && p.app.descTr) || {},
     labels: labelsOf().map(appLabel),
     modelVersion: p.modelVersion || 0, modelUrl: p.modelVersion ? '' : (p.modelUrl || ''), mapping: p.mapping || {},
-    inputs: sources().filter(x => x !== 'search'),
+    inputs: isTable() ? [] : sources().filter(x => x !== 'search'),
+    ...(TBon() ? { table: TBon().appTable() } : {}),
     hiddenPhrases: (S.appDoc && S.appDoc.hiddenPhrases) || {},
   };
 }
 // 공개 뒤에 고친 게 있는지 비교하는 서명(번역 결과는 빼고).
 function appSig(a) {
-  return JSON.stringify({ accent: a.accent, font: a.font, title: a.title, desc: a.desc, cover: a.cover ? a.cover.length + a.cover.slice(-24) : '', theme: a.theme, v: a.modelVersion, m: a.modelUrl, map: a.mapping, l: a.labels.map(l => [l.id, l.name, l.emoji, l.phrase, l.custom]) });
+  // 표 데이터 앱만 고른 모델·단위를 더한다(이미지 앱의 서명은 예전 그대로 — 이미 공개한 앱이 '바뀜'으로 보이지 않게)
+  const tb = a.table ? { tb: [a.table.key, a.table.unit] } : {};
+  return JSON.stringify({ ...tb, accent: a.accent, font: a.font, title: a.title, desc: a.desc, cover: a.cover ? a.cover.length + a.cover.slice(-24) : '', theme: a.theme, v: a.modelVersion, m: a.modelUrl, map: a.mapping, l: a.labels.map(l => [l.id, l.name, l.emoji, l.phrase, l.custom]) });
 }
 
 function step5() {
@@ -618,7 +641,8 @@ function step5() {
     <div class="field"><label for="f-desc">${E(t('descLabel'))}</label>
       <textarea id="f-desc" data-field="desc" maxlength="${C.DESC_MAX}" rows="2" placeholder="${E(t('descPh'))}">${E(a.desc)}</textarea></div>
     ${(S.appDoc && S.appDoc.hiddenPhrases && (S.appDoc.hiddenPhrases._cover || S.appDoc.hiddenPhrases._desc)) ? `<div class="note warn">${E(t('hiddenCover'))}</div>` : ''}</div>`;
-  h += `<div class="card"><h3>${E(t('perLabel'))}</h3>${a.labels.map((l, i) => {
+  if (TBon() && !TBon().isClass()) h += TBon().unitCard();
+  else h += `<div class="card"><h3>${E(t('perLabel'))}</h3>${a.labels.map((l, i) => {
     const name = l.name;
     const err = l.phrase === C.CUSTOM_PHRASE ? C.validateCustomPhrase(draftOr('custom-' + l.id, l.custom)) : '';
     return `<div class="al">
@@ -633,7 +657,7 @@ function step5() {
   }).join('')}</div>`;
   const dirty = p.published && p.pubSig !== appSig(a);
   const evaluated = C.evalRounds(p).some(r => (r.modelVersion || 0) === (p.modelVersion || 0));
-  h += `<div class="card">${p.modelVersion ? `<div class="deploy-model"><b>${E(t('deployModel', { n: p.modelVersion }))}</b></div>
+  h += `<div class="card">${TBon() ? TBon().deployLine() : ''}${p.modelVersion ? `<div class="deploy-model"><b>${E(t('deployModel', { n: p.modelVersion }))}</b></div>
     ${evaluated ? '' : `<div class="note warn">${E(t('deployNotEval', { n: p.modelVersion }))}</div>`}` : ''}
     <div id="s5err" class="err"></div>
     <button class="btn primary" data-act="publish" ${S.busy.pub ? 'disabled' : ''}>${E(S.busy.pub ? t('publishing') : (p.published ? t('saveChanges') : t('publish')))}</button>
@@ -643,7 +667,7 @@ function step5() {
       ${postHtml()}
       <button class="btn ghost" data-act="newmodel">＋ ${E(t('newModel'))}</button>` : ''}</div>`;
   h += `</div><div class="deploy-preview"><div class="pv-label">${E(t('previewAs'))}</div>
-    <div class="pv-tabs">${a.labels.map((l, i) => `<button class="${i === S.previewLabel ? 'on' : ''}" data-act="preview-label" data-v="${i}">${E(l.emoji || '')} ${E(C.labelName(l, S.lang))}</button>`).join('')}</div>
+    <div class="pv-tabs">${TBon() ? '' : a.labels.map((l, i) => `<button class="${i === S.previewLabel ? 'on' : ''}" data-act="preview-label" data-v="${i}">${E(l.emoji || '')} ${E(C.labelName(l, S.lang))}</button>`).join('')}</div>
     <div class="pv-frame">${previewHtml(a)}</div></div></div>`;
   return h;
 }
@@ -659,6 +683,10 @@ function updatePreview(el) {
 }
 
 function previewHtml(a) {
+  if (TBon()) {
+    if (!a.table) return `<div class="note warn">${E(t('tNoPick'))}</div>`;
+    return appHtml(a, S.lang, S.t, { ...TBon().sampleState(a.table), sample: true });
+  }
   const ls = a.labels;
   const top = ls[Math.min(S.previewLabel, ls.length - 1)] || ls[0];
   const probs = {};
@@ -695,12 +723,13 @@ function boardHtml() {
     const names = (pr.members || []).map(id => (pr.memberNames || {})[id] || '').join(' · ');
     return `<div class="bcard${pr.id === S.pair.id ? ' mine' : ''}">
       <div class="bc-head"><b>${E(t('pairN', { n: pr.no || '' }))}</b><span>${E(names)}</span></div>
-      <div class="dots">${C.STEPS.map(n => `<span class="${n < step ? 'd' : n === step ? 'c' : ''}"></span>`).join('')}<em>${E(t('stepNow', { n: step, name: t('s' + step) }))}</em></div>
+      <div class="dots">${C.STEPS.map(n => `<span class="${n < step ? 'd' : n === step ? 'c' : ''}"></span>`).join('')}<em>${E(t('stepNow', { n: step, name: stepName(step) }))}</em></div>
       ${s.topic ? `<div class="bc-topic">${E(s.topic)}</div>` : ''}
       <div class="bc-labels">${(s.labels || []).map(l => `<span>${E(l.emoji || '')}${E(l.name)} <b>${l.c}</b></span>`).join('')}</div>
       <div class="bc-state">${s.published ? `<span class="ok">🎉 ${E(t('done'))}</span> <a href="aiapp.html?id=${encodeURIComponent(pr.currentProjectId || '')}" target="_blank" rel="noopener">${E(t('viewApp'))} ↗</a>`
         : needPhotos ? `<span class="soft">📷 ${E(t('needPhotos'))}</span>`
         : s.acc != null ? `<span>${E(t('accuracy', { p: s.acc }))}</span>`
+        : s.mae != null ? `<span>${E(t('tMaeBoard', { v: s.mae }))}</span>`
         : s.model ? `<span>${E(t('modelReady'))}</span>` : ''}</div>
     </div>`;
   }).join('')}</div>`;
@@ -836,14 +865,16 @@ function sync() {
   debounce('sync', async () => {
     const p = S.project;
     if (!p) return;
+    if (isTable() && !TB) return;   // 표 데이터 화면을 불러온 뒤에 센다
     const counts = C.countImages(S.images);
     const upd = {};
     if (C.stableJson(counts) !== C.stableJson(p.counts || { train: {}, test: {} })) upd.counts = counts;
     const merged = { ...p, counts };
-    const nu = C.nextUnlock(merged, S.asg);
+    const nu = TBon() ? TBon().unlock(merged) : C.nextUnlock(merged, S.asg);
     if (nu > (p.step || 1)) upd.step = nu;
     if (Object.keys(upd).length) await safeUpdate(pref(), upd);
-    const summary = C.buildSummary({ ...merged, step: Math.max(nu, p.step || 1) }, S.asg);
+    const sp = { ...merged, step: Math.max(nu, p.step || 1) };
+    const summary = TBon() ? TBon().summary(sp) : C.buildSummary(sp, S.asg);
     if (S.pair && !C.sameSummary(S.pair.summary, summary)) {
       try { await updateDoc(doc(db, 'ai_pairs', S.pair.id), { summary }); } catch (e) { console.warn('summary', e.code); }
     }
@@ -893,7 +924,7 @@ async function ensureProject(round) {
         schoolName: S.asg.schoolName || '', grade: S.asg.grade || '', class: S.asg.class || '',
         // 빈 레이블 칸 2개를 만들고 모둠원을 번갈아 나눠 맡겨 둔다(대표가 바로 이름만 쓰면 되게).
         step: 1, defined: false, topic: '', counts: { train: {}, test: {} },
-        labels: [0, 1].map(i => ({ id: C.newId('l'), name: '', owners: pair.members.filter((_, k) => k % 2 === i || pair.members.length === 1), tr: {} })),
+        labels: isTable() ? [] : [0, 1].map(i => ({ id: C.newId('l'), name: '', owners: pair.members.filter((_, k) => k % 2 === i || pair.members.length === 1), tr: {} })),
         appLabels: {}, app: { title: '', theme: 'minimal' }, published: false,
         createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
       });
@@ -1027,7 +1058,7 @@ const actions = {
   // ✍️ 그리기 · 📸 카메라: 필요할 때만 불러온다.
   async cap(mode, el) {
     const [kind, labelId] = el.dataset.zone.split(':');
-    const M = await import('./ai-capture.js?v=202610170240');
+    const M = await import('./ai-capture.js?v=202610180059');
     if (kind === 'cover') return M.openDraw({ t, title: t('coverTitle'), single: true, onAdd: blob => setCover([blob], []) });
     const lab = labelById(labelId);
     const local = mode === 'camera' && camLocal() && kind !== 'try';
@@ -1163,6 +1194,7 @@ const actions = {
     const a = appData();
     const err = $('s5err');
     if (!a.title.trim()) { err.textContent = t('e_title'); $('f-title') && $('f-title').focus(); return; }
+    if (isTable() && !a.table) { err.textContent = t('tNoPick'); return; }
     // 대문(사진 + 설명)은 꼭 넣는다 — 어떤 앱인지 한눈에 보이게
     if (!a.cover) { err.textContent = t('e_cover'); return; }
     if (!a.desc.trim()) { err.textContent = t('e_desc'); $('f-desc') && $('f-desc').focus(); return; }
@@ -1219,6 +1251,7 @@ const actions = {
         cover: fresh.cover || '', desc, descLang: fresh.descLang, descTr, inputs: fresh.inputs,
         labels: fresh.labels.map(({ id, name, tr, emoji, phrase, custom, customLang, customTr }) => ({ id, name, tr, emoji, phrase, custom, customLang, customTr })),
         modelVersion: fresh.modelVersion, modelUrl: fresh.modelUrl, mapping: fresh.mapping, published: true, updatedAt: serverTimestamp(),
+        ...(fresh.table ? { table: (({ key, ...rest }) => rest)(fresh.table) } : {}),
       };
       await setDoc(doc(db, 'ai_apps', S.pid), pub, { merge: true });
       // 서버(/api/ai-model)가 모델을 미리 받아 두게 한 번 불러 둔다 — 첫 방문자가 기다리지 않게.
@@ -1319,11 +1352,14 @@ function bindEvents() {
     if (!el || !main.contains(el)) return;
     const act = el.dataset.act;
     if (el.type === 'checkbox' || el.type === 'radio') return; // change에서 처리
-    if (actions[act]) { e.preventDefault(); actions[act](el.dataset.v, el); }
+    if (el.tagName === 'SELECT') return; // change에서 처리
+    const fn = actions[act] || (TBon() && TBon().actions[act]);
+    if (fn) { e.preventDefault(); fn(el.dataset.v, el); }
   });
   main.addEventListener('change', e => {
     const el = e.target;
-    if (el.dataset.act && (el.type === 'checkbox' || el.type === 'radio') && actions[el.dataset.act]) return actions[el.dataset.act](el.dataset.v, el);
+    const fn = el.dataset.act && (actions[el.dataset.act] || (TBon() && TBon().actions[el.dataset.act]));
+    if (fn && (el.type === 'checkbox' || el.type === 'radio' || el.tagName === 'SELECT')) return fn(el.dataset.v, el);
     const f = el.dataset.field;
   });
   main.addEventListener('input', e => {
@@ -1337,6 +1373,11 @@ function bindEvents() {
       // 이름 검사와 번역을 거쳐 한꺼번에 바뀐다(지우는 도중 빈 이름이 친구 화면에 보이지 않게).
       if (S.project && S.project.defined) return nudge();
       return debounce('labels-save', () => saveLabels(false), 400);
+    }
+    if (TBon()) {
+      const r = TBon().onInput(el);
+      if (r === 'preview') updatePreview(el);
+      if (r) return;
     }
     S.drafts[draftKey(el)] = el.value;
     if (f === 'custom' || f === 'title' || f === 'desc') updatePreview(el); // 입력칸은 그대로 두고 미리보기만
