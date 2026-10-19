@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>문장 AI 점검 — kakainfo</title>
+  <meta name="robots" content="noindex">
+  <style>
+    body { font: 15px/1.6 system-ui, "IBM Plex Sans KR", sans-serif; max-width: 860px; margin: 0 auto; padding: 24px 16px 60px; color: #1c1c1f; background: #fafafa; }
+    h1 { font-size: 1.3rem; } h2 { font-size: 1.05rem; margin-top: 28px; }
+    .box { background: #fff; border: 1px solid #e3e3e8; border-radius: 12px; padding: 14px 16px; margin: 10px 0; }
+    table { border-collapse: collapse; width: 100%; font-size: .9rem; }
+    th, td { border-bottom: 1px solid #eee; padding: 6px 8px; text-align: left; }
+    .ok { color: #1a7f45; font-weight: 700; } .bad { color: #c62828; font-weight: 700; }
+    .big { font-size: 1.15rem; font-weight: 800; }
+    details summary { cursor: pointer; color: #555; }
+    small { color: #777; }
+  </style>
+</head>
+<body>
+<!-- 선생님용 점검 페이지: /api/embed(Workers AI) 연결 확인 + 지금 문장 AI와 "뜻을 이해하는 AI" 비교 실험.
+     학생 화면과 상관없고 아무것도 저장하지 않는다. -->
+<h1>문장 AI 점검</h1>
+<p>슬픈 상황·행복한 상황을 <b>한국어로 10문장씩</b> 학습시키고, 처음 보는 상황 문장을 한국어·중국어·러시아어·영어로 맞혀 봐요.</p>
+<div class="box" id="conn">연결 확인 중...</div>
+<div id="out"></div>
+<script type="module">
+import * as X from './ai-text-core.js';
+const $ = id => document.getElementById(id);
+const sad = ['시험을 망쳐서 속상해', '강아지가 아파서 병원에 갔어', '친구랑 크게 싸웠어', '비 오는데 우산이 없어서 다 젖었어', '좋아하는 인형을 잃어버렸어', '할머니 댁에 못 가게 됐어', '발표하다가 실수해서 창피했어', '짝꿍이 전학을 갔어', '용돈을 잃어버렸어', '감기 때문에 소풍을 못 갔어'];
+const hap = ['생일 선물로 자전거를 받았어', '시험에서 백 점을 맞았어', '친구가 편지를 써 줬어', '가족이랑 놀이공원에 갔어', '칭찬 스티커를 받았어', '맛있는 치킨을 먹었어', '축구 경기에서 골을 넣었어', '강아지를 새로 입양했어', '방학이 시작됐어', '눈이 와서 눈사람을 만들었어'];
+const TEST = {
+  '한국어': [['키우던 물고기가 죽었어', 's'], ['숙제를 안 가져와서 혼났어', 's'], ['넘어져서 무릎을 다쳤어', 's'], ['친구가 나만 빼고 놀았어', 's'], ['게임에서 계속 졌어', 's'], ['엄마한테 혼났어', 's'], ['버스를 놓쳐서 지각했어', 's'], ['휴대폰 화면이 깨졌어', 's'], ['비가 와서 체육대회가 취소됐어', 's'], ['좋아하는 가수가 은퇴했어', 's'],
+    ['친구들이 깜짝 파티를 해 줬어', 'h'], ['반장 선거에서 뽑혔어', 'h'], ['상장을 받았어', 'h'], ['가족 여행을 떠났어', 'h'], ['새 운동화를 샀어', 'h'], ['피자를 시켜 먹었어', 'h'], ['줄넘기 대회에서 일등 했어', 'h'], ['아빠가 일찍 퇴근하셨어', 'h'], ['고양이가 내 무릎에서 잤어', 'h'], ['소풍날 날씨가 맑았어', 'h']],
+  '中文': [['我养的鱼死了', 's'], ['没带作业被老师批评了', 's'], ['摔倒了膝盖受伤了', 's'], ['朋友们玩的时候不带我', 's'], ['游戏一直输', 's'], ['被妈妈骂了', 's'], ['错过公交车迟到了', 's'], ['手机屏幕摔碎了', 's'], ['下雨运动会取消了', 's'], ['喜欢的歌手退休了', 's'],
+    ['朋友们给我开了惊喜派对', 'h'], ['我被选为班长了', 'h'], ['我得了奖状', 'h'], ['我们全家去旅行了', 'h'], ['买了新运动鞋', 'h'], ['我们点了披萨吃', 'h'], ['跳绳比赛我得了第一名', 'h'], ['爸爸今天早下班了', 'h'], ['小猫在我腿上睡着了', 'h'], ['郊游那天天气很晴朗', 'h']],
+  'Русский': [['Моя рыбка умерла', 's'], ['Меня отругали, потому что я забыл домашку', 's'], ['Я упал и разбил колено', 's'], ['Друзья играли без меня', 's'], ['Я всё время проигрывал в игре', 's'], ['Мама меня отругала', 's'], ['Я опоздал на автобус', 's'], ['У телефона разбился экран', 's'], ['Из-за дождя отменили спортивный праздник', 's'], ['Мой любимый певец ушёл со сцены', 's'],
+    ['Друзья устроили мне сюрприз', 'h'], ['Меня выбрали старостой класса', 'h'], ['Я получил грамоту', 'h'], ['Мы всей семьёй поехали в путешествие', 'h'], ['Я купил новые кроссовки', 'h'], ['Мы заказали пиццу', 'h'], ['Я занял первое место по прыжкам через скакалку', 'h'], ['Папа рано пришёл с работы', 'h'], ['Кошка уснула у меня на коленях', 'h'], ['В день экскурсии была солнечная погода', 'h']],
+  'English': [['My pet fish died', 's'], ['I got scolded for forgetting my homework', 's'], ['I fell and hurt my knee', 's'], ['My friends played without me', 's'], ['I kept losing the game', 's'], ['Mom got angry at me', 's'], ['I missed the bus and was late', 's'], ['My phone screen cracked', 's'], ['Sports day was cancelled because of rain', 's'], ['My favorite singer retired', 's'],
+    ['My friends threw me a surprise party', 'h'], ['I was elected class president', 'h'], ['I got an award', 'h'], ['We went on a family trip', 'h'], ['I bought new sneakers', 'h'], ['We ordered pizza', 'h'], ['I won first place in jump rope', 'h'], ['Dad came home early from work', 'h'], ['The cat fell asleep on my lap', 'h'], ['The weather was sunny on our field trip', 'h']],
+};
+const vec = b64 => { const s = atob(b64), a = new Float32Array(s.length); for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); a[i] = (c > 127 ? c - 256 : c) / 127; } return a; };
+const dot = (a, b) => { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s; };
+async function embed(texts) {
+  const r = await fetch('/api/embed', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texts }) });
+  const d = await r.json();
+  if (d.error) throw new Error(d.code || d.error);
+  return d.vecs.map(vec);
+}
+async function main() {
+  let c;
+  try { c = await (await fetch('/api/embed')).json(); } catch (e) { c = { error: e.message }; }
+  if (!c.ok) { $('conn').innerHTML = `<span class="bad">❌ 연결 안 됨</span> — ${c.code === 'noBinding' ? 'Workers AI 연결(Bindings, 이름 AI)이 아직 적용되지 않았어요. 설정 후 배포가 한 번 더 필요할 수 있어요.' : (c.error || '')}`; return; }
+  $('conn').innerHTML = `<span class="ok">✅ 연결됨</span> — 모델 ${c.model}, 숫자 ${c.dim}개`;
+  const train = [...sad.map(t => [t, 's']), ...hap.map(t => [t, 'h'])];
+  const nb = X.trainText(train.map(([text, labelId]) => ({ text, labelId })), ['s', 'h']);
+  const tv = await embed(train.map(x => x[0]));
+  const cent = { s: new Float32Array(tv[0].length), h: new Float32Array(tv[0].length) };
+  train.forEach(([, l], i) => tv[i].forEach((v, k) => { cent[l][k] += v; }));
+  for (const l of ['s', 'h']) { const n = Math.sqrt(dot(cent[l], cent[l])); cent[l] = cent[l].map(v => v / n); }
+  const knn = (q, k = 3) => { const sc = tv.map((v, i) => [dot(q, v), train[i][1]]).sort((a, b) => b[0] - a[0]).slice(0, k); const s = sc.filter(x => x[1] === 's').length; return s * 2 > k ? 's' : 'h'; };
+  let html = '<h2>결과</h2><div class="box"><table><tr><th>테스트 언어</th><th>지금 문장 AI<br><small>(단어 조각 세기)</small></th><th>뜻 AI<br><small>(레이블 평균과 비교)</small></th><th>뜻 AI<br><small>(가장 비슷한 3문장)</small></th></tr>';
+  const detail = [];
+  for (const [lang, list] of Object.entries(TEST)) {
+    const qv = await embed(list.map(x => x[0]));
+    let a = 0, b = 0, k3 = 0;
+    list.forEach(([t, l], i) => {
+      const p1 = X.predictText(nb, t).top, p2 = dot(qv[i], cent.s) > dot(qv[i], cent.h) ? 's' : 'h', p3 = knn(qv[i]);
+      a += p1 === l; b += p2 === l; k3 += p3 === l;
+      detail.push(`<tr><td>${lang}</td><td>${t}</td><td>${l === 's' ? '슬픔' : '행복'}</td><td class="${p1 === l ? 'ok' : 'bad'}">${p1 === 's' ? '슬픔' : '행복'}</td><td class="${p2 === l ? 'ok' : 'bad'}">${p2 === 's' ? '슬픔' : '행복'}</td></tr>`);
+    });
+    const pc = x => `${Math.round(x * 100 / list.length)}%`;
+    html += `<tr><td>${lang}</td><td class="big">${pc(a)}</td><td class="big">${pc(b)}</td><td class="big">${pc(k3)}</td></tr>`;
+  }
+  html += '</table><p><small>학습은 모두 한국어 문장 20개(레이블당 10개)로만 했어요. 찍으면 50%예요.</small></p></div>';
+  html += `<details><summary>문장별 결과 보기</summary><table><tr><th>언어</th><th>문장</th><th>정답</th><th>지금 AI</th><th>뜻 AI(평균)</th></tr>${detail.join('')}</table></details>`;
+  $('out').innerHTML = html;
+}
+main().catch(e => { $('out').innerHTML = `<div class="box bad">실험 중 오류: ${e.message}</div>`; });
+</script>
+</body>
+</html>
