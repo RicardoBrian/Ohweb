@@ -126,3 +126,114 @@ export function topWords(model, samples, n = 6) {
 export function pieces(s) {
   return words(s).map(w => ({ w, f: wordFeats(w).map(f => f.slice(2)) }));
 }
+
+// ── 뜻 이해 AI(다국어 문장 모델) ──
+// 서버(/api/embed, Workers AI bge-m3)가 문장을 "뜻 숫자"(1024개, 길이 1)로 바꿔 준다.
+// 레이블마다 학습 문장들의 평균 위치(중심)를 기억했다가, 새 문장은 가장 가까운(코사인) 레이블로 고른다.
+// 한국어로 학습해도 중국어·러시아어 문장을 맞힐 수 있다(같은 뜻이면 가까운 숫자).
+export const MEAN_SCALE = 20;   // 가까움 차이를 확률로 바꿀 때의 세기(0.1 차이 ≈ 88%)
+export function decodeVec(b64) {
+  const s = atob(b64), a = new Float32Array(s.length);
+  for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); a[i] = (c > 127 ? c - 256 : c) / 127; }
+  return a;
+}
+export function encodeVec(v) {
+  let n = 0;
+  for (const x of v) n += x * x;
+  n = Math.sqrt(n) || 1;
+  let s = '';
+  for (const x of v) { const q = Math.max(-127, Math.min(127, Math.round(x / n * 127))); s += String.fromCharCode(q < 0 ? q + 256 : q); }
+  return btoa(s);
+}
+const dotv = (a, b) => { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * b[i]; return s; };
+const unit = v => { const n = Math.sqrt(dotv(v, v)) || 1; return v.map(x => x / n); };
+// vecs: Float32Array[] (samples와 같은 순서), samples: [{ labelId }] → { labels, dim, cents: { id: b64 } }
+export function meanModel(vecs, samples, labelIds) {
+  const dim = vecs[0] ? vecs[0].length : 0;
+  const sum = Object.fromEntries(labelIds.map(id => [id, new Float32Array(dim)]));
+  samples.forEach((s, i) => { const t = sum[s.labelId]; if (t && vecs[i]) for (let k = 0; k < dim; k++) t[k] += vecs[i][k]; });
+  return { labels: labelIds.slice(), dim, cents: Object.fromEntries(labelIds.map(id => [id, encodeVec(sum[id])])) };
+}
+function cents(mean) {
+  if (!mean._c) Object.defineProperty(mean, '_c', { value: Object.fromEntries(mean.labels.map(id => [id, unit(decodeVec(mean.cents[id]))])), enumerable: false });
+  return mean._c;
+}
+export function simsOf(mean, v) {
+  const c = cents(mean);
+  return Object.fromEntries(mean.labels.map(id => [id, dotv(unit(v), c[id])]));
+}
+export function predictVec(mean, v) {
+  const sims = simsOf(mean, v);
+  const ids = mean.labels;
+  const mx = Math.max(...ids.map(id => sims[id]));
+  const ex = Object.fromEntries(ids.map(id => [id, Math.exp((sims[id] - mx) * MEAN_SCALE)]));
+  const sum = Object.values(ex).reduce((a, b) => a + b, 0);
+  const probs = Object.fromEntries(ids.map(id => [id, ex[id] / sum]));
+  let top = ids[0];
+  ids.forEach(id => { if (probs[id] > probs[top]) top = id; });
+  return { probs, top, sims };
+}
+// 영향 준 단어: 단어를 하나씩 빼 본 문장의 뜻(without[i])과 비교해, 빼면 가까움이 가장 많이 줄어드는 레이블이 그 단어의 색.
+export function explainVec(mean, ws, full, without) {
+  const f = simsOf(mean, full);
+  const per = ws.map((w, i) => {
+    if (!without[i]) return { w, id: '', v: 0 };
+    const s = simsOf(mean, without[i]);
+    const d = Object.fromEntries(mean.labels.map(id => [id, f[id] - s[id]]));
+    const avg = mean.labels.reduce((a, id) => a + d[id], 0) / mean.labels.length;
+    let best = mean.labels[0];
+    mean.labels.forEach(id => { if (d[id] > d[best]) best = id; });
+    return { w, id: best, v: d[best] - avg };
+  });
+  const vmax = Math.max(0, ...per.map(x => x.v));
+  return per.map(x => ({ w: x.w, id: x.v > 0 ? x.id : '', s: vmax > 0 && x.v > 0 ? Math.round(x.v / vmax * 100) / 100 : 0 }));
+}
+// 뜻 지도: 뜻 숫자들을 2차원으로(주성분 2개) — 비슷한 뜻의 문장이 가까이 모이는지 본다.
+export function project2d(vecs) {
+  const n = vecs.length;
+  if (!n) return [];
+  const d = vecs[0].length, mean = new Float32Array(d);
+  vecs.forEach(v => { for (let k = 0; k < d; k++) mean[k] += v[k] / n; });
+  const X = vecs.map(v => v.map((x, k) => x - mean[k]));
+  const comps = [];
+  for (let c = 0; c < 2; c++) {
+    let p = new Float32Array(d).map((_, k) => Math.sin(k * (c + 1) + 1));
+    for (let it = 0; it < 40; it++) {
+      const s = X.map(x => dotv(x, p));
+      const q = new Float32Array(d);
+      X.forEach((x, i) => { for (let k = 0; k < d; k++) q[k] += s[i] * x[k]; });
+      comps.forEach(cp => { const pr = dotv(q, cp); for (let k = 0; k < d; k++) q[k] -= pr * cp[k]; });
+      p = unit(q);
+    }
+    comps.push(p);
+  }
+  return X.map(x => [dotv(x, comps[0]), dotv(x, comps[1])]);
+}
+// 서버에 문장 보내기(64개씩). 실패하면 오류를 던진다 — 부르는 쪽이 단어 조각 방식으로 대신한다.
+export async function embedTexts(texts, url = '/api/embed') {
+  const out = [];
+  for (let i = 0; i < texts.length; i += 64) {
+    const part = texts.slice(i, i + 64);
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texts: part }) });
+    const d = await r.json();
+    if (!r.ok || d.error || !Array.isArray(d.vecs) || d.vecs.length !== part.length) throw new Error(d.code || d.error || 'embed');
+    d.vecs.forEach(b => out.push(b ? decodeVec(b) : null));
+  }
+  return out;
+}
+// 문장 하나 맞히기(실험실·웹앱·코딩 공용): 뜻 AI가 있으면 서버로, 안 되면 단어 조각 AI로.
+// m = { model: 단어 조각 모델, mean?: 뜻 모델 } → { probs, top, words, via: 'mean'|'words' }
+export async function predictAny(m, text, { explain = true, url } = {}) {
+  if (m.mean) {
+    try {
+      const ws = words(text);
+      const variants = explain && ws.length > 1 && ws.length <= 12 ? ws.map((_, i) => ws.filter((__, k) => k !== i).join(' ')) : [];
+      const vs = await embedTexts([normText(text), ...variants], url);
+      const r = predictVec(m.mean, vs[0]);
+      const wl = variants.length ? explainVec(m.mean, ws, vs[0], vs.slice(1)) : ws.map(w => ({ w, id: '', s: 0 }));
+      return { probs: r.probs, top: r.top, words: wl, via: 'mean' };
+    } catch (e) { if (!m.model) throw e; }
+  }
+  const r = predictText(m.model, text);
+  return { ...r, via: 'words' };
+}

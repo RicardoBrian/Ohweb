@@ -230,6 +230,7 @@ const ko = {
   k_groupWorks: '모둠 작품', k_noWorks: '아직 공유한 작품이 없어요.', k_answerPh: '대답을 써요', k_untitled: '이름 없는 작품', k_by: '{name}',
   k_lead: '왼쪽에서 블록을 끌어다 붙여서 우리 AI를 쓰는 프로그램을 만들어요. [▶ 시작]을 누르면 실행돼요. 작업은 자동으로 저장돼요.',
   k_error: '블록을 실행하다 문제가 생겼어요. 블록을 확인해 주세요.', k_tooBig: '작품이 너무 커요. 블록을 조금 줄여 주세요.',
+  xLangNote: "이 수업의 AI는 뜻을 이해해요. 자기에게 편한 말(한국어·중국어·러시아어·영어)로 써도 함께 학습돼요.", xModeMeanNote: "🌏 뜻 이해 AI: 미리 수많은 글을 읽은 다국어 모델이 문장을 \"뜻 숫자\"로 바꿔 줘요. AI는 레이블마다 문장들의 평균 위치를 기억했다가, 새 문장이 어느 쪽에 더 가까운지로 골라요.", xModeWordsNote: "🔤 단어 조각 AI: 학습 문장에 나온 단어 조각을 세어 두었다가, 새 문장의 조각이 어느 레이블에 더 많이 나왔는지로 골라요.", xMapTitle: "뜻 지도", xMapHelp: "학습 문장을 뜻이 비슷할수록 가깝게 그렸어요(점에 손을 대면 문장이 보여요). ★는 레이블의 평균 위치예요. 다른 레이블 무리에 섞인 점이 있다면 AI가 헷갈릴 수 있는 문장이에요.", xMapLoading: "뜻 지도를 그리는 중...", xWordsHelpMean: "색칠한 단어는 빼 보면 AI의 판단이 가장 많이 바뀌는 단어예요. 색은 그 단어가 가리킨 레이블, 진할수록 영향이 커요.", xFallback: "뜻 AI 서버에 연결하지 못해서 단어 조각 AI로 대신했어요.", xMeanTraining: "문장의 뜻을 읽는 중...",
 };
 const en = {
   trainTitle: 'Train', trainData: 'Photos for training', trainStart: 'Start training', retrain: 'Train again (make model #{n})',
@@ -461,6 +462,7 @@ const en = {
   k_groupWorks: 'Group projects', k_noWorks: 'No shared projects yet.', k_answerPh: 'Type your answer', k_untitled: 'Untitled', k_by: '{name}',
   k_lead: 'Drag blocks from the left and snap them together to make a program that uses your AI. Press [▶ Start] to run it. Your work is saved automatically.',
   k_error: 'Something went wrong while running the blocks. Please check them.', k_tooBig: 'The project is too big. Please remove some blocks.',
+  xLangNote: "This lesson’s AI understands meaning. Write in whichever language is easiest for you (Korean, Chinese, Russian, English) — it all trains together.", xModeMeanNote: "🌏 Meaning AI: a multilingual model that has read lots of text turns each sentence into “meaning numbers”. The AI remembers the average position of each label and picks the one a new sentence is closest to.", xModeWordsNote: "🔤 Word-piece AI: it counts word pieces in the training sentences and picks the label whose pieces appear most in the new sentence.", xMapTitle: "Meaning map", xMapHelp: "Training sentences are drawn closer together when their meanings are similar (touch a dot to see it). ★ is each label’s average position. Dots mixed into another label’s group are sentences the AI may confuse.", xMapLoading: "Drawing the meaning map...", xWordsHelpMean: "Colored words change the AI’s decision the most when removed. The color shows which label the word pointed to; darker means stronger.", xFallback: "Could not reach the meaning AI server, so the word-piece AI was used instead.", xMeanTraining: "Reading the meaning of the sentences...",
 };
 const zh = {
   trainTitle: '训练', trainData: '用于训练的照片', trainStart: '开始训练', retrain: '重新训练（制作第{n}个模型）',
@@ -692,6 +694,7 @@ const zh = {
   k_groupWorks: '小组作品', k_noWorks: '还没有分享的作品。', k_answerPh: '写下回答', k_untitled: '未命名作品', k_by: '{name}',
   k_lead: '从左边把积木拖过来拼在一起，做一个使用我们AI的程序。点[▶ 开始]就会运行。作品会自动保存。',
   k_error: '运行积木时出了问题。请检查积木。', k_tooBig: '作品太大了。请减少一些积木。',
+  xLangNote: "这节课的AI能理解意思。用你最方便的语言（韩语、中文、俄语、英语）写都可以，会一起学习。", xModeMeanNote: "🌏 理解意思的AI：读过大量文字的多语言模型会把句子变成\"意思数字\"。AI记住每个标签句子的平均位置，再看新句子离哪个更近。", xModeWordsNote: "🔤 词片段AI：数学习句子里出现的词片段，看新句子的片段在哪个标签里出现得更多。", xMapTitle: "意思地图", xMapHelp: "意思越相近的学习句子画得越近（点一下可以看到句子）。★是标签的平均位置。混在其他标签里的点，是AI可能会弄混的句子。", xMapLoading: "正在画意思地图...", xWordsHelpMean: "涂色的词是去掉后AI的判断变化最大的词。颜色表示这个词指向的标签，颜色越深影响越大。", xFallback: "没能连上理解意思的AI服务器，改用词片段AI了。", xMeanTraining: "正在读句子的意思...",
 };
 const ru = {
   trainTitle: 'Обучение', trainData: 'Фото для обучения', trainStart: 'Начать обучение', retrain: 'Обучить заново (модель №{n})',
@@ -923,6 +926,7 @@ const ru = {
   k_groupWorks: 'Проекты группы', k_noWorks: 'Пока нет опубликованных проектов.', k_answerPh: 'Напиши ответ', k_untitled: 'Без названия', k_by: '{name}',
   k_lead: 'Перетаскивай блоки слева и соединяй их, чтобы сделать программу с вашим ИИ. Нажми [▶ Старт], чтобы запустить. Работа сохраняется сама.',
   k_error: 'При запуске блоков что-то пошло не так. Проверь блоки.', k_tooBig: 'Проект слишком большой. Убери несколько блоков.',
+  xLangNote: "ИИ на этом уроке понимает смысл. Пиши на удобном тебе языке (корейский, китайский, русский, английский) — всё обучится вместе.", xModeMeanNote: "🌏 ИИ, понимающий смысл: многоязычная модель, прочитавшая много текстов, превращает предложение в «числа смысла». ИИ запоминает среднее положение каждой метки и выбирает ту, к которой новое предложение ближе.", xModeWordsNote: "🔤 ИИ по кусочкам слов: считает кусочки слов в учебных предложениях и выбирает метку, где они встречались чаще.", xMapTitle: "Карта смыслов", xMapHelp: "Учебные предложения с похожим смыслом нарисованы ближе (нажми на точку, чтобы увидеть текст). ★ — среднее положение метки. Точки внутри чужой группы — предложения, которые ИИ может перепутать.", xMapLoading: "Рисуем карту смыслов...", xWordsHelpMean: "Раскрашены слова, без которых решение ИИ меняется сильнее всего. Цвет — метка, на которую указало слово; чем темнее, тем сильнее.", xFallback: "Не удалось подключиться к серверу ИИ смысла, поэтому использован ИИ по кусочкам слов.", xMeanTraining: "Читаем смысл предложений...",
 };
 export const I18N = { ko, en, zh, ru };
 export function getLang() {

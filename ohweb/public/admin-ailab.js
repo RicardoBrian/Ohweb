@@ -165,6 +165,11 @@ function assignHtml() {
         ${[['image', '🖼 이미지 분류', '사진을 모아 분류하는 모델을 만들어요'], ['text', '💬 문장 분류', '예시 문장을 직접 써서 감정·종류를 분류해요'], ['table', '📊 표 데이터 (CSV)', '표를 보고 답을 고르거나(분류) 숫자를 맞혀요(예측)']].map(([v, l, h]) =>
           `<label class="ai-opt"><input type="radio" name="aiT_kind" data-ai="kind" value="${v}" ${kind === v ? 'checked' : ''} ${editing ? 'disabled' : ''}><span><b>${l}</b><small>${h}</small></span></label>`).join('')}
       </div></div>
+    <div class="ai-sec ai-txtsec"><div class="ai-sec-t">문장 AI 방식</div>
+      <div class="ai-seg">
+        ${[['mean', '🌏 뜻 이해 AI (추천)', '미리 많은 글을 배운 다국어 모델 위에서 학습해요. 문장이 적어도 잘 맞히고, 한국어로 학습해도 중국어·러시아어 문장을 알아봐요. (Cloudflare Workers AI 사용)'], ['words', '🔤 단어 조각 AI', '학습 문장에 나온 단어 조각만 세요. 인터넷 서버 없이 돌지만 문장이 많아야 하고 같은 언어끼리만 통해요.']].map(([v, l, h]) =>
+          `<label class="ai-opt"><input type="radio" name="aiT_tmodel" value="${v}" ${(editing ? (ed.textModel || 'words') : (ed.textModel || 'mean')) === v ? 'checked' : ''}><span><b>${l}</b><small>${h}</small></span></label>`).join('')}
+      </div></div>
     <div class="ai-sec ai-tbl"><div class="ai-sec-t">표 데이터</div>
       ${editing ? '' : `<div class="ai-btns"><select class="inp ai-sample" data-ai="sample"><option value="">예시 데이터 고르기 (연습용 가상 데이터)</option>${SAMPLES.map(x => `<option value="${x.f}">${E(x.name)} — ${E(x.help)}</option>`).join('')}</select>
         <label class="btn sm">내 CSV 파일 올리기<input type="file" data-ai="csvFile" accept=".csv,text/csv,text/plain" hidden></label></div>`}
@@ -212,7 +217,7 @@ function asgListHtml() {
     list.sort((x, y) => x.grade - y.grade || x.class - y.class);
     const rows = list.map(a => `<div class="ai-asg">
       <div class="ai-asg-c"><b>${E(classLabel(a))}</b>
-        <span class="ai-sub">모둠 ${a.groupSize || 2}명 · ${isTbl(a) ? `📊 ${E((a.table || {}).name || '표 데이터')} → 🎯 ${E((a.table || {}).target || '')} · ` : ''}${isTbl(a) ? '' : a.kind === 'text' ? `💬 문장 분류 · 레이블 최대 ${a.maxLabels || 5}개 · 문장 ${a.minPerLabel || 10}개 · 테스트 ${a.minTestPerLabel || 3}개 · ` : `사진: ${srcOf(a).map(x => SRC_NAMES[x] || x).join('·')}${srcOf(a).includes('camera') && !a.cameraUpload ? '(기기에만)' : ''} · 레이블 최대 ${a.maxLabels || 5}개 · 사진 ${a.minPerLabel || 15}장 · 테스트 ${a.minTestPerLabel || 3}장 · `}게시판 ${a.board ? `${E(a.board.name)}(${(a.boardScope || 'class') === 'all' ? '모든 반 함께' : '반별'})` : '없음'}</span></div>
+        <span class="ai-sub">모둠 ${a.groupSize || 2}명 · ${isTbl(a) ? `📊 ${E((a.table || {}).name || '표 데이터')} → 🎯 ${E((a.table || {}).target || '')} · ` : ''}${isTbl(a) ? '' : a.kind === 'text' ? `💬 문장 분류(${a.textModel === 'mean' ? '🌏 뜻 이해' : '🔤 단어 조각'}) · 레이블 최대 ${a.maxLabels || 5}개 · 문장 ${a.minPerLabel || 10}개 · 테스트 ${a.minTestPerLabel || 3}개 · ` : `사진: ${srcOf(a).map(x => SRC_NAMES[x] || x).join('·')}${srcOf(a).includes('camera') && !a.cameraUpload ? '(기기에만)' : ''} · 레이블 최대 ${a.maxLabels || 5}개 · 사진 ${a.minPerLabel || 15}장 · 테스트 ${a.minTestPerLabel || 3}장 · `}게시판 ${a.board ? `${E(a.board.name)}(${(a.boardScope || 'class') === 'all' ? '모든 반 함께' : '반별'})` : '없음'}</span></div>
       <label class="toggle" title="${a.status === 'ON' ? '학생 화면 열림 (누르면 닫기)' : '학생 화면 닫힘 (누르면 열기)'}"><input type="checkbox" data-ai="status" data-id="${E(a.id)}" ${a.status === 'ON' ? 'checked' : ''}><div class="toggle-track"></div></label>
       <div class="ai-btns">
         <button class="btn sm" data-ai="goPairs" data-id="${E(a.id)}">모둠 구성</button>
@@ -438,6 +443,7 @@ function readForm() {
     boardScope: (document.querySelector('input[name="aiT_scope"]:checked') || {}).value === 'all' ? 'all' : 'class',
     sources: [...document.querySelectorAll('input[name="aiT_src"]:checked')].map(x => x.value),
     cameraUpload: !!($('aiT_camUp') && $('aiT_camUp').checked),
+    textModel: (document.querySelector('input[name="aiT_tmodel"]:checked') || {}).value === 'words' ? 'words' : 'mean',
     kind: (v => (v === 'table' || v === 'text' ? v : 'image'))((document.querySelector('input[name="aiT_kind"]:checked') || {}).value),
   };
 }
@@ -749,6 +755,7 @@ const STYLE = `
 #section-ailab .ai-camup { display: block; margin-top: 4px; line-height: 1.5; }
 #section-ailab .ai-assign[data-kind="table"] .ai-img, #section-ailab .ai-assign:not([data-kind="table"]) .ai-tbl, #section-ailab .ai-assign[data-kind="text"] .ai-photo { display: none; }
 #section-ailab .ai-assign i.k-img, #section-ailab .ai-assign i.k-txt { font-style: normal; }
+#section-ailab .ai-assign:not([data-kind="text"]) .ai-txtsec { display: none; }
 #section-ailab .ai-assign[data-kind="text"] i.k-img, #section-ailab .ai-assign:not([data-kind="text"]) i.k-txt { display: none; }
 #section-ailab .ai-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 @media (max-width: 700px) { #section-ailab .ai-row2 { grid-template-columns: 1fr; } }

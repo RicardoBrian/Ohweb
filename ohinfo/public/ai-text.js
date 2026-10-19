@@ -6,7 +6,7 @@
 //  ④ 평가: 테스트 문장 채점 + 틀린 문장의 "영향 준 단어" 색칠, 직접 써 보기.
 // 문장 기록은 사진과 같은 자리(ai_projects/{pid}/images)에 thumb 없이 text로 둔다 — 장수 세기·단계 열림이 그대로 된다.
 
-import * as X_ from './ai-text-core.js?v=202610182234';
+import * as X_ from './ai-text-core.js?v=202610190241';
 
 export function makeText(X) {
   const { S, E } = X;
@@ -34,6 +34,7 @@ export function makeText(X) {
     const labels = X.labelsOf(), min = X.minTrain();
     const counts = labels.map(l => texts('train', l.id).length);
     let h = lead('xs2Lead') + `<div class="two"><div class="howto"><b>${E(t('howTo'))}</b><ol>${t('xHowTo').map(x => `<li>${E(x)}</li>`).join('')}</ol></div>${X.tipsHtml(t('xs2Tips'))}</div>`;
+    if (meanMode()) h += `<div class="note">🌏 ${E(t('xLangNote'))}</div>`;
     if (X.C.isUnbalanced(counts)) h += `<div class="note warn">⚖️ ${E(t('xUnbalanced'))}</div>`;
     h += `<div class="lgrid">${labels.map(l => {
       const mine = X.isMine(l), c = texts('train', l.id).length;
@@ -53,6 +54,18 @@ export function makeText(X) {
 
   // ── ③ 학습 ──
   const model = () => P().txModel || null;
+  // 뜻 이해 AI: 선생님이 배정에서 고른 수업만(없으면 단어 조각 AI). 학습할 때 서버가 안 되면 단어 조각으로 대신한다.
+  const meanMode = () => (S.asg && S.asg.textModel) === 'mean';
+  const mean = () => P().txMean || null;
+  const both = () => ({ model: model(), mean: mean() });
+  // 서버에 물어 얻은 결과(문장 → 맞히기·영향 준 단어)를 잠시 기억한다
+  S.xCache = S.xCache || {};
+  function later(key, fn) {
+    if (S.xCache[key]) return S.xCache[key] === 'busy' ? null : S.xCache[key];
+    S.xCache[key] = 'busy';
+    fn().then(v => { S.xCache[key] = v; X.schedule(); }).catch(() => { delete S.xCache[key]; });
+    return null;
+  }
   const trainSamples = () => {
     const ids = new Set(X.labelsOf().map(l => l.id));
     return texts('train').filter(i => ids.has(i.labelId));
@@ -88,12 +101,14 @@ export function makeText(X) {
     let h = leader ? '' : `<div class="note">${E(t('leaderOnly', { name: X.leaderName() }))}</div>`;
     h += `<div class="card"><h3>${E(t('xTrainData'))}</h3><div class="tdata">${labels.map(l => `<div class="trow"><b>${E(l.name)}</b><span class="cnt">${E(t('xCountOf', { c: texts('train', l.id).length, m: X.minTrain() }))}</span></div>`).join('')}</div>
       ${newSince() ? `<div class="note warn">${E(t('xNewSince', { n: newSince() }))}</div>` : ''}</div>`;
-    // AI가 문장을 읽는 법: 단어 + 두 글자 조각
+    h += `<div class="note">${E(t(meanMode() ? 'xModeMeanNote' : 'xModeWordsNote'))}</div>`;
+    // AI가 문장을 읽는 법: 단어 + 두 글자 조각(단어 조각 AI)
     const ex = trainSamples()[0];
-    if (ex) h += `<div class="card"><h3>✂️ ${E(t('xPiecesTitle'))}</h3><p class="muted sm">${E(t('xPiecesHelp'))}</p>
+    if (ex && !meanMode()) h += `<div class="card"><h3>✂️ ${E(t('xPiecesTitle'))}</h3><p class="muted sm">${E(t('xPiecesHelp'))}</p>
       <div class="xpieces">${X_.pieces(ex.text).map(x => `<div class="xpc"><b>${E(x.w)}</b>${x.f.map(f => `<span>${E(f)}</span>`).join('')}</div>`).join('')}</div></div>`;
     h += '<div class="card train-box">';
-    if (leader) h += `<button class="btn primary big" data-act="xtrain">🧠 ${E(v ? t('retrain', { n: v + 1 }) : t('trainStart'))}</button>`;
+    if (leader) h += `<button class="btn primary big" data-act="xtrain" ${S.xTraining ? 'disabled' : ''}>🧠 ${E(v ? t('retrain', { n: v + 1 }) : t('trainStart'))}</button>`;
+    if (S.xTraining) h += `<div class="muted"><span class="spin"></span>${E(t('xMeanTraining'))}</div>`;
     if (S.xNoChange && sameData()) h += `<div class="note warn">${E(t('xNoChange', { n: v }))}<div class="next"><button class="btn" data-act="step" data-v="2">← ${E(t('xGoCollect'))}</button></div></div>`;
     if (S.xJust === v && v) h += `<div class="note ok">✅ ${E(t('trainDone', { n: v }))}</div>`;
     const models = Object.values(p.models || {}).filter(x => x && x.v).sort((a, b) => b.v - a.v);
@@ -101,12 +116,36 @@ export function makeText(X) {
       <p class="muted sm">ⓘ ${E(t('xTrainAccHelp'))}</p>`;
     else if (!leader) h += `<div class="muted">${E(t('noModelYet'))}</div>`;
     h += '</div>';
-    if (m) {
+    if (m && mean()) h += mapCard();
+    else if (m) {
       const tw = X_.topWords(m, trainSamples());
       h += `<div class="card"><h3>🔎 ${E(t('xCluesTitle'))}</h3><p class="muted sm">${E(t('xCluesHelp'))}</p>
         ${labels.map(l => `<div class="xclue"><b style="color:${colorOf(l.id)}">${E(l.name)}</b>${(tw[l.id] || []).map(w => `<span class="xw" style="--c:${colorOf(l.id)};--s:.55">${E(w)}</span>`).join('') || '<span class="muted">-</span>'}</div>`).join('')}</div>`;
     }
     return h;
+  }
+  // 뜻 지도: 학습 문장의 뜻 숫자를 2차원으로 — 같은 레이블 문장이 모이는지, 레이블 중심(★)은 어디인지
+  function mapCard() {
+    const list = trainSamples().filter(i => (P().trainedIds || []).includes(i.id));
+    const key = `map:${P().modelVersion}:` + list.map(i => i.id).join(',');
+    const pts = later(key, async () => {
+      const vs = await X_.embedTexts(list.map(i => i.text));
+      const ms = mean();
+      const cv = ms.labels.map(id => X_.decodeVec(ms.cents[id]));
+      const xy = X_.project2d([...vs, ...cv]);
+      return { pts: list.map((i, k) => ({ x: xy[k][0], y: xy[k][1], id: i.labelId, text: i.text })), cents: ms.labels.map((id, k) => ({ x: xy[vs.length + k][0], y: xy[vs.length + k][1], id })) };
+    });
+    let body = `<div class="muted"><span class="spin"></span>${E(t('xMapLoading'))}</div>`;
+    if (pts) {
+      const all = [...pts.pts, ...pts.cents];
+      const xs = all.map(p => p.x), ys = all.map(p => p.y);
+      const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+      const W = 520, H = 320, pad = 16;
+      const X1 = x => pad + (x - x0) / ((x1 - x0) || 1) * (W - 2 * pad), Y1 = y => H - pad - (y - y0) / ((y1 - y0) || 1) * (H - 2 * pad);
+      body = `${legend()}<svg class="tchart xmap" viewBox="0 0 ${W} ${H}" role="img">${pts.pts.map(p => `<circle cx="${X1(p.x).toFixed(1)}" cy="${Y1(p.y).toFixed(1)}" r="6" fill="${colorOf(p.id)}" fill-opacity=".7"><title>${E(p.text)}</title></circle>`).join('')}
+        ${pts.cents.map(c => `<text x="${X1(c.x).toFixed(1)}" y="${(Y1(c.y) + 9).toFixed(1)}" text-anchor="middle" font-size="26" fill="${colorOf(c.id)}" stroke="#fff" stroke-width="1.5">★</text>`).join('')}</svg>`;
+    }
+    return `<div class="card"><h3>🗺️ ${E(t('xMapTitle'))}</h3><p class="muted sm">${E(t('xMapHelp'))}</p>${body}</div>`;
   }
   function testTab() {
     const labels = X.labelsOf(), min = X.minTest();
@@ -155,20 +194,26 @@ export function makeText(X) {
       return `<div class="erow"><span>${E(l.name)}</span><div class="bar"><span style="width:${pct}%"></span></div><span class="cnt">${x.correct}/${x.total}</span></div>`;
     }).join('');
     const m = model();
+    const wordsOf = txt => {
+      if (!mean()) return X_.predictText(m, txt).words;
+      const r = later(`ex:${P().modelVersion}:${txt}`, () => X_.predictAny(both(), txt));
+      return r ? r.words : X_.words(txt).map(w => ({ w, id: '', s: 0 }));
+    };
     const wrong = (r.wrong || []).map(w => {
       const im = S.images.find(i => i.id === w.imgId);
       const txt = im ? im.text : '';
-      return `<div class="xwrong">${txt && m ? wordsHtml(X_.predictText(m, txt).words) : `<span class="muted">${E(txt || '?')}</span>`}
+      return `<div class="xwrong">${txt && m ? wordsHtml(wordsOf(txt)) : `<span class="muted">${E(txt || '?')}</span>`}
         <div class="xwl"><span class="muted">${E(t('answer'))}</span> <b>${E((labelById(w.labelId) || {}).name || '?')}</b> · <span class="muted">${E(t('aiSaid'))}</span> <b class="bad">${E((labelById(w.got) || {}).name || '?')}</b> ${w.p}%</div></div>`;
     }).join('');
     return `<div class="card"><div class="score"><span class="big">${r.pct}%</span><span>${E(t('xScore', { n: r.total, c: r.correct }))}</span><span class="hchip">${E(t('roundN', { n: r.n }))}</span>${r.modelVersion ? `<span class="hchip">${E(t('evalWith', { n: r.modelVersion }))}</span>` : ''}</div>
       <div class="ebars">${eb}</div>
-      <h4>${E(t('xWrongTitle'))}</h4>${wrong ? `${legend()}<p class="muted sm">${E(t('xWordsHelp'))}</p><div class="xwrongs">${wrong}</div>` : `<div class="ok-msg">${E(t('allRight'))}</div>`}</div>`;
+      <h4>${E(t('xWrongTitle'))}</h4>${wrong ? `${legend()}<p class="muted sm">${E(t(mean() ? 'xWordsHelpMean' : 'xWordsHelp'))}</p><div class="xwrongs">${wrong}</div>` : `<div class="ok-msg">${E(t('allRight'))}</div>`}</div>`;
   }
   function tryHtml() {
     const tr = S.xTry;
     let res = '';
-    if (tr && tr.probs) res = `<div class="xtry">${legend()}${wordsHtml(tr.words)}${bars(tr.probs)}</div>`;
+    if (tr && tr.busy) res = `<div class="muted"><span class="spin"></span>${E(t('thinking'))}</div>`;
+    else if (tr && tr.probs) res = `<div class="xtry">${legend()}${wordsHtml(tr.words)}${bars(tr.probs)}${tr.via === 'words' && mean() ? `<div class="muted sm">${E(t('xFallback'))}</div>` : ''}</div>`;
     return `<details class="card" ${tr ? 'open' : ''}><summary><b>${E(t('xTryOne'))}</b> <span class="muted">${E(t('tryOneHint'))}</span></summary>
       <div class="tx-in"><textarea id="tx-try" data-field="xtext" data-zone="try:x" rows="2" maxlength="100" placeholder="${E(t('xTryPh'))}">${E(S.drafts['x:try:x'] || '')}</textarea>
       <button class="btn primary sm" data-act="xtry">${E(t('xTryBtn'))}</button></div>${res}</details>`;
@@ -245,13 +290,25 @@ export function makeText(X) {
       if (!list.length) return;
       if (sameData()) { S.xNoChange = true; X.toast(t('xNoChange', { n: P().modelVersion }), 'warn'); return X.schedule(); }
       S.xNoChange = false;
-      const m = X_.trainText(list.map(i => ({ text: i.text, labelId: i.labelId })), labels.map(l => l.id));
-      const ok = list.filter(i => X_.predictText(m, i.text).top === i.labelId).length;
+      const ids = labels.map(l => l.id);
+      const m = X_.trainText(list.map(i => ({ text: i.text, labelId: i.labelId })), ids);
+      let ok = list.filter(i => X_.predictText(m, i.text).top === i.labelId).length;
+      // 뜻 이해 AI: 문장을 뜻 숫자로 바꿔 레이블마다 중심을 기억한다(안 되면 단어 조각 AI만)
+      let mn = null;
+      if (meanMode()) {
+        S.xTraining = true; X.schedule();
+        try {
+          const vs = await X_.embedTexts(list.map(i => i.text));
+          mn = X_.meanModel(vs, list, ids);
+          ok = list.filter((i, k) => X_.predictVec(mn, vs[k]).top === i.labelId).length;
+        } catch (e) { console.warn('embed', e); X.toast(t('xFallback'), 'warn'); }
+        S.xTraining = false;
+      }
       const v = (P().modelVersion || 0) + 1;
       const counts = {};
       list.forEach(i => { counts[i.labelId] = (counts[i.labelId] || 0) + 1; });
       const done = await X.safeUpdate(X.pref(), {
-        txModel: m, modelVersion: v, mapping: X.C.identityMapping(labels), mappingOk: true,
+        txModel: m, txMean: mn, modelVersion: v, mapping: X.C.identityMapping(labels), mappingOk: true,
         trainedIds: list.map(i => i.id), modelAt: X.serverTimestamp(),
         [`models.v${v}`]: { v, at: X.serverTimestamp(), photos: list.length, counts, valAcc: Math.round(ok * 100 / list.length) },
       });
@@ -261,8 +318,14 @@ export function makeText(X) {
     async xeval() {
       const m = model(), tests = texts('test');
       if (!m || !tests.length) return;
-      const results = tests.filter(im => m.labels.includes(im.labelId)).map(im => {
-        const r = X_.predictText(m, im.text);
+      const use = tests.filter(im => m.labels.includes(im.labelId));
+      let preds = null;
+      if (mean()) {
+        try { const vs = await X_.embedTexts(use.map(im => im.text)); preds = vs.map(v => X_.predictVec(mean(), v)); }
+        catch (e) { console.warn('embed', e); X.toast(t('xFallback'), 'warn'); }
+      }
+      const results = use.map((im, k) => {
+        const r = preds ? preds[k] : X_.predictText(m, im.text);
         return { imgId: im.id, labelId: im.labelId, got: r.top, p: Math.round(r.probs[r.top] * 100), ok: r.top === im.labelId };
       });
       if (!results.length) return;
@@ -278,13 +341,15 @@ export function makeText(X) {
       });
       S.drafts.star = null; delete S.drafts.reason; delete S.drafts.causeText; delete S.drafts.fix;
     },
-    xtry() {
+    async xtry() {
       const m = model();
       const box = X.$('tx-try');
       const txt = X_.normText(box ? box.value : '');
       if (!m || !txt) return;
       S.drafts['x:try:x'] = txt;
-      S.xTry = X_.predictText(m, txt);
+      S.xTry = { busy: true }; X.schedule();
+      try { S.xTry = await X_.predictAny(both(), txt); }
+      catch { S.xTry = { ...X_.predictText(m, txt), via: 'words' }; }
       X.schedule();
     },
   };
@@ -307,13 +372,18 @@ export function makeText(X) {
     const m = model();
     if (!m) return null;
     const ex = trainSamples()[0];
-    return { model: { labels: m.labels, feats: m.feats, counts: m.counts, totals: m.totals, docs: m.docs }, sample: ex ? ex.text : '' };
+    const mn = mean();
+    return { model: { labels: m.labels, feats: m.feats, counts: m.counts, totals: m.totals, docs: m.docs }, ...(mn ? { mean: { labels: mn.labels, dim: mn.dim, cents: mn.cents } } : {}), sample: ex ? ex.text : '' };
   }
   function sampleState(a, labelIdx) {
     const l = a.labels[Math.min(labelIdx, a.labels.length - 1)];
     const ex = (l && texts('train', l.id)[0]) || null;
     const text = ex ? ex.text : (a.text && a.text.sample) || '';
     if (!a.text || !text) return { text: '' };
+    if (a.text.mean) {
+      const r = later(`ex:${P().modelVersion}:${text}`, () => X_.predictAny(a.text, text));
+      return r ? { text, probs: r.probs, words: r.words, status: 'ready' } : { text, status: 'thinking' };
+    }
     const r = X_.predictText(a.text.model, text);
     return { text, probs: r.probs, words: r.words, status: 'ready' };
   }
