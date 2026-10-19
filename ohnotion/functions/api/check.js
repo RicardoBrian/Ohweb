@@ -5,7 +5,8 @@
  *   ?slug=공지            등록된 페이지 점검(페이지 정보만 읽음 — 노션 요청 1건)
  *   ?slug=공지&refresh=1  지금 전체를 새로 그려 캐시를 갈아 끼움("지금 갱신")
  *   ?url=…(&slug=…)       등록 전 링크 확인(링크·iframe 코드에서 페이지 ID를 꺼냄)
- *   (인자 없음)            설정 상태만: notionEnabled / statsEnabled
+ *   (인자 없음)            설정 상태 + 토큰 진단: 토큰이 유효한지, 어느 워크스페이스의 어떤 통합인지
+ *                         (워크스페이스를 옮긴 뒤 예전 토큰이 남아 "페이지를 찾을 수 없어요"가 나던 걸 바로 보이게)
  *
  * 값은 절대 돌려주지 않는다 — 환경변수가 "있는지"만 알려 준다.
  */
@@ -24,7 +25,15 @@ export async function onRequestGet(context) {
   const base = { notionEnabled: !!env.NOTION_TOKEN, statsEnabled: !!env.FIREBASE_SERVICE_ACCOUNT_KEY };
   const slugParam = (q.get('slug') || '').normalize('NFC');
   const urlParam = q.get('url') || '';
-  if (!slugParam && !urlParam) return json(base);
+  if (!slugParam && !urlParam) {
+    if (!env.NOTION_TOKEN) return json(base);
+    try {
+      const me = await makeClient(env.NOTION_TOKEN).me();
+      return json({ ...base, token: { ok: true, integration: me.name || '', workspace: me.bot?.workspace_name || '' } });
+    } catch (e) {
+      return json({ ...base, token: { ok: false, message: explainError(e) } });
+    }
+  }
   if (!env.NOTION_TOKEN) return json({ ...base, ok: false, level: 'bad', message: 'NOTION_TOKEN이 설정되지 않았어요' });
 
   let pageId = null;
