@@ -7,7 +7,7 @@
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="ai-themes.css?v=202610190241">
+  <link rel="stylesheet" href="ai-themes.css?v=202610220501">
   <style>
     html, body { margin: 0; min-height: 100%; }
     body { background: #fafafa; }
@@ -17,18 +17,20 @@
 </head>
 <body>
 <!-- 학생 모둠이 AI 실험실에서 만든 웹앱. 로그인 없이 누구나 연다(학생 이름은 싣지 않는다).
-     사진은 이 브라우저 안에서만 쓰고 어디에도 올리지 않는다. -->
+     사진은 이 브라우저 안에서만 쓴다. 단, 로그인한 학생이 결과에 "맞아요/틀렸어요" 피드백을 보내면
+     그 문장이나 작게 줄인 사진이 만든 모둠에게 전달된다(카메라로 찍은 사진은 보내지 않는다). -->
 <div id="root"><div class="boot" id="boot">…</div></div>
 <input type="file" id="fileInput" accept="image/*" hidden>
 
 <script type="module">
-import { db } from './firebase-config.js';
-import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { db, auth } from './firebase-config.js';
+import { doc, getDoc, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { loadSession, authReady } from './session.js';
 import { SAFE_ID } from './escape.js';
-import { makeT, getLang, setLang } from './ai-i18n.js?v=202610190241';
-import { appHtml, probsByLabel } from './ai-render.js?v=202610190241';
-import { loadModel, loadDriveModel, predict, loadLibs } from './ai-model.js?v=202610190241';
-import { extractFromTransfer, fetchFirstImage } from './ai-image.js?v=202610190241';
+import { makeT, getLang, setLang } from './ai-i18n.js?v=202610220501';
+import { appHtml, probsByLabel, topLabel } from './ai-render.js?v=202610220501';
+import { loadModel, loadDriveModel, predict, loadLibs } from './ai-model.js?v=202610220501';
+import { extractFromTransfer, fetchFirstImage } from './ai-image.js?v=202610220501';
 
 const params = new URLSearchParams(location.search);
 const appId = params.get('id') || '';
@@ -66,18 +68,21 @@ async function start() {
   app = snap.data();
   if (!app.published && !preview) return fail(t('notPublished'));
   document.title = app.title || 'AI';
+  // 친구 피드백: 실험실에 로그인한 학생에게만 버튼을 보여 준다(표 데이터 앱은 제외)
+  const session = loadSession();
+  if (session && !app.table && !preview) authReady().then(() => { if (auth.currentUser) { state.fbOn = true; fbBy = session.id; render(); } }).catch(() => {});
   // 표 데이터 앱: 모델이 작은 식·나무라서 문서 안에 들어 있다(받을 파일 없음). 칸을 채우고 [물어보기]를 누른다.
   if (app.table && Array.isArray(app.table.features)) {
     state.tIn = app.table.features.map(f => f.def);
     render();
-    tableCore = await import('./ai-table-core.js?v=202610190241');
+    tableCore = await import('./ai-table-core.js?v=202610220501');
     return;
   }
   // 문장 앱: 단어 조각 개수를 센 작은 모델이 문서 안에 들어 있다.
   if (app.text && app.text.model) {
     state.text = '';
     render();
-    textCore = await import('./ai-text-core.js?v=202610190241');
+    textCore = await import('./ai-text-core.js?v=202610220501');
     return;
   }
   render();
@@ -91,9 +96,10 @@ async function start() {
       console.error('[aiapp] model', e); if (state.status === 'thinking') { state.status = 'error'; state.msg = modelErr; render(); } });
 }
 
-async function handleBlob(blob) {
+async function handleBlob(blob, { camera = false } = {}) {
   if (!app) return;
   if (!blob || !/^image\//.test(blob.type)) return;
+  lastBlob = blob; fromCam = camera; fbReset();
   if (photoUrl) URL.revokeObjectURL(photoUrl);
   photoUrl = URL.createObjectURL(blob);
   state.photo = photoUrl; state.probs = null; state.status = 'thinking'; state.msg = '';
@@ -103,13 +109,45 @@ async function handleBlob(blob) {
 }
 
 let tableCore = null, textCore = null;
+// ── 친구 피드백 ──
+let fbBy = '', lastBlob = null, fromCam = false;
+function fbReset() { state.fb = null; state.fbWant = null; state.fbNote = ''; state.fbErr = ''; }
+// 피드백용 작은 사진(긴 쪽 320px, JPEG) — 앱을 만든 모둠이 학습 데이터로 넣을 수 있게
+async function smallPhoto(blob) {
+  const bmp = await createImageBitmap(blob);
+  const k = Math.min(1, 320 / Math.max(bmp.width, bmp.height));
+  const c = document.createElement('canvas');
+  c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', 0.75);
+}
+async function fbSend(ok) {
+  if (!state.probs || state.fb === 'sending') return;
+  const got = (topLabel(app, state.probs).label || {}).id || '';
+  const want = ok ? got : state.fbWant;
+  if (!want) return;
+  const prev = state.fb;
+  state.fb = 'sending';
+  try {
+    const data = { by: fbBy, ok: !!ok, got, want, note: String(state.fbNote || '').trim().slice(0, 60), status: 'new', lang, at: serverTimestamp() };
+    if (app.text) data.text = String(state.text || '').slice(0, 100);
+    else if (lastBlob && !fromCam) { try { const u = await smallPhoto(lastBlob); if (u.length < 59000) data.img = u; } catch { /* 사진 없이 보낸다 */ } }
+    await addDoc(collection(db, 'ai_apps', appId, 'feedback'), data);
+    state.fb = 'sent';
+  } catch (e) {
+    console.error('[aiapp] feedback', e);
+    state.fb = prev === 'wrong' ? 'wrong' : 'wrong'; state.fbErr = t('error');
+    if (ok) state.fbWant = got;
+  }
+  render();
+}
 let _tseq = 0;
 async function textPredict() {
   const box = root.querySelector('.aa-text');
   const txt = box ? box.value.trim() : '';
   if (!textCore || !txt) return;
   const my = ++_tseq;
-  state.text = txt; state.probs = null; state.status = 'thinking'; render();
+  state.text = txt; state.probs = null; state.status = 'thinking'; fbReset(); render();
   // 뜻 이해 AI면 서버(/api/embed)로, 안 되면 단어 조각 AI로
   const r = await textCore.predictAny(app.text, txt).catch(() => textCore.predictText(app.text.model, txt));
   if (my !== _tseq) return;
@@ -118,7 +156,10 @@ async function textPredict() {
   const res = root.querySelector('.aa-result');
   if (res) res.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
-root.addEventListener('input', e => { if (e.target.classList && e.target.classList.contains('aa-text')) state.text = e.target.value; });
+root.addEventListener('input', e => {
+  if (e.target.classList && e.target.classList.contains('aa-text')) state.text = e.target.value;
+  if (e.target.classList && e.target.classList.contains('aa-fbnote')) state.fbNote = e.target.value;
+});
 root.addEventListener('keydown', e => {
   if (e.target.classList && e.target.classList.contains('aa-text') && e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); textPredict(); }
 });
@@ -178,11 +219,17 @@ root.addEventListener('click', e => {
   if (opt) { state.tIn[Number(opt.dataset.ti)] = opt.dataset.v; render(); return; }
   if (e.target.closest('[data-act="tpredict"]')) { tablePredict(); return; }
   if (e.target.closest('[data-act="xpredict"]')) { textPredict(); return; }
+  if (e.target.closest('[data-act="fbok"]')) { fbSend(true); return; }
+  if (e.target.closest('[data-act="fbwrong"]')) { state.fb = 'wrong'; render(); return; }
+  if (e.target.closest('[data-act="fbcancel"]')) { fbReset(); render(); return; }
+  const fp = e.target.closest('[data-act="fbpick"]');
+  if (fp) { state.fbWant = fp.dataset.v; render(); return; }
+  if (e.target.closest('[data-act="fbsend"]')) { fbSend(false); return; }
   if (e.target.closest('[data-act="pick"]')) { fileInput.click(); return; }
   const cap = e.target.closest('[data-act="cap"]');
   if (cap) {
     // 그리기·카메라는 누를 때만 불러온다
-    import('./ai-capture.js?v=202610190241').then(M => (cap.dataset.v === 'draw' ? M.openDraw : M.openCamera)({ t, onAdd: blob => handleBlob(blob), single: true }));
+    import('./ai-capture.js?v=202610220501').then(M => (cap.dataset.v === 'draw' ? M.openDraw : M.openCamera)({ t, onAdd: blob => handleBlob(blob, { camera: cap.dataset.v === 'camera' }), single: true }));
     return;
   }
   const zone = e.target.closest('[data-act="zone"]');

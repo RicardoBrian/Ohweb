@@ -2,7 +2,7 @@
 // 디자인 5종은 화면 배치가 같고 색·질감만 다르다(ai-themes.css).
 
 import { escHtml } from './escape.js';
-import { labelName, phraseFor, UNSURE, UNSURE_THRESHOLD, LANGS } from './ai-core.js?v=202610190241';
+import { labelName, phraseFor, UNSURE, UNSURE_THRESHOLD, LANGS } from './ai-core.js?v=202610220501';
 
 export const THEMES = ['minimal', 'bw', 'glass', 'neon', 'warm', 'pastel', 'forest', 'ocean', 'space', 'retro', 'comic'];
 // 강조색·글꼴은 디자인과 따로 고른다. 공개 웹앱에 그대로 쓰이므로 이 목록에 있는 값만 받는다.
@@ -80,6 +80,23 @@ function wordsHtml(app, words, t) {
     : `<span class="aa-w0">${escHtml(x.w)}</span>`)).join(' ')}</div><div class="aa-sub">${escHtml(t('xWordsApp'))}</div>`;
 }
 
+// 친구 피드백(로그인한 학생에게만, state.fbOn): 👍 맞아요 / 👎 틀렸어요 → 정답 고르기 → 보내기
+function fbHtml(app, lang, t, state) {
+  if (!state.fbOn || state.sample || state.status !== 'ready') return '';
+  if (state.fb === 'sent') return `<div class="aa-fb aa-fb-done">${escHtml(t('fbThanks'))}</div>`;
+  if (state.fb === 'wrong') {
+    const opts = (app.labels || []).map(l => `<button type="button" class="aa-opt${state.fbWant === l.id ? ' on' : ''}" data-act="fbpick" data-v="${escHtml(l.id)}">${l.emoji ? escHtml(l.emoji) + ' ' : ''}${escHtml(labelName(l, lang))}</button>`).join('');
+    return `<div class="aa-fb"><div class="aa-fbq">${escHtml(t('fbPick'))}</div><div class="aa-opts">${opts}</div>
+      <input class="aa-fbnote" maxlength="60" placeholder="${escHtml(t('fbNotePh'))}" value="${escHtml(state.fbNote || '')}">
+      <div class="aa-fbrow"><button type="button" class="aa-btn" data-act="fbsend" ${state.fbWant ? '' : 'disabled'}>${escHtml(t('fbSend'))}</button>
+      <button type="button" class="aa-lang" data-act="fbcancel">${escHtml(t('fbCancel'))}</button></div>
+      ${state.fb === 'wrong' && state.fbErr ? `<div class="aa-err">${escHtml(state.fbErr)}</div>` : ''}</div>`;
+  }
+  return `<div class="aa-fb"><span class="aa-fbq">${escHtml(t('fbAsk'))}<br><small>${escHtml(t('fbPrivacy'))}</small></span>
+    <button type="button" class="aa-opt" data-act="fbok">👍 ${escHtml(t('fbRight'))}</button>
+    <button type="button" class="aa-opt" data-act="fbwrong">👎 ${escHtml(t('fbWrong'))}</button></div>`;
+}
+
 // state: { photo: 이미지 주소|null, probs: {labelId:p}|null, status: 'idle'|'loading'|'thinking'|'error'|'ready', msg }
 export function appHtml(app, lang, t, state = {}) {
   const labels = app.labels || [];
@@ -136,7 +153,8 @@ export function appHtml(app, lang, t, state = {}) {
       ${tx && Array.isArray(state.words) ? wordsHtml(app, state.words, t) : ''}
       <div class="aa-sub">${escHtml(t('probability'))}</div>
       <div class="aa-bars">${bars}</div>
-      ${state.sample ? `<div class="aa-note">${escHtml(t('sampleNote'))}</div>` : ''}`;
+      ${state.sample ? `<div class="aa-note">${escHtml(t('sampleNote'))}</div>` : ''}
+      ${fbHtml(app, lang, t, state)}`;
   }
 
   // 대문: 학생이 올린 사진과 설명(선생님이 숨기면 안 보인다)

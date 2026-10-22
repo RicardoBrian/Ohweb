@@ -293,3 +293,11 @@
 .ai-app .aa-words { text-align: center; font-size: 18px; line-height: 2.1; word-break: keep-all; }
 .ai-app .aa-w { padding: 3px 7px; border-radius: 8px; border-bottom: 3px solid transparent; font-weight: 700; }
 .ai-app .aa-w0 { padding: 3px 2px; color: var(--aa-sub); }
+
+/* 친구 피드백 */
+.ai-app .aa-fb { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; padding-top: 12px; border-top: 1px dashed var(--aa-track); }
+.ai-app .aa-fbq { width: 100%; text-align: center; font-size: 13px; color: var(--aa-sub); }
+.ai-app .aa-fbnote { width: 100%; font: 500 14px/1.4 var(--aa-font); padding: 8px 12px; border-radius: 10px; border: 1px solid var(--aa-track); background: var(--aa-card); color: var(--aa-text); }
+.ai-app .aa-fbrow { display: flex; gap: 8px; align-items: center; }
+.ai-app .aa-fb-done { color: var(--aa-accent); font-weight: 700; font-size: 14px; }
+.ai-app .aa-btn:disabled { opacity: .45; cursor: default; transform: none; }

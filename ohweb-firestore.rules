@@ -356,6 +356,24 @@ service cloud.firestore {
           || (isMemberIn(aiProject(pid).get('memberEmails', []))
               && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['hiddenPhrases']));
       allow delete: if isAdmin();
+
+      // 친구 피드백: 로그인한 학생이 친구 웹앱 결과에 "맞아요/틀렸어요"를 남긴다(자기 이름으로만).
+      // 앱을 만든 모둠과 관리자만 읽고, 모둠은 처리 상태(넣기/넘기기)만 바꾼다. 사진은 작게 줄인 것만.
+      match /feedback/{fid} {
+        allow read: if isAdmin() || isMemberIn(aiProject(pid).get('memberEmails', []));
+        allow create: if request.auth != null
+            && request.resource.data.by is string
+            && request.auth.token.email == request.resource.data.by.lower() + '@ohinfo.local'
+            && request.resource.data.keys().hasOnly(['by', 'ok', 'got', 'want', 'text', 'img', 'note', 'status', 'lang', 'at'])
+            && request.resource.data.status == 'new'
+            && request.resource.data.get('text', '').size() <= 200
+            && request.resource.data.get('img', '').size() < 60000
+            && request.resource.data.get('note', '').size() <= 100;
+        allow update: if isAdmin()
+            || (isMemberIn(aiProject(pid).get('memberEmails', []))
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'statusBy']));
+        allow delete: if isAdmin();
+      }
     }
 
     // 명시 안 한 나머지 컬렉션은 전부 거부(기본값)

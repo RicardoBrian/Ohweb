@@ -104,6 +104,15 @@ async function loadResults() {
   const apps = await Promise.all(S.projects.map(p => getDoc(doc(db, 'ai_apps', p.id))));
   S.apps = {};
   apps.forEach((d, i) => { if (d.exists()) S.apps[S.projects[i].id] = d.data(); });
+  // 친구 피드백 수(공개한 이미지·문장 앱)
+  S.fbCount = {};
+  await Promise.all(Object.keys(S.apps).filter(id => !S.apps[id].table).map(async id => {
+    try {
+      const fs = await getDocs(collection(db, 'ai_apps', id, 'feedback'));
+      const list = fs.docs.map(d => d.data());
+      S.fbCount[id] = { good: list.filter(f => f.ok).length, bad: list.filter(f => !f.ok).length, used: list.filter(f => f.status === 'train' || f.status === 'test').length };
+    } catch { /* 피드백을 못 읽어도 결과는 보인다 */ }
+  }));
 }
 
 // ── 그리기 ──
@@ -397,6 +406,7 @@ function projectHtml(p, pair) {
     <div><b>모델:</b> ${p.modelVersion ? `${p.modelVersion}번 모델${(p.models && p.models['v' + p.modelVersion] && p.models['v' + p.modelVersion].valAcc != null) ? ` (학습 확인 점수 ${p.models['v' + p.modelVersion].valAcc}%)` : ''} · 지금까지 ${Object.keys(p.models || {}).length}번 학습` : (p.modelUrl ? `<a href="${E(p.modelUrl)}" target="_blank" rel="noopener">${E(p.modelId || p.modelUrl)}</a>` : '-')}</div>
     <div><b>평가:</b> ${evalHtml}</div>
     <div><b>웹앱:</b> ${appLink}</div>
+    ${S.fbCount && S.fbCount[p.id] ? `<div><b>친구 피드백:</b> 👍 ${S.fbCount[p.id].good} · 👎 ${S.fbCount[p.id].bad} <span class="ai-sub">(데이터로 넣음 ${S.fbCount[p.id].used})</span></div>` : ''}
     ${app && (app.cover || app.desc) ? `<div class="ai-cover">${app.cover ? `<img src="${E(app.cover)}" alt="">` : ''}<div>
       ${app.desc ? `<div>${E(app.desc)}</div>` : ''}
       <div class="ai-btns">${app.cover ? `<button class="btn sm ${hidden._cover ? 'accent' : 'ghost'}" data-ai="hide" data-pid="${E(p.id)}" data-id="_cover">${hidden._cover ? '대문 사진 숨김 해제' : '대문 사진 숨기기'}</button>` : ''}
