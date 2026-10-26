@@ -114,17 +114,17 @@
           </div>
         </label>
         <label class="radio-card">
-          <input type="radio" name="storage" value="drive" onchange="saveDraft()">
+          <input type="radio" name="storage" value="sheets" onchange="saveDraft()">
           <div class="radio-card-body">
-            <div class="radio-card-title">구글 드라이브 연동 (추천)</div>
-            <div class="radio-card-desc">데이터가 구글 드라이브에 저장돼서 여러 기기·사람이 공유할 수 있습니다. 구글 계정과 Apps Script 배포만 하면 되고 완전 무료입니다. 특별히 빠른 응답이 필요 없다면 이걸 선택하세요.</div>
+            <div class="radio-card-title">구글 시트 연동 (추천)</div>
+            <div class="radio-card-desc">데이터가 구글 스프레드시트에 표로 쌓여서 직접 보고 고치기 편하고, 여러 기기·사람이 함께 쓸 수 있습니다. 구글 계정만 있으면 되고 완전 무료입니다. 스프레드시트의 Apps Script를 웹앱으로 배포하는 과정이 필요합니다.</div>
           </div>
         </label>
         <label class="radio-card">
           <input type="radio" name="storage" value="firebase" onchange="saveDraft()">
           <div class="radio-card-body">
             <div class="radio-card-title">Firebase (Firestore) 연동</div>
-            <div class="radio-card-desc">구글 드라이브보다 응답이 빠르고 실시간 동기화가 됩니다. 반응 속도가 중요한 앱이라면 이걸 선택하세요. Firebase 프로젝트 생성이 필요하지만, 무료 사용량 안에서 쓸 수 있습니다.</div>
+            <div class="radio-card-desc">구글 시트보다 응답이 빠르고 실시간 동기화가 됩니다. 반응 속도가 중요한 앱이라면 이걸 선택하세요. Firebase 프로젝트 생성이 필요하지만, 무료 사용량 안에서 쓸 수 있습니다.</div>
           </div>
         </label>
       </div>
@@ -233,6 +233,6 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="script.js?v=11"></script>
+  <script src="script.js?v=12"></script>
 </body>
 </html>
