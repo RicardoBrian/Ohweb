@@ -448,6 +448,19 @@ function resetForm() {
   document.getElementById('formError').textContent = '';
 }
 
+// "그래도 저장" 버튼으로 다시 제출할 때 노션 점검 결과를 건너뛰기 위한 표시.
+let forceSave = false;
+
+// Firestore 오류를 알아들을 말로(영어 원문만 뜨면 원인을 알기 어렵다).
+function explainSaveError(err) {
+  const code = err?.code || '';
+  if (code === 'permission-denied' || /insufficient permissions/i.test(err?.message || '')) {
+    return '저장 권한이 없어요(Firestore 규칙). Firebase 콘솔 규칙에 최신 notion 블록(pageId 포함)이 들어 있는지, 관리자 계정으로 로그인했는지 확인해 주세요.';
+  }
+  if (code === 'unavailable') return '인터넷 연결이 불안정해 저장하지 못했어요. 잠시 후 다시 눌러 주세요.';
+  return err?.message || String(err);
+}
+
 async function onSave(e) {
   e.preventDefault();
   const errEl = document.getElementById('formError');
@@ -476,8 +489,18 @@ async function onSave(e) {
       const r = await fetch(`/api/check?url=${encodeURIComponent(url)}&slug=${encodeURIComponent(slug)}`, { cache: 'no-store' });
       const c = await r.json();
       applyFlags(c);
-      if (c.level === 'bad' && !confirm(`이 페이지를 아직 읽을 수 없어요:\n${c.message}\n\n그래도 저장할까요?`)) return;
-      if (!title && c.title) title = c.title;
+      // 브라우저 확인창(confirm)은 차단되면 아무 말 없이 false가 돼서 "등록이 안 되는" 것처럼
+      // 보였다. 화면에 이유와 "그래도 저장" 버튼을 띄운다.
+      if (c.level === 'bad' && !forceSave) {
+        errEl.innerHTML = `이 페이지를 아직 노션에서 읽을 수 없어요: ${escapeHtml(c.message)}
+          <br><button type="button" class="btn sm" id="forceSaveBtn" style="margin-top:8px">그래도 저장</button>`;
+        document.getElementById('forceSaveBtn').addEventListener('click', () => {
+          forceSave = true;
+          document.getElementById('pageForm').requestSubmit();
+        });
+        return;
+      }
+      if (!title && c.title) title = c.title.slice(0, 100);
       checks[slug] = c;
     } catch { /* 점검 실패는 저장을 막지 않는다 */ }
     if (!title) title = slug;
@@ -496,8 +519,10 @@ async function onSave(e) {
     resetForm();
     await refresh({ withChecks: false });
   } catch (err) {
-    errEl.textContent = err.message;
+    console.error('저장 실패:', err);
+    errEl.textContent = explainSaveError(err);
   } finally {
+    forceSave = false;
     btn.disabled = false;
     btn.textContent = editing ? '저장' : '등록';
   }

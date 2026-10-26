@@ -7,7 +7,7 @@
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
-  <link rel="stylesheet" href="ai-themes.css?v=202610170240">
+  <link rel="stylesheet" href="ai-themes.css?v=202610220501">
   <style>
     html, body { margin: 0; min-height: 100%; }
     body { background: #fafafa; }
@@ -17,18 +17,20 @@
 </head>
 <body>
 <!-- 학생 모둠이 AI 실험실에서 만든 웹앱. 로그인 없이 누구나 연다(학생 이름은 싣지 않는다).
-     사진은 이 브라우저 안에서만 쓰고 어디에도 올리지 않는다. -->
+     사진은 이 브라우저 안에서만 쓴다. 단, 로그인한 학생이 결과에 "맞아요/틀렸어요" 피드백을 보내면
+     그 문장이나 작게 줄인 사진이 만든 모둠에게 전달된다(카메라로 찍은 사진은 보내지 않는다). -->
 <div id="root"><div class="boot" id="boot">…</div></div>
 <input type="file" id="fileInput" accept="image/*" hidden>
 
 <script type="module">
-import { db } from './firebase-config.js';
-import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { db, auth } from './firebase-config.js';
+import { doc, getDoc, collection, addDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { loadSession, authReady } from './session.js';
 import { SAFE_ID } from './escape.js';
-import { makeT, getLang, setLang } from './ai-i18n.js?v=202610170240';
-import { appHtml, probsByLabel } from './ai-render.js?v=202610170240';
-import { loadModel, loadDriveModel, predict, loadLibs } from './ai-model.js?v=202610170240';
-import { extractFromTransfer, fetchFirstImage } from './ai-image.js?v=202610170240';
+import { makeT, getLang, setLang } from './ai-i18n.js?v=202610220501';
+import { appHtml, probsByLabel, topLabel } from './ai-render.js?v=202610220501';
+import { loadModel, loadDriveModel, predict, loadLibs } from './ai-model.js?v=202610220501';
+import { extractFromTransfer, fetchFirstImage } from './ai-image.js?v=202610220501';
 
 const params = new URLSearchParams(location.search);
 const appId = params.get('id') || '';
@@ -66,6 +68,23 @@ async function start() {
   app = snap.data();
   if (!app.published && !preview) return fail(t('notPublished'));
   document.title = app.title || 'AI';
+  // 친구 피드백: 실험실에 로그인한 학생에게만 버튼을 보여 준다(표 데이터 앱은 제외)
+  const session = loadSession();
+  if (session && !app.table && !preview) authReady().then(() => { if (auth.currentUser) { state.fbOn = true; fbBy = session.id; render(); } }).catch(() => {});
+  // 표 데이터 앱: 모델이 작은 식·나무라서 문서 안에 들어 있다(받을 파일 없음). 칸을 채우고 [물어보기]를 누른다.
+  if (app.table && Array.isArray(app.table.features)) {
+    state.tIn = app.table.features.map(f => f.def);
+    render();
+    tableCore = await import('./ai-table-core.js?v=202610220501');
+    return;
+  }
+  // 문장 앱: 단어 조각 개수를 센 작은 모델이 문서 안에 들어 있다.
+  if (app.text && app.text.model) {
+    state.text = '';
+    render();
+    textCore = await import('./ai-text-core.js?v=202610220501');
+    return;
+  }
   render();
   // 사진을 고르기 전에 모델을 미리 받아 둔다.
   // 실험실에서 학습한 모델(배포한 번호)은 드라이브에서, 예전 방식은 티처블머신 링크에서.
@@ -77,9 +96,10 @@ async function start() {
       console.error('[aiapp] model', e); if (state.status === 'thinking') { state.status = 'error'; state.msg = modelErr; render(); } });
 }
 
-async function handleBlob(blob) {
+async function handleBlob(blob, { camera = false } = {}) {
   if (!app) return;
   if (!blob || !/^image\//.test(blob.type)) return;
+  lastBlob = blob; fromCam = camera; fbReset();
   if (photoUrl) URL.revokeObjectURL(photoUrl);
   photoUrl = URL.createObjectURL(blob);
   state.photo = photoUrl; state.probs = null; state.status = 'thinking'; state.msg = '';
@@ -87,6 +107,82 @@ async function handleBlob(blob) {
   if (modelErr) { state.status = 'error'; state.msg = modelErr; return render(); }
   if (loaded) runPredict();
 }
+
+let tableCore = null, textCore = null;
+// ── 친구 피드백 ──
+let fbBy = '', lastBlob = null, fromCam = false;
+function fbReset() { state.fb = null; state.fbWant = null; state.fbNote = ''; state.fbErr = ''; }
+// 피드백용 작은 사진(긴 쪽 320px, JPEG) — 앱을 만든 모둠이 학습 데이터로 넣을 수 있게
+async function smallPhoto(blob) {
+  const bmp = await createImageBitmap(blob);
+  const k = Math.min(1, 320 / Math.max(bmp.width, bmp.height));
+  const c = document.createElement('canvas');
+  c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+  c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+  return c.toDataURL('image/jpeg', 0.75);
+}
+async function fbSend(ok) {
+  if (!state.probs || state.fb === 'sending') return;
+  const got = (topLabel(app, state.probs).label || {}).id || '';
+  const want = ok ? got : state.fbWant;
+  if (!want) return;
+  const prev = state.fb;
+  state.fb = 'sending';
+  try {
+    const data = { by: fbBy, ok: !!ok, got, want, note: String(state.fbNote || '').trim().slice(0, 60), status: 'new', lang, at: serverTimestamp() };
+    if (app.text) data.text = String(state.text || '').slice(0, 100);
+    else if (lastBlob && !fromCam) { try { const u = await smallPhoto(lastBlob); if (u.length < 59000) data.img = u; } catch { /* 사진 없이 보낸다 */ } }
+    await addDoc(collection(db, 'ai_apps', appId, 'feedback'), data);
+    state.fb = 'sent';
+  } catch (e) {
+    console.error('[aiapp] feedback', e);
+    state.fb = prev === 'wrong' ? 'wrong' : 'wrong'; state.fbErr = t('error');
+    if (ok) state.fbWant = got;
+  }
+  render();
+}
+let _tseq = 0;
+async function textPredict() {
+  const box = root.querySelector('.aa-text');
+  const txt = box ? box.value.trim() : '';
+  if (!textCore || !txt) return;
+  const my = ++_tseq;
+  state.text = txt; state.probs = null; state.status = 'thinking'; fbReset(); render();
+  // 뜻 이해 AI면 서버(/api/embed)로, 안 되면 단어 조각 AI로
+  const r = await textCore.predictAny(app.text, txt).catch(() => textCore.predictText(app.text.model, txt));
+  if (my !== _tseq) return;
+  state.probs = r.probs; state.words = r.words; state.status = 'ready';
+  render();
+  const res = root.querySelector('.aa-result');
+  if (res) res.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+root.addEventListener('input', e => {
+  if (e.target.classList && e.target.classList.contains('aa-text')) state.text = e.target.value;
+  if (e.target.classList && e.target.classList.contains('aa-fbnote')) state.fbNote = e.target.value;
+});
+root.addEventListener('keydown', e => {
+  if (e.target.classList && e.target.classList.contains('aa-text') && e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); textPredict(); }
+});
+function tablePredict() {
+  if (!tableCore) return;
+  const r = tableCore.appPredict(app.table, state.tIn);
+  if (app.table.prob === 'class') state.probs = Object.fromEntries(r.p.map((p, i) => ['c' + i, p]));
+  else state.tv = r.v;
+  state.status = 'ready';
+  render();
+  const res = root.querySelector('.aa-result');
+  if (res) res.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+// 숫자 칸: 밀기와 숫자 칸을 서로 맞춘다(다시 그리면 밀던 손이 끊기므로 칸만 고친다).
+root.addEventListener('input', e => {
+  const el = e.target.closest('[data-ti]');
+  if (!el || !app || !app.table) return;
+  const i = Number(el.dataset.ti), f = app.table.features[i];
+  let v = Number(el.value);
+  if (Number.isNaN(v)) return;
+  state.tIn[i] = v;
+  root.querySelectorAll(`[data-ti="${i}"]`).forEach(x => { if (x !== el && x.tagName === 'INPUT') x.value = String(Math.min(f.max, Math.max(f.min, v))); });
+});
 
 let _seq = 0;
 async function runPredict() {
@@ -119,11 +215,21 @@ root.addEventListener('click', e => {
   const langBtn = e.target.closest('[data-lang]');
   if (!app) return;
   if (langBtn) { lang = langBtn.dataset.lang; setLang(lang); t = makeT(lang); render(); return; }
+  const opt = e.target.closest('[data-act="topt"]');
+  if (opt) { state.tIn[Number(opt.dataset.ti)] = opt.dataset.v; render(); return; }
+  if (e.target.closest('[data-act="tpredict"]')) { tablePredict(); return; }
+  if (e.target.closest('[data-act="xpredict"]')) { textPredict(); return; }
+  if (e.target.closest('[data-act="fbok"]')) { fbSend(true); return; }
+  if (e.target.closest('[data-act="fbwrong"]')) { state.fb = 'wrong'; render(); return; }
+  if (e.target.closest('[data-act="fbcancel"]')) { fbReset(); render(); return; }
+  const fp = e.target.closest('[data-act="fbpick"]');
+  if (fp) { state.fbWant = fp.dataset.v; render(); return; }
+  if (e.target.closest('[data-act="fbsend"]')) { fbSend(false); return; }
   if (e.target.closest('[data-act="pick"]')) { fileInput.click(); return; }
   const cap = e.target.closest('[data-act="cap"]');
   if (cap) {
     // 그리기·카메라는 누를 때만 불러온다
-    import('./ai-capture.js?v=202610170240').then(M => (cap.dataset.v === 'draw' ? M.openDraw : M.openCamera)({ t, onAdd: blob => handleBlob(blob), single: true }));
+    import('./ai-capture.js?v=202610220501').then(M => (cap.dataset.v === 'draw' ? M.openDraw : M.openCamera)({ t, onAdd: blob => handleBlob(blob, { camera: cap.dataset.v === 'camera' }), single: true }));
     return;
   }
   const zone = e.target.closest('[data-act="zone"]');
@@ -132,8 +238,8 @@ root.addEventListener('click', e => {
 // 화면 어디에 떨어뜨려도 사진으로 받는다(칸 밖에 놓으면 브라우저가 그 사진으로 페이지를 바꿔 버리므로).
 window.addEventListener('dragover', e => { e.preventDefault(); const z = root.querySelector('[data-act="zone"]'); if (z) z.classList.add('drag'); });
 window.addEventListener('dragleave', e => { if (!e.relatedTarget) { const z = root.querySelector('[data-act="zone"]'); if (z) z.classList.remove('drag'); } });
-window.addEventListener('drop', e => { e.preventDefault(); const z = root.querySelector('[data-act="zone"]'); if (z) z.classList.remove('drag'); if (app) handleTransfer(e.dataTransfer); });
-window.addEventListener('paste', e => { if (app) handleTransfer(e.clipboardData); });
+window.addEventListener('drop', e => { e.preventDefault(); const z = root.querySelector('[data-act="zone"]'); if (z) z.classList.remove('drag'); if (app && !app.table && !app.text) handleTransfer(e.dataTransfer); });
+window.addEventListener('paste', e => { if (app && !app.table && !app.text) handleTransfer(e.clipboardData); });
 root.addEventListener('keydown', e => {
   const z = e.target.closest('[data-act="zone"]');
   if (z && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); fileInput.click(); }
