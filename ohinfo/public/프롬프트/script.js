@@ -46,7 +46,7 @@ const DESIGN_PRESETS = [
   },
 ];
 
-const CLOSING_TEXT = '빌드 도구(Vite, React, webpack 등) 없이 순수 HTML/CSS/JS로 작성해주세요. 데스크톱과 모바일 화면 모두에서 자연스럽게 보이도록 반응형으로 만들어주세요. 화면에 보이는 버튼, 안내 문구, 오류 메시지 등 모든 텍스트는 한국어로 작성해주세요. TODO나 "여기에 구현" 같은 미완성 부분 없이, 위에 적은 기능들이 실제로 클릭하면 동작하는 완성된 코드로 작성해주세요. 입력값이 비어있거나 잘못된 경우에도 오류 없이 자연스럽게 동작하도록 예외 처리를 해주세요. 먼저 바로 실행 가능한 완성된 웹앱 코드를 한 번에 작성하고, 필요한 설명은 코드 작성이 끝난 뒤에 해주세요. 단, 위에서 설명한 제약 조건(빌드 도구 미사용, 지정한 데이터 저장 방식 등) 때문에 제가 원하는 기능을 제대로 구현하기 어렵다면, 마음대로 다른 방식으로 바꾸지 말고 먼저 어떤 제약을 왜 바꿔야 하는지 저에게 물어봐주세요. 제가 좋다고 하면 그때 그 기능을 추가하는 방법(설치·설정 방법 포함)까지 코드와 함께 설명해주세요. 저는 바이브코딩이 처음입니다. 코드 작성이 끝나면, 이 웹앱을 Google AI Studio의 GitHub 연결 기능으로 저장소에 올리고, Cloudflare Pages에서 그 저장소를 선택해 pages.dev 주소로 배포하는 방법을 단계별로 자세하고 쉽게 설명해주세요.';
+const CLOSING_TEXT = '빌드 도구(Vite, React, webpack 등) 없이 순수 HTML/CSS/JS로 작성해주세요. 데스크톱과 모바일 화면 모두에서 자연스럽게 보이도록 반응형으로 만들어주세요. 화면에 보이는 버튼, 안내 문구, 오류 메시지 등 모든 텍스트는 한국어로 작성해주세요. TODO나 "여기에 구현" 같은 미완성 부분 없이, 위에 적은 기능들이 실제로 클릭하면 동작하는 완성된 코드로 작성해주세요. 입력값이 비어있거나 잘못된 경우에도 오류 없이 자연스럽게 동작하도록 예외 처리를 해주세요. 먼저 바로 실행 가능한 완성된 웹앱 코드를 한 번에 작성하고, 필요한 설명은 코드 작성이 끝난 뒤에 해주세요. 단, 위에서 설명한 제약 조건(빌드 도구 미사용, 지정한 데이터 저장 방식 등) 때문에 제가 원하는 기능을 제대로 구현하기 어렵다면, 마음대로 다른 방식으로 바꾸지 말고 먼저 어떤 제약을 왜 바꿔야 하는지 저에게 물어봐주세요. 제가 좋다고 하면 그때 그 기능을 추가하는 방법(설치·설정 방법 포함)까지 코드와 함께 설명해주세요. 저는 바이브코딩이 처음입니다. 코드 작성이 끝나면, 이 웹앱을 Google AI Studio의 GitHub 연결 기능으로 저장소에 올리고, Cloudflare Pages에서 그 저장소를 선택해 pages.dev 주소로 배포하는 방법을 단계별로 자세하고 쉽게 설명해주세요. 특히 Cloudflare Pages 설정 화면의 Framework preset, Build command, Build output directory에 무엇을 입력해야 하는지(빌드가 필요 없는 코드라면 비워두면 되는지)를 정확히 알려주세요.';
 
 // 데이터 저장 방식별 삽입 문구 — 실제로 만들어질 앱은 진짜 구글 시트/Firebase를
 // 붙여야 하므로, Gemini가 자리표시 상수/설정값을 코드에 남겨두고 연동 방법까지
@@ -69,6 +69,17 @@ const STORAGE_TEXT = {
     '그리고 제가 직접 연동할 수 있도록 아래 내용을 단계별로 설명해주세요: (1) Firebase 콘솔(console.firebase.google.com)에서 새 프로젝트를 만드는 방법, (2) Firestore Database를 만들고 어떤 컬렉션 구조를 쓰면 되는지, (3) 작성한 보안 규칙을 Firestore의 "규칙" 탭에 붙여넣고 게시하는 방법, (4) "웹 앱 추가"로 앱을 등록해서 위 firebaseConfig 값을 얻는 방법과 그 값을 코드 어디에 붙여넣어야 하는지.',
   ].join(' '),
 };
+
+// 시트에는 칸당 5만 자 제한이 있어 사진·PDF는 같은 Apps Script로 드라이브 폴더에
+// 넣고 시트엔 링크만 남긴다. Firebase Storage는 결제 카드 등록(Blaze)이 필요해 제외.
+const FILE_TEXT = [
+  '사진·PDF 같은 파일도 저장해야 합니다. 파일은 위의 Apps Script로 구글 드라이브의 한 폴더에 저장하고, 스프레드시트에는 그 파일의 ID와 링크만 기록해주세요.',
+  '브라우저에서 파일을 base64로 바꿔 위와 같은 방식(Content-Type "text/plain;charset=utf-8"의 POST)으로 보내고, 사진은 올리기 전에 브라우저에서 긴 변 1600px 정도의 JPEG로 줄여서 보내주세요. 10MB가 넘는 파일은 올리기 전에 안내 메시지로 막아주세요.',
+  '저장한 파일은 "링크가 있는 모든 사용자"가 볼 수 있게 공유 설정하고, 화면에 사진을 보여줄 때는 https://drive.google.com/thumbnail?id=파일ID&sz=w1000 형식의 주소를 사용해주세요.',
+  'Apps Script 코드 안에는 저장할 폴더 ID를 아래처럼 자리표시 상수로 만들어 두세요:',
+  'const DRIVE_FOLDER_ID = "여기에_드라이브_폴더_ID_붙여넣기";',
+  '그리고 구글 드라이브에 폴더를 만들고 주소창에서 폴더 ID를 찾아 넣는 방법과, 드라이브 접근 권한을 새로 승인해야 하는 경우의 방법도 설명해주세요.',
+].join(' ');
 
 const state = {
   features: [],
@@ -432,9 +443,12 @@ function getStorage() {
 }
 
 function validateStorage() {
-  const ok = !!getStorage();
+  const storage = getStorage();
+  const ok = !!storage;
   document.getElementById('err-storage').hidden = ok;
-  return ok;
+  const filesOk = !document.getElementById('needFiles').checked || storage === 'sheets';
+  document.getElementById('err-files').hidden = filesOk;
+  return ok && filesOk;
 }
 
 function validateStep3() {
@@ -490,6 +504,10 @@ function generatePrompt() {
   // 4. 데이터 저장 방식
   lines.push(STORAGE_TEXT[storage]);
   lines.push('');
+  if (storage === 'sheets' && document.getElementById('needFiles').checked) {
+    lines.push(FILE_TEXT);
+    lines.push('');
+  }
 
   // 5. 디자인
   if (state.designMode === 'custom') {
@@ -623,6 +641,7 @@ function resetAll() {
   state.features = [newFeature()];
   renderFeatures();
   document.querySelectorAll('input[name="storage"]').forEach((el) => { el.checked = false; });
+  document.getElementById('needFiles').checked = false;
   document.getElementById('designText').value = '';
   state.selectedPreset = null;
   setDesignMode('custom');
@@ -631,6 +650,7 @@ function resetAll() {
   document.getElementById('err-topic').hidden = true;
   document.getElementById('err-features').hidden = true;
   document.getElementById('err-storage').hidden = true;
+  document.getElementById('err-files').hidden = true;
   document.getElementById('err-design').hidden = true;
 
   reviseState.newFeatures = [];
@@ -688,6 +708,7 @@ function saveDraft() {
       topic: document.getElementById('topic').value,
       features: state.features.map((f) => ({ name: f.name, desc: f.desc, steps: f.steps })),
       storage: getStorage(),
+      needFiles: document.getElementById('needFiles').checked,
       designMode: state.designMode,
       designText: document.getElementById('designText').value,
       selectedPreset: state.selectedPreset,
@@ -732,6 +753,7 @@ function loadDraft() {
     const el = document.querySelector(`input[name="storage"][value="${draft.storage}"]`);
     if (el) el.checked = true;
   }
+  document.getElementById('needFiles').checked = !!draft.needFiles;
 
   document.getElementById('designText').value = draft.designText || '';
   state.selectedPreset = draft.selectedPreset || null;
