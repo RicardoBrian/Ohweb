@@ -64,31 +64,61 @@
     return out;
   }
 
+  // 표지: 학생들이 보고 들어올 주소(note.kakainfo.com/주소)를 화면 폭에 꽉 차게.
+  // 페이지 제목은 위에 작게. 하위 페이지에서 발표해도 주소는 학습지 첫 주소로 보여 준다
+  // (/주소/긴ID는 학생이 따라 치기 어렵고, 들어오면 본문 링크로 이동할 수 있으니까).
   function titleSlide() {
     const s = document.createElement('section');
     s.className = 'slide slide-title';
     const cover = document.querySelector('.cover');
     if (cover) s.style.setProperty('--cover', getComputedStyle(cover).backgroundImage);
-    const inner = document.createElement('div');
-    inner.className = 'slide-inner';
+
+    const head = document.createElement('div');
+    head.className = 'title-head';
     const icon = document.querySelector('.doc-icon');
     if (icon) {
       const i = icon.cloneNode(true);
       i.className = 'slide-icon';
-      inner.appendChild(i);
+      head.appendChild(i);
     }
     const h = document.createElement('h1');
     h.textContent = document.querySelector('.doc-title')?.textContent || document.title;
-    inner.appendChild(h);
-    const sub = document.querySelector('.bar-title')?.textContent;
-    if (sub && sub !== h.textContent) {
-      const p = document.createElement('p');
-      p.className = 'slide-sub';
-      p.textContent = sub;
-      inner.appendChild(p);
-    }
-    s.appendChild(inner);
+    head.appendChild(h);
+    s.appendChild(head);
+
+    const slug = document.body.dataset.slug || '';
+    const addr = document.createElement('div');
+    addr.className = 'title-addr';
+    addr.innerHTML = '<div class="addr-label">이 주소로 들어오세요</div><div class="addr-url"><span class="addr-host"></span><span class="addr-slug"></span></div>';
+    addr.querySelector('.addr-host').textContent = `${location.host}/`;
+    addr.querySelector('.addr-slug').textContent = slug;
+    s.appendChild(addr);
     return s;
+  }
+
+  // 주소 글씨를 슬라이드 폭(여백 제외)에 꼭 맞는 크기로.
+  // 한 줄로 했을 때 너무 작아지면(긴 주소) 두 줄로 나눠 각 줄을 폭에 맞춘다.
+  function fitAddress(s) {
+    const url = s.querySelector('.addr-url');
+    if (!url) return;
+    const host = url.querySelector('.addr-host');
+    const slug = url.querySelector('.addr-slug');
+    const avail = W - PAD * 2;
+    const fitOne = (el, max) => {
+      el.style.fontSize = '100px';
+      const w = el.scrollWidth || el.getBoundingClientRect().width;
+      return w ? Math.min(max, Math.floor((100 * avail) / w)) : max;
+    };
+    url.classList.remove('two-line');
+    host.style.fontSize = slug.style.fontSize = '';
+    url.style.fontSize = '';
+    const one = fitOne(url, 240);
+    if (one >= 110) { url.style.fontSize = `${one}px`; return; }
+    url.classList.add('two-line');
+    url.style.fontSize = '';
+    const slugSize = fitOne(slug, 260);
+    host.style.fontSize = `${Math.min(fitOne(host, 140), slugSize)}px`;
+    slug.style.fontSize = `${slugSize}px`;
   }
 
   // ── 화면 ──
@@ -170,7 +200,7 @@
     slides.forEach(fit);
   }
   function fit(s) {
-    if (s.classList.contains('slide-title')) return;   // 표지는 CSS로 가운데 정렬
+    if (s.classList.contains('slide-title')) { fitAddress(s); return; }   // 표지는 주소 크기만 맞춘다
     const inner = s.querySelector('.slide-inner');
     inner.style.transform = '';
     inner.style.width = '';
@@ -212,7 +242,8 @@
       s.querySelectorAll('video, audio').forEach((m) => m.pause?.());
     });
     const active = slides[index];
-    active.querySelector('.slide-inner').scrollTop = 0;
+    const activeInner = active.querySelector('.slide-inner');
+    if (activeInner) activeInner.scrollTop = 0;
     // 지금 슬라이드와 다음 슬라이드의 늦게 불러오는 이미지/iframe을 미리 불러온다.
     [active, slides[index + 1]].filter(Boolean).forEach((s) => s.querySelectorAll('[loading="lazy"]').forEach((el) => { el.loading = 'eager'; }));
     deck.querySelector('.deck-count').textContent = `${index + 1} / ${slides.length}`;

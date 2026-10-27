@@ -92,6 +92,7 @@ export function makeClient(token) {
 
   return {
     page: (id) => call(`/pages/${dashed(id)}`),
+    me: () => call('/users/me'),
     block: (id) => call(`/blocks/${dashed(id)}`),
     async children(id) {
       const out = [];

@@ -27,7 +27,7 @@ const BRAND = '정보 학습지';
 // 학생 화면의 CSS/JS 주소 뒤에 붙는 버전. view.css나 view.js를 고치면 이 값을 바꾼다 —
 // 그래야 브라우저·Cloudflare에 남은 예전 파일 대신 새 파일을 받는다(첫 iframe 버전의
 // view.css가 남아 여백·HTML 창 크기가 다 깨져 보였던 일이 있었다).
-const ASSET_V = '2026101603';
+const ASSET_V = '2026102701';
 
 function html(body, status = 200) {
   return new Response(body, {

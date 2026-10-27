@@ -137,6 +137,7 @@ async function renderDashboard() {
       </div>
     </div>
     <div class="dashboard">
+      <div class="token-info" id="tokenInfo" hidden></div>
       <div class="banner" id="notionBanner" hidden>
         <b>노션 연결이 아직 안 됐어요.</b> 노션 → 설정 → <b>연결(통합) → 새 통합 만들기</b>(내부)로 시크릿을 받아
         Cloudflare Pages 프로젝트 <b>ohnotion</b>에 <code>NOTION_TOKEN</code>(Secret)으로 넣고 재배포해 주세요.
@@ -238,8 +239,22 @@ async function loadStats() {
 }
 
 function applyFlags(data) {
+  if (data.token) showToken(data.token);
   if (typeof data.statsEnabled === 'boolean') statsEnabled = data.statsEnabled;
   if (typeof data.notionEnabled === 'boolean') notionEnabled = data.notionEnabled;
+}
+
+// 서버에 들어 있는 NOTION_TOKEN이 어느 워크스페이스의 어떤 통합인지 보여 준다.
+// 등록한 페이지가 다른 워크스페이스에 있거나, 이 통합이 연결되지 않았으면 "찾을 수 없어요"가 난다.
+function showToken(t) {
+  const el = document.getElementById('tokenInfo');
+  if (!el) return;
+  el.hidden = false;
+  el.className = `token-info ${t.ok ? 'ok' : 'bad'}`;
+  el.innerHTML = t.ok
+    ? `노션 연결: <b>${escapeHtml(t.workspace || '(워크스페이스 이름 없음)')}</b> 워크스페이스의 <b>${escapeHtml(t.integration || '통합')}</b> 통합.
+       학습지 페이지가 <b>이 워크스페이스</b>에 있고, 페이지 ··· → 연결에 <b>${escapeHtml(t.integration || '이 통합')}</b>이 추가돼 있어야 읽을 수 있어요.`
+    : `노션 토큰 오류: ${escapeHtml(t.message)} — Cloudflare의 NOTION_TOKEN 값을 확인하고 재배포해 주세요.`;
 }
 
 async function checkOne(p, refresh = false) {
@@ -277,7 +292,11 @@ async function refresh({ withChecks }) {
     return;
   }
   renderAll();
-  if (withChecks) runChecks();
+  if (withChecks) {
+    runChecks();
+    // 토큰 진단은 페이지 수와 상관없이 한 번.
+    fetch('/api/check', { cache: 'no-store' }).then((r) => r.json()).then(applyFlags).then(renderAll).catch(() => {});
+  }
 }
 
 // ── 상태 판정 ──
