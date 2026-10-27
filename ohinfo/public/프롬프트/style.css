@@ -70,10 +70,11 @@
   cursor: pointer; transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
 .radio-card:hover { background: var(--glass-strong); }
-.radio-card input[type="radio"] { margin-top: 3px; accent-color: var(--accent); width: 18px; height: 18px; flex-shrink: 0; }
+.radio-card input[type="radio"], .radio-card input[type="checkbox"] { margin-top: 3px; accent-color: var(--accent); width: 18px; height: 18px; flex-shrink: 0; }
 .radio-card:has(input:checked) { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); background: var(--glass-strong); }
 .radio-card-title { font-weight: 700; font-size: 0.98rem; }
 .radio-card-desc { font-size: 0.84rem; color: var(--sub); margin-top: 2px; }
+.file-option { margin-top: 16px; }
 
 /* ── Fields ── */
 .field-block { margin-bottom: 26px; }
