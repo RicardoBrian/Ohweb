@@ -462,11 +462,19 @@ body.presenting { overflow: hidden; }
 /* 표지 */
 .deck .slide-title { background: var(--n-bg) var(--cover, none) center / cover no-repeat; }
 .deck .slide-title::before { content: ""; position: absolute; inset: 0; background: var(--n-bg); opacity: 0.86; }
-.deck .slide-title .slide-inner { top: 50%; transform: translateY(-50%); }
-.deck .slide-title h1 { font-size: 72px; line-height: 1.15; font-weight: 700; margin: 0; word-break: keep-all; }
-.deck .slide-title .slide-icon { font-size: 110px; line-height: 1.1; margin-bottom: 24px; height: auto; }
-.deck .slide-title .slide-icon .icon-img { width: 110px; height: 110px; }
-.deck .slide-title .slide-sub { font-size: 30px; color: var(--n-sub); margin: 20px 0 0; }
+/* 표지: 위에 제목(작게), 가운데에 학생이 칠 주소(화면 폭 가득) */
+.deck .slide-title { display: flex; flex-direction: column; padding: 56px 72px; }
+.deck .slide-title > * { position: relative; }
+.deck .slide-title .title-head { display: flex; align-items: center; gap: 20px; }
+.deck .slide-title .slide-icon { font-size: 64px; line-height: 1; height: auto; margin: 0; }
+.deck .slide-title .slide-icon .icon-img { width: 64px; height: 64px; }
+.deck .slide-title h1 { font-size: 44px; line-height: 1.25; font-weight: 700; margin: 0; word-break: keep-all; }
+.deck .slide-title .title-addr { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+.deck .slide-title .addr-label { font-size: 32px; color: var(--n-sub); margin-bottom: 12px; }
+.deck .slide-title .addr-url { white-space: nowrap; line-height: 1.1; font-weight: 700; letter-spacing: -0.02em; }
+.deck .slide-title .addr-host { color: var(--n-sub); font-weight: 500; }
+.deck .slide-title .addr-slug { color: rgb(35, 131, 226); }
+.deck .slide-title .addr-url.two-line > span { display: block; width: max-content; }
 
 /* 조작 버튼·진행 막대(마우스를 움직이면 잠깐 보임) */
 .deck-ui {
