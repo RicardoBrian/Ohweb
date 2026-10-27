@@ -474,7 +474,6 @@ body.presenting { overflow: hidden; }
 .deck .slide-title .addr-url { white-space: nowrap; line-height: 1.1; font-weight: 700; letter-spacing: -0.02em; }
 .deck .slide-title .addr-host { color: var(--n-sub); font-weight: 500; }
 .deck .slide-title .addr-slug { color: rgb(35, 131, 226); }
-.deck .slide-title .addr-url.two-line > span { display: block; width: max-content; }
 
 /* 조작 버튼·진행 막대(마우스를 움직이면 잠깐 보임) */
 .deck-ui {
