@@ -96,29 +96,15 @@
     return s;
   }
 
-  // 주소 글씨를 슬라이드 폭(여백 제외)에 꼭 맞는 크기로.
-  // 한 줄로 했을 때 너무 작아지면(긴 주소) 두 줄로 나눠 각 줄을 폭에 맞춘다.
+  // 주소 글씨를 슬라이드 폭(여백 제외)에 꼭 맞는 크기로. 항상 한 줄 —
+  // 두 줄로 나누면 학생들이 어디까지가 주소인지 헷갈려 했다.
   function fitAddress(s) {
     const url = s.querySelector('.addr-url');
     if (!url) return;
-    const host = url.querySelector('.addr-host');
-    const slug = url.querySelector('.addr-slug');
-    const avail = W - PAD * 2;
-    const fitOne = (el, max) => {
-      el.style.fontSize = '100px';
-      const w = el.scrollWidth || el.getBoundingClientRect().width;
-      return w ? Math.min(max, Math.floor((100 * avail) / w)) : max;
-    };
-    url.classList.remove('two-line');
-    host.style.fontSize = slug.style.fontSize = '';
-    url.style.fontSize = '';
-    const one = fitOne(url, 240);
-    if (one >= 110) { url.style.fontSize = `${one}px`; return; }
-    url.classList.add('two-line');
-    url.style.fontSize = '';
-    const slugSize = fitOne(slug, 260);
-    host.style.fontSize = `${Math.min(fitOne(host, 140), slugSize)}px`;
-    slug.style.fontSize = `${slugSize}px`;
+    url.style.fontSize = '100px';
+    const w = url.scrollWidth;
+    if (!w) return;
+    url.style.fontSize = `${Math.min(240, Math.floor((100 * (W - PAD * 2)) / w))}px`;
   }
 
   // ── 화면 ──
@@ -175,6 +161,12 @@
     let relayout = null;
     const later = () => { clearTimeout(relayout); relayout = setTimeout(layout, 50); };
     canvas.addEventListener('load', later, true);
+    // 접힌 토글을 펼치면 내용이 늘어나 잘리고 스크롤도 안 됐다 — 그 슬라이드만 다시 맞춘다
+    // (조금 넘치면 글씨를 줄이고, 많이 넘치면 슬라이드 안에서 스크롤).
+    canvas.addEventListener('toggle', (e) => {
+      const slide = e.target.closest?.('.slide');
+      if (slide) fit(slide);
+    }, true);
     document.fonts?.ready?.then(later);
     go(Math.min(Math.max(start, 0), slides.length - 1), true);
     showUi();
