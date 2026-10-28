@@ -179,9 +179,28 @@
     :fullscreen .nav, :-webkit-full-screen .nav { display: none; }
     :fullscreen main, :-webkit-full-screen main { padding: 40px 24px; background: var(--bg); }
     :fullscreen .run-ring-wrap, :-webkit-full-screen .run-ring-wrap { width: min(420px, 60vw); height: min(420px, 60vw); }
+    /* ── 하늘(ui-sky) 디자인 — 수업 중 띄우는 도구라 사이드바 없이 화면을 크게 쓴다 ──
+       ≥1100: 설정 카드 2장 나란히, 실행 화면 링은 화면 높이에 맞춰 크게 */
+    body.ui-sky .nav { background: var(--glass-nav); border-bottom: 1px solid var(--border); }
+    body.ui-sky .btn-icon { background: var(--sky-chip); border-color: var(--sky-chip-line); backdrop-filter: none; -webkit-backdrop-filter: none; }
+    body.ui-sky .title-card, body.ui-sky .timer-setup-card { background: var(--surface); border-color: var(--border); border-radius: 18px; box-shadow: var(--shadow); }
+    body.ui-sky .field-label, body.ui-sky .trans-lang, body.ui-sky .run-trans-lang, body.ui-sky .run-time-label { text-transform: none; letter-spacing: 0; }
+    body.ui-sky .title-inp, body.ui-sky .custom-inp { background: var(--sky-chip); border-color: var(--sky-chip-line); backdrop-filter: none; -webkit-backdrop-filter: none; }
+    body.ui-sky .btn-translate, body.ui-sky .preset-btn, body.ui-sky .btn-back, body.ui-sky .btn-sound { background: var(--sky-chip); border-color: var(--sky-chip-line); box-shadow: none; }
+    body.ui-sky .trans-chip { background: var(--sky-chip); border-color: var(--sky-chip-line); }
+    body.ui-sky .preset-btn { border-radius: 10px; }
+    body.ui-sky .preset-btn.active { background: var(--sky-cta); color: var(--sky-cta-text); }
+    body.ui-sky .btn-start-big, body.ui-sky .btn-pause { background: var(--sky-cta); color: var(--sky-cta-text); border-radius: 14px; box-shadow: 0 8px 24px rgba(20,20,60,0.18); }
+    body.ui-sky .btn-ctrl { border-radius: 14px; }
+    body.ui-sky .run-ring-fill.ok { stroke: var(--accent); }
+    @media (min-width: 1100px) {
+      body.ui-sky #setupView:not(.hidden) { display: grid; grid-template-columns: 1fr 1fr; align-items: start; max-width: 1100px; gap: 20px; }
+      body.ui-sky .run-ring-wrap { width: min(620px, 62vh); height: min(620px, 62vh); }
+      body.ui-sky .run-time-num { font-size: min(9rem, 11vh); }
+    }
   </style>
 </head>
-<body>
+<body class="ui-sky">
 
 <svg width="0" height="0" style="position:absolute;">
   <defs>

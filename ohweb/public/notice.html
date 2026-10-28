@@ -147,9 +147,19 @@
     /* 전체화면 */
     :fullscreen .toolbar, :-webkit-full-screen .toolbar { position: fixed; }
     :fullscreen #editMode, :-webkit-full-screen #editMode { padding-top: 50px; }
+    /* ── 하늘(ui-sky) 디자인 — 이미 화면 전체를 쓰는 도구라 배치는 그대로, 색·판만 ── */
+    body.ui-sky .toolbar { background: var(--glass-nav); border-bottom: 1px solid var(--border); }
+    body.ui-sky .tb-btn { background: var(--sky-chip); border-color: var(--sky-chip-line); border-radius: 10px; }
+    body.ui-sky .tb-btn:hover { background: var(--accent-light); }
+    body.ui-sky #previewBtn { background: var(--sky-cta); color: var(--sky-cta-text); border-color: transparent; }
+    body.ui-sky .edit-col-label, body.ui-sky .panel-tag { text-transform: none; letter-spacing: 0; }
+    body.ui-sky .edit-textarea { background: var(--surface); border-color: var(--border); border-radius: 16px; box-shadow: var(--shadow); }
+    body.ui-sky .edit-textarea[readonly] { background: var(--sky-chip); box-shadow: none; }
+    body.ui-sky .h-handle, body.ui-sky .v-handle { background: var(--hairline); }
+    body.ui-sky .h-handle:hover, body.ui-sky .v-handle:hover { background: var(--accent); }
   </style>
 </head>
-<body>
+<body class="ui-sky">
 
 <svg width="0" height="0" style="position:absolute;">
   <defs>
