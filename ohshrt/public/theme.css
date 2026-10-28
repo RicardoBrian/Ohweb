@@ -337,3 +337,5 @@ body.ui-sky.dark .dark-toggle { background: var(--accent); }
 body.ui-sky .toast { background: var(--sky-cta); color: var(--sky-cta-text); }
 /* 로고: 배경 없이 원본 PNG. 해 질 녘에는 흰색 단색으로 */
 body.ui-sky.dark .nav-brand img, body.ui-sky.dark .toolbar-brand img, body.ui-sky.dark .auth-head .auth-logo { filter: brightness(0) invert(1); opacity: 0.94; }
+/* 로그인 카드: 좁은 화면에서도 좌우 16px 띄움 */
+@media (max-width: 480px) { body.ui-sky .auth-card { width: calc(100% - 32px); } }
