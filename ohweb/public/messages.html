@@ -122,9 +122,64 @@
 
     .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px); background: rgba(20,24,40,0.9); color: #fff; font-size: 0.85rem; font-weight: 600; padding: 10px 22px; border-radius: 50px; z-index: 9999; box-shadow: 0 4px 20px rgba(0,0,0,0.35); backdrop-filter: blur(12px); transition: transform 0.3s ease, opacity 0.3s ease; opacity: 0; pointer-events: none; white-space: nowrap; }
     .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    /* ── 하늘(ui-sky) 디자인 — 공통 틀은 admin-sky.css ──
+       ≥1200: 메일 앱처럼 "왼쪽 대화 목록 | 오른쪽 열린 대화" 2단.
+       목록 항목(.thread-item)을 display:contents 로 풀어 머리줄은 왼쪽 열, 열린 대화창은 오른쪽 열에 놓는다(동작 코드는 그대로). */
+    body.ui-sky .page-head h1 { font-size: 2.1rem; font-weight: 300; letter-spacing: -0.03em; }
+    body.ui-sky .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); }
+    body.ui-sky .stat-label { text-transform: none; letter-spacing: 0; font-size: 0.78rem; font-weight: 600; }
+    body.ui-sky .stat-value { font-weight: 300; font-size: 2rem; }
+    body.ui-sky .toolbar .inp { width: auto; }
+    body.ui-sky .toolbar .search { max-width: 520px; }
+    body.ui-sky .thread-item { background: var(--surface); border-color: var(--border); border-radius: 14px; }
+    body.ui-sky .thread-item.unread { border-color: var(--accent); }
+    body.ui-sky .thread-avatar { background: var(--accent-grad); }
+    body.ui-sky .thread-avatar .dot { background: var(--danger); }
+    body.ui-sky .thread-panel { background: var(--sky-chip); }
+    body.ui-sky .msg-row.admin .msg-bubble { background: var(--sky-cta); color: var(--sky-cta-text); }
+    body.ui-sky .msg-row.student .msg-bubble { background: var(--bg-elevated); border-color: var(--border-card); }
+    body.ui-sky .msg-att { background: var(--sky-chip); border-color: var(--sky-chip-line); }
+    body.ui-sky .reply-input { background: var(--bg-elevated); border-color: var(--sky-chip-line); }
+    body.ui-sky .reply-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+    body.ui-sky .reply-send { background: var(--sky-cta); color: var(--sky-cta-text); border-radius: 12px; }
+    body.ui-sky .mail-toggle.on { background: var(--success); border-color: transparent; }
+    @media (max-width: 759px) {
+      body.ui-sky .stats-row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+      body.ui-sky .stat-card { padding: 12px; }
+      body.ui-sky .stat-value { font-size: 1.5rem; }
+    }
+    @media (min-width: 1200px) {
+      body.ui-sky .stats-row { grid-template-columns: repeat(3, minmax(0, 260px)); }
+      body.ui-sky #threadList { display: grid; grid-template-columns: minmax(320px, 400px) minmax(0, 1fr); column-gap: 18px; row-gap: 0; align-items: start; }
+      body.ui-sky #threadList > .empty-state { grid-column: 1 / -1; }
+      body.ui-sky #threadList > .thread-item { display: contents; }
+      body.ui-sky .thread-head { grid-column: 1; margin-bottom: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; transition: background 0.15s, border-color 0.15s; }
+      body.ui-sky .thread-head:hover { background: var(--bg-elevated); }
+      body.ui-sky .thread-item.unread .thread-head { border-color: var(--accent); }
+      /* 열린 대화: 머리줄 강조 + 오른쪽 열에 화면 높이로 고정 */
+      body.ui-sky .thread-item:has(.thread-panel:not(.hidden)) .thread-head { background: var(--accent-light); border-color: var(--accent); }
+      body.ui-sky .thread-panel {
+        grid-column: 2; grid-row: 1 / span 200; align-self: start;
+        position: sticky; top: 26px; height: calc(100vh - 390px); min-height: 460px;
+        display: flex; flex-direction: column; padding: 18px 20px;
+        background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow);
+        backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      }
+      body.ui-sky .thread-panel.hidden { display: none !important; }
+      body.ui-sky .thread-panel .chat-log { flex: 1; max-height: none; min-height: 0; }
+      body.ui-sky .msg-row { max-width: min(78%, 620px); }
+      /* 아무 대화도 열지 않았을 때 오른쪽 안내 */
+      body.ui-sky #threadList:has(> .thread-item):not(:has(.thread-panel:not(.hidden)))::after {
+        content: "왼쪽에서 대화를 선택하세요"; grid-column: 2; grid-row: 1 / span 200; align-self: start;
+        position: sticky; top: 26px; height: calc(100vh - 390px); min-height: 460px;
+        display: flex; align-items: center; justify-content: center; color: var(--text-3); font-size: 0.95rem;
+        border: 1px dashed var(--border-card); border-radius: 16px;
+      }
+    }
   </style>
+  <link rel="stylesheet" href="admin-sky.css">
 </head>
-<body>
+<body class="ui-sky">
 
 <svg width="0" height="0" style="position:absolute;">
   <defs>
@@ -394,5 +449,6 @@ function openAppModal() { document.getElementById('appModal').classList.add('ope
 function closeAppModal() { document.getElementById('appModal').classList.remove('open'); }
 (function(){ if (localStorage.getItem('dark') === '1') document.body.classList.add('dark'); })();
 </script>
+<script src="admin-nav.js"></script>
 </body>
 </html>
