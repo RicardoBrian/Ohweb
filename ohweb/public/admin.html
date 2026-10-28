@@ -237,6 +237,13 @@
       transition: transform 0.3s;
     }
     .toggle input:checked + .toggle-track::after { transform: translateX(20px); }
+    .toggle input:disabled + .toggle-track { opacity: 0.6; }
+    /* 배정 목록: 열림 / 정답 공개 스위치 */
+    .as-switch { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
+    .as-switch .toggle { display: inline-block; }
+    .as-switch .toggle-track { background: rgba(120,125,145,0.35); border-color: rgba(120,125,145,0.3); } /* 꺼짐이 밝은 배경에서도 보이게 */
+    .as-switch-label { font-size: 0.75rem; font-weight: 700; color: var(--sub); white-space: nowrap; min-width: 3.6em; text-align: right; }
+    .toggle input:checked + .toggle-track.reveal { background: rgba(245,158,11,0.85); border-color: rgba(245,158,11,0.5); }
 
     /* 체크박스 그리드 */
     .checkbox-grid {
@@ -2480,37 +2487,43 @@
           <div class="list-item-sub">${escHtml(a.schoolName?a.schoolName+' · ':'전체 학교 · ')}${!a.grade ? '전체 학년' : (!a.class ? escHtml(a.grade)+'학년 전체' : escHtml(a.grade)+'학년 '+escHtml(a.class)+'반')} · ${a.duration>0?Number(a.duration)+'분':'무제한'}${a.code ? '' : ' · 코드 없음'}${Number(a.entryMinutes) > 0 ? ` · 입장 마감 ON 후 ${Number(a.entryMinutes)}분` : ''}</div>
         </div>
         <div class="list-item-actions" style="display:flex;gap:8px;align-items:center;">
-          <select onchange="toggleAsStatus('${a.id}',this.value)" style="font-size:0.78rem;padding:4px 8px;border-radius:8px;border:1.5px solid var(--border-card);background:var(--glass);cursor:pointer;font-weight:700;color:${a.status==='ON'?'#22c55e':'#ef4444'}">
-            <option value="ON" ${a.status==='ON'?'selected':''}>ON</option>
-            <option value="OFF" ${a.status==='OFF'?'selected':''}>OFF</option>
-          </select>
-          <select title="학생 결과 화면에 객관식 정답을 보여줄지" onchange="toggleAsReveal(${jsArg(a.id)},this.value)" style="font-size:0.78rem;padding:4px 8px;border-radius:8px;border:1.5px solid var(--border-card);background:var(--glass);cursor:pointer;font-weight:700;color:${a.revealAnswers?'#f59e0b':'var(--sub)'}">
-            <option value="0" ${a.revealAnswers?'':'selected'}>정답 비공개</option>
-            <option value="1" ${a.revealAnswers?'selected':''}>정답 공개</option>
-          </select>
+          <label class="as-switch" title="켜면 학생이 입장할 수 있습니다">
+            <span class="as-switch-label">${a.status==='ON'?'열림':'닫힘'}</span>
+            <span class="toggle"><input type="checkbox" ${a.status==='ON'?'checked':''} onchange="toggleAsStatus(${jsArg(a.id)},this)"><span class="toggle-track"></span></span>
+          </label>
+          <label class="as-switch" title="켜면 학생 결과 화면에 객관식 정답이 보입니다">
+            <span class="as-switch-label">정답 ${a.revealAnswers?'공개':'비공개'}</span>
+            <span class="toggle"><input type="checkbox" ${a.revealAnswers?'checked':''} onchange="toggleAsReveal(${jsArg(a.id)},this)"><span class="toggle-track reveal"></span></span>
+          </label>
           <button class="icon-action danger" title="삭제" onclick="deleteAssign('${a.id}')"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
         </div>
       </div>`;
     }).join('');
   }
 
-  window.toggleAsStatus = async (id, status) => {
-    showLoading(true);
+  // 배정 목록의 스위치 — 누르는 즉시 저장하고 옆 글자만 바꾼다(목록을 다시
+  // 그리지 않아 화면이 깜빡이지 않는다). 저장이 실패하면 스위치를 되돌린다.
+  async function saveAsSwitch(input, id, data, labelOn, labelOff) {
+    const label = input.closest('.as-switch')?.querySelector('.as-switch-label');
+    input.disabled = true;
+    try {
+      await updateDoc(doc(db,'exam_assignments',id), data);
+      if (label) label.textContent = input.checked ? labelOn : labelOff;
+    } catch(e) {
+      input.checked = !input.checked;
+      toast('저장 오류: '+e.message, 'error');
+    }
+    input.disabled = false;
+  }
+  window.toggleAsStatus = (id, input) => {
     // ON으로 여는 시각을 남긴다 — 배정의 "입장 마감"은 이 시각부터 센다.
-    await updateDoc(doc(db,'exam_assignments',id), status === 'ON' ? { status, openedAt: serverTimestamp() } : { status });
-    await loadAssignList();
-    showLoading(false);
+    const data = input.checked ? { status: 'ON', openedAt: serverTimestamp() } : { status: 'OFF' };
+    return saveAsSwitch(input, id, data, '열림', '닫힘');
   };
-
   // 정답 공개는 ON/OFF와 따로 둔다(기본 비공개). 늦게 내는 학생이 있어도
   // 선생님이 공개를 켜기 전까지는 결과 화면에 정답이 안 나온다.
-  window.toggleAsReveal = async (id, v) => {
-    showLoading(true);
-    try { await updateDoc(doc(db,'exam_assignments',id), { revealAnswers: v === '1' }); }
-    catch(e) { toast('오류: '+e.message, 'error'); }
-    await loadAssignList();
-    showLoading(false);
-  };
+  window.toggleAsReveal = (id, input) =>
+    saveAsSwitch(input, id, { revealAnswers: input.checked }, '정답 공개', '정답 비공개');
 
   window.deleteAssign = (id) => {
     confirmDialog('배정 삭제', '이 배정을 삭제하시겠습니까?', async () => {
