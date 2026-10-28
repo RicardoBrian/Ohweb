@@ -394,7 +394,7 @@
     <p id="confirmMsg"></p>
     <div class="modal-actions">
       <button class="btn ghost" onclick="confirmCancel()">취소</button>
-      <button class="btn danger" onclick="confirmOk()">삭제</button>
+      <button class="btn danger" id="confirmOkBtn" onclick="confirmOk()">삭제</button>
     </div>
   </div>
 </div>
@@ -407,10 +407,10 @@
     <input type="hidden" id="seId">
     <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">이름</label>
     <input class="inp" id="seName" type="text" placeholder="이름" style="width:100%;margin-bottom:12px;">
-    <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">비밀번호</label>
-    <input class="inp" id="sePw" type="text" placeholder="새 비밀번호 (비워두면 변경 안 함)" style="width:100%;margin-bottom:6px;">
-    <div style="font-size:0.74rem;color:var(--sub);margin-bottom:6px;line-height:1.5;">기존 비밀번호는 조회할 수 없습니다 — Firebase가 해시로만 저장합니다.<br>잊어버린 학생에게는 여기서 새 비밀번호를 정해 알려주세요.</div>
-    <div style="font-size:0.76rem;color:var(--sub);margin-bottom:14px;">비밀번호를 설정하면 학생이 로그인할 수 있어요. 비우면 로그인 불가(미등록) 상태가 됩니다.</div>
+    <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;margin-bottom:14px;">
+      <input type="checkbox" id="seResetPw" style="width:16px;height:16px;margin-top:3px;accent-color:var(--accent);">
+      <span style="font-size:0.85rem;font-weight:700;">비밀번호를 1234로 초기화 <span style="display:block;font-weight:400;font-size:0.76rem;color:var(--sub);line-height:1.5;">기존 비밀번호는 조회할 수 없습니다. 잊어버린 학생은 초기화하면 1234로 로그인한 뒤 새 비밀번호를 정합니다. 잠금도 함께 풀립니다.</span></span>
+    </label>
     <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:18px;">
       <input type="checkbox" id="seMaster" style="width:16px;height:16px;accent-color:var(--accent);">
       <span style="font-size:0.85rem;font-weight:700;">마스터 계정 <span style="font-weight:400;color:var(--sub);">— 로그인 시 모든 시험지·패들릿 접근 가능</span></span>
@@ -539,7 +539,7 @@
       <div class="stu-main">
       <div class="card">
         <h2><span class="icon"><svg width="18" height="18"><use href="#ic-people"/></svg></span> 학생 목록</h2>
-        <div style="margin:-4px 0 12px;"><button class="btn ghost sm" title="예전 방식으로 저장된 평문 비밀번호를 안전한 로그인 계정으로 옮기고 지웁니다" onclick="migrateLegacyPasswords()">평문 비밀번호 정리</button></div>
+        <div style="margin:-4px 0 12px;"><button class="btn ghost sm" title="예전 방식으로 저장된 평문 비밀번호를 안전한 로그인 계정으로 옮기고 지웁니다" onclick="migrateLegacyPasswords()">평문 비밀번호 정리</button> <button class="btn ghost sm" title="미등록 학생의 로그인 계정을 기본 비밀번호 1234로 만듭니다" onclick="createMissingAccounts()">미등록 학생 계정 만들기</button></div>
         <div class="select-controls">
           <label>학교</label>
           <select class="inp" id="filterSchool" onchange="onFilterSchoolChange()" style="width:140px;"><option value="">전체</option></select>
@@ -1158,7 +1158,11 @@
     el._t = setTimeout(() => el.classList.remove('show'), ms);
   }
 
-  function confirmDialog(title, msg, cb) {
+  // okLabel을 주면 위험하지 않은 확인(파란 버튼)으로, 없으면 기존처럼 빨간 "삭제" 버튼.
+  function confirmDialog(title, msg, cb, okLabel) {
+    const okBtn = document.getElementById('confirmOkBtn');
+    okBtn.innerText = okLabel || '삭제';
+    okBtn.className = okLabel ? 'btn accent' : 'btn danger';
     document.getElementById('confirmTitle').innerText = title;
     document.getElementById('confirmMsg').innerText = msg;
     confirmCallback = cb;
@@ -1316,8 +1320,10 @@
     showLoading(true);
     try {
       const batch = writeBatch(db);
+      const newIds = [];
       csvData.forEach(r => {
         const ref = doc(collection(db, 'students'));
+        newIds.push(ref.id);
         batch.set(ref, {
           name: r.name, schoolName: r.schoolName||'', grade: r.grade, class: r.class, number: r.number,
           registered: false, password: null,
@@ -1326,7 +1332,8 @@
         batch.set(doc(db, 'student_directory', ref.id), { ...dirOf(r), registered: false, locked: false, failedAttempts: 0 });
       });
       await batch.commit();
-      toast(`${csvData.length}명 업로드 완료!`, 'success');
+      newIds.forEach((id, i) => allStudents.push({ id, ...csvData[i], registered: false }));
+      if (await createAccountsAfterAdd(newIds)) toast(`${csvData.length}명 업로드 완료! 처음 비밀번호는 ${DEFAULT_STUDENT_PW}입니다.`, 'success');
       cancelCSV();
       await loadStudents();
     } catch (e) {
@@ -1476,6 +1483,7 @@
                 <td>${s.registered
                   ? '<span style="font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(34,197,94,0.15);color:#16a34a;">등록</span>'
                   : '<span style="font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(120,120,120,0.12);color:var(--sub);">미등록</span>'}
+                  ${s.registered && s.mustChangePassword ? '<span style="margin-left:4px;font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(245,158,11,0.16);color:#b45309;" title="기본 비밀번호(1234) 상태 — 처음 로그인할 때 새 비밀번호를 정합니다">첫 로그인 전</span>' : ''}
                   ${s.locked ? '<span style="margin-left:4px;font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(239,68,68,0.15);color:#dc2626;">잠김</span>' : ''}</td>
                 <td style="white-space:nowrap;">
                   ${s.locked ? `<button class="icon-action" title="잠금 해제" onclick="unlockStudent(${jsArg(s.id)})"><svg width="16" height="16"><use href="#ic-unlock"/></svg></button>` : ''}
@@ -1500,50 +1508,100 @@
     // 기존 비밀번호는 원리상 불러올 수 없다(Firebase Auth는 해시만 보관).
     // 예전엔 Firestore의 평문 password 필드를 채워 넣었는데, 그 필드는
     // 이제 쓰지 않으므로 항상 빈 칸으로 연다 — 비우면 비밀번호 변경 없음.
-    document.getElementById('sePw').value = '';
+    document.getElementById('seResetPw').checked = false;
     document.getElementById('seMaster').checked = !!s.isMaster;
     document.getElementById('studentEditModal').classList.add('show');
+  };
+  // ── 학생 로그인 계정: 교사가 등록하면 기본 비밀번호(1234)로 바로 만든다 ──
+  // 학생 회원가입은 없앴다. 계정은 서버(/api/reset-student-password, 서비스 계정)가
+  // 만들거나 비밀번호를 바꾸고, 여기서는 Firestore에 "등록됨 + 첫 로그인 때 비밀번호
+  // 변경 필요" 표시를 남긴다. 학생은 1234로 처음 로그인하면 새 비밀번호를 정해야
+  // 다음 화면으로 넘어간다(ohinfo index.html).
+  const DEFAULT_STUDENT_PW = '1234';
+  async function setStudentPasswords(ids) {
+    const idToken = await auth.currentUser.getIdToken();
+    const res = await fetch('/api/reset-student-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentDocIds: ids, newPassword: DEFAULT_STUDENT_PW, idToken }),
+    });
+    const data = await res.json().catch(() => ({ error: `계정 설정 실패 (HTTP ${res.status})` }));
+    if (!res.ok || data.error) {
+      if (data.detail) console.error('reset-student-password:', data.detail);
+      const e = new Error(data.error || '계정 설정 실패');
+      e.detail = data.detail;
+      throw e;
+    }
+    const okIds = data.results.filter(r => r.ok).map(r => r.id);
+    const failed = data.results.filter(r => !r.ok);
+    if (failed.length) console.error('계정 설정 실패:', failed);
+    // 한 번에 쓸 수 있는 문서 수(500)를 넘지 않게 나눠서 표시를 남긴다.
+    for (let i = 0; i < okIds.length; i += 200) {
+      const b = writeBatch(db);
+      okIds.slice(i, i + 200).forEach(id => {
+        b.update(doc(db, 'students', id), { registered: true, mustChangePassword: true, password: deleteField(), locked: false, failedAttempts: 0 });
+        b.set(doc(db, 'student_directory', id), { registered: true, locked: false, failedAttempts: 0 }, { merge: true });
+      });
+      await b.commit();
+    }
+    okIds.forEach(id => {
+      const s = allStudents.find(x => x.id === id);
+      if (s) Object.assign(s, { registered: true, mustChangePassword: true, password: null, locked: false, failedAttempts: 0 });
+    });
+    return { okIds, failed };
+  }
+  // 학생 문서를 만든 직후 계정까지 만든다 — 계정이 실패해도 학생 문서는 남기고
+  // 알려 준다(목록의 "계정 만들기"로 다시 할 수 있다).
+  async function createAccountsAfterAdd(ids) {
+    try {
+      const failed = [];
+      for (let i = 0; i < ids.length; i += 300) failed.push(...(await setStudentPasswords(ids.slice(i, i + 300))).failed);
+      if (failed.length) toast(`${failed.length}명은 로그인 계정을 만들지 못했습니다.\n학생 목록의 [미등록 학생 계정 만들기]로 다시 시도하세요.`, 'error', 7000);
+      return failed.length === 0;
+    } catch (e) {
+      toast(`학생은 추가했지만 로그인 계정을 만들지 못했습니다: ${e.message}${e.detail ? '\n' + e.detail : ''}`, 'error', 9000);
+      return false;
+    }
+  }
+  window.createMissingAccounts = () => {
+    const targets = allStudents.filter(s => !s.registered);
+    if (!targets.length) { toast('미등록 학생이 없습니다.', 'success'); return; }
+    confirmDialog('미등록 학생 계정 만들기', `${targets.length}명의 로그인 계정을 기본 비밀번호 ${DEFAULT_STUDENT_PW}로 만듭니다.\n학생은 처음 로그인할 때 새 비밀번호를 정합니다.`, async () => {
+      showLoading(true);
+      try {
+        let done = 0, fail = 0;
+        for (let i = 0; i < targets.length; i += 300) {
+          const r = await setStudentPasswords(targets.slice(i, i + 300).map(s => s.id));
+          done += r.okIds.length; fail += r.failed.length;
+        }
+        toast(fail ? `${done}명 완료, ${fail}명 실패` : `${done}명 계정을 만들었습니다.`, fail ? 'error' : 'success');
+        renderStudents();
+      } catch (e) {
+        toast(e.detail ? `${e.message}\n${e.detail}` : '오류: ' + e.message, 'error', e.detail ? 9000 : 2800);
+      }
+      showLoading(false);
+    }, '만들기');
   };
   window.closeStudentEdit = () => document.getElementById('studentEditModal').classList.remove('show');
   window.saveStudentEdit = async () => {
     const id = document.getElementById('seId').value;
     const name = document.getElementById('seName').value.trim();
-    const pw = document.getElementById('sePw').value.trim();
+    const resetPw = document.getElementById('seResetPw').checked;
     const isMaster = document.getElementById('seMaster').checked;
     if (!name) { toast('이름을 입력하세요.', 'error'); return; }
     showLoading(true);
     try {
       const existing = allStudents.find(x => x.id === id);
-      // 비밀번호를 입력했으면 Firestore 필드가 아니라 실제 Firebase Auth
-      // 계정 비밀번호를 바꾼다 — 이전엔 Firestore 필드만 바꿔서 학생이
-      // 로그인할 때 안 먹혔다(심지어 auth/email-already-in-use로 깨짐).
-      if (pw) {
-        const idToken = await auth.currentUser.getIdToken();
-        const res = await fetch('/api/reset-student-password', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ studentDocId: id, newPassword: pw, idToken }),
-        });
-        const data = await res.json().catch(() => ({ error: `비밀번호 설정 실패 (HTTP ${res.status})` }));
-        if (!res.ok || data.error) {
-          // 설정이 틀렸을 때의 상세는 화면에도 띄운다 — 매번 개발자 도구를
-          // 열어 콘솔을 봐야 원인을 알 수 있으면 안내가 아니다.
-          if (data.detail) console.error('reset-student-password:', data.detail);
-          const e = new Error(data.error || '비밀번호 설정 실패');
-          e.detail = data.detail;
-          throw e;
-        }
+      // 초기화는 실제 Firebase Auth 계정 비밀번호를 1234로 바꾸고(없으면 만들고)
+      // "첫 로그인 때 비밀번호 변경" 표시를 남긴다 — setStudentPasswords 참고.
+      if (resetPw) {
+        const { failed } = await setStudentPasswords([id]);
+        if (failed.length) throw new Error(failed[0].error || '비밀번호 초기화 실패');
       }
-      await updateDoc(doc(db, 'students', id), {
-        name,
-        password: deleteField(),
-        registered: pw ? true : !!existing?.registered,
-        isMaster: isMaster || false
-      });
-      if (pw) await setDoc(doc(db, 'student_directory', id), { registered: true }, { merge: true }).catch(e => console.error('명단 가입 표시 실패:', e));
-      if (existing) { existing.name = name; existing.password = null; existing.registered = pw ? true : !!existing.registered; existing.isMaster = isMaster || false; }
+      await updateDoc(doc(db, 'students', id), { name, isMaster: isMaster || false });
+      if (existing) { existing.name = name; existing.isMaster = isMaster || false; }
       closeStudentEdit();
-      toast('저장되었습니다.', 'success');
+      toast(resetPw ? `저장했습니다. 비밀번호는 ${DEFAULT_STUDENT_PW}입니다.` : '저장되었습니다.', 'success');
       renderStudents();
     } catch (e) {
       toast(e.detail ? `${e.message}\n${e.detail}` : '오류: ' + e.message, 'error', e.detail ? 9000 : 2800);
@@ -1603,7 +1661,8 @@
       });
       b.set(doc(db, 'student_directory', ref.id), { ...dirOf({ schoolName, grade, class: cls, number }), registered: false, locked: false, failedAttempts: 0 });
       await b.commit();
-      toast(`${name} 추가 완료!`, 'success');
+      allStudents.push({ id: ref.id, schoolName, grade, class: cls, number, name, registered: false });
+      if (await createAccountsAfterAdd([ref.id])) toast(`${name} 추가 완료! 처음 비밀번호는 ${DEFAULT_STUDENT_PW}입니다.`, 'success');
       document.getElementById('addSchoolName').value = '';
       document.getElementById('addName').value = '';
       document.getElementById('addGrade').value = '';

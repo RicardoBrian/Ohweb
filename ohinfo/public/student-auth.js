@@ -173,31 +173,6 @@ async function loginFallback(studentDocId, data, pw) {
   updateDoc(doc(db, 'student_directory', studentDocId), { failedAttempts: 0 }).catch(() => {});
 }
 
-// 신규 가입 — Firestore엔 password를 아예 쓰지 않는다.
-//
-// 이름 확인: 공개 명단엔 이름이 없어서 가입 전에는 이름을 대조할 수 없다.
-// 그래서 계정을 먼저 만들고(= 본인 인증 상태가 되면 자기 문서를 읽을 수 있다)
-// 바로 이름을 대조해서, 다르면 방금 만든 계정을 지우고 실패로 돌려보낸다.
-const normName = s => String(s ?? '').replace(/\s+/g, '').normalize('NFC');
-export async function registerStudent(studentDocId, extraFields, pw, typedName) {
-  const cred = await createUserWithEmailAndPassword(auth, emailFor(studentDocId), padPassword(pw));
-  let own;
-  try {
-    own = await getDoc(doc(db, 'students', studentDocId));
-  } catch (e) {
-    await cred.user.delete().catch(() => {});
-    throw e;
-  }
-  if (!own.exists() || normName(own.data().name) !== normName(typedName)) {
-    await cred.user.delete().catch(() => {});
-    throw new AuthError('name-mismatch');
-  }
-  const updates = { ...extraFields, registered: true };
-  await updateDoc(doc(db, 'students', studentDocId), updates);
-  await updateDoc(doc(db, 'student_directory', studentDocId), { registered: true }).catch(e => console.error('명단 가입 표시 실패:', e));
-  return { id: studentDocId, ...own.data(), ...updates, password: undefined };
-}
-
 // 마이페이지의 "비밀번호 변경" — Firestore엔 password를 쓰지 않고
 // Firebase Auth 계정 자체의 비밀번호를 바꾼다. 현재 비밀번호는 Firestore
 // 필드와 비교하는 대신 재인증(reauthenticate)으로 검증한다.
@@ -210,4 +185,17 @@ export async function changeStudentPassword(studentDocId, currentPw, newPw) {
     throw new AuthError('wrong-password');
   }
   await updatePassword(user, padPassword(newPw));
+}
+
+// 첫 로그인 — 학생 회원가입은 없고, 교사가 등록하거나 초기화하면 기본 비밀번호(1234)로
+// 계정이 만들어진다(students 문서에 mustChangePassword: true). 그 상태로 로그인하면
+// 로그인 화면이 새 비밀번호를 받아 여기로 보낸다. 표시 지우기는 부가 작업이라 실패해도
+// 비밀번호 변경은 그대로 두고(다음 로그인 때 다시 묻는다) 로그만 남긴다.
+export async function completeFirstPassword(studentDocId, currentPw, newPw) {
+  await changeStudentPassword(studentDocId, currentPw, newPw);
+  try {
+    await updateDoc(doc(db, 'students', studentDocId), { mustChangePassword: false });
+  } catch (e) {
+    console.error('mustChangePassword 해제 실패(비밀번호는 바뀜):', e);
+  }
 }

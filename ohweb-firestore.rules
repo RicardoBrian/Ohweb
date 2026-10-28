@@ -126,8 +126,10 @@ service cloud.firestore {
       let before = resource.data;
       let after = request.resource.data;
       let changed = after.diff(before).affectedKeys();
-      return changed.hasOnly(['photoUrl', 'registered', 'failedAttempts', 'password'])
+      return changed.hasOnly(['photoUrl', 'registered', 'failedAttempts', 'password', 'mustChangePassword'])
         && (!changed.hasAny(['registered']) || after.registered == true)
+        // 첫 로그인 비밀번호 변경 표시는 본인이 끄기만 할 수 있다(켜는 건 관리자).
+        && (!changed.hasAny(['mustChangePassword']) || after.mustChangePassword == false)
         && (!changed.hasAny(['failedAttempts']) || after.failedAttempts == 0)
         && (!changed.hasAny(['password']) || !('password' in after))
         && (!changed.hasAny(['photoUrl']) || (after.photoUrl is string && after.photoUrl.size() < 400000));
