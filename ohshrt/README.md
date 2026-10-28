@@ -3,7 +3,7 @@
 Google 로그인으로 보호되는 관리 페이지와 누구나 접근 가능한 단축 URL을 제공하는
 Cloudflare Pages 기반 URL 단축기입니다.
 
-나머지 4개 앱(`ohweb`/`ohinfo`/`ohsettle`/`seatchange`)과 동일한 방식(Pages,
+나머지 3개 앱(`ohweb`/`ohinfo`/`ohsettle`)과 동일한 방식(Pages,
 빌드 스텝 없음)으로 배포되고, 같은 Firebase 프로젝트(`ohweb-93062`)를 씁니다.
 원래는 Cloudflare Workers + KV로 독립적으로 만들었었는데, Workers Builds(Git
 연동 배포) 쪽에서 시크릿 바인딩 문제를 반복적으로 겪어서 검증된 Pages+Firebase

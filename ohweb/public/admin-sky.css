@@ -30,7 +30,7 @@ body.ui-sky .waffle-btn { background: var(--sky-chip); border-color: var(--sky-c
 /* PC — 사이드바 */
 @media (min-width: 900px) {
   body.ui-sky .nav {
-    position: fixed; top: 14px; left: 14px; bottom: 14px; width: 236px; height: auto;
+    position: fixed; top: 14px; left: 14px; bottom: 14px; width: 14.75rem; height: auto;
     flex-direction: column; align-items: stretch; gap: 0; padding: 16px 10px 12px;
     background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow);
   }
@@ -41,7 +41,7 @@ body.ui-sky .waffle-btn { background: var(--sky-chip); border-color: var(--sky-c
   body.ui-sky .waffle-btn { display: none; }
   body.ui-sky .nav > div[style*="flex:1"], body.ui-sky .nav-brand-title { display: none; }
   body.ui-sky .nav-brand-title + .nav-brand-sub { display: inline; }
-  body.ui-sky .wrap { max-width: none; margin: 0 0 0 264px; padding: 26px 28px 60px 0; }
+  body.ui-sky .wrap { max-width: none; margin: 0 0 0 calc(14.75rem + 28px); padding: 26px 28px 60px 0; }
 }
 
 /* 제목 — 가늘고 크게 */
@@ -94,9 +94,9 @@ body.ui-sky .select-controls select.inp { padding-top: 7px; padding-bottom: 7px;
    ≥1200: "목록(가운데) | 추가·수정 폼(오른쪽 고정)" 2단 — 입력칸 하나가 화면 끝까지 늘어나지 않게
    900–1199: 사이드바 + 한 단(폼 위, 목록 아래)   <900: 상단 바 + 한 단   <760: 하단 탭바
    아주 넓은 화면에서는 내용 폭을 1560px로 제한 */
-body.ui-sky .wrap > .section { max-width: 1560px; }
+
 @media (min-width: 1200px) {
-  body.ui-sky .split:not(.hidden) { display: grid; grid-template-columns: minmax(0, 1fr) 380px; column-gap: 18px; align-items: start; grid-auto-flow: row dense; }
+  body.ui-sky .split:not(.hidden) { display: grid; grid-template-columns: minmax(0, 1fr) 23.75rem; column-gap: 18px; align-items: start; grid-auto-flow: row dense; }
   body.ui-sky .section.split:not(.active) { display: none; }
   body.ui-sky .split > * { grid-column: 1 / -1; }
   body.ui-sky .split > .pane-list { grid-column: 1; }
@@ -109,8 +109,13 @@ body.ui-sky .wrap > .section { max-width: 1560px; }
   body.ui-sky .split:not(.wide-form) > .pane-form [style*="display:grid"]:has(> label[style*="display:flex"]) { grid-template-columns: 1fr !important; }
   body.ui-sky .split:not(.wide-form) > .pane-form [style*="display:grid"] > label[style*="display:flex"] { padding-bottom: 0 !important; }
 }
+/* 큰 화면(1600px~): 화면 폭에 비례해 전체 크기를 키운다 — 2560px에서 약 1.25배(20px).
+   글자·칸이 rem 단위라 같이 커진다. 짧은 항목 목록은 여러 열 카드로. */
 @media (min-width: 1600px) {
-  body.ui-sky .split:not(.hidden), .stu-layout { grid-template-columns: minmax(0, 1fr) 420px; }
+  html:has(body.ui-sky) { font-size: clamp(16px, calc(16px + (100vw - 1600px) * 0.0042), 20px); }
+  body.ui-sky .split:not(.hidden), .stu-layout { grid-template-columns: minmax(0, 1fr) 26rem; }
+  body.ui-sky .pane-list div:has(> .list-item + .list-item) { display: grid; grid-template-columns: repeat(auto-fill, minmax(22rem, 1fr)); gap: 10px; align-items: start; }
+  body.ui-sky .pane-list div:has(> .list-item + .list-item) > .list-item { margin-bottom: 0; }
 }
 
 /* ── 관리 페이지 공통 부품: 제목·현황 카드·세그먼트·검색 줄 (forms·messages·settle) ── */
@@ -163,3 +168,5 @@ body.ui-sky .app-modal-icon { color: var(--accent); }
   .tab.on { color: var(--text); background: var(--sky-chip); border-color: var(--sky-chip-line); }
   .tab.on svg { color: var(--accent); }
 }
+body.ui-sky .stats-grid { grid-template-columns: repeat(auto-fill, minmax(9rem, 13rem)); }
+@media (max-width: 480px) { body.ui-sky .stats-grid { grid-template-columns: repeat(2, 1fr); } }

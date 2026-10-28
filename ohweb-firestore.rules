@@ -6,8 +6,7 @@ rules_version = '2';
  * 프로젝트를 같이 쓴다.
  *
  * 이 파일은 Firebase 콘솔의 Rules 탭에 수동으로 붙여넣어 배포한다(이
- * 레포에 Firebase CLI 배포 설정이 없어서 자동 배포되지 않음 — seatchange의
- * firebase.json/firestore.rules와 달리 참고용 기록일 뿐이다).
+ * 레포에 Firebase CLI 배포 설정이 없어서 자동 배포되지 않음 — 참고용 기록일 뿐이다).
  *
  * 학생은 이제 Firebase Auth로 로그인한다(student-auth.js) — 합성 이메일
  * {문서ID}@ohinfo.local. 그래서 isOwnStudentAuth()로 "본인"을 규칙에서

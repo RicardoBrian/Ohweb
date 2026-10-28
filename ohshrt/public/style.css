@@ -1,7 +1,7 @@
 /* OHshrt 전용 레이아웃 — 색/타이포/유리 재질 등 실제 디자인 토큰은
    theme.css(사이트 공통 Liquid Glass 디자인 시스템)를 그대로 따른다.
    예전엔 이 파일이 독자적인 보라색 우주 그라디언트 팔레트를 통째로
-   갖고 있어서 나머지(ohweb/ohinfo/ohsettle/seatchange)와 디자인이
+   갖고 있어서 나머지(ohweb/ohinfo/ohsettle)와 디자인이
    따로 놀았다 — 그 부분을 전부 지우고 레이아웃/여백만 남겼다. */
 
 * { box-sizing: border-box; }
