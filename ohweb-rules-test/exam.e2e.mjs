@@ -37,11 +37,20 @@ await env.withSecurityRulesDisabled(async c => {
   await setDoc(doc(db, 'exam_answers/Q4'), { examId: 'EX2', answer: '0', testCases: [] });
   await setDoc(doc(db, 'exam_questions/Q5'), { examId: 'EX2', order: 2, type: 'mc', title: '둘째 문제', options: ['다', '라'], points: 20 });
   await setDoc(doc(db, 'exam_answers/Q5'), { examId: 'EX2', answer: '0', testCases: [] });
+  // EX3: 시험지 유형 A·B형 + 섞기. Q6 공통, Q7 A형만, Q8 B형만.
+  await setDoc(doc(db, 'exams/EX3'), { title: '유형 시험', forms: ['A', 'B'], shuffleForms: true });
+  await setDoc(doc(db, 'exam_questions/Q6'), { examId: 'EX3', order: 1, type: 'mc', title: '공통 문제', options: ['가', '나', '다', '라', '마'], points: 10 });
+  await setDoc(doc(db, 'exam_answers/Q6'), { examId: 'EX3', answer: '0', testCases: [] });
+  await setDoc(doc(db, 'exam_questions/Q7'), { examId: 'EX3', order: 2, type: 'mc', title: 'A형 문제', form: 'A', options: ['ㄱ', 'ㄴ'], points: 10 });
+  await setDoc(doc(db, 'exam_questions/Q8'), { examId: 'EX3', order: 3, type: 'mc', title: 'B형 문제', form: 'B', options: ['ㄷ', 'ㄹ'], points: 10 });
+  await setDoc(doc(db, 'exam_questions/Q9'), { examId: 'EX3', order: 4, type: 'essay', title: '공통 서술', points: 10 });
   await setDoc(doc(db, 'student_forms/F1'), { ownerId: 'StuA', title: '좋아하는 과목', status: 'open', responseCount: 0, questions: [{ id: 'q1', type: 'mc', text: '좋아하는 과목은?', options: ['정보', '수학'] }] });
   await setDoc(doc(db, 'exam_assignments/AS1'), { examId: 'EX1', code: 'ABC', status: 'ON', grade: '1', class: '2', schoolName: 'S중', duration: 10 });
   await setDoc(doc(db, 'exam_assignments/AS2'), { examId: 'EX1', code: '', status: 'OFF', grade: '1', class: '2', schoolName: 'S중', duration: 10 });
   await setDoc(doc(db, 'exam_assignments/AS3'), { examId: 'EX1', code: '', status: 'ON', grade: '2', class: '', schoolName: 'S중', duration: 10 });
   await setDoc(doc(db, 'exam_assignments/AS4'), { examId: 'EX2', code: '', status: 'ON', grade: '1', class: '', schoolName: '', duration: 0 });
+  await setDoc(doc(db, 'exam_assignments/AS6'), { examId: 'EX3', code: '', status: 'ON', grade: '1', class: '2', schoolName: 'S중', duration: 0, formMode: 'B' });
+  await setDoc(doc(db, 'exam_assignments/AS7'), { examId: 'EX3', code: '', status: 'ON', grade: '1', class: '2', schoolName: 'S중', duration: 0, formMode: 'student', formByStudent: { StuA: 'A', Other: 'B' } });
   await setDoc(doc(db, 'exam_assignments/AS5'), { examId: 'EX2', code: '', status: 'ON', grade: '', class: '', schoolName: '', duration: 0, entryMinutes: 5, openedAt: minsAgo(10) });
 });
 const sr = await fetch('http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=fake', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email: 'stua@ohinfo.local', password: 'pass99', returnSecureToken: true }) });
@@ -137,7 +146,7 @@ await page.goto('http://localhost:8099/exam.html');
 await page.waitForSelector('#code_AS1', { timeout: 15000 });
 const listRes = lastCall('list')?.res;
 const listed = (listRes?.exams || []).map(e => e.asId).sort().join(',');
-ok(listed === 'AS1,AS4,AS5', `시험 목록: 열린 + 대상 학년·반·학교만 (${listed}) — OFF(AS2)·다른 학년(AS3) 제외`);
+ok(listed === 'AS1,AS4,AS5,AS6,AS7', `시험 목록: 열린 + 대상 학년·반·학교만 (${listed}) — OFF(AS2)·다른 학년(AS3) 제외`);
 ok(!JSON.stringify(listRes).includes('ABC'), '시험 목록 응답에 입장 코드 없음');
 ok(await page.isVisible('#code_AS1') && !(await page.isVisible('#code_AS4')), '코드 있는 배정만 코드 입력칸 (AS4는 바로 입장 버튼)');
 
@@ -282,6 +291,58 @@ await env.withSecurityRulesDisabled(async c => { await updateDoc(doc(c.firestore
 await page.evaluate(() => showMyResult('AS4'));
 await page.waitForFunction(() => /정답:/.test(document.getElementById('resultDetails').innerText), null, { timeout: 15000 });
 ok(/내 답: ② · 정답: ①/.test(await page.textContent('#resultDetails')), '선생님이 "정답 공개"를 켜면 내 답과 정답 표시');
+
+// 11) 시험지 유형 — 반 전체 B형(섞기): 공통 + B형 문항만, 새로고침해도 같은 순서, 섞인 보기도 맞게 채점
+const optTexts = () => page.evaluate(() => [...document.querySelectorAll('.q-card')].map(c => c.querySelector('.q-title').innerText + ':' + [...c.querySelectorAll('.mc-opt span')].map(x => x.innerText).join('')));
+await page.goto('http://localhost:8099/exam.html');
+await page.waitForSelector('#examListArea button', { timeout: 15000 });
+await page.evaluate(() => enterExamWithCode('AS6', ''));
+await page.waitForSelector('#step2:not(.hidden)', { timeout: 15000 });
+const titlesB = lastCall('start').res.questions.map(q => q.id).sort().join(',');
+ok(lastCall('start').res.form === 'B' && titlesB === 'Q6,Q8,Q9', `반 전체 B형 → 공통 + B형 문항만 (${titlesB})`);
+ok(/B형/.test(await page.textContent('#examSubInfo')), '시험 화면에 "B형" 표시');
+const paper1 = await optTexts();
+const q6opts = lastCall('start').res.questions.find(q => q.id === 'Q6').options;
+ok(q6opts.slice().sort().join('') === '가나다라마' && q6opts.join('') !== '가나다라마', `B형은 보기 순서를 섞음 (${q6opts.join('')})`);
+await page.reload();
+await page.waitForSelector('#examListArea button', { timeout: 15000 });
+await page.evaluate(() => enterExamWithCode('AS6', ''));
+await page.waitForSelector('#step2:not(.hidden)', { timeout: 15000 });
+ok(JSON.stringify(await optTexts()) === JSON.stringify(paper1), '새로고침해도 같은 시험지(문항·보기 순서 그대로)');
+const qi = await page.evaluate(() => [...document.querySelectorAll('.q-card')].findIndex(c => c.querySelector('.q-title').innerText === '공통 문제'));
+const shownIdx = q6opts.indexOf('가'); // 원래 1번째(정답) 보기가 화면에선 몇 번째인지
+await page.evaluate(([qi, oi]) => selectMC(qi, oi), [qi, shownIdx]);
+await page.evaluate(() => { document.querySelectorAll('.q-card').forEach((c, i) => { if (c.querySelector('.mc-opt') && !c.querySelector('.mc-opt.selected')) selectMC(i, 0); }); });
+await page.evaluate(() => { const t = document.querySelector('textarea[id^="essay_"]'); t.value = '서술'; saveSA(+t.id.split('_')[1], '서술'); });
+await page.evaluate(() => submitExam());
+await page.waitForSelector('#step3:not(.hidden)', { timeout: 20000 });
+let r6; await env.withSecurityRulesDisabled(async c => { r6 = (await getDocs(query(collection(c.firestore(), 'exam_results'), where('asId', '==', 'AS6')))).docs.map(d => ({ id: d.id, ...d.data() })); });
+const q6r = r6.find(r => r.questionId === 'Q6');
+ok(shownIdx !== 0 && q6r?.value === '0' && q6r.check === 'correct', `섞인 보기에서 고른 답을 원래 번호로 되돌려 채점 (화면 ${shownIdx + 1}번 → 원래 ${Number(q6r?.value) + 1}번, ${q6r?.check})`);
+ok((await readProg('AS6_StuA'))?.form === 'B', '진행 기록에 유형(B) 기록');
+await env.withSecurityRulesDisabled(async c => {
+  const db = c.firestore();
+  await updateDoc(doc(db, 'exam_progress/AS6_StuA'), { needsManual: false, totalScore: 10, totalPoints: 40 });
+  await updateDoc(doc(db, 'exam_assignments/AS6'), { revealAnswers: true });
+});
+await page.evaluate(() => showMyResult('AS6'));
+await page.waitForFunction(() => /정답:/.test(document.getElementById('resultDetails').innerText), null, { timeout: 15000 });
+const circ = n => String.fromCharCode(9312 + n);
+ok((await page.textContent('#resultDetails')).includes(`내 답: ${circ(shownIdx)} · 정답: ${circ(shownIdx)}`), `결과 화면은 학생이 본 번호로 표시 (${circ(shownIdx)})`);
+
+// 12) 학생별 유형 — 선생님이 정해 둔 대로(StuA → A형), A형은 원래 순서
+await page.goto('http://localhost:8099/exam.html');
+await page.waitForSelector('#examListArea button', { timeout: 15000 });
+await page.evaluate(() => enterExamWithCode('AS7', ''));
+await page.waitForSelector('#step2:not(.hidden)', { timeout: 15000 });
+const startA = lastCall('start').res;
+ok(startA.form === 'A' && startA.questions.map(q => q.id).join(',') === 'Q6,Q7,Q9' && startA.questions[0].options.join('') === '가나다라마', `학생별 유형: 지정한 A형 + A형은 원래 순서·보기 (${startA.form}, ${startA.questions.map(q => q.id).join(',')})`);
+await env.withSecurityRulesDisabled(async c => { await updateDoc(doc(c.firestore(), 'exam_assignments/AS7'), { formByStudent: { StuA: 'B' } }); });
+await page.reload();
+await page.waitForSelector('#examListArea button', { timeout: 15000 });
+await page.evaluate(() => enterExamWithCode('AS7', ''));
+await page.waitForSelector('#step2:not(.hidden)', { timeout: 15000 });
+ok(lastCall('start').res.form === 'A', '입장 뒤 선생님이 유형을 바꿔도 처음 받은 유형 유지');
 
 // 6) 로그인 화면 통합: 로그아웃 상태로 설문 링크 → 로그인 화면(index) → 로그인 → 다시 그 설문
 {
