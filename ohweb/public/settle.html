@@ -105,9 +105,27 @@
     .btn { font-family: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; border-radius: 50px; padding: 9px 16px; border: 1px solid var(--border); background: var(--glass); color: var(--text); width: 100%; }
     .btn.accent { background: #1d1d1f; color: #fff; border: none; }
     body.dark .btn.accent { background: #f5f5f7; color: #1d1d1f; }
+    /* ── 하늘(ui-sky) 디자인 — 공통 틀·부품은 admin-sky.css ──
+       ≥1200: 정산 프로젝트를 여러 열 카드로 */
+    body.ui-sky .page-head #legacyImportBtn { margin-left: auto; }
+    body.ui-sky .trip-item { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); }
+    body.ui-sky .trip-meta code { background: var(--sky-chip); }
+    body.ui-sky .badge.pending { background: rgba(224,138,30,0.16); color: #b8650a; }
+    body.ui-sky.dark .badge.pending { color: #ffb35c; }
+    body.ui-sky .badge.approved { background: var(--success-light); color: var(--success); }
+    body.ui-sky .badge.done { background: var(--sky-chip); }
+    body.ui-sky .modal { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow-lg); }
+    body.ui-sky .modal-bg { backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+    body.ui-sky .modal .btn { width: 100%; }
+    @media (min-width: 1200px) {
+      body.ui-sky #tripList { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 14px; align-items: start; }
+      body.ui-sky #tripList > .empty-state { grid-column: 1 / -1; }
+      body.ui-sky #tripList > .trip-item { margin-bottom: 0; }
+    }
   </style>
+  <link rel="stylesheet" href="admin-sky.css">
 </head>
-<body>
+<body class="ui-sky">
 
 <svg width="0" height="0" style="position:absolute;">
   <defs>
@@ -462,5 +480,6 @@ function openAppModal() { document.getElementById('appModal').classList.add('ope
 function closeAppModal() { document.getElementById('appModal').classList.remove('open'); }
 (function(){ if (localStorage.getItem('dark') === '1') document.body.classList.add('dark'); })();
 </script>
+<script src="admin-nav.js"></script>
 </body>
 </html>

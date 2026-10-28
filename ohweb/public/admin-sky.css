@@ -113,6 +113,28 @@ body.ui-sky .wrap > .section { max-width: 1560px; }
   body.ui-sky .split:not(.hidden), .stu-layout { grid-template-columns: minmax(0, 1fr) 420px; }
 }
 
+/* ── 관리 페이지 공통 부품: 제목·현황 카드·세그먼트·검색 줄 (forms·messages·settle) ── */
+body.ui-sky .page-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+body.ui-sky .page-head h1 { font-size: 2.1rem; font-weight: 300; letter-spacing: -0.03em; }
+body.ui-sky .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
+body.ui-sky .stat-label { text-transform: none; letter-spacing: 0; font-size: 0.78rem; font-weight: 600; }
+body.ui-sky .stat-value { font-weight: 300; font-size: 2rem; }
+body.ui-sky .seg { background: var(--sky-chip); border-color: var(--sky-chip-line); box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 10px; }
+body.ui-sky .seg button { border-radius: 8px; }
+body.ui-sky .seg button.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+body.ui-sky .toolbar .inp { width: auto; }
+body.ui-sky .toolbar .search { max-width: 520px; }
+body.ui-sky .empty-state, body.ui-sky .loading-state { color: var(--sub); }
+@media (max-width: 759px) {
+  body.ui-sky .stats-row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  body.ui-sky .stat-card { padding: 12px; }
+  body.ui-sky .stat-value { font-size: 1.3rem; }
+  body.ui-sky .stat-value span { font-size: 0.72rem; margin-left: 2px; }
+}
+@media (min-width: 1200px) {
+  body.ui-sky .stats-row { grid-template-columns: repeat(3, minmax(0, 260px)); }
+}
+
 /* 메뉴 팝업(와플) */
 body.ui-sky .app-modal { background: rgba(20,22,50,0.35); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
 body.ui-sky .app-modal-card, body.ui-sky.dark .app-modal-card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--shadow-lg); }

@@ -213,13 +213,6 @@
     .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
     /* ── 하늘(ui-sky) 디자인 — 공통 틀은 admin-sky.css ──
        ≥1200: 설문 묶음을 여러 열 카드로(펼친 묶음만 한 줄 전체), 응답 통계도 여러 열 */
-    body.ui-sky .page-head h1 { font-size: 2.1rem; font-weight: 300; letter-spacing: -0.03em; }
-    body.ui-sky .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); }
-    body.ui-sky .stat-label { text-transform: none; letter-spacing: 0; font-size: 0.78rem; font-weight: 600; }
-    body.ui-sky .stat-value { font-weight: 300; font-size: 2rem; }
-    body.ui-sky .seg { background: var(--sky-chip); border-color: var(--sky-chip-line); box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 10px; }
-    body.ui-sky .seg button { border-radius: 8px; }
-    body.ui-sky .seg button.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
     body.ui-sky .group-head { background: var(--surface); border-color: var(--border); box-shadow: var(--shadow); border-radius: 16px; }
     body.ui-sky .group-avatar { background: var(--accent-grad); }
     body.ui-sky .survey-item { background: var(--surface); border-color: var(--border); border-radius: 12px; }
@@ -234,17 +227,11 @@
     body.ui-sky .bar-fill { background: var(--accent-grad); }
     body.ui-sky .text-resp-item { background: var(--surface); }
     body.ui-sky .drive-modal-box { background: var(--bg-elevated); }
-    body.ui-sky .toolbar .inp { width: auto; }
-    body.ui-sky .toolbar .search { max-width: 520px; }
     @media (max-width: 759px) {
-      body.ui-sky .stats-row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-      body.ui-sky .stat-card { padding: 12px; }
-      body.ui-sky .stat-value { font-size: 1.5rem; }
       body.ui-sky .toolbar .search { flex-basis: 100%; }
       body.ui-sky .toolbar select.inp { flex: 1; }
     }
     @media (min-width: 1200px) {
-      body.ui-sky .stats-row { grid-template-columns: repeat(3, minmax(0, 260px)); }
       body.ui-sky #surveyList { display: grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 14px; align-items: start; }
       body.ui-sky #surveyList > .empty-state, body.ui-sky #surveyList > .loading-state { grid-column: 1 / -1; }
       body.ui-sky #surveyList > .group { margin-bottom: 0; }
