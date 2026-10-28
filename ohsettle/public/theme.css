@@ -436,11 +436,10 @@ body.ui-sky .toggle-track, body.ui-sky .mail-toggle { background: rgba(120,120,1
 
 /* ============================================================
    하늘(ui-sky) v3 — 얼룩 없는 바탕 + 더 맑은 유리
-   바탕: 한 방향 그라데이션(색 차이를 키워서 판 위치마다 비치는 색이 다르게)
+   바탕: 처음 배포한 그라데이션 그대로(색 바꾸지 않음)
    판: 흰 30% + 흐림 30px·채도 1.8 + 또렷한 가장자리 빛
    ============================================================ */
 body.ui-sky {
-  --bg: linear-gradient(180deg, #86a9ea 0%, #a9c1f0 35%, #cbd3f3 65%, #e8dcf2 100%);
   --surface:      rgba(255,255,255,0.30);
   --surface-2:    rgba(255,255,255,0.22);
   --glass:        rgba(255,255,255,0.26);
@@ -454,7 +453,6 @@ body.ui-sky {
   --shadow-md:   inset 0 1.5px 0 rgba(255,255,255,1), inset 1.5px 0 0 rgba(255,255,255,0.6), 0 18px 48px rgba(40,60,130,0.22);
 }
 body.ui-sky.dark {
-  --bg: linear-gradient(180deg, #24346f 0%, #3a4790 35%, #5b5aa3 70%, #3a3168 100%);
   --surface:      rgba(20,22,60,0.30);
   --surface-2:    rgba(20,22,60,0.22);
   --glass-strong: rgba(20,22,60,0.42);
