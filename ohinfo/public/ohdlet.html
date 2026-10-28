@@ -2076,7 +2076,7 @@
       const q = query(collection(db, 'classes'), orderBy('createdAt'));
       const snap = await getDocs(q);
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      document.getElementById('adminList').innerHTML = list.map(c => `<div class="admin-item"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><select onchange="toggleClassStatus('${c.id}',this.value)" class="status-pill ${c.status==='ON'?'on':'off'}"><option value="ON" ${c.status==='ON'?'selected':''}>ON</option><option value="OFF" ${c.status==='OFF'?'selected':''}>OFF</option></select><span style="font-size:0.88rem;">${c.grade}학년 ${c.group}반 — <b>${c.name}</b></span></div><div style="display:flex;gap:12px;"><a onclick='editAdminUI(${JSON.stringify(c)})' style="font-size:0.82rem;font-weight:700;color:var(--accent);cursor:pointer;">수정</a><a onclick="delAdminClass('${c.id}')" style="font-size:0.82rem;font-weight:700;color:#ef4444;cursor:pointer;">삭제</a></div></div>`).join('');
+      document.getElementById('adminList').innerHTML = list.map(c => `<div class="admin-item"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><label class="ios-switch"><input type="checkbox" ${c.status==='ON'?'checked':''} onchange="toggleClassStatus('${c.id}',this.checked?'ON':'OFF')"><span></span></label><span style="font-size:0.88rem;">${c.grade}학년 ${c.group}반 — <b>${c.name}</b></span></div><div style="display:flex;gap:12px;"><a onclick='editAdminUI(${JSON.stringify(c)})' style="font-size:0.82rem;font-weight:700;color:var(--accent);cursor:pointer;">수정</a><a onclick="delAdminClass('${c.id}')" style="font-size:0.82rem;font-weight:700;color:#ef4444;cursor:pointer;">삭제</a></div></div>`).join('');
     } catch(e) {}
   }
 
