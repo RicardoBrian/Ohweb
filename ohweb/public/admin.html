@@ -378,9 +378,122 @@
     .modal-box h3 { font-size: 1rem; font-weight: 800; margin-bottom: 10px; }
     .modal-box p { font-size: 0.88rem; color: var(--sub); line-height: 1.65; margin-bottom: 22px; }
     .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+    /* ============================================================
+       하늘(ui-sky) 디자인 — PC: 왼쪽 사이드바, 태블릿: 상단 바, 모바일: 상단 바 + 하단 탭바
+       색·판 재료는 theme.css 의 body.ui-sky 토큰을 쓴다.
+       ============================================================ */
+    body.ui-sky { line-height: 1.55; }
+    body.ui-sky .nav { background: var(--glass-nav); border-bottom: 1px solid var(--border); box-shadow: none; }
+    body.ui-sky .nav-brand img { height: 28px; }
+    .nav-brand-sub { font-size: 0.82rem; font-weight: 600; color: var(--sub); }
+    .side-menu, .nav-dark-label, .tabbar { display: none; }
+    body.ui-sky .waffle-btn { background: var(--sky-chip); border-color: var(--sky-chip-line); box-shadow: none; }
+
+    .side-head { font-size: 0.72rem; font-weight: 600; color: var(--text-3); padding: 14px 10px 6px; letter-spacing: 0.02em; }
+    .side-item {
+      display: flex; align-items: center; gap: 10px; width: 100%; height: 36px; padding: 0 10px;
+      border: 1px solid transparent; background: none; border-radius: 10px; cursor: pointer;
+      font-family: inherit; font-size: 0.88rem; font-weight: 500; color: var(--sub); text-align: left; position: relative;
+    }
+    .side-item svg { flex-shrink: 0; }
+    .side-item:hover { background: var(--sky-chip); color: var(--text); }
+    .side-item.on { background: var(--sky-chip); border-color: var(--sky-chip-line); color: var(--text); font-weight: 700; }
+    .side-item.on::before { content: ''; position: absolute; left: -11px; top: 9px; bottom: 9px; width: 3px; border-radius: 3px; background: var(--accent); }
+    .side-item.on svg { color: var(--accent); }
+
+    /* PC — 사이드바 */
+    @media (min-width: 900px) {
+      body.ui-sky .nav {
+        position: fixed; top: 14px; left: 14px; bottom: 14px; width: 236px; height: auto;
+        flex-direction: column; align-items: stretch; gap: 0; padding: 16px 10px 12px;
+        background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow);
+      }
+      body.ui-sky .nav-brand { padding: 0 8px 6px; }
+      body.ui-sky .side-menu { display: flex; flex-direction: column; flex: 1; overflow-y: auto; min-height: 0; }
+      body.ui-sky .nav-right { margin: 8px 0 0; padding: 12px 8px 2px; border-top: 1px solid var(--hairline); justify-content: space-between; overflow: visible; }
+      body.ui-sky .nav-dark-label { display: block; font-size: 0.85rem; font-weight: 500; color: var(--sub); }
+      body.ui-sky .waffle-btn { display: none; }
+      body.ui-sky .wrap { max-width: none; margin: 0 0 0 264px; padding: 26px 28px 60px 0; }
+    }
+
+    /* 제목 — 가늘고 크게 */
+    body.ui-sky .section-header { margin: 6px 4px 22px; }
+    body.ui-sky .section-header h1 { font-size: 2.1rem; font-weight: 300; letter-spacing: -0.03em; line-height: 1.15; }
+    body.ui-sky .section-header p { font-size: 0.9rem; }
+
+    /* 카드 — 둥글기 16, 제목 작고 단정하게 */
+    body.ui-sky .card { border-radius: 16px; padding: 22px 24px; margin-bottom: 18px; }
+    body.ui-sky .card h2 { font-size: 0.98rem; font-weight: 700; margin-bottom: 16px; }
+    body.ui-sky .card h2 .icon { color: var(--accent); display: inline-flex; }
+    body.ui-sky .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); }
+    body.ui-sky .stat-card .stat-num { font-weight: 300; font-size: 2rem; color: var(--text); letter-spacing: -0.02em; }
+    body.ui-sky .stat-card .stat-label { text-transform: none; letter-spacing: 0; font-weight: 600; }
+    body.ui-sky .list-item { background: var(--sky-chip); border-color: var(--sky-chip-line); backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 12px; }
+    body.ui-sky .list-item:hover { box-shadow: none; background: var(--accent-light); }
+    body.ui-sky .app-card, body.ui-sky .checkbox-grid, body.ui-sky .upload-zone { background: var(--sky-chip); border-color: var(--sky-chip-line); backdrop-filter: none; -webkit-backdrop-filter: none; }
+    body.ui-sky .upload-zone { border-style: dashed; border-radius: 12px; }
+    body.ui-sky .upload-zone:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+    body.ui-sky .upload-zone .upload-icon { color: var(--accent); }
+    body.ui-sky.dark .btn.accent { background: var(--sky-cta); color: var(--sky-cta-text); }
+    body.ui-sky .btn.ghost { color: var(--accent); }
+    body.ui-sky .btn.ghost.sm { background: var(--sky-chip); border-color: var(--sky-chip-line); }
+    body.ui-sky .stu-side .inp { font-size: 0.9rem; }
+    body.ui-sky .icon-action:hover { background: var(--sky-chip); }
+    body.ui-sky .icon-action.danger { color: var(--danger); }
+    body.ui-sky .badge.on { color: var(--accent); background: var(--accent-light); border-color: transparent; }
+    body.ui-sky .badge.off { color: var(--danger); background: var(--danger-light); border-color: transparent; }
+    body.ui-sky .toggle input:checked + .toggle-track { background: var(--accent); border-color: transparent; }
+
+    /* 표 — 줄무늬·머리 배경 없이 얇은 구분선 */
+    body.ui-sky .table-wrap { border: none; border-radius: 0; }
+    body.ui-sky th { background: none; text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 0.8rem; color: var(--text-3); border-bottom: 1px solid var(--border-card); padding: 8px 12px; }
+    body.ui-sky td { border-bottom: 1px solid var(--hairline); padding: 11px 12px; }
+    body.ui-sky tr:hover td { background: var(--sky-chip); }
+    body.ui-sky .select-controls { gap: 6px 8px; }
+    body.ui-sky .select-controls select.inp { padding-top: 7px; padding-bottom: 7px; font-size: 0.88rem; }
+
+    /* 학생 명단 — 가운데 목록 + 오른쪽 작업 패널 */
+    .stu-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; align-items: start; }
+    .stu-side { position: sticky; top: 26px; }
+    @media (max-width: 1199px) {
+      .stu-layout { grid-template-columns: minmax(0, 1fr); }
+      .stu-side { position: static; display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+      .stu-side .card { margin-bottom: 0; }
+    }
+    @media (max-width: 759px) { .stu-side { grid-template-columns: 1fr; gap: 0; } .stu-side .card { margin-bottom: 18px; } }
+
+    /* 메뉴 팝업(와플) */
+    body.ui-sky .app-modal { background: rgba(20,22,50,0.35); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+    body.ui-sky .app-modal-card, body.ui-sky.dark .app-modal-card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--shadow-lg); }
+    body.ui-sky .app-modal-item, body.ui-sky.dark .app-modal-item { background: var(--sky-chip); border-color: var(--sky-chip-line); font-weight: 600; }
+    body.ui-sky .app-modal-item:hover, body.ui-sky.dark .app-modal-item:hover { background: var(--accent-light); }
+    body.ui-sky .app-modal-icon { color: var(--accent); }
+
+    /* 모바일 — 하단 탭바 */
+    @media (max-width: 759px) {
+      body.ui-sky .waffle-btn { display: none; }
+      body.ui-sky .wrap { padding-bottom: 110px; }
+      body.ui-sky .section-header h1 { font-size: 1.9rem; }
+      body.ui-sky .card { padding: 18px 16px; }
+      body.ui-sky #studentList th:first-child, body.ui-sky #studentList td:first-child { display: none; } /* 학교 열 숨김 */
+      body.ui-sky th, body.ui-sky td { white-space: nowrap; padding-left: 8px; padding-right: 8px; }
+      /* 필터: "학교 [전체]" 짝이 한 줄씩 */
+      body.ui-sky .select-controls { display: grid; grid-template-columns: auto 1fr; align-items: center; }
+      body.ui-sky .select-controls select.inp { width: 100% !important; }
+      body.ui-sky .tabbar {
+        display: flex; position: fixed; left: 12px; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 300;
+        height: 62px; padding: 6px; border-radius: 20px;
+        background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-md);
+        backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      }
+      .tab { flex: 1; border: 1px solid transparent; background: none; border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-family: inherit; font-size: 0.68rem; font-weight: 600; color: var(--sub); cursor: pointer; }
+      .tab.on { color: var(--text); background: var(--sky-chip); border-color: var(--sky-chip-line); }
+      .tab.on svg { color: var(--accent); }
+    }
   </style>
 </head>
-<body>
+<body class="ui-sky">
 
 <div id="loadingOverlay"><div class="spinner"></div></div>
 <div class="toast" id="toast"></div>
@@ -457,13 +570,40 @@
 
 <!-- 네비 -->
 <nav class="nav">
-  <a class="nav-brand" href="admin.html"><img src="logo.png" alt="kakainfo"></a>
+  <a class="nav-brand" href="admin.html"><img src="logo.png" alt="kakainfo"><span class="nav-brand-sub">관리자</span></a>
+  <!-- PC 사이드바 메뉴 — 와플 메뉴와 같은 함수(goApp)를 부른다 -->
+  <div class="side-menu">
+    <div class="side-head">관리</div>
+    <button class="side-item" data-sec="schools" onclick="goApp('schools')"><svg width="18" height="18"><use href="#ic-school"/></svg>학교</button>
+    <button class="side-item" data-sec="students" onclick="goApp('students')"><svg width="18" height="18"><use href="#ic-people"/></svg>학생</button>
+    <button class="side-item" data-sec="apps" onclick="goApp('apps')"><svg width="18" height="18"><use href="#ic-grid"/></svg>앱 설정</button>
+    <div class="side-head">수업</div>
+    <button class="side-item" data-sec="paddlet" onclick="goApp('paddlet')"><svg width="18" height="18"><use href="#ic-board"/></svg>정보 게시판</button>
+    <button class="side-item" data-sec="exam" onclick="goApp('exam')"><svg width="18" height="18"><use href="#ic-clipboard"/></svg>시험</button>
+    <button class="side-item" data-sec="ailab" onclick="goApp('ailab')"><svg width="18" height="18"><use href="#ic-ai"/></svg>AI 실험실</button>
+    <button class="side-item" onclick="goApp('forms')"><svg width="18" height="18"><use href="#ic-doc"/></svg>설문지</button>
+    <button class="side-item" onclick="goApp('messages')"><svg width="18" height="18"><use href="#ic-chat"/></svg>학생 질문</button>
+    <div class="side-head">도구</div>
+    <button class="side-item" onclick="location.href='timer.html'"><svg width="18" height="18"><use href="#ic-timer"/></svg>타이머</button>
+    <button class="side-item" onclick="location.href='notice.html'"><svg width="18" height="18"><use href="#ic-notice"/></svg>공지 메모</button>
+    <button class="side-item" onclick="location.href='settle.html'"><svg width="18" height="18"><use href="#ic-wallet"/></svg>정산 관리</button>
+  </div>
   <div class="nav-right">
+    <span class="nav-dark-label">다크 모드</span>
     <button class="waffle-btn" id="waffleBtn" title="메뉴" onclick="openAppModal()">
       <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="0" y="0" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="6.5" y="0" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="13" y="0" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="0" y="6.5" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="6.5" y="6.5" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="13" y="6.5" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="0" y="13" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="6.5" y="13" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="13" y="13" width="5" height="5" rx="1.2" fill="currentColor"/></svg>
     </button>
     <button class="dark-toggle" id="darkToggleBtn" title="다크모드"></button>
   </div>
+</nav>
+
+<!-- 모바일 하단 탭바 — 자주 쓰는 화면 + 나머지는 메뉴(와플)로 -->
+<nav class="tabbar">
+  <button class="tab" data-sec="students" onclick="goApp('students')"><svg width="22" height="22"><use href="#ic-people"/></svg>학생</button>
+  <button class="tab" data-sec="schools" onclick="goApp('schools')"><svg width="22" height="22"><use href="#ic-school"/></svg>학교</button>
+  <button class="tab" data-sec="exam" onclick="goApp('exam')"><svg width="22" height="22"><use href="#ic-clipboard"/></svg>시험</button>
+  <button class="tab" onclick="goApp('messages')"><svg width="22" height="22"><use href="#ic-chat"/></svg>질문</button>
+  <button class="tab" onclick="openAppModal()"><svg width="22" height="22"><use href="#ic-grid"/></svg>더보기</button>
 </nav>
 
 <!-- 메뉴 모달 (와플) -->
@@ -531,76 +671,82 @@
       <h1>학생 명단</h1>
     </div>
 
-    <div class="card">
-      <h2><span class="icon"><svg width="18" height="18"><use href="#ic-folder"/></svg></span> CSV 업로드</h2>
-
-      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('csvFile').click()">
-        <div class="upload-icon"><svg width="34" height="34"><use href="#ic-doc"/></svg></div>
-        <p>CSV 파일을 클릭하여 업로드</p>
-        <small>열 순서: 학교, 학년, 반, 번호, 이름 (첫 행은 헤더로 자동 처리)</small>
+    <!-- 가운데 목록 + 오른쪽 작업 패널(태블릿·모바일은 아래로) -->
+    <div class="stu-layout">
+      <div class="stu-main">
+      <div class="card">
+        <h2><span class="icon"><svg width="18" height="18"><use href="#ic-people"/></svg></span> 학생 목록</h2>
+        <div style="margin:-4px 0 12px;"><button class="btn ghost sm" title="예전 방식으로 저장된 평문 비밀번호를 안전한 로그인 계정으로 옮기고 지웁니다" onclick="migrateLegacyPasswords()">평문 비밀번호 정리</button></div>
+        <div class="select-controls">
+          <label>학교</label>
+          <select class="inp" id="filterSchool" onchange="onFilterSchoolChange()" style="width:140px;"><option value="">전체</option></select>
+          <label>학년</label>
+          <select class="inp" id="filterGrade" onchange="onFilterGradeChange()" style="width:100px;"><option value="">전체</option></select>
+          <label>반</label>
+          <select class="inp" id="filterClass" onchange="loadStudents()" style="width:90px;"><option value="">전체</option></select>
+        </div>
+        <div id="studentList"><div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-people"/></svg></div>학생이 없습니다.</div></div>
       </div>
-      <input type="file" id="csvFile" accept=".csv" class="hidden" onchange="handleCSV(this)">
+      </div>
+      <aside class="stu-side">
+      <div class="card">
+        <h2><span class="icon"><svg width="18" height="18"><use href="#ic-folder"/></svg></span> CSV 업로드</h2>
 
-      <div id="csvPreview" class="hidden" style="margin-top: 14px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-          <span style="font-size:0.88rem; font-weight:700;" id="csvPreviewInfo"></span>
-          <div style="display:flex; gap:8px;">
-            <button class="btn ghost sm" onclick="cancelCSV()">취소</button>
-            <button class="btn accent sm" onclick="uploadCSV()">업로드 확인</button>
+        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('csvFile').click()">
+          <div class="upload-icon"><svg width="34" height="34"><use href="#ic-doc"/></svg></div>
+          <p>CSV 파일을 클릭하여 업로드</p>
+          <small>열 순서: 학교, 학년, 반, 번호, 이름 (첫 행은 헤더로 자동 처리)</small>
+        </div>
+        <input type="file" id="csvFile" accept=".csv" class="hidden" onchange="handleCSV(this)">
+
+        <div id="csvPreview" class="hidden" style="margin-top: 14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <span style="font-size:0.88rem; font-weight:700;" id="csvPreviewInfo"></span>
+            <div style="display:flex; gap:8px;">
+              <button class="btn ghost sm" onclick="cancelCSV()">취소</button>
+              <button class="btn accent sm" onclick="uploadCSV()">업로드 확인</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>학교</th><th>학년</th><th>반</th><th>번호</th><th>이름</th></tr></thead>
+              <tbody id="csvTable"></tbody>
+            </table>
           </div>
         </div>
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>학교</th><th>학년</th><th>반</th><th>번호</th><th>이름</th></tr></thead>
-            <tbody id="csvTable"></tbody>
-          </table>
-        </div>
       </div>
-    </div>
 
-    <div class="card">
-      <h2><span class="icon"><svg width="18" height="18"><use href="#ic-plus"/></svg></span> 학생 개별 추가</h2>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
-        <div style="grid-column:1/-1;">
-          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">학교</label>
-          <input class="inp" id="addSchoolName" type="text" list="addSchoolOptions" placeholder="학교 이름 입력" style="width:100%;" autocomplete="off" oninput="populateAddDatalists()">
-          <datalist id="addSchoolOptions"></datalist>
+      <div class="card">
+        <h2><span class="icon"><svg width="18" height="18"><use href="#ic-plus"/></svg></span> 학생 개별 추가</h2>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+          <div style="grid-column:1/-1;">
+            <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">학교</label>
+            <input class="inp" id="addSchoolName" type="text" list="addSchoolOptions" placeholder="학교 이름 입력" style="width:100%;" autocomplete="off" oninput="populateAddDatalists()">
+            <datalist id="addSchoolOptions"></datalist>
+          </div>
+          <div>
+            <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">이름</label>
+            <input class="inp" id="addName" type="text" placeholder="이름" style="width:100%;">
+          </div>
+          <div>
+            <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">학년</label>
+            <input class="inp" id="addGrade" type="text" list="addGradeOptions" placeholder="예: 1 (선택 또는 입력)" style="width:100%;" autocomplete="off">
+            <datalist id="addGradeOptions"></datalist>
+          </div>
+          <div>
+            <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">반</label>
+            <input class="inp" id="addClass" type="text" list="addClassOptions" placeholder="예: 3 (선택 또는 입력)" style="width:100%;" autocomplete="off">
+            <datalist id="addClassOptions"></datalist>
+          </div>
+          <div>
+            <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">번호</label>
+            <input class="inp" id="addNumber" type="number" min="1" placeholder="번호" style="width:100%;">
+          </div>
         </div>
-        <div>
-          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">이름</label>
-          <input class="inp" id="addName" type="text" placeholder="이름" style="width:100%;">
-        </div>
-        <div>
-          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">학년</label>
-          <input class="inp" id="addGrade" type="text" list="addGradeOptions" placeholder="예: 1 (선택 또는 입력)" style="width:100%;" autocomplete="off">
-          <datalist id="addGradeOptions"></datalist>
-        </div>
-        <div>
-          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">반</label>
-          <input class="inp" id="addClass" type="text" list="addClassOptions" placeholder="예: 3 (선택 또는 입력)" style="width:100%;" autocomplete="off">
-          <datalist id="addClassOptions"></datalist>
-        </div>
-        <div>
-          <label style="font-size:0.8rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">번호</label>
-          <input class="inp" id="addNumber" type="number" min="1" placeholder="번호" style="width:100%;">
-        </div>
+        <button class="btn accent sm" onclick="addStudent()">추가</button>
+        <div id="addStudentErr" style="font-size:0.82rem;color:#ef4444;margin-top:8px;"></div>
       </div>
-      <button class="btn accent sm" onclick="addStudent()">추가</button>
-      <div id="addStudentErr" style="font-size:0.82rem;color:#ef4444;margin-top:8px;"></div>
-    </div>
-
-    <div class="card">
-      <h2><span class="icon"><svg width="18" height="18"><use href="#ic-people"/></svg></span> 학생 목록</h2>
-      <div style="margin:-4px 0 12px;"><button class="btn ghost sm" title="예전 방식으로 저장된 평문 비밀번호를 안전한 로그인 계정으로 옮기고 지웁니다" onclick="migrateLegacyPasswords()">평문 비밀번호 정리</button></div>
-      <div class="select-controls">
-        <label>학교</label>
-        <select class="inp" id="filterSchool" onchange="onFilterSchoolChange()" style="width:140px;"><option value="">전체</option></select>
-        <label>학년</label>
-        <select class="inp" id="filterGrade" onchange="onFilterGradeChange()" style="width:100px;"><option value="">전체</option></select>
-        <label>반</label>
-        <select class="inp" id="filterClass" onchange="loadStudents()" style="width:90px;"><option value="">전체</option></select>
-      </div>
-      <div id="studentList"><div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-people"/></svg></div>학생이 없습니다.</div></div>
+      </aside>
     </div>
   </div>
 
@@ -1073,6 +1219,17 @@
     showSection(name);
     if (name === 'ailab' && window.AiAdmin) window.AiAdmin.show();
   }
+  // 사이드바·하단 탭바에 지금 보이는 섹션 표시 (보기 전용 — 섹션 전환은 위 함수가 그대로 한다)
+  (function () {
+    function markSideMenu() {
+      var active = document.querySelector('.section.active');
+      var name = active ? active.id.replace('section-', '') : '';
+      document.querySelectorAll('[data-sec]').forEach(function (b) { b.classList.toggle('on', b.dataset.sec === name); });
+    }
+    var obs = new MutationObserver(markSideMenu);
+    document.querySelectorAll('.section').forEach(function (s) { obs.observe(s, { attributes: true, attributeFilter: ['class'] }); });
+    markSideMenu();
+  })();
 </script>
 
 <script type="module" src="admin-ailab.js?v=20261022a"></script>

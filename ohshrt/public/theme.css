@@ -237,3 +237,103 @@ body.dark .auth-head .auth-logo { filter: brightness(1.7) saturate(1.1); }
 .auth-btn:active { transform: scale(0.98); }
 .auth-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 body.dark .auth-btn { background: #f5f5f7; color: #1d1d1f; }
+
+/* ============================================================
+   하늘(sky) 디자인 — Superhuman 첫 화면 느낌 참고 (2026-10 리디자인)
+   <body class="ui-sky"> 를 붙인 페이지에만 적용된다. 아직 안 바꾼 페이지는 위의 기본 모양 그대로.
+   바탕은 한 방향 그라데이션 하나(얼룩 없음), 판은 반투명 + 1px 얇은 테두리.
+   글자 대비: 낮 본문 15:1·보조 4.9:1, 해 질 녘 본문 13:1·보조 7:1 (WCAG AA 이상)
+   ============================================================ */
+body.ui-sky {
+  --bg: linear-gradient(180deg, #c9d5f1 0%, #dcdff3 45%, #ece8f4 100%);
+  --bg-elevated: #ffffff;
+  --surface:      rgba(255,255,255,0.80);
+  --surface-2:    rgba(255,255,255,0.62);
+  --glass:        rgba(255,255,255,0.62);
+  --glass-strong: rgba(255,255,255,0.80);
+  --glass-nav:    rgba(255,255,255,0.58);
+  --blur:         blur(20px) saturate(1.25);
+  --text:   #181b3a;
+  --text-2: rgba(24,27,58,0.64);
+  --text-3: rgba(24,27,58,0.42);
+  --sub:    rgba(24,27,58,0.64);
+  --accent:       #5a48d6;
+  --accent-hover: #4b3ac4;
+  --accent-press: #4232b3;
+  --accent-light: rgba(90,72,214,0.12);
+  --accent-text:  #ffffff;
+  --accent-grad:  linear-gradient(135deg, #8f7bff 0%, #5a48d6 100%);
+  --danger: #d93a40; --danger-light: rgba(217,58,64,0.12);
+  --success: #1f9d5a; --success-light: rgba(31,157,90,0.14);
+  --border:      rgba(255,255,255,0.85);
+  --border-card: rgba(24,27,58,0.10);
+  --hairline:    rgba(24,27,58,0.08);
+  --highlight:   inset 0 0 0 0 transparent;
+  --shadow-sm:   0 1px 3px rgba(40,50,110,0.08);
+  --shadow:      0 8px 30px rgba(40,50,110,0.10);
+  --shadow-md:   0 16px 44px rgba(40,50,110,0.16);
+  --shadow-lg:   0 28px 64px rgba(40,50,110,0.22);
+  --radius: 16px; --radius-sm: 10px; --radius-lg: 20px;
+  --sky-chip:      rgba(24,27,58,0.05);
+  --sky-chip-line: rgba(24,27,58,0.10);
+  --sky-cta:       #1d1f3f;
+  --sky-cta-text:  #ffffff;
+  background: var(--bg); background-attachment: fixed; color: var(--text);
+}
+body.ui-sky.dark {
+  --bg: linear-gradient(180deg, #1c2142 0%, #2a2b58 50%, #433a6c 100%);
+  --bg-elevated: #1d1f40;
+  --surface:      rgba(22,24,58,0.66);
+  --surface-2:    rgba(22,24,58,0.50);
+  --glass:        rgba(255,255,255,0.07);
+  --glass-strong: rgba(22,24,58,0.66);
+  --glass-nav:    rgba(22,24,58,0.55);
+  --blur:         blur(20px) saturate(1.15);
+  --text:   #f4f4fb;
+  --text-2: rgba(244,244,251,0.68);
+  --text-3: rgba(244,244,251,0.44);
+  --sub:    rgba(244,244,251,0.68);
+  --accent:       #b4a8ff;
+  --accent-hover: #c4baff;
+  --accent-press: #a497f5;
+  --accent-light: rgba(180,168,255,0.16);
+  --accent-text:  #1f1950;
+  --accent-grad:  linear-gradient(135deg, #b4a8ff 0%, #8f7bff 100%);
+  --danger: #ff7a80; --danger-light: rgba(255,122,128,0.16);
+  --success: #5be39a; --success-light: rgba(91,227,154,0.16);
+  --border:      rgba(255,255,255,0.14);
+  --border-card: rgba(255,255,255,0.12);
+  --hairline:    rgba(255,255,255,0.08);
+  --shadow-sm:   0 1px 3px rgba(5,5,25,0.3);
+  --shadow:      0 8px 30px rgba(5,5,25,0.30);
+  --shadow-md:   0 16px 44px rgba(5,5,25,0.40);
+  --shadow-lg:   0 28px 64px rgba(5,5,25,0.50);
+  --sky-chip:      rgba(255,255,255,0.07);
+  --sky-chip-line: rgba(255,255,255,0.14);
+  --sky-cta:       #d9d1ff;
+  --sky-cta-text:  #1f1950;
+}
+/* 판: 반투명 + 1px 테두리, 반사 광택 없음 */
+body.ui-sky .card, body.ui-sky .login-card, body.ui-sky .modal-box, body.ui-sky .auth-card {
+  background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow);
+  backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+}
+/* 주 버튼: 어두운 남색(해 질 녘은 라벤더) */
+body.ui-sky .btn { border-radius: 10px; box-shadow: none; background: var(--sky-chip); border-color: var(--sky-chip-line); backdrop-filter: none; -webkit-backdrop-filter: none; }
+body.ui-sky .btn:hover { background: var(--accent-light); color: var(--text); }
+body.ui-sky .btn.accent, body.ui-sky .auth-btn { background: var(--sky-cta); color: var(--sky-cta-text); border-color: transparent; box-shadow: 0 6px 18px rgba(20,20,60,0.18); }
+body.ui-sky .btn.accent:hover, body.ui-sky .auth-btn:hover { opacity: 1; filter: brightness(1.12); }
+body.ui-sky .btn.ghost { background: transparent; border-color: transparent; }
+body.ui-sky .btn.ghost:hover { background: var(--sky-chip); }
+body.ui-sky .btn.danger { background: var(--danger-light); color: var(--danger); border-color: transparent; }
+/* 입력칸 */
+body.ui-sky .inp { background: var(--sky-chip); border: 1px solid var(--sky-chip-line); box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 10px; color: var(--text); }
+body.ui-sky.dark .inp { background: rgba(0,0,0,0.18); }
+body.ui-sky .inp:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+body.ui-sky select.inp option { background: var(--bg-elevated); color: var(--text); }
+/* 토글·토스트 */
+body.ui-sky .dark-toggle { background: var(--sky-chip); border-color: var(--sky-chip-line); box-shadow: none; }
+body.ui-sky.dark .dark-toggle { background: var(--accent); }
+body.ui-sky .toast { background: var(--sky-cta); color: var(--sky-cta-text); }
+/* 로고: 배경 없이 원본 PNG. 해 질 녘에는 흰색 단색으로 */
+body.ui-sky.dark .nav-brand img, body.ui-sky.dark .toolbar-brand img, body.ui-sky.dark .auth-head .auth-logo { filter: brightness(0) invert(1); opacity: 0.94; }
