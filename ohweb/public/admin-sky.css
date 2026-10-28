@@ -170,3 +170,13 @@ body.ui-sky .app-modal-icon { color: var(--accent); }
 }
 body.ui-sky .stats-grid { grid-template-columns: repeat(auto-fill, minmax(9rem, 13rem)); }
 @media (max-width: 480px) { body.ui-sky .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+
+/* 눌러서 수정하는 행 — 손가락 모양·눌림 표시·오른쪽 › (iOS 목록) */
+body.ui-sky .row-open { cursor: pointer; position: relative; transition: background 0.12s; }
+body.ui-sky tr.row-open:hover td, body.ui-sky .list-item.row-open:hover { background: var(--fill); }
+body.ui-sky .row-open:active, body.ui-sky tr.row-open:active td { background: var(--fill-strong); }
+body.ui-sky .row-open:focus-visible { outline: 3px solid rgba(0,122,255,0.4); outline-offset: -3px; border-radius: 10px; }
+body.ui-sky .list-item.row-open .list-item-actions::after { content: '›'; color: var(--text-3); font-size: 1.5rem; line-height: 1; margin-left: 2px; font-weight: 300; }
+body.ui-sky tr.row-open td:last-child::after { content: '›'; color: var(--text-3); font-size: 1.4rem; line-height: 1; margin-left: 8px; vertical-align: middle; }
+/* 줄 안의 작은 버튼은 행보다 먼저 눌리게 */
+body.ui-sky .row-open :is(button, .ios-switch) { position: relative; z-index: 1; }

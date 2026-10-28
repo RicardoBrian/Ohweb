@@ -1084,6 +1084,7 @@
 </script>
 
 <script src="admin-nav.js"></script>
+<script src="admin-rows.js"></script>
 <script type="module" src="admin-ailab.js?v=20261022a"></script>
 <script type="module">
   import { db, auth } from './firebase-config.js';
@@ -1471,7 +1472,7 @@
           <thead><tr><th>학교</th><th>학년</th><th>반</th><th>번호</th><th>이름</th><th>상태</th><th></th></tr></thead>
           <tbody>
             ${students.map(s => `
-              <tr>
+              <tr class="row-open" data-open="editStudent" data-arg="${escHtml(s.id)}" title="눌러서 수정">
                 <td>${escHtml(s.schoolName)}</td>
                 <td>${escHtml(s.grade)}</td>
                 <td>${escHtml(s.class)}</td>
@@ -1484,7 +1485,6 @@
                   ${s.locked ? '<span style="margin-left:4px;font-size:0.72rem;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(239,68,68,0.15);color:#dc2626;">잠김</span>' : ''}</td>
                 <td style="white-space:nowrap;">
                   ${s.locked ? `<button class="icon-action" title="잠금 해제" onclick="unlockStudent(${jsArg(s.id)})"><svg width="16" height="16"><use href="#ic-unlock"/></svg></button>` : ''}
-                  <button class="icon-action" title="수정" onclick="editStudent(${jsArg(s.id)})"><svg width="16" height="16"><use href="#ic-edit"/></svg></button>
                   <button class="icon-action danger" title="삭제" onclick="deleteStudent(${jsArg(s.id)},${jsArg(s.name)})"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
                 </td>
               </tr>
@@ -1794,9 +1794,12 @@
       el.style.display = (g === 'all' || el.dataset.g === g) ? '' : 'none';
     });
   };
+  let _adminClassById = {};
+  window.editAdminClassById = (id) => { if (_adminClassById[id]) window.editAdminUI(_adminClassById[id]); };
   window.loadAdminList = async () => {
     const data = await getDocs(query(collection(db, 'classes'), orderBy('createdAt', 'asc')));
     const list = data.docs.map(d => ({ id: d.id, ...d.data() }));
+    _adminClassById = Object.fromEntries(list.map(c => [c.id, c]));   // 행을 눌러 수정할 때 id 로 찾는다
     const el = document.getElementById('adminList');
     if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-board"/></svg></div>등록된 수업이 없습니다.</div>'; return; }
     const gradeOrder = ['1','2','3'];
@@ -1807,14 +1810,13 @@
       groups[g].push(c);
     });
     const renderItem = c => `
-      <div class="list-item">
+      <div class="list-item row-open" data-open="editAdminClassById" data-arg="${escHtml(c.id)}" title="눌러서 수정">
         <div>
           <div class="list-item-name"><svg width="15" height="15" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-board"/></svg>${c.name}</div>
           <div class="list-item-sub">${c.schoolName||'관산중학교'} · ${!c.grade ? '학교 전체' : !c.group ? c.grade+'학년 전체' : c.grade+'학년 '+c.group+'반'} <span style="font-size:0.75rem;padding:2px 7px;border-radius:6px;font-weight:700;background:${c.status==='ON'?'rgba(34,197,94,0.15)':'rgba(239,68,68,0.12)'};color:${c.status==='ON'?'#16a34a':'#ef4444'}">${c.status}</span></div>
         </div>
         <div class="list-item-actions" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <label class="ios-switch" title="${c.status==='ON'?'켜짐 — 누르면 끔':'꺼짐 — 누르면 켬'}"><input type="checkbox" ${c.status==='ON'?'checked':''} onchange="toggleClassStatus('${c.id}',this.checked?'ON':'OFF')"><span></span></label>
-          <button class="icon-action" title="수정" onclick='editAdminUI(${JSON.stringify(c).replace(/'/g,"&#39;")})'><svg width="16" height="16"><use href="#ic-edit"/></svg></button>
           <button class="btn ghost sm" style="color:var(--accent)" onclick='openTranslateModal(${JSON.stringify(c).replace(/'/g,"&#39;")})'>번역</button>
           <button class="icon-action danger" title="삭제" onclick="delAdminClass('${c.id}')"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
         </div>
@@ -2061,13 +2063,12 @@
     const el = document.getElementById('examList');
     if (!exams.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-clipboard"/></svg></div>등록된 시험이 없습니다.</div>'; return; }
     el.innerHTML = exams.map(e => `
-      <div class="list-item">
+      <div class="list-item row-open" data-open="editExam" data-arg="${escHtml(e.id)}" title="눌러서 수정">
         <div class="list-item-info">
           <div class="list-item-name"><svg width="15" height="15" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-clipboard"/></svg>${escHtml(e.title)}</div>
           ${e.desc || examFormsOf(e).length ? `<div class="list-item-sub">${escHtml(e.desc||'')}${e.desc && examFormsOf(e).length ? ' · ' : ''}${examFormsOf(e).length ? `${examFormsOf(e).join('·')}형${e.shuffleForms ? ' (순서 섞기)' : ''}` : ''}</div>` : ''}
         </div>
         <div class="list-item-actions">
-          <button class="icon-action" title="수정" onclick="editExam(${jsArg(e.id)})"><svg width="16" height="16"><use href="#ic-edit"/></svg></button>
           <button class="icon-action danger" title="삭제" onclick="deleteExam(${jsArg(e.id)},${jsArg(e.title)})"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
         </div>
       </div>`).join('');
@@ -2292,14 +2293,13 @@
     if (!qs.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-help"/></svg></div>문제가 없습니다.</div>'; return; }
     const typeLabels = { mc:'객관식', sa:'단답형', essay:'서술형', code:'코딩' };
     el.innerHTML = qs.map((q,i) => `
-      <div class="list-item" draggable="true" data-qid="${escHtml(q.id)}">
+      <div class="list-item row-open" draggable="true" data-qid="${escHtml(q.id)}" data-open="editQuestionById" data-arg="${escHtml(q.id)}" title="눌러서 수정 · 끌어서 순서 바꾸기">
         <span class="q-drag-handle" title="끌어서 순서 바꾸기">⠿</span>
         <div class="list-item-info" style="flex:1;">
           <div class="list-item-name">Q${i+1}. [${escHtml(typeLabels[q.type]||q.type)}] ${q.form ? `<span style="font-size:0.72rem;font-weight:800;padding:1px 7px;border-radius:50px;background:rgba(124,77,255,0.15);color:#7c4dff;">${escHtml(q.form)}형</span> ` : ''}${escHtml(q.title||'')}</div>
           <div class="list-item-sub">${Number(q.points)||0}점</div>
         </div>
         <div class="list-item-actions">
-          <button class="icon-action" title="수정" onclick="editQuestionById('${q.id}')"><svg width="16" height="16"><use href="#ic-edit"/></svg></button>
           <button class="icon-action danger" title="삭제" onclick="deleteQuestion('${q.id}')"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
         </div>
       </div>`).join('');
