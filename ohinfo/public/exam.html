@@ -885,7 +885,7 @@ window.enterExamWithCode = async (asId, code) => {
   try {
     const r = await examApi('start', { asId, code: String(code || '').trim().toUpperCase() });
     questions = (r.questions || []).map((q, i) => ({ ...q, idx: i }));
-    currentAssignment = { asId: r.asId, duration: r.duration };
+    currentAssignment = { asId: r.asId, duration: r.duration, form: r.form || '' };
     currentExam = { title: r.title };
     // 새로고침/재접속 등으로 이미 진행 중이던 시험에 재입장하는 경우, 이탈
     // 횟수를 0으로 되돌리면 안 된다 — 서버가 기존 기록의 값을 돌려준다.
@@ -923,7 +923,8 @@ function startExamUI() {
   document.getElementById('step3').classList.add('hidden');
   document.getElementById('step2').classList.remove('hidden');
   document.getElementById('examTitle').innerText = currentExam.title || '';
-  document.getElementById('examSubInfo').innerText = `${SESSION.grade}학년 ${SESSION.cls}반 · ${SESSION.name} · ${questions.length}문항`;
+  // 시험지 유형(A/B/C형)을 쓰는 시험이면 같이 보여준다 — 선생님이 교실에서 확인할 수 있게.
+  document.getElementById('examSubInfo').innerText = `${SESSION.grade}학년 ${SESSION.cls}반 · ${SESSION.name} · ${questions.length}문항${currentAssignment.form ? ` · ${currentAssignment.form}형` : ''}`;
   const alertCountEl = document.getElementById('alertCount');
   if (alertCountEl) alertCountEl.innerText = alertCount;
   const pasteBlockCountEl = document.getElementById('pasteBlockCountEl');

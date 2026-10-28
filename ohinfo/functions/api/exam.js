@@ -315,10 +315,69 @@ const PUBLIC_Q_FIELDS = [
   'title', 'titleZh', 'titleRu', 'titleEn', 'content', 'contentZh', 'contentRu', 'contentEn',
   'options', 'optionsZh', 'optionsRu', 'optionsEn',
 ];
-function publicQuestion(q) {
+// optOrder가 있으면(보기 섞기) 보기를 그 순서로 내려보낸다 — optOrder[화면 번호] = 원래 번호.
+// 번역 보기가 원문과 개수가 다르면 같은 순서로 섞을 수 없으니 빼서 원문을 보게 한다.
+function publicQuestion({ q, optOrder }) {
   const out = { id: q.id };
   for (const k of PUBLIC_Q_FIELDS) if (q[k] !== undefined && q[k] !== null) out[k] = q[k];
+  if (optOrder) {
+    for (const k of ['options', 'optionsZh', 'optionsRu', 'optionsEn']) {
+      if (!Array.isArray(out[k])) continue;
+      if (out[k].length === optOrder.length) out[k] = optOrder.map(i => out[k][i]);
+      else delete out[k];
+    }
+  }
   return out;
+}
+
+// ── 시험지 유형(A/B/C/D형) ──
+// 시험(exams)의 forms에 쓰는 유형을 고른다(예: ['A','B','C']). 문항의 form이
+// 비어 있으면 공통 문항이고, 'B'처럼 적혀 있으면 B형 학생만 받는다.
+// shuffleForms가 켜져 있으면 첫 유형(A형)은 선생님이 정한 순서 그대로, 나머지
+// 유형은 문항 순서와 객관식 보기 순서를 섞는다. 같은 유형끼리는 시험지가 같다
+// (섞는 순서가 시험·유형으로 정해지는 고정값이라 새로고침해도 안 바뀐다).
+// 유형을 안 쓰는 시험(forms 없음)은 문항 표시를 무시하고 전부 낸다.
+const FORM_LETTERS = ['A', 'B', 'C', 'D'];
+const examForms = exam => (Array.isArray(exam?.forms) ? exam.forms : []).filter(f => FORM_LETTERS.includes(f));
+function hashStr(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+// 시드가 같으면 항상 같은 순서가 나오는 섞기(mulberry32 + Fisher–Yates).
+function seededOrder(n, seed) {
+  let a = hashStr(seed);
+  const rand = () => {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const p = [...Array(n).keys()];
+  for (let i = n - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; }
+  return p;
+}
+// 학생의 유형: 한 번 정해지면(진행 기록) 그대로 → 배정이 반 전체 유형이면 그것 →
+// 선생님이 학생별로 정해 둔 것 → 없으면(나중에 추가된 학생 등) 학생 ID로 고정 배정.
+function pickForm(forms, asId, assignment, studentDocId, progress) {
+  if (!forms.length) return '';
+  if (forms.includes(progress?.form)) return progress.form;
+  if (forms.includes(assignment.formMode)) return assignment.formMode;
+  const manual = assignment.formByStudent?.[studentDocId];
+  if (forms.includes(manual)) return manual;
+  return forms[hashStr(`${asId}:${studentDocId}`) % forms.length];
+}
+// 학생이 받는 시험지 — [{ q, optOrder }]. optOrder는 보기를 섞었을 때만 있다.
+function paperFor(examId, exam, questions, form) {
+  const forms = examForms(exam);
+  let qs = forms.length ? questions.filter(q => !q.form || q.form === form) : questions;
+  const shuffle = !!exam?.shuffleForms && !!form && form !== forms[0];
+  const seed = `${examId}:${form}`;
+  if (shuffle) qs = seededOrder(qs.length, `${seed}:order`).map(i => qs[i]);
+  return qs.map(q => {
+    const n = q.type === 'mc' && Array.isArray(q.options) ? q.options.length : 0;
+    return { q, optOrder: shuffle && n > 1 ? seededOrder(n, `${seed}:${q.id}`) : null };
+  });
 }
 
 // ── 코드형 문항 채점 ──
@@ -444,7 +503,9 @@ async function actionStart(db, studentDocId, student, asId, code) {
     isSafeId(assignment.examId) ? db.get(`exams/${assignment.examId}`) : null,
     loadQuestions(db, assignment.examId),
   ]);
-  if (!questions.length) return json({ error: '시험 문제가 없습니다.' }, 404);
+  const form = pickForm(examForms(exam), asId, assignment, studentDocId, progress);
+  const paper = paperFor(assignment.examId, exam, questions, form);
+  if (!paper.length) return json({ error: '시험 문제가 없습니다.' }, 404);
 
   await db.commit([{
     path: progPath,
@@ -455,6 +516,7 @@ async function actionStart(db, studentDocId, student, asId, code) {
       // 입장 횟수 — 새로고침·다른 기기에서 다시 들어온 것도 센다. 선생님이 결과
       // 화면에서 "다른 기기로 들어와 풀었는지" 가늠하는 데 쓴다.
       enterCount: (Number(progress?.enterCount) || 0) + 1,
+      form, // 시험지 유형 — 처음 정해진 뒤로는 바뀌지 않는다(pickForm)
       ...(firstEntry ? { startTime: now } : {}),
     },
     merge: true,
@@ -469,7 +531,8 @@ async function actionStart(db, studentDocId, student, asId, code) {
     serverNow: now.getTime(),
     alertCount: Number(progress?.alertCount) || 0,
     pasteBlockCount: Number(progress?.pasteBlockCount) || 0,
-    questions: questions.map(publicQuestion),
+    form,
+    questions: paper.map(publicQuestion),
   });
 }
 
@@ -493,10 +556,16 @@ async function actionResult(db, studentDocId, asId) {
     ids.forEach((id, i) => { if (keys[i]?.answer != null) correctOf.set(id, String(keys[i].answer)); });
     missing.forEach((id, i) => { if (legacy[i]?.answer != null) correctOf.set(id, String(legacy[i].answer)); });
   }
+  // 보기를 섞은 시험지면 원래 번호를 학생이 본 화면 번호로 바꿔서 보낸다.
+  const shown = (r, v) => {
+    if (!Array.isArray(r.optOrder) || v === '' || v == null) return v;
+    const d = r.optOrder.indexOf(Number(v));
+    return d < 0 ? v : String(d);
+  };
   const correctFor = r => {
     if (!reveal || r.type !== 'mc') return undefined;
-    if (correctOf.has(r.questionId)) return correctOf.get(r.questionId);
-    return typeof r.feedback === 'string' && r.feedback.startsWith('wrong:') ? r.feedback.slice(6) : undefined;
+    if (correctOf.has(r.questionId)) return shown(r, correctOf.get(r.questionId));
+    return typeof r.feedback === 'string' && r.feedback.startsWith('wrong:') ? shown(r, r.feedback.slice(6)) : undefined;
   };
   return json({
     ok: true,
@@ -505,7 +574,7 @@ async function actionResult(db, studentDocId, asId) {
     answersHidden: !reveal,
     items: rows.map(r => ({
       qIdx: r.qIdx || 0, type: r.type || '', title: r.title || '',
-      value: r.value || '', score: r.score || 0, maxScore: r.maxScore || 0,
+      value: shown(r, r.value || ''), score: r.score || 0, maxScore: r.maxScore || 0,
       feedback: redactFeedback(r.feedback, reveal),
       correct: correctFor(r),
     })),
@@ -529,7 +598,14 @@ async function actionSubmit(db, env, studentDocId, student, asId, answers, lang)
   // (OFF는 "새로 못 들어옴"이지 "풀던 답안을 버림"이 아니다).
   if (!progress?.startTime) return json({ error: '시험에 입장한 기록이 없습니다. 목록에서 다시 입장해 주세요.' }, 403);
 
-  const questions = await loadQuestions(db, assignment.examId);
+  const [exam, allQuestions] = await Promise.all([
+    isSafeId(assignment.examId) ? db.get(`exams/${assignment.examId}`) : null,
+    loadQuestions(db, assignment.examId),
+  ]);
+  // 입장 때 받은 것과 같은 시험지(유형·순서·보기 순서)로 채점한다.
+  const form = pickForm(examForms(exam), asId, assignment, studentDocId, progress);
+  const paper = paperFor(assignment.examId, exam, allQuestions, form);
+  const questions = paper.map(p => p.q);
   if (!questions.length) return json({ error: '시험 문제가 없습니다.' }, 404);
 
   // 정답은 문항과 같은 문서 ID로 exam_answers에 들어있다. 다만 admin의
@@ -560,6 +636,10 @@ async function actionSubmit(db, env, studentDocId, student, asId, answers, lang)
 
     const raw = byId.has(q.id) ? byId.get(q.id) : byIdx.get(i);
     let value = raw == null ? '' : String(raw);
+    // 보기를 섞은 시험지면 학생이 고른 화면 번호를 원래 보기 번호로 되돌린다 —
+    // 정답·admin 채점 화면은 원래 번호 기준이다.
+    const optOrder = paper[i].optOrder;
+    if (optOrder && value !== '' && optOrder[Number(value)] !== undefined) value = String(optOrder[Number(value)]);
     let score = 0;
     let feedback = '';
     let check = null;
@@ -605,6 +685,7 @@ async function actionSubmit(db, env, studentDocId, student, asId, answers, lang)
         name: student.name || '', grade: student.grade || '', class: student.class || '', num: student.number ?? '',
         lang: lang || 'ko', qIdx: i, type: q.type || '', title,
         value, score, maxScore: points, feedback, check,
+        ...(optOrder ? { optOrder } : {}), // 결과 화면에서 학생이 본 번호로 되돌릴 때 쓴다
         gradedAt: new Date().toISOString(),
       },
     });
@@ -627,7 +708,7 @@ async function actionSubmit(db, env, studentDocId, student, asId, answers, lang)
     path: `exam_progress/${asId}_${studentDocId}`,
     // needsManual: 선생님이 직접 채점할 문항(서술형·단답형·실행 실패한 코드형)이 있음 —
     // 학생 화면은 선생님이 채점을 저장할 때까지 점수를 보여주지 않는다.
-    data: { status: 'submitted', totalScore, totalPoints, submitTime: submitIso, needsManual, ...timing },
+    data: { status: 'submitted', totalScore, totalPoints, submitTime: submitIso, needsManual, form, ...timing },
     merge: true,
   });
 

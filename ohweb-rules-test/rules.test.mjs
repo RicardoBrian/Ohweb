@@ -74,6 +74,7 @@ await T('시험: 진행 기록 생성 시 시작 시각 넣기(제한시간 속�
 await T('시험: 시작 시각 없던 기록에 직접 기록', setDoc(doc(A, 'exam_progress/AS3_StuA'), { startTime: serverTimestamp() }, { merge: true }), false);
 await T('시험: 시험 중 이탈 횟수 0으로 되돌리기', setDoc(doc(A, 'exam_progress/AS1_StuA'), { alertCount: 0 }, { merge: true }), false);
 await T('시험: 이탈 횟수 필드 지우기', updateDoc(doc(A, 'exam_progress/AS1_StuA'), { alertCount: deleteField() }), false);
+await T('시험: 시험지 유형 바꾸기', setDoc(doc(A, 'exam_progress/AS1_StuA'), { form: 'B' }, { merge: true }), false);
 await T('시험: 입장 횟수 조작', setDoc(doc(A, 'exam_progress/AS1_StuA'), { enterCount: 1 }, { merge: true }), false);
 await T('시험: 재입장 시각 조작', setDoc(doc(A, 'exam_progress/AS1_StuA'), { lastEnterAt: serverTimestamp() }, { merge: true }), false);
 await T('email_verified 없는 가짜 관리자', getDocs(collection(fakeAdmin, 'qna_threads')), false);
