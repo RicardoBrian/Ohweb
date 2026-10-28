@@ -348,75 +348,118 @@ body.ui-sky.dark :is(.lang-btn.active, .tab-btn.active, .sort-group button.activ
 body.ui-sky :is(.info-box, .edit-banner, .section-title-card, .score-card) { border-color: var(--accent-light); }
 
 /* ============================================================
-   하늘(ui-sky) v2 — 리퀴드 글래스 되살리기 (Superhuman 첫 화면 참고)
-   ① 바탕은 v1의 한 방향 그라데이션 그대로(얼룩 없이)
-   ② 반투명 판: 흰 40%대 + 흐림 26px + 채도↑ — 뒤 하늘이 은은하게 비친다
-   ③ 빛 반사: 위·왼쪽 가장자리 하이라이트 + 얇은 밝은 테두리 (--shadow 에 포함 → 모든 판에 적용)
-   글자는 진한 남색/흰색 그대로라 대비는 유지된다(판 뒤 하늘이 밝거나 어둡게 한 톤이라).
+   애플(HIG) 방식 마감 — 하늘(ui-sky) 페이지  (바탕색은 위 v1 그대로)
+   층 구분이 핵심이다:
+   ① 내비게이션 층(사이드바·상단 바·하단 탭바·팝업) = 리퀴드 글래스: 맑은 반투명 + 큰 흐림, 테두리 없음
+   ② 내용 판(카드·현황·목록 판) = 테두리 없는 반투명 둥근 판 + 은은한 그림자
+   ③ 판 안의 줄 = 상자 대신 얇은 구분선(iOS 목록), 입력칸·보조 버튼 = 테두리 없는 회색 채움
+   글꼴: 맥·아이폰은 SF(시스템), 그 밖(Windows 등)은 원래 쓰던 IBM Plex Sans KR
    ============================================================ */
 body.ui-sky {
-  /* 바탕은 v1 그대로(한 방향 그라데이션 — 얼룩 없이) */
-  --surface:      rgba(255,255,255,0.46);
-  --surface-2:    rgba(255,255,255,0.34);
-  --glass:        rgba(255,255,255,0.38);
-  --glass-strong: rgba(255,255,255,0.56);
-  --glass-nav:    rgba(255,255,255,0.40);
-  --blur:         blur(26px) saturate(1.7) brightness(1.04);
-  --border:       rgba(255,255,255,0.75);
-  --sky-chip:      rgba(255,255,255,0.42);
-  --sky-chip-line: rgba(255,255,255,0.70);
-  --shadow-sm:   inset 0 1px 0 rgba(255,255,255,0.9), 0 1px 3px rgba(40,50,110,0.10);
-  --shadow:      inset 0 1px 0 rgba(255,255,255,0.95), inset 1px 0 0 rgba(255,255,255,0.55), inset 0 -1px 0 rgba(255,255,255,0.25), 0 10px 36px rgba(40,60,130,0.16);
-  --shadow-md:   inset 0 1px 0 rgba(255,255,255,0.95), inset 1px 0 0 rgba(255,255,255,0.55), 0 18px 48px rgba(40,60,130,0.22);
-  --shadow-lg:   inset 0 1px 0 rgba(255,255,255,0.95), 0 28px 70px rgba(40,60,130,0.28);
-}
-body.ui-sky.dark {
-  --surface:      rgba(28,30,70,0.44);
-  --surface-2:    rgba(28,30,70,0.32);
-  --glass:        rgba(255,255,255,0.08);
-  --glass-strong: rgba(28,30,70,0.56);
-  --glass-nav:    rgba(24,26,62,0.42);
-  --blur:         blur(26px) saturate(1.4);
-  --border:       rgba(255,255,255,0.22);
-  --sky-chip:      rgba(255,255,255,0.10);
-  --sky-chip-line: rgba(255,255,255,0.20);
-  --shadow-sm:   inset 0 1px 0 rgba(255,255,255,0.18), 0 1px 3px rgba(5,5,25,0.3);
-  --shadow:      inset 0 1px 0 rgba(255,255,255,0.22), inset 1px 0 0 rgba(255,255,255,0.10), 0 10px 36px rgba(8,8,40,0.35);
-  --shadow-md:   inset 0 1px 0 rgba(255,255,255,0.22), 0 18px 48px rgba(8,8,40,0.45);
-  --shadow-lg:   inset 0 1px 0 rgba(255,255,255,0.22), 0 28px 70px rgba(8,8,40,0.55);
-}
-/* 입력칸: 판보다 한 겹 더 밝은(어두운) 유리 */
-body.ui-sky .inp { background: rgba(255,255,255,0.55); border-color: rgba(255,255,255,0.8); }
-body.ui-sky.dark .inp { background: rgba(10,12,40,0.35); border-color: rgba(255,255,255,0.16); }
-/* 학생 사이트 앱 화면 등 정적 카드도 유리로 */
-body.ui-sky :is(.stat-card, .list-item, .app-card) { backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
-
-/* ============================================================
-   애플 스타일 마감 (HIG) — 하늘(ui-sky) 페이지
-   시스템 파랑 강조, 굵은 큰 제목, 파란 캡슐 주 버튼, 초록 스위치, SF 글꼴 우선
-   ============================================================ */
-body.ui-sky {
-  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro KR", "Pretendard", "Apple SD Gothic Neo", "IBM Plex Sans KR", system-ui, sans-serif;
+  --font: -apple-system, BlinkMacSystemFont, "IBM Plex Sans KR", "Pretendard", system-ui, sans-serif;
   --accent: #007aff; --accent-hover: #0a84ff; --accent-press: #0062cc;
   --accent-light: rgba(0,122,255,0.12);
   --accent-grad: linear-gradient(180deg, #2b95ff 0%, #007aff 100%);
-  --sky-cta: #007aff; --sky-cta-text: #ffffff;
   --success: #34c759; --danger: #ff3b30;
+  --sky-cta: #007aff; --sky-cta-text: #ffffff;
+  /* 내용 판 */
+  --surface:      rgba(255,255,255,0.62);
+  --glass-strong: rgba(255,255,255,0.62);
+  --glass:        rgba(255,255,255,0.45);
+  --blur:         blur(30px) saturate(1.8);
+  --border:       transparent;
+  --border-card:  rgba(60,60,67,0.12);
+  --hairline:     rgba(60,60,67,0.14);
+  --shadow-sm:    0 1px 2px rgba(20,30,70,0.05);
+  --shadow:       0 1px 2px rgba(20,30,70,0.04), 0 8px 28px rgba(30,45,100,0.09);
+  --shadow-md:    0 2px 6px rgba(20,30,70,0.06), 0 16px 44px rgba(30,45,100,0.14);
+  --shadow-lg:    0 24px 64px rgba(30,45,100,0.22);
+  /* 내비게이션 유리 */
+  --nav-glass:    rgba(255,255,255,0.42);
+  --nav-blur:     blur(40px) saturate(1.9);
+  /* 회색 채움(입력칸·보조 버튼·선택) — iOS systemFill */
+  --fill:         rgba(118,118,128,0.12);
+  --fill-strong:  rgba(118,118,128,0.20);
+  --sky-chip:      var(--fill);
+  --sky-chip-line: transparent;
   font-family: var(--font);
-  letter-spacing: -0.01em;
 }
 body.ui-sky.dark {
   --accent: #0a84ff; --accent-hover: #409cff; --accent-press: #0071e3;
   --accent-light: rgba(10,132,255,0.20);
   --accent-grad: linear-gradient(180deg, #409cff 0%, #0a84ff 100%);
-  --sky-cta: #0a84ff; --sky-cta-text: #ffffff;
   --success: #30d158; --danger: #ff453a;
+  --sky-cta: #0a84ff; --sky-cta-text: #ffffff;
+  --surface:      rgba(30,32,58,0.58);
+  --glass-strong: rgba(30,32,58,0.58);
+  --glass:        rgba(255,255,255,0.06);
+  --blur:         blur(30px) saturate(1.5);
+  --border-card:  rgba(235,235,245,0.14);
+  --hairline:     rgba(235,235,245,0.12);
+  --shadow:       0 1px 2px rgba(0,0,0,0.2), 0 8px 28px rgba(0,0,0,0.28);
+  --shadow-md:    0 16px 44px rgba(0,0,0,0.4);
+  --nav-glass:    rgba(28,30,56,0.45);
+  --nav-blur:     blur(40px) saturate(1.6);
+  --fill:         rgba(118,118,128,0.24);
+  --fill-strong:  rgba(118,118,128,0.34);
 }
-/* 주 버튼: 파란 캡슐 */
-body.ui-sky :is(.btn.accent, .auth-btn, .btn-start-big, .btn-pause, .cta, .fab, .reply-send, #previewBtn) { border-radius: 999px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 4px 14px rgba(0,122,255,0.30); }
-/* 큰 제목(Large Title) */
-body.ui-sky :is(.section-header h1, .page-head h1) { font-weight: 700 !important; letter-spacing: -0.025em; }
-body.ui-sky :is(.stat-card .stat-num, .stat-value, .tile-n) { font-weight: 600 !important; }
+
+/* ② 내용 판: 테두리 없이 */
+html body.ui-sky :is(.card, .stat-card, .trip-item, .survey-item, .group-head, .create-card, .tile, .auth-card, .modal-box, .modal, .title-card, .timer-setup-card, .edit-textarea, .inspector) {
+  background: var(--surface); border: 0; box-shadow: var(--shadow);
+  backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+}
+/* ① 내비게이션 층: 리퀴드 글래스 */
+@media (min-width: 900px) {
+  html body.ui-sky .nav { background: var(--nav-glass); border: 0; box-shadow: var(--shadow-md); backdrop-filter: var(--nav-blur); -webkit-backdrop-filter: var(--nav-blur); }
+}
+html body.ui-sky :is(.tabbar, .topbar, .toolbar#toolbar, .app-modal-card) { background: var(--nav-glass); border: 0; box-shadow: var(--shadow-md); backdrop-filter: var(--nav-blur); -webkit-backdrop-filter: var(--nav-blur); }
+@media (max-width: 899px) { html body.ui-sky .nav { background: var(--nav-glass); border: 0; border-bottom: 0.5px solid var(--hairline); box-shadow: none; backdrop-filter: var(--nav-blur); -webkit-backdrop-filter: var(--nav-blur); } }
+/* 사이드바 선택: 테두리·막대 없이 회색 채움 + 파란 아이콘 */
+html body.ui-sky .side-item { border: 0; }
+html body.ui-sky .side-item.on { background: var(--fill-strong); border: 0; }
+html body.ui-sky .side-item.on::before { display: none; }
+html body.ui-sky .tab.on { background: var(--fill); border: 0; }
+
+/* ③ 판 안의 줄: 상자 대신 얇은 구분선 */
+html body.ui-sky :is(.list-item, .app-card, .thread-item) { background: transparent; border: 0; border-bottom: 0.5px solid var(--hairline); border-radius: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; margin-bottom: 0; }
+html body.ui-sky .list-item:last-child { border-bottom: 0; }
+html body.ui-sky .list-item:hover { background: var(--fill); border-radius: 10px; }
+/* 넓은 화면에서 여러 열 카드로 놓일 때는 회색 채움 타일 */
+@media (min-width: 1600px) {
+  html body.ui-sky .pane-list div:has(> .list-item + .list-item) > .list-item { background: var(--fill); border: 0; border-radius: 12px; }
+}
+html body.ui-sky :is(.upload-zone, .drop, .checkbox-grid, .response-panel, .thread-panel, .trans-chip) { background: var(--fill); border: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+html body.ui-sky :is(.upload-zone, .drop) { border: 1.5px dashed rgba(60,60,67,0.25); }
+html body.ui-sky table th { border-bottom: 0.5px solid var(--hairline); }
+html body.ui-sky table td { border-bottom: 0.5px solid var(--hairline); }
+
+/* 입력칸: 테두리 없는 회색 채움(iOS 검색칸 모양) */
+html body.ui-sky :is(.inp, .title-inp, .custom-inp, .reply-input, .modal-inp, .comment-input) { background: var(--fill); border: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 10px; }
+html body.ui-sky :is(.inp, .title-inp, .custom-inp, .reply-input, .modal-inp, .comment-input):focus { background: var(--bg-elevated); box-shadow: 0 0 0 3.5px rgba(0,122,255,0.35); }
+body.ui-sky select.inp option { background: var(--bg-elevated); color: var(--text); }
+
+/* 버튼: 주 버튼은 파란 캡슐, 나머지는 테두리 없는 회색 채움 + 파란 글자 */
+html body.ui-sky :is(.btn, .btn-translate, .preset-btn, .btn-back, .btn-sound, .tb-btn, .btn-ghost, .seg) { border: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+html body.ui-sky .btn { background: var(--fill); color: var(--accent); border-radius: 999px; }
+html body.ui-sky .btn:hover { background: var(--fill-strong); }
+html body.ui-sky .btn.ghost { background: transparent; }
+html body.ui-sky .btn.ghost:hover { background: var(--fill); }
+html body.ui-sky .btn.danger { background: rgba(255,59,48,0.12); color: var(--danger); }
+html body.ui-sky :is(.btn.accent, .auth-btn, .btn-start-big, .btn-pause, .cta, .fab, .reply-send, #previewBtn, .preset-btn.active, .qna-fab, .btn-modal-save, .send-btn, .comment-send) { background: var(--accent); color: #fff; border: 0; border-radius: 999px; box-shadow: none; }
+html body.ui-sky :is(.btn.accent, .auth-btn, .btn-start-big, .reply-send):hover { background: var(--accent-hover); filter: none; opacity: 1; }
+html body.ui-sky :is(.btn-translate, .preset-btn, .btn-back, .btn-sound, .tb-btn) { background: var(--fill); border-radius: 999px; }
+/* 세그먼트 컨트롤(iOS) */
+html body.ui-sky .seg { background: var(--fill); border-radius: 9px; padding: 2px; }
+html body.ui-sky .seg button { border-radius: 7px; }
+html body.ui-sky .seg button.on { background: var(--bg-elevated); color: var(--text); box-shadow: 0 3px 8px rgba(0,0,0,0.12), 0 1px 1px rgba(0,0,0,0.04); }
+/* 배지는 채움만 */
+html body.ui-sky .badge { border: 0; }
+
+/* 큰 제목(Large Title)·숫자 */
+html body.ui-sky :is(.section-header h1, .page-head h1) { font-weight: 700; letter-spacing: -0.02em; }
+html body.ui-sky :is(.stat-card .stat-num, .stat-value, .tile-n) { font-weight: 600; }
+
 /* iOS 스위치 — 켜기/끄기는 드롭다운 대신 이걸 쓴다(한 번 누르면 바뀜) */
 .ios-switch { position: relative; display: inline-block; width: 51px; height: 31px; flex-shrink: 0; cursor: pointer; vertical-align: middle; }
 .ios-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
@@ -425,45 +468,10 @@ body.ui-sky :is(.stat-card .stat-num, .stat-value, .tile-n) { font-weight: 600 !
 .ios-switch input:checked + span { background: #34c759; }
 .ios-switch input:checked + span::after { transform: translateX(20px); }
 .ios-switch input:focus-visible + span { outline: 3px solid rgba(0,122,255,0.4); outline-offset: 2px; }
-/* 기존 토글들도 iOS 모양·초록으로 */
-body.ui-sky .toggle input:checked + .toggle-track, body.ui-sky .mail-toggle.on { background: var(--success); border-color: transparent; }
-body.ui-sky .dark-toggle, body.ui-sky.dark .dark-toggle { width: 51px; height: 31px; border-radius: 999px; }
-body.ui-sky .dark-toggle::after { top: 2px; left: 2px; width: 27px; height: 27px; }
-body.ui-sky.dark .dark-toggle { background: var(--success); }
-body.ui-sky.dark .dark-toggle::after { transform: translateX(20px); }
-body.ui-sky .dark-toggle { background: rgba(120,120,128,0.32); border-color: transparent; }
-body.ui-sky .toggle-track, body.ui-sky .mail-toggle { background: rgba(120,120,128,0.32); border-color: transparent; }
-
-/* ============================================================
-   하늘(ui-sky) v3 — 얼룩 없는 바탕 + 더 맑은 유리
-   바탕: 처음 배포한 그라데이션 그대로(색 바꾸지 않음)
-   판: 흰 30% + 흐림 30px·채도 1.8 + 또렷한 가장자리 빛
-   ============================================================ */
-body.ui-sky {
-  --surface:      rgba(255,255,255,0.30);
-  --surface-2:    rgba(255,255,255,0.22);
-  --glass:        rgba(255,255,255,0.26);
-  --glass-strong: rgba(255,255,255,0.40);
-  --glass-nav:    rgba(255,255,255,0.28);
-  --blur:         blur(30px) saturate(1.8) brightness(1.05);
-  --border:       rgba(255,255,255,0.70);
-  --sky-chip:      rgba(255,255,255,0.36);
-  --sky-chip-line: rgba(255,255,255,0.75);
-  --shadow:      inset 0 1.5px 0 rgba(255,255,255,1), inset 1.5px 0 0 rgba(255,255,255,0.6), inset 0 -1px 0 rgba(255,255,255,0.3), inset 0 0 24px rgba(255,255,255,0.18), 0 12px 40px rgba(40,60,130,0.16);
-  --shadow-md:   inset 0 1.5px 0 rgba(255,255,255,1), inset 1.5px 0 0 rgba(255,255,255,0.6), 0 18px 48px rgba(40,60,130,0.22);
-}
-body.ui-sky.dark {
-  --surface:      rgba(20,22,60,0.30);
-  --surface-2:    rgba(20,22,60,0.22);
-  --glass-strong: rgba(20,22,60,0.42);
-  --glass-nav:    rgba(18,20,56,0.30);
-  --blur:         blur(30px) saturate(1.5);
-  --border:       rgba(255,255,255,0.24);
-  --shadow:      inset 0 1.5px 0 rgba(255,255,255,0.28), inset 1.5px 0 0 rgba(255,255,255,0.12), inset 0 0 24px rgba(255,255,255,0.04), 0 12px 40px rgba(8,8,40,0.35);
-  --shadow-md:   inset 0 1.5px 0 rgba(255,255,255,0.28), 0 18px 48px rgba(8,8,40,0.45);
-}
-body.ui-sky .inp { background: rgba(255,255,255,0.50); }
-body.ui-sky.dark .inp { background: rgba(8,10,36,0.32); }
-/* 꺼진 스위치는 iOS처럼 회색 */
-body.ui-sky .dark-toggle { background: rgba(120,120,128,0.32); border-color: transparent; }
-body.ui-sky .toggle-track, body.ui-sky .mail-toggle { background: rgba(120,120,128,0.32); border-color: transparent; }
+/* 기존 토글들도 iOS 모양: 꺼짐 회색, 켜짐 초록 */
+html body.ui-sky :is(.toggle-track, .mail-toggle) { background: rgba(120,120,128,0.32); border-color: transparent; }
+html body.ui-sky .toggle input:checked + .toggle-track, html body.ui-sky .mail-toggle.on { background: var(--success); }
+html body.ui-sky .dark-toggle { width: 51px; height: 31px; border-radius: 999px; background: rgba(120,120,128,0.32); border: 0; box-shadow: none; }
+html body.ui-sky .dark-toggle::after { top: 2px; left: 2px; width: 27px; height: 27px; }
+html body.ui-sky.dark .dark-toggle { background: var(--success); }
+html body.ui-sky.dark .dark-toggle::after { transform: translateX(20px); }
