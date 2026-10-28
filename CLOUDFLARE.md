@@ -13,29 +13,27 @@ Cloudflare 대시보드 → Workers & Pages → Create → Pages → Connect to 
 | `ohinfo` | `ohinfo` | *(비움)* | `public` | `kakainfo.com` (학생용, 루트 도메인) |
 | `ohweb` | `ohweb` | *(비움)* | `public` | `admin.kakainfo.com` |
 | `ohsettle` | `ohsettle` | *(비움)* | `public` | `settle.kakainfo.com` |
-| `seatchange` | `seatchange` | *(비움)* | `public` | `seat.kakainfo.com` |
 
 - **Build command는 반드시 비운다.** 빌드 스텝이 없는 정적 사이트다. 프레임워크 프리셋은 `None`.
 - Build output directory는 root directory 기준 상대경로다. 즉 실제 경로는 `ohinfo/public`이 된다.
-- 도메인은 위가 제안일 뿐이다. `seat.kakainfo.com` 외에는 원하는 대로 바꿔도 된다.
+- 도메인은 위가 제안일 뿐이다. 원하는 대로 바꿔도 된다.
 
 ## 2. Build watch paths — 빼먹으면 안 됨
 
-기본값은 "레포의 아무 파일이나 바뀌면 전 프로젝트 빌드"다. 이대로 두면 seatchange만
-고쳐도 4개가 전부 재배포된다. 프로젝트마다 Settings → Build → Build watch paths에서:
+기본값은 "레포의 아무 파일이나 바뀌면 전 프로젝트 빌드"다. 이대로 두면 한 앱만
+고쳐도 전부 재배포된다. 프로젝트마다 Settings → Build → Build watch paths에서:
 
 | 프로젝트 | Include paths |
 |---|---|
 | `ohinfo` | `ohinfo/*` |
 | `ohweb` | `ohweb/*` |
 | `ohsettle` | `ohsettle/*` |
-| `seatchange` | `seatchange/*` |
 
 Vercel의 Ignored Build Step에 대응하는 설정이다.
 
 ## 3. 커스텀 도메인 붙이기
 
-프로젝트 → Custom domains → Set up a custom domain → 예: `seat.kakainfo.com` 입력.
+프로젝트 → Custom domains → Set up a custom domain → 예: `settle.kakainfo.com` 입력.
 
 `kakainfo.com`이 같은 Cloudflare 계정에 있으므로 CNAME 레코드가 자동 생성되고
 인증서도 자동 발급된다. **DNS를 손으로 건드릴 필요가 없다.**
@@ -121,10 +119,10 @@ curl -X POST https://admin.kakainfo.com/api/translate \
 도메인)에 연결돼 있고, Vercel 프로젝트·`vercel.json`·`api/`는 레포에서 모두
 제거했다.
 
-## 6. seatchange
+## 6. seatchange (삭제됨)
 
-새로 추가한 4번째 앱. `theme.css`는 `design-reference/`에서 복사한 것으로 나머지
-3개와 동일하다. 자세한 내용은 `seatchange/README.md`.
+자리 바꾸기 앱은 2026-10에 레포에서 지웠다. Cloudflare의 `seatchange` 프로젝트도
+대시보드에서 삭제해야 빌드 실패 알림이 멈춘다.
 
 ## 7. ohshrt — URL 단축기, 나머지 4개와 동일한 방식(Pages)
 
