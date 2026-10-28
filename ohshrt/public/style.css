@@ -129,3 +129,16 @@ body {
   .dashboard { padding: 24px 14px 40px; }
   .create-card { padding: 18px; }
 }
+
+/* ── 하늘(ui-sky) 디자인 — 색·판은 theme.css 의 body.ui-sky ──
+   ≥1200: "목록(왼쪽) | 만들기 폼(오른쪽 고정)" 2단, 내용 폭 상한 1560px */
+body.ui-sky .create-card, body.ui-sky .tile { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); }
+body.ui-sky .tile-n { font-weight: 300; font-size: 30px; letter-spacing: -0.02em; }
+body.ui-sky .links-section h2, body.ui-sky .section-head h2 { font-weight: 700; color: var(--text); }
+@media (min-width: 1200px) {
+  body.ui-sky .dashboard { max-width: 1560px; padding: 28px 32px 60px; display: grid; grid-template-columns: minmax(0, 1fr) 420px; column-gap: 20px; align-items: start; grid-auto-flow: row dense; }
+  body.ui-sky .dashboard > * { grid-column: 1 / -1; }
+  body.ui-sky .dashboard > .links-section { grid-column: 1; }
+  body.ui-sky .dashboard > .create-card { grid-column: 2; position: sticky; top: 80px; }
+  body.ui-sky .dashboard > .create-card .form-row { grid-template-columns: 1fr; }
+}
