@@ -339,3 +339,10 @@ body.ui-sky .toast { background: var(--sky-cta); color: var(--sky-cta-text); }
 body.ui-sky.dark .nav-brand img, body.ui-sky.dark .toolbar-brand img, body.ui-sky.dark .auth-head .auth-logo { filter: brightness(0) invert(1); opacity: 0.94; }
 /* 로그인 카드: 좁은 화면에서도 좌우 16px 띄움 */
 @media (max-width: 480px) { body.ui-sky .auth-card { width: calc(100% - 32px); } }
+/* 학생 사이트(ohinfo) 공통 부품: 검정·파랑으로 박혀 있던 주 버튼과 선택 상태를 하늘 색으로 */
+body.ui-sky.dark .btn.accent, body.ui-sky.dark .auth-btn { background: var(--sky-cta); color: var(--sky-cta-text); }
+body.ui-sky :is(.qna-fab, .btn-modal-save, .send-btn, .comment-send, .col-board-add),
+body.ui-sky.dark :is(.qna-fab, .btn-modal-save, .send-btn, .comment-send, .col-board-add) { background: var(--sky-cta); color: var(--sky-cta-text); }
+body.ui-sky :is(.lang-btn.active, .tab-btn.active, .sort-group button.active),
+body.ui-sky.dark :is(.lang-btn.active, .tab-btn.active, .sort-group button.active) { background: var(--sky-cta); color: var(--sky-cta-text); border-color: transparent; box-shadow: none; }
+body.ui-sky :is(.info-box, .edit-banner, .section-title-card, .score-card) { border-color: var(--accent-light); }

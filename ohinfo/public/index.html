@@ -145,9 +145,11 @@
       animation: spin 0.75s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+      /* 하늘(ui-sky) 디자인: 이 화면의 .btn 은 주 버튼(입장·가입) */
+    body.ui-sky .btn { background: var(--sky-cta); color: var(--sky-cta-text); border-radius: 14px; box-shadow: 0 8px 24px rgba(20,20,60,0.18); }
   </style>
 </head>
-<body>
+<body class="ui-sky">
 
 <svg width="0" height="0" style="position:absolute;">
   <defs>
