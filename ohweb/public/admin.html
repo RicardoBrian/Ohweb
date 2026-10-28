@@ -463,6 +463,29 @@
     }
     @media (max-width: 759px) { .stu-side { grid-template-columns: 1fr; gap: 0; } .stu-side .card { margin-bottom: 18px; } }
 
+    /* ── 해상도별 배치 ──
+       ≥1200: "목록(가운데) | 추가·수정 폼(오른쪽 고정)" 2단 — 입력칸 하나가 화면 끝까지 늘어나지 않게
+       900–1199: 사이드바 + 한 단(폼 위, 목록 아래)   <900: 상단 바 + 한 단   <760: 하단 탭바
+       아주 넓은 화면에서는 내용 폭을 1560px로 제한 */
+    body.ui-sky .wrap > .section { max-width: 1560px; }
+    @media (min-width: 1200px) {
+      body.ui-sky .split:not(.hidden) { display: grid; grid-template-columns: minmax(0, 1fr) 380px; column-gap: 18px; align-items: start; grid-auto-flow: row dense; }
+      body.ui-sky .section.split:not(.active) { display: none; }
+      body.ui-sky .split > * { grid-column: 1 / -1; }
+      body.ui-sky .split > .pane-list { grid-column: 1; }
+      body.ui-sky .split > .pane-form { grid-column: 2; position: sticky; top: 26px; max-height: calc(100vh - 52px); overflow-y: auto; }
+      body.ui-sky .split.wide-form { grid-template-columns: minmax(0, 1fr) minmax(440px, 44%); }
+      body.ui-sky .stu-side { max-height: calc(100vh - 52px); overflow-y: auto; }
+      /* 좁은 오른쪽 패널 안의 가로 묶음(학교·학년·반 + 담기 등)은 칸이 모자라면 접는다 */
+      body.ui-sky .split:not(.wide-form) > .pane-form [style*="display:grid"] { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)) !important; }
+      body.ui-sky .split:not(.wide-form) > .pane-form [style*="display:grid"] > .btn { grid-column: 1 / -1; justify-self: start; }
+      body.ui-sky .split:not(.wide-form) > .pane-form [style*="display:grid"]:has(> label[style*="display:flex"]) { grid-template-columns: 1fr !important; }
+      body.ui-sky .split:not(.wide-form) > .pane-form [style*="display:grid"] > label[style*="display:flex"] { padding-bottom: 0 !important; }
+    }
+    @media (min-width: 1600px) {
+      body.ui-sky .split:not(.hidden), .stu-layout { grid-template-columns: minmax(0, 1fr) 420px; }
+    }
+
     /* 메뉴 팝업(와플) */
     body.ui-sky .app-modal { background: rgba(20,22,50,0.35); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
     body.ui-sky .app-modal-card, body.ui-sky.dark .app-modal-card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--shadow-lg); }
@@ -632,7 +655,7 @@
 <div class="wrap">
 
   <!-- 학교 관리 섹션 -->
-  <div class="section" id="section-schools">
+  <div class="section split" id="section-schools">
     <div class="section-header">
       <h1>학교 관리</h1>
     </div>
@@ -642,7 +665,7 @@
       <div class="stat-card"><div class="stat-num" id="statStudentCount">-</div><div class="stat-label">전체 학생</div></div>
     </div>
 
-    <div class="card">
+    <div class="card pane-form">
       <h2><span class="icon"><svg width="18" height="18"><use href="#ic-plus"/></svg></span> 학교 추가</h2>
       <div class="field-row">
         <div class="field">
@@ -659,7 +682,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card pane-list">
       <h2><span class="icon"><svg width="18" height="18"><use href="#ic-school"/></svg></span> 학교 목록</h2>
       <div id="schoolList"><div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-school"/></svg></div>등록된 학교가 없습니다.</div></div>
     </div>
@@ -796,12 +819,12 @@
   </div>
 
   <!-- 패들릿 관리 섹션 -->
-  <div class="section" id="section-paddlet">
+  <div class="section split" id="section-paddlet">
     <div class="section-header">
       <h1>정보 게시판 관리</h1>
     </div>
 
-    <div class="card">
+    <div class="card pane-form">
       <h2><span class="icon"><svg width="18" height="18"><use href="#ic-plus"/></svg></span> 수업 추가 / 수정</h2>
       <input type="hidden" id="adm_docId">
       <div id="adm_edit_info" style="display:none;padding:8px 12px;background:var(--accent-light);border-radius:8px;font-size:0.82rem;font-weight:700;color:var(--accent);margin-bottom:12px;"></div>
@@ -851,7 +874,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card pane-list">
       <h2><span class="icon"><svg width="18" height="18"><use href="#ic-clipboard"/></svg></span> 수업 목록</h2>
       <div id="adminList"><div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-board"/></svg></div>등록된 수업이 없습니다.</div></div>
     </div>
@@ -874,8 +897,8 @@
     </div>
 
     <!-- 시험 목록 탭 -->
-    <div id="examTab-list">
-      <div class="card">
+    <div id="examTab-list" class="split">
+      <div class="card pane-form">
         <h2><span class="icon"><svg width="18" height="18"><use href="#ic-plus"/></svg></span> 시험 추가</h2>
         <input type="hidden" id="exam_docId">
         <div style="margin-bottom:12px;">
@@ -905,15 +928,15 @@
           <button id="exam_cancel_btn" class="btn ghost sm hidden" onclick="resetExamForm()">취소</button>
         </div>
       </div>
-      <div class="card">
+      <div class="card pane-list">
         <h2><span class="icon"><svg width="18" height="18"><use href="#ic-clipboard"/></svg></span> 시험 목록</h2>
         <div id="examList"><div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-clipboard"/></svg></div>등록된 시험이 없습니다.</div></div>
       </div>
     </div>
 
     <!-- 문제 관리 탭 -->
-    <div id="examTab-questions" class="hidden">
-      <div class="card">
+    <div id="examTab-questions" class="hidden split wide-form">
+      <div class="card pane-form">
         <h2><span class="icon"><svg width="18" height="18"><use href="#ic-doc"/></svg></span> 문제 추가 / 수정</h2>
         <input type="hidden" id="q_docId">
         <div style="margin-bottom:12px;">
@@ -1041,7 +1064,7 @@
           <button id="q_cancel_btn" class="btn ghost sm hidden" onclick="resetQForm()">취소</button>
         </div>
       </div>
-      <div class="card">
+      <div class="card pane-list">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
           <h2 style="margin:0;"><span class="icon"><svg width="18" height="18"><use href="#ic-doc"/></svg></span> 문제 목록</h2>
           <div style="display:flex;gap:6px;">
@@ -1059,8 +1082,8 @@
     </div>
 
     <!-- 배정 관리 탭 -->
-    <div id="examTab-assign" class="hidden">
-      <div class="card">
+    <div id="examTab-assign" class="hidden split">
+      <div class="card pane-form">
         <h2><span class="icon"><svg width="18" height="18"><use href="#ic-target"/></svg></span> 배정 추가</h2>
         <input type="hidden" id="as_docId">
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
@@ -1126,7 +1149,7 @@
           <button id="as_cancel_btn" class="btn ghost sm hidden" onclick="resetAsForm()">취소</button>
         </div>
       </div>
-      <div class="card">
+      <div class="card pane-list">
         <h2><span class="icon"><svg width="18" height="18"><use href="#ic-clipboard"/></svg></span> 배정 목록</h2>
         <div id="assignList"><div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-target"/></svg></div>등록된 배정이 없습니다.</div></div>
       </div>
