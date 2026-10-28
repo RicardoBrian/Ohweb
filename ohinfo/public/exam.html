@@ -341,9 +341,6 @@
   </div>
 </div>
 
-<!-- 스텝 1 (구 코드입력, step0으로 통합됨 - hidden) -->
-<div id="step1" class="hidden"></div>
-
 <!-- 스텝 2: 시험 -->
 <div id="step2" class="hidden">
   <div class="exam-wrap">
@@ -402,8 +399,7 @@ import { db, auth } from './firebase-config.js';
 import { escHtml, safePhotoUrl } from './escape.js';
 import { setPageTitle } from './page-title.js';
 import {
-  collection, addDoc, getDocs, getDoc, doc,
-  query, where, orderBy, setDoc, updateDoc, serverTimestamp, Timestamp, onSnapshot
+  doc, setDoc, updateDoc, serverTimestamp, onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import { saveSession, loadSession, verifyStudentAuth, authReady } from './session.js';
 import { changeStudentPassword, AuthError } from './student-auth.js';
@@ -416,7 +412,6 @@ if (!_st.id) { window.location.href = 'index.html'; }
 verifyStudentAuth(_st);
 const _nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
 const SESSION = { id: _st.id||'', name: _st.name||'', grade: _nv(_st.grade||''), cls: _nv(_st.class||''), num: String(_st.number||''), schoolName: _st.schoolName||'' };
-const IS_MASTER = !!_st.isMaster;
 let _mpStudent = { ..._st }; // mutable copy for mypage updates
 
 // ── 네비 아바타 렌더 ──
@@ -532,7 +527,7 @@ const UI = {
     mypage:'마이페이지', home:'홈으로',
     mpTitle:'마이페이지', mpPhotoBtn:'사진 변경', mpPwLabel:'비밀번호 변경', mpCurPw:'현재 비밀번호', mpNewPw:'새 비밀번호 (4자 이상)', mpNewPw2:'새 비밀번호 확인', mpSave:'저장',
     mpErrCur:'현재 비밀번호가 맞지 않습니다.', mpErrShort:'새 비밀번호는 4자 이상이어야 합니다.', mpErrMatch:'새 비밀번호가 일치하지 않습니다.', mpOk:'저장되었습니다.',
-    correct:'정답', wrong:'오답 (정답: ', testPass:'테스트케이스 통과', manualGrade:'수동 채점 필요',
+    correct:'정답', wrong:'오답 (정답: ', wrongHidden:'오답', answersLater:'정답은 선생님이 시험을 닫은 뒤에 공개됩니다.', testPass:'테스트케이스 통과', manualGrade:'수동 채점 필요',
     sessionExpired:'로그인이 만료되었습니다. 다시 로그인한 뒤 제출해 주세요.',
     draftKept:'작성한 답안은 이 기기에 저장되어 있습니다. 잠시 후 다시 제출하기를 눌러 주세요.',
     pendingKept:'답안은 선생님께 전달되어 보관되었습니다. 이 화면을 선생님께 보여 주세요.',
@@ -551,7 +546,7 @@ const UI = {
     mypage:'我的页面', home:'返回主页',
     mpTitle:'我的页面', mpPhotoBtn:'更换照片', mpPwLabel:'修改密码', mpCurPw:'当前密码', mpNewPw:'新密码 (至少4位)', mpNewPw2:'确认新密码', mpSave:'保存',
     mpErrCur:'当前密码不正确。', mpErrShort:'新密码至少需要4位。', mpErrMatch:'两次输入的新密码不一致。', mpOk:'已保存。',
-    correct:'正确', wrong:'错误 (正确答案: ', testPass:'测试用例通过', manualGrade:'需要人工评分',
+    correct:'正确', wrong:'错误 (正确答案: ', wrongHidden:'错误', answersLater:'老师结束考试后将公布正确答案。', testPass:'测试用例通过', manualGrade:'需要人工评分',
     sessionExpired:'登录已过期，请重新登录后提交。',
     draftKept:'已作答的内容已保存在本设备上。请稍后再次点击提交。',
     pendingKept:'答案已保存并传给老师。请把此画面给老师看。',
@@ -570,7 +565,7 @@ const UI = {
     mypage:'Мой профиль', home:'На главную',
     mpTitle:'Мой профиль', mpPhotoBtn:'Сменить фото', mpPwLabel:'Сменить пароль', mpCurPw:'Текущий пароль', mpNewPw:'Новый пароль (мин. 4)', mpNewPw2:'Подтвердить пароль', mpSave:'Сохранить',
     mpErrCur:'Неверный текущий пароль.', mpErrShort:'Новый пароль должен быть не менее 4 символов.', mpErrMatch:'Пароли не совпадают.', mpOk:'Сохранено.',
-    correct:'Правильно', wrong:'Неверно (ответ: ', testPass:'тест-кейс пройден', manualGrade:'Требует проверки',
+    correct:'Правильно', wrong:'Неверно (ответ: ', wrongHidden:'Неверно', answersLater:'Правильные ответы появятся после того, как учитель закроет тест.', testPass:'тест-кейс пройден', manualGrade:'Требует проверки',
     sessionExpired:'Сессия истекла. Войдите снова и отправьте работу.',
     draftKept:'Ваши ответы сохранены на этом устройстве. Попробуйте отправить ещё раз чуть позже.',
     pendingKept:'Ответы сохранены и переданы учителю. Покажите этот экран учителю.',
@@ -589,7 +584,7 @@ const UI = {
     mypage:'My Page', home:'Home',
     mpTitle:'My Page', mpPhotoBtn:'Change Photo', mpPwLabel:'Change Password', mpCurPw:'Current password', mpNewPw:'New password (min. 4)', mpNewPw2:'Confirm new password', mpSave:'Save',
     mpErrCur:'Current password is incorrect.', mpErrShort:'New password must be at least 4 characters.', mpErrMatch:'Passwords do not match.', mpOk:'Saved.',
-    correct:'Correct', wrong:'Wrong (answer: ', testPass:'test cases passed', manualGrade:'Manual grading required',
+    correct:'Correct', wrong:'Wrong (answer: ', wrongHidden:'Wrong', answersLater:'Correct answers will be shown after your teacher closes the exam.', testPass:'test cases passed', manualGrade:'Manual grading required',
     sessionExpired:'Your login has expired. Please sign in again and submit.',
     draftKept:'Your answers are saved on this device. Please press Submit again in a moment.',
     pendingKept:'Your answers have been saved for your teacher. Please show this screen to your teacher.',
@@ -672,100 +667,91 @@ function applyLangUI() {
 // 세션 정보 표시
 document.getElementById('sessionInfo').innerText = `${SESSION.grade}학년 ${SESSION.cls}반 ${SESSION.num}번 ${SESSION.name}`;
 
+// ── 시험 서버(/api/exam) ──
+// 배정·문항·결과는 Firestore에서 직접 읽지 않고 서버를 거친다 — 서버가
+// 열림(ON)·응시 대상·입장 코드를 확인하고, 시험이 닫히기 전에는 정답을
+// 가린다(functions/api/exam.js 설명 참고). 본인 확인용으로 로그인 토큰을 보낸다.
+// 실패하면 Error를 던지고, 서버가 준 HTTP 상태는 err.status에 붙인다.
+async function examApi(action, extra = {}) {
+  await authReady();
+  const user = auth.currentUser;
+  if (!user) throw new Error(UI[currentLang].sessionExpired);
+  const res = await fetch('/api/exam', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, idToken: await user.getIdToken(), studentDocId: SESSION.id, lang: currentLang, ...extra }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.error) {
+    if (data.detail) console.error('exam api:', action, data.detail);
+    const err = new Error((data.error || `HTTP ${res.status}`) + (data.detail ? `\n[${data.detail}]` : ''));
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
 // ── 내 시험 목록 로드 (step0) ──
 async function loadMyExams() {
   const area = document.getElementById('examListArea');
   area.innerHTML = `<div style="color:var(--sub);font-size:0.85rem;">${UI[currentLang].loading}</div>`;
-  // 진행 기록(exam_progress)은 본인만 읽을 수 있다 — 로그인 복원이 끝난 뒤에 읽는다.
-  await authReady();
   try {
-    const snap = await getDocs(collection(db, 'exam_assignments'));
-    const assignments = snap.docs.map(d=>({id:d.id,...d.data()})).filter(a => {
-      if (IS_MASTER) return true;
-      if (a.status !== 'ON') return false; // 선생님이 OFF로 내린 배정은 목록에서도 감춘다
-      const gradeOk = !a.grade || _nv(String(a.grade)) === SESSION.grade;
-      const clsOk   = !a.class || _nv(String(a.class)) === SESSION.cls;
-      const schoolOk = !a.schoolName || a.schoolName === SESSION.schoolName;
-      return gradeOk && clsOk && schoolOk;
-    });
-    if (!assignments.length) {
+    const { exams } = await examApi('list');
+    if (!exams.length) {
       area.innerHTML = `<div style="color:var(--sub);font-size:0.85rem;text-align:center;padding:12px;">${UI[currentLang].noExams}</div>`;
       return;
     }
-    // exam 제목 조회
-    const examIds = [...new Set(assignments.map(a=>a.examId))];
-    const examTitles = {};
-    await Promise.all(examIds.map(async eid => {
-      try {
-        const es = await getDoc(doc(db,'exams',eid));
-        if (es.exists()) examTitles[eid] = es.data().title || eid;
-      } catch(e) {}
-    }));
-    // Check submission status for each assignment
-    const submittedMap = {};
-    await Promise.all(assignments.map(async a => {
-      try {
-        const progSnap = await getDoc(doc(db,'exam_progress',`${a.id}_${SESSION.id}`));
-        if (progSnap.exists()) submittedMap[a.id] = progSnap.data();
-      } catch(e) {}
-    }));
-
     const t = UI[currentLang];
-    area.innerHTML = assignments.map(a => {
-      const prog = submittedMap[a.id];
+    area.innerHTML = exams.map(a => {
+      const prog = a.progress;
       const isDone = prog?.status === 'submitted';
       // 선생님이 직접 채점할 문항이 남아 있으면 점수를 아직 보여주지 않는다.
       const pendingGrade = isDone && prog.needsManual === true;
-      const escapedId = a.id.replace(/'/g, "\\'");
+      // asId는 서버가 문서 ID 형식([A-Za-z0-9_-])만 쓰지만, onclick 문자열 안에
+      // 들어가므로 JSON으로 감싸고 속성값으로 이스케이프한다.
+      const idArg = escHtml(JSON.stringify(a.asId));
       const gradeStr = currentLang === 'ko' ? `${SESSION.grade}학년 ${SESSION.cls}반 ${t.target}` : currentLang === 'zh' ? `${SESSION.grade}${t.gradeUnit}${SESSION.cls}${t.classUnit} ${t.target}` : currentLang === 'ru' ? `${SESSION.grade} ${t.gradeUnit} ${SESSION.cls} ${t.classUnit} ${t.target}` : `Grade ${SESSION.grade} Class ${SESSION.cls} ${t.target}`;
       return `<div style="border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;">
-        <div style="font-weight:700;font-size:0.97rem;margin-bottom:2px;">${examTitles[a.examId]||a.examId}</div>
-        <div style="font-size:0.78rem;color:var(--sub);margin-bottom:10px;">${gradeStr}</div>
+        <div style="font-weight:700;font-size:0.97rem;margin-bottom:2px;">${escHtml(a.title)}</div>
+        <div style="font-size:0.78rem;color:var(--sub);margin-bottom:10px;">${escHtml(gradeStr)}</div>
         ${isDone
           ? `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                <span style="color:#22c55e;font-weight:800;font-size:0.9rem;display:inline-flex;align-items:center;gap:4px;"><svg width="13" height="13"><use href="#ic-check"/></svg>${t.submitted}</span>
                <span style="color:var(--sub);font-size:0.85rem;">${pendingGrade ? (t.gradingPending || '채점 중') : `${prog.totalScore??'?'} / ${prog.totalPoints??'?'}${t.pts}`}</span>
-               <button class="btn ghost sm" onclick="showMyResult('${escapedId}')" style="margin-left:auto;">${t.viewResult}</button>
+               <button class="btn ghost sm" onclick="showMyResult(${idArg})" style="margin-left:auto;">${t.viewResult}</button>
              </div>`
-          : IS_MASTER
-            ? `<button class="btn accent sm" onclick="enterExamDirect('${escapedId}')" style="white-space:nowrap;">${t.enterBtn}</button>`
+          : !a.needsCode
+            ? `<button class="btn accent sm" onclick="enterExamWithCode(${idArg},'')" style="white-space:nowrap;">${t.enterBtn}</button>
+               <div id="err_${escHtml(a.asId)}" style="color:#ef4444;font-size:0.8rem;margin-top:6px;min-height:16px;"></div>`
             : `<div style="display:flex;gap:8px;align-items:center;">
-               <input class="inp" id="code_${escapedId}" placeholder="${t.codeLabel}"
+               <input class="inp" id="code_${escHtml(a.asId)}" placeholder="${t.codeLabel}"
                  style="flex:1;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;font-size:0.9rem;"
                  oninput="this.value=this.value.toUpperCase()"
-                 onkeydown="if(event.key==='Enter')enterExamWithCode('${escapedId}',this.value)">
-               <button class="btn accent sm" onclick="enterExamWithCode('${escapedId}',document.getElementById('code_${escapedId}').value)" style="white-space:nowrap;">${t.enterBtn}</button>
+                 onkeydown="if(event.key==='Enter')enterExamWithCode(${idArg},this.value)">
+               <button class="btn accent sm" onclick="enterExamWithCode(${idArg},document.getElementById('code_'+${idArg}).value)" style="white-space:nowrap;">${t.enterBtn}</button>
              </div>
-             <div id="err_${escapedId}" style="color:#ef4444;font-size:0.8rem;margin-top:6px;min-height:16px;"></div>`
+             <div id="err_${escHtml(a.asId)}" style="color:#ef4444;font-size:0.8rem;margin-top:6px;min-height:16px;"></div>`
         }
       </div>`;
     }).join('');
   } catch(e) {
-    area.innerHTML = `<div style="color:#ef4444;font-size:0.82rem;">${e.message}</div>`;
+    area.innerHTML = `<div style="color:#ef4444;font-size:0.82rem;white-space:pre-wrap;">${escHtml(e.message)}</div>`;
   }
 }
-loadMyExams();
 
 window.showMyResult = async (asId) => {
   showLoading(true);
   try {
-    const progSnap = await getDoc(doc(db,'exam_progress',`${asId}_${SESSION.id}`));
-    if (!progSnap.exists()) { alert(UI[currentLang].resultNotFound); showLoading(false); return; }
-    const prog = progSnap.data();
-    if (prog.needsManual === true) { showLoading(false); showPendingResult(); return; }
-    // Load result items
-    const resultsSnap = await getDocs(query(collection(db,'exam_results'),
-      where('asId','==',asId), where('studentId','==',SESSION.id)));
-    const items = resultsSnap.docs.map(d=>d.data()).sort((a,b)=>(a.qIdx||0)-(b.qIdx||0));
+    const r = await examApi('result', { asId });
     showLoading(false);
-    // Reuse showResult
-    const resultItems = items.map(r=>({
-      qIdx: r.qIdx||0, type: r.type, title: r.title||`Q${(r.qIdx||0)+1}`,
-      value: r.value||'', score: r.score||0, maxScore: r.maxScore||0,
-      feedback: localizeFeedback(r.feedback, { type: r.type })
+    if (r.pending) { showPendingResult(); return; }
+    const resultItems = (r.items || []).map(it => ({
+      qIdx: it.qIdx||0, type: it.type, title: it.title||`Q${(it.qIdx||0)+1}`,
+      value: it.value||'', score: it.score||0, maxScore: it.maxScore||0,
+      feedback: localizeFeedback(it.feedback, { type: it.type })
     }));
-    showResult(prog.totalScore||0, prog.totalPoints||0, resultItems);
-  } catch(e) { alert(UI[currentLang].errPrefix+e.message); showLoading(false); }
+    showResult(r.totalScore||0, r.totalPoints||0, resultItems, r.answersHidden);
+  } catch(e) { showLoading(false); alert(UI[currentLang].errPrefix+e.message); }
 };
 
 // ── 탭 이탈 감지 (탭 전환/최소화 + 창이 안 가려져도 포커스만 빠져나가는 경우까지) ──
@@ -867,134 +853,40 @@ function renderTimer() {
   else if (remainSec <= 300) { el.classList.remove('danger'); el.classList.add('warning'); }
 }
 
-// ── 공통: asDoc으로 시험 시작 ──
-async function startExamFromAs(asDoc, errEl) {
-  const asData = asDoc.data();
-  if (asData.status !== 'ON') { if(errEl) errEl.innerText = '현재 시험이 열려있지 않습니다.'; showLoading(false); return; }
-  // 이미 제출했는지 확인
-  const progRef = doc(db, 'exam_progress', `${asDoc.id}_${SESSION.id}`);
-  const progSnap = await getDoc(progRef);
-  if (progSnap.exists() && progSnap.data().status === 'submitted') {
-    if(errEl) errEl.innerText = '이미 제출한 시험입니다.'; showLoading(false); return;
-  }
-  // 시험 정보 로드
-  const examSnap = await getDoc(doc(db, 'exams', asData.examId));
-  if (!examSnap.exists()) { if(errEl) errEl.innerText = '시험 정보를 찾을 수 없습니다.'; showLoading(false); return; }
-  // 문제 로드 (orderBy fallback)
-  let qSnap;
-  try {
-    qSnap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',asData.examId), orderBy('order','asc')));
-  } catch(e) {
-    qSnap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',asData.examId)));
-  }
-  questions = qSnap.docs.map((d,i)=>({id:d.id,idx:i,...d.data()})).sort((a,b)=>(a.order||0)-(b.order||0));
-  if (!questions.length) { if(errEl) errEl.innerText = '시험 문제가 없습니다.'; showLoading(false); return; }
-  currentAssignment = { asId: asDoc.id, ...asData };
-  currentExam = { id: examSnap.id, ...examSnap.data() };
-  // 새로고침/재접속 등으로 이미 진행 중이던 시험에 재입장하는 경우, 이탈
-  // 횟수를 무조건 0으로 되돌리면 안 된다 — 그전까지 감지된 이탈이 사라져
-  // 부정행위 감지가 무력화된다. 기존 progress 문서에 값이 있으면 이어받는다.
-  alertCount = (progSnap.exists() && progSnap.data().alertCount) || 0;
-  pasteBlockCount = (progSnap.exists() && progSnap.data().pasteBlockCount) || 0;
-  // 시작 시각은 "처음" 입장했을 때만 기록한다. 예전엔 입장할 때마다 덮어쓰고
-  // 타이머도 처음부터 다시 돌려서, 새로고침만 하면 제한시간이 리셋됐다.
-  const firstEntry = !(progSnap.exists() && progSnap.data().startTime);
-  await setDoc(progRef, {
-    examId: asData.examId, asId: asDoc.id,
-    studentId: SESSION.id, name: SESSION.name, grade: SESSION.grade, class: SESSION.cls, num: SESSION.num,
-    status: 'started', alertCount, pasteBlockCount, lastEnterAt: serverTimestamp(),
-    ...(firstEntry ? { startTime: serverTimestamp() } : {}),
-  }, { merge: true });
-  // 남은 시간은 서버 시각 기준으로 계산한다 — 방금 기록한 서버 시각(lastEnterAt)과
-  // 이 기기 시각의 차이를 재서, 기기 시계가 틀려도 시간이 늘거나 줄지 않게.
-  try {
-    const after = (await getDoc(progRef)).data() || {};
-    const serverNow = after.lastEnterAt?.toMillis?.();
-    _clockSkewMs = serverNow ? serverNow - Date.now() : 0;
-    _startedAtMs = after.startTime?.toMillis?.() || (Date.now() + _clockSkewMs);
-  } catch (e) {
-    _clockSkewMs = 0; _startedAtMs = Date.now();
-  }
-  answers = {}; codeAnswers = {};
-  loadDraft();
-  showLoading(false);
-  startExamUI();
-}
-
-// ── 목록 카드에서 코드 입력 후 입장 ──
+// ── 시험 입장 ──
+// 열림(ON)·응시 대상·입장 코드·이미 제출 여부는 서버가 확인하고, 통과하면
+// 시작 시각을 기록한 뒤 문항(정답 제외)을 돌려준다. 시작 시각은 "처음"
+// 입장했을 때만 기록되므로 새로고침해도 제한시간이 리셋되지 않는다.
 window.enterExamWithCode = async (asId, code) => {
   const errEl = document.getElementById('err_' + asId);
+  const showErr = msg => { if (errEl) errEl.innerText = msg; else alert(msg); };
   if (errEl) errEl.innerText = '';
-  code = (code || '').trim().toUpperCase();
-  if (!code) { if (errEl) errEl.innerText = '코드를 입력하세요.'; return; }
   showLoading(true);
   try {
-    const asRef = doc(db, 'exam_assignments', asId);
-    const asDoc = await getDoc(asRef);
-    if (!asDoc.exists()) { if (errEl) errEl.innerText = '배정 정보를 찾을 수 없습니다.'; showLoading(false); return; }
-    const asData = asDoc.data();
-    const stored = String(asData.code || '').toUpperCase();
-    const storedNum = String(Number(asData.code) || '').toUpperCase();
-    if (code !== stored && code !== storedNum) {
-      if (errEl) errEl.innerText = '코드가 맞지 않습니다.';
-      showLoading(false); return;
-    }
-    await startExamFromAs(asDoc, errEl);
-  } catch(e) {
-    if (errEl) errEl.innerText = '오류: ' + e.message;
+    const r = await examApi('start', { asId, code: String(code || '').trim().toUpperCase() });
+    questions = (r.questions || []).map((q, i) => ({ ...q, idx: i }));
+    currentAssignment = { asId: r.asId, duration: r.duration };
+    currentExam = { title: r.title };
+    // 새로고침/재접속 등으로 이미 진행 중이던 시험에 재입장하는 경우, 이탈
+    // 횟수를 0으로 되돌리면 안 된다 — 서버가 기존 기록의 값을 돌려준다.
+    alertCount = r.alertCount || 0;
+    pasteBlockCount = r.pasteBlockCount || 0;
+    // 남은 시간은 서버 시각 기준으로 계산한다 — 서버 시각과 이 기기 시각의
+    // 차이를 재서, 기기 시계가 틀려도 시간이 늘거나 줄지 않게.
+    _clockSkewMs = r.serverNow ? r.serverNow - Date.now() : 0;
+    _startedAtMs = Date.parse(r.startTime) || (Date.now() + _clockSkewMs);
+    answers = {}; codeAnswers = {};
+    loadDraft();
     showLoading(false);
-  }
-};
-
-// ── 목록에서 직접 입장 (마스터용) ──
-window.enterExamDirect = async (asId) => {
-  showLoading(true);
-  try {
-    const asDoc = await getDoc(doc(db, 'exam_assignments', asId));
-    if (!asDoc.exists()) { alert('배정 정보를 찾을 수 없습니다.'); showLoading(false); return; }
-    await startExamFromAs(asDoc, null);
-  } catch(e) { alert('오류: ' + e.message); showLoading(false); }
-};
-
-// ── 코드 직접 입장 ──
-window.enterExam = async () => {
-  const code = document.getElementById('examCode').value.trim().toUpperCase();
-  const errEl = document.getElementById('step1Error');
-  errEl.innerText = '';
-  if (!code) { errEl.innerText = '코드를 입력하세요.'; return; }
-  showLoading(true);
-  try {
-    // 코드로 조회 (숫자 코드 대응: 문자열로 먼저, 안 되면 숫자로도 시도)
-    let snap = await getDocs(query(collection(db,'exam_assignments'), where('code','==',code)));
-    if (snap.empty) {
-      const numCode = Number(code);
-      if (!isNaN(numCode)) snap = await getDocs(query(collection(db,'exam_assignments'), where('code','==',numCode)));
-    }
-    if (snap.empty) { errEl.innerText = '존재하지 않는 코드입니다.'; showLoading(false); return; }
-    const asDoc = snap.docs[0];
-    const asData = asDoc.data();
-    // 학년/반 확인 (마스터는 통과)
-    // 목록과 같은 기준 — 배정의 학년/반이 비어 있으면(전체 대상) 통과. 예전엔 빈 값도
-    // 비교해서 "전체 학년" 시험을 코드로 들어가면 막혔다.
-    const _gOk = !asData.grade || _nv(String(asData.grade)) === SESSION.grade;
-    const _cOk = !asData.class || _nv(String(asData.class)) === SESSION.cls;
-    if (!IS_MASTER && asData.status !== 'ON') { errEl.innerText = '현재 시험이 열려있지 않습니다.'; showLoading(false); return; }
-    if (!IS_MASTER && !(_gOk && _cOk)) {
-      errEl.innerText = `이 시험은 ${asData.grade}학년 ${asData.class}반 대상입니다. (내 정보: ${SESSION.grade}학년 ${SESSION.cls}반)`;
-      showLoading(false); return;
-    }
-    const schoolOk = !asData.schoolName || asData.schoolName === SESSION.schoolName;
-    if (!schoolOk) { errEl.innerText = '이 시험은 해당 학교 학생만 응시할 수 있습니다.'; showLoading(false); return; }
-    await startExamFromAs(asDoc, errEl);
-  } catch(e) {
-    errEl.innerText = '오류: ' + e.message;
+    startExamUI();
+  } catch (e) {
     showLoading(false);
+    showErr(e.message);
   }
 };
 
 function startExamUI() {
   document.getElementById('step0').classList.add('hidden');
-  document.getElementById('step1').classList.add('hidden');
   document.getElementById('step3').classList.add('hidden');
   document.getElementById('step2').classList.remove('hidden');
   document.getElementById('examTitle').innerText = currentExam.title || '';
@@ -1039,7 +931,20 @@ async function runPythonRemote(code, stdin) {
 // ── 문제 렌더링 ──
 function renderQuestions() {
   const wrap = document.getElementById('questionsWrap');
+  // 시험 중 언어를 바꾸면 여기서 화면을 통째로 다시 그린다. 예전엔 옛 CodeMirror가
+  // cmInstances에 남아 있어서 새 칸에 에디터가 안 붙었고(일반 입력칸이 됨), 거기서
+  // 고친 코드는 저장되지 않은 채 제출 때는 사라진 옛 에디터의 값이 나갔다.
+  // 지금 값을 챙겨두고 에디터 기록을 비운 뒤 다시 붙인다. stdin 입력도 같이 살린다.
+  const stdins = {};
+  questions.forEach((q, i) => {
+    if (q.type !== 'code') return;
+    if (cmInstances[i]) codeAnswers[i] = { code: cmInstances[i].getValue(), lang: 'python' };
+    const si = document.getElementById(`stdin_${i}`);
+    if (si) stdins[i] = si.value;
+  });
+  Object.keys(cmInstances).forEach(k => delete cmInstances[k]);
   wrap.innerHTML = questions.map((q, i) => renderQuestion(q, i)).join('');
+  Object.entries(stdins).forEach(([i, v]) => { const si = document.getElementById(`stdin_${i}`); if (si) si.value = v; });
   requestAnimationFrame(() => initCodeEditors());
   // 기존 답 복원
   questions.forEach((q, i) => {
@@ -1084,6 +989,7 @@ function localizeFeedback(code, q) {
   if (!s) return '';
   if (s === 'correct') return t.correct;
   if (s === 'manual') return t.manualGrade;
+  if (s === 'wrong') return t.wrongHidden; // 시험이 닫히기 전 — 서버가 정답을 가렸다
   if (s.startsWith('cases:')) return `${s.slice(6)} ${t.testPass}`;
   if (s.startsWith('wrong:')) {
     const correct = s.slice(6);
@@ -1192,7 +1098,7 @@ function renderQuestion(q, i) {
       `<label class="mc-opt ${answers[i]?.value == oi ? 'selected' : ''}" onclick="selectMC(${i},${oi})">
         <input type="radio" name="mc_${i}" value="${oi}">
         <div class="mc-bullet">${String.fromCharCode(9312+oi)}</div>
-        <span>${opt}</span>
+        <span>${escHtml(opt)}</span>
       </label>`
     ).join('') + `</div>`;
   } else if (q.type === 'sa') {
@@ -1211,22 +1117,22 @@ function renderQuestion(q, i) {
       maxLen ? (currentLang==='zh'?`最多${maxLen}字`:currentLang==='ru'?`макс. ${maxLen}`:currentLang==='en'?`max ${maxLen}`:`최대 ${maxLen}자`) : '',
     ].filter(Boolean).join(' · ');
     body = `
-      <textarea class="inp sa-input" id="essay_${i}" rows="8" ${maxLen?`maxlength="${maxLen}"`:''} placeholder="${currentLang==='zh'?'请输入答案...':currentLang==='ru'?'Введите ответ...':currentLang==='en'?'Enter your answer...':'답을 입력하세요...'}" oninput="saveSA(${i},this.value);updateEssayCounter(${i})" onpaste="guardBulkInput(event,${i})" ondrop="guardBulkInput(event,${i})"></textarea>
-      <div class="essay-counter" id="essayCounter_${i}" data-min="${minLen}"><span class="essay-counter-num">0</span>${charUnit}${limitHint?` · ${limitHint}`:''}</div>
+      <textarea class="inp sa-input" id="essay_${i}" rows="8" ${maxLen?`maxlength="${Number(maxLen)||0}"`:''} placeholder="${currentLang==='zh'?'请输入答案...':currentLang==='ru'?'Введите ответ...':currentLang==='en'?'Enter your answer...':'답을 입력하세요...'}" oninput="saveSA(${i},this.value);updateEssayCounter(${i})" onpaste="guardBulkInput(event,${i})" ondrop="guardBulkInput(event,${i})"></textarea>
+      <div class="essay-counter" id="essayCounter_${i}" data-min="${Number(minLen)||0}"><span class="essay-counter-num">0</span>${charUnit}${limitHint?` · ${limitHint}`:''}</div>
     `;
   } else if (q.type === 'code') {
     const tcHtml = (q.inEx || q.outEx) ? `<div class="tc-box">
-      ${q.inDesc ? `<div class="tc-row"><span class="tc-label">${currentLang==='zh'?'输入说明':currentLang==='ru'?'Ввод':currentLang==='en'?'Input format':'입력 형식'}</span><span>${q.inDesc}</span></div>` : ''}
-      ${q.outDesc ? `<div class="tc-row"><span class="tc-label">${currentLang==='zh'?'输出说明':currentLang==='ru'?'Вывод':currentLang==='en'?'Output format':'출력 형식'}</span><span>${q.outDesc}</span></div>` : ''}
-      ${q.inEx ? `<div class="tc-row"><span class="tc-label">${currentLang==='zh'?'输入例':currentLang==='ru'?'Пример':currentLang==='en'?'Sample input':'예시 입력'}</span><pre style="margin:0;font-size:0.82rem;">${q.inEx}</pre></div>` : ''}
-      ${q.outEx ? `<div class="tc-row"><span class="tc-label">${currentLang==='zh'?'输出例':currentLang==='ru'?'Ответ':currentLang==='en'?'Sample output':'예시 출력'}</span><pre style="margin:0;font-size:0.82rem;">${q.outEx}</pre></div>` : ''}
+      ${q.inDesc ? `<div class="tc-row"><span class="tc-label">${currentLang==='zh'?'输入说明':currentLang==='ru'?'Ввод':currentLang==='en'?'Input format':'입력 형식'}</span><span>${escHtml(q.inDesc)}</span></div>` : ''}
+      ${q.outDesc ? `<div class="tc-row"><span class="tc-label">${currentLang==='zh'?'输出说明':currentLang==='ru'?'Вывод':currentLang==='en'?'Output format':'출력 형식'}</span><span>${escHtml(q.outDesc)}</span></div>` : ''}
+      ${q.inEx ? `<div class="tc-row"><span class="tc-label">${currentLang==='zh'?'输入例':currentLang==='ru'?'Пример':currentLang==='en'?'Sample input':'예시 입력'}</span><pre style="margin:0;font-size:0.82rem;">${escHtml(q.inEx)}</pre></div>` : ''}
+      ${q.outEx ? `<div class="tc-row"><span class="tc-label">${currentLang==='zh'?'输出例':currentLang==='ru'?'Ответ':currentLang==='en'?'Sample output':'예시 출력'}</span><pre style="margin:0;font-size:0.82rem;">${escHtml(q.outEx)}</pre></div>` : ''}
     </div>` : '';
     body = `
       ${tcHtml}
       <div class="code-meta">
         <span style="font-size:0.82rem;font-weight:700;color:var(--sub);">Python</span>
       </div>
-      <textarea class="code-editor" id="code_${i}" spellcheck="false">${escHtml(getDefaultCode(q, currentLang))}</textarea>
+      <textarea class="code-editor" id="code_${i}" spellcheck="false" oninput="saveCode(${i},this.value)" onpaste="guardBulkInput(event,${i})" ondrop="guardBulkInput(event,${i})">${escHtml(getDefaultCode(q, currentLang))}</textarea>
       <div class="stdin-box">
         <label>${UI[currentLang].stdin}</label>
         <textarea class="stdin-input" id="stdin_${i}" placeholder="${UI[currentLang].stdinPlaceholder}" rows="2"></textarea>
@@ -1238,12 +1144,12 @@ function renderQuestion(q, i) {
     `;
   }
 
-  const imgHtml = q.imageUrl ? `<img class="q-img" src="${q.imageUrl}" alt="" loading="lazy">` : '';
+  const imgHtml = q.imageUrl ? `<img class="q-img" src="${escHtml(q.imageUrl)}" alt="" loading="lazy">` : '';
 
   return `<div class="q-card" id="qcard_${i}">
     <div class="q-header">
-      <span class="q-num">${num} · ${typeLabel}</span>
-      <span class="q-pts">${pts}점</span>
+      <span class="q-num">${num} · ${escHtml(typeLabel)}</span>
+      <span class="q-pts">${Number(pts) || 0}${UI[currentLang].pts}</span>
     </div>
     <div class="q-title">${escHtml(title)}</div>
     ${content ? `<div class="q-content">${escHtml(content)}</div>` : ''}
@@ -1383,47 +1289,29 @@ window.submitExam = async (isAuto = false) => {
 
   let payload = [];
   try {
-    // 채점은 서버(/api/grade-exam)에서 한다. 예전엔 여기서 직접 채점했는데,
-    // 그러려면 정답이 학생 브라우저까지 내려와 있어야 했고 exam_questions가
-    // 공개 읽기라 시험 전에 콘솔에서 정답을 전부 볼 수 있었다. 이제 정답은
-    // exam_answers(관리자 전용)에만 있고, 여기서는 답안만 모아서 보낸다.
+    // 채점은 서버(/api/exam)에서 한다 — 정답은 exam_answers(관리자 전용)에만
+    // 있고, 여기서는 답안만 모아서 보낸다. 답안마다 문항 ID(qId)를 붙여서,
+    // 푸는 사이 선생님이 문항 순서를 바꿔도 답이 맞는 문항에 채점되게 한다.
     payload = questions.map((q, i) => {
       if (q.type === 'code') {
         const cm = cmInstances[i];
-        return { qIdx: i, value: cm ? cm.getValue() : (codeAnswers[i]?.code || '') };
+        return { qId: q.id, qIdx: i, value: cm ? cm.getValue() : (codeAnswers[i]?.code || '') };
       }
-      return { qIdx: i, value: answers[i]?.value ?? '' };
+      return { qId: q.id, qIdx: i, value: answers[i]?.value ?? '' };
     });
 
-    // 서버가 "이 답안이 이 학생 것"임을 확인할 수 있어야 한다 — localStorage
-    // 세션은 브라우저에서 고칠 수 있으므로 Firebase Auth 토큰을 같이 보낸다.
-    const user = auth.currentUser;
-    if (!user) throw new Error(UI[currentLang].sessionExpired);
-    const res = await fetch('/api/grade-exam', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        idToken: await user.getIdToken(),
-        studentDocId: SESSION.id,
-        asId: currentAssignment.asId,
-        answers: payload,
-        lang: currentLang,
-      }),
-    });
-    const graded = await res.json().catch(() => ({}));
-    // 이미 제출된 시험(다른 기기에서 냈거나 선생님이 보관 답안을 반영함) —
-    // 재시도할 일이 아니므로 임시저장을 지우고 결과 화면으로 보낸다.
-    if (res.status === 409) {
+    let graded;
+    try {
+      graded = await examApi('submit', { asId: currentAssignment.asId, answers: payload });
+    } catch (e) {
+      // 이미 제출된 시험(다른 기기에서 냈거나 선생님이 보관 답안을 반영함) —
+      // 재시도할 일이 아니므로 임시저장을 지우고 결과 화면으로 보낸다.
+      if (e.status !== 409) throw e;
       showLoading(false);
       clearDraft();
-      alert(graded.error || '이미 제출한 시험입니다.');
+      alert(e.message);
       await showMyResult(currentAssignment.asId);
       return;
-    }
-    if (!res.ok || graded.error) {
-      if (graded.detail) console.error('grade-exam:', graded.detail);
-      const err = new Error((graded.error || `채점 요청 실패 (HTTP ${res.status})`) + (graded.detail ? `\n[${graded.detail}]` : ''));
-      throw err;
     }
 
     const totalScore = graded.totalScore || 0;
@@ -1441,14 +1329,11 @@ window.submitExam = async (isAuto = false) => {
     clearDraft();
 
     showLoading(false);
-    // 서술형(선생님이 나중에 직접 채점)이 하나라도 있으면, 아직 최종 점수가
-    // 아닌 걸 학생이 "틀렸다"고 오해하지 않도록 점수/정오답 화면 자체를
-    // 안 보여주고 제출 확인 화면만 띄운다.
     // 서술형·단답형은 선생님이 직접 채점하므로, 하나라도 있으면 아직 최종
     // 점수가 아니다 — 학생이 "틀렸다"고 오해하지 않게 점수 화면을 안 띄운다.
     const needsManual = typeof graded.needsManual === 'boolean' ? graded.needsManual : questions.some(q => q.type === 'essay' || q.type === 'sa');
     if (needsManual) showPendingResult();
-    else showResult(totalScore, totalPoints, resultItems);
+    else showResult(totalScore, totalPoints, resultItems, graded.answersHidden);
   } catch(e) {
     showLoading(false);
     submitted = false;
@@ -1475,7 +1360,7 @@ window.submitExam = async (isAuto = false) => {
 // 화면 대신 제출 확인만 보여준다. 최종 점수는 선생님이 admin.html에서
 // 채점을 마친 뒤에 확인할 수 있다.
 function showPendingResult() {
-  ['step0','step1','step2'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
+  ['step0','step2'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
   document.getElementById('step3').classList.remove('hidden');
   document.getElementById('timerBadge').classList.add('hidden');
   const t = UI[currentLang];
@@ -1486,8 +1371,8 @@ function showPendingResult() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-function showResult(score, total, items) {
-  ['step0','step1','step2'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
+function showResult(score, total, items, answersHidden = false) {
+  ['step0','step2'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
   document.getElementById('step3').classList.remove('hidden');
   document.getElementById('timerBadge').classList.add('hidden');
   const pct = total > 0 ? Math.round(score / total * 100) : 0;
@@ -1503,7 +1388,7 @@ function showResult(score, total, items) {
       <div class="r-q">Q${r.qIdx+1}. ${escHtml(r.title)}<div class="r-fb">${escHtml(r.feedback)}</div></div>
       <div class="r-score ${cls}">${r.score}/${r.maxScore}${t.pts2}</div>
     </div>`;
-  }).join('');
+  }).join('') + (answersHidden ? `<div class="r-fb" style="text-align:center;margin-top:14px;">${escHtml(t.answersLater)}</div>` : '');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -1514,7 +1399,6 @@ function init() {
 init();
 
 // window 노출
-window.enterExam = window.enterExam;
 window.setLang = setLang;
 window.toggleDark = toggleDark;
 window.goHome = goHome;

@@ -202,6 +202,9 @@
     .list-item-info { display: flex; flex-direction: column; gap: 2px; }
     .list-item-name { font-weight: 700; font-size: 0.95rem; }
     .list-item-sub { font-size: 0.78rem; color: var(--sub); }
+    /* 문항 순서 끌어다 놓기 */
+    .q-drag-handle { cursor: grab; color: var(--sub); font-size: 1.1rem; padding: 0 10px 0 2px; user-select: none; align-self: center; }
+    .list-item.dragging { opacity: 0.4; }
     .list-item-actions { display: flex; gap: 8px; align-items: center; }
 
     /* 배지 */
@@ -862,10 +865,6 @@
           </div>
         </div>
 
-        <div style="margin-bottom:12px;">
-          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">순서 (낮을수록 먼저)</label>
-          <input class="inp" id="q_order" type="number" value="1" style="width:100px;">
-        </div>
         <div style="display:flex;gap:8px;">
           <button class="btn accent sm" onclick="saveQuestion()">저장</button>
           <button id="q_cancel_btn" class="btn ghost sm hidden" onclick="resetQForm()">취소</button>
@@ -893,7 +892,7 @@
       <div class="card">
         <h2><span class="icon"><svg width="18" height="18"><use href="#ic-target"/></svg></span> 배정 추가</h2>
         <input type="hidden" id="as_docId">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
           <div>
             <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">시험</label>
             <select class="inp" id="as_examId">
@@ -901,8 +900,12 @@
             </select>
           </div>
           <div>
-            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">시험 코드 (학생 입력)</label>
-            <input class="inp" id="as_code" placeholder="예: A1B2C3" style="text-transform:uppercase;letter-spacing:0.1em;font-weight:700;" oninput="this.value=this.value.toUpperCase()">
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">입장 코드 <span style="font-weight:400;font-size:0.75rem;">(선택 — 비우면 코드 없이 입장)</span></label>
+            <input class="inp" id="as_code" placeholder="없음" style="text-transform:uppercase;letter-spacing:0.1em;font-weight:700;" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div>
+            <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">입장 마감 <span style="font-weight:400;font-size:0.75rem;">(ON 후 분, 0=없음)</span></label>
+            <input class="inp" id="as_entryMinutes" type="number" min="0" value="0" placeholder="0" title="ON으로 연 뒤 이 시간이 지나면 새로 입장할 수 없습니다. 이미 시작한 학생은 계속 풀 수 있습니다.">
           </div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
@@ -2071,10 +2074,10 @@
 
   // ── 정답 분리 ──
   // 정답(answer)과 테스트케이스(testCases)는 exam_questions가 아니라
-  // exam_answers/{문항ID}에 따로 둔다. exam_questions는 학생도 읽어야 해서
-  // 공개인데, 거기에 정답이 같이 들어있으면 학생이 브라우저 콘솔에서
+  // exam_answers/{문항ID}에 따로 둔다. exam_questions는 예전에 학생도 읽는
+  // 공개 컬렉션이었고, 거기에 정답이 같이 들어있으면 학생이 브라우저 콘솔에서
   // Firestore를 직접 읽어 시험 전에 정답을 전부 볼 수 있었다. 채점은
-  // ohinfo의 /api/grade-exam이 서비스 계정으로 정답을 읽어서 한다.
+  // ohinfo의 /api/exam이 서비스 계정으로 정답을 읽어서 한다.
   // 관리자는 규칙상 exam_answers를 읽을 수 있으므로, 편집 화면에서는
   // attachAnswers()로 다시 합쳐서 예전과 똑같이 보여준다.
   const ANSWER_KEYS = ['answer', 'testCases'];
@@ -2122,8 +2125,8 @@
     if (!_testCases.length) { el.innerHTML = '<div style="color:var(--sub);font-size:0.82rem;">테스트케이스 없음</div>'; return; }
     el.innerHTML = _testCases.map((tc, i) => `
       <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px;">
-        <div style="font-size:0.8rem;"><span style="color:var(--sub);">입력</span><br><pre style="margin:2px 0;font-size:0.82rem;white-space:pre-wrap;">${tc.input||'(없음)'}</pre></div>
-        <div style="font-size:0.8rem;"><span style="color:var(--sub);">출력</span><br><pre style="margin:2px 0;font-size:0.82rem;white-space:pre-wrap;">${tc.expected||''}</pre></div>
+        <div style="font-size:0.8rem;"><span style="color:var(--sub);">입력</span><br><pre style="margin:2px 0;font-size:0.82rem;white-space:pre-wrap;">${escHtml(tc.input||'(없음)')}</pre></div>
+        <div style="font-size:0.8rem;"><span style="color:var(--sub);">출력</span><br><pre style="margin:2px 0;font-size:0.82rem;white-space:pre-wrap;">${escHtml(tc.expected||'')}</pre></div>
         <button class="btn ghost sm" onclick="removeTestCase(${i})" style="color:#e74c3c;"><svg width="12" height="12"><use href="#ic-close"/></svg></button>
       </div>`).join('');
   };
@@ -2185,20 +2188,70 @@
     _qCache = {};
     qs.forEach(q => { _qCache[q.id] = q; });
     if (!qs.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-help"/></svg></div>문제가 없습니다.</div>'; return; }
-    const typeLabels = { mc:'객관식', sa:'단답형', code:'코딩' };
+    const typeLabels = { mc:'객관식', sa:'단답형', essay:'서술형', code:'코딩' };
     el.innerHTML = qs.map((q,i) => `
-      <div class="list-item">
-        <div class="list-item-info">
-          <div class="list-item-name">Q${i+1}. [${typeLabels[q.type]||q.type}] ${q.title||''}</div>
-          <div class="list-item-sub">${q.points||0}점 · 순서:${q.order}</div>
+      <div class="list-item" draggable="true" data-qid="${escHtml(q.id)}">
+        <span class="q-drag-handle" title="끌어서 순서 바꾸기">⠿</span>
+        <div class="list-item-info" style="flex:1;">
+          <div class="list-item-name">Q${i+1}. [${escHtml(typeLabels[q.type]||q.type)}] ${escHtml(q.title||'')}</div>
+          <div class="list-item-sub">${Number(q.points)||0}점</div>
         </div>
         <div class="list-item-actions">
           <button class="icon-action" title="수정" onclick="editQuestionById('${q.id}')"><svg width="16" height="16"><use href="#ic-edit"/></svg></button>
           <button class="icon-action danger" title="삭제" onclick="deleteQuestion('${q.id}')"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
         </div>
       </div>`).join('');
-    } catch(e) { el.innerHTML = `<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-alert"/></svg></div>${e.message}</div>`; }
+    initQDragDrop();
+    } catch(e) { el.innerHTML = `<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-alert"/></svg></div>${escHtml(e.message)}</div>`; }
   };
+
+  // ── 문항 순서: 끌어다 놓기 ──
+  // 놓는 순간 목록 순서대로 order를 1, 2, 3…으로 다시 매겨 저장한다(바뀐 문항만).
+  // 학생 화면과 채점 서버(ohinfo /api/exam)는 둘 다 이 order로 정렬한다.
+  // 마우스 끌어다 놓기(HTML5 드래그)라 PC 브라우저에서 쓴다.
+  let _dragQ = null;
+  function initQDragDrop() {
+    const list = document.getElementById('qList');
+    if (list.dataset.dnd) return;
+    list.dataset.dnd = '1';
+    list.addEventListener('dragstart', e => {
+      const it = e.target.closest?.('[data-qid]');
+      if (!it) return;
+      _dragQ = it;
+      it.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', it.dataset.qid);
+    });
+    list.addEventListener('dragover', e => {
+      if (!_dragQ) return;
+      e.preventDefault();
+      const over = e.target.closest?.('[data-qid]');
+      if (!over || over === _dragQ) return;
+      const r = over.getBoundingClientRect();
+      over.parentNode.insertBefore(_dragQ, e.clientY > r.top + r.height / 2 ? over.nextSibling : over);
+    });
+    list.addEventListener('drop', e => { if (_dragQ) e.preventDefault(); });
+    list.addEventListener('dragend', () => {
+      if (!_dragQ) return;
+      _dragQ.classList.remove('dragging');
+      _dragQ = null;
+      saveQOrder();
+    });
+  }
+  async function saveQOrder() {
+    const ids = [...document.querySelectorAll('#qList [data-qid]')].map(el => el.dataset.qid);
+    const changed = ids.map((id, i) => ({ id, order: i + 1 })).filter(x => _qCache[x.id]?.order !== x.order);
+    if (!changed.length) return;
+    showLoading(true);
+    try {
+      const b = writeBatch(db);
+      changed.forEach(x => b.update(doc(db, 'exam_questions', x.id), { order: x.order }));
+      await b.commit();
+      toast('문항 순서를 저장했습니다.', 'success');
+    } catch(e) { toast('순서 저장 오류: '+e.message, 'error'); }
+    await loadQList();
+    showLoading(false);
+  }
 
   window.saveQuestion = async () => {
     const examId = document.getElementById('q_examId').value;
@@ -2207,13 +2260,16 @@
     const type = document.getElementById('q_type').value;
     const title = document.getElementById('q_title').value.trim();
     if (!title) { toast('문제 제목을 입력하세요.', 'error'); return; }
-    // 순서 자동 계산 (신규 문제일 때)
-    let orderVal = parseInt(document.getElementById('q_order').value) || 0;
-    if (!docId && !orderVal) {
+    // 순서: 새 문항은 맨 뒤에 붙이고, 순서는 문제 목록에서 끌어다 놓아 바꾼다.
+    // 예전엔 숫자를 직접 넣었는데, 같은 숫자가 겹치거나 비면 학생 화면과 채점의
+    // 문항 순서가 어긋날 수 있었다. 기존 문항을 고칠 때는 순서를 건드리지 않는다.
+    // (문항 수+1이 아니라 최댓값+1 — 중간 문항을 지운 뒤 추가하면 겹치기 때문)
+    let orderVal = 0;
+    if (!docId) {
       try {
-        const countSnap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId)));
-        orderVal = countSnap.size + 1;
-      } catch(e) { orderVal = 1; }
+        const sameExam = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId)));
+        orderVal = sameExam.docs.reduce((m, d) => Math.max(m, Number(d.data().order) || 0), 0) + 1;
+      } catch(e) { orderVal = Date.now(); }
     }
     const data = {
       examId, type,
@@ -2221,7 +2277,7 @@
       content: document.getElementById('q_content').value.trim(),
       imageUrl: document.getElementById('q_imageUrl').value.trim(),
       points: parseInt(document.getElementById('q_points').value) || 10,
-      order: orderVal || 1,
+      ...(docId ? {} : { order: orderVal }),
     };
     if (type === 'mc') {
       data.options = document.getElementById('q_options').value.split('\n').map(s=>s.trim()).filter(Boolean);
@@ -2290,7 +2346,6 @@
     document.getElementById('q_content').value = q.content||'';
     document.getElementById('q_imageUrl').value = q.imageUrl||'';
     document.getElementById('q_points').value = q.points||10;
-    document.getElementById('q_order').value = q.order||1;
     if (q.type === 'mc') {
       document.getElementById('q_options').value = (q.options||[]).join('\n');
       updateMcAnswerSelect();
@@ -2328,7 +2383,7 @@
     const sel = document.getElementById('q_answer_mc');
     const prev = sel.value;
     sel.innerHTML = opts.length
-      ? opts.map((o,i) => `<option value="${i}">${i+1}번. ${o}</option>`).join('')
+      ? opts.map((o,i) => `<option value="${i}">${i+1}번. ${escHtml(o)}</option>`).join('')
       : '<option value="0">선택지를 먼저 입력하세요</option>';
     if (prev && parseInt(prev) < opts.length) sel.value = prev;
   };
@@ -2338,7 +2393,6 @@
     document.getElementById('q_answer_mc').innerHTML = '<option value="0">선택지를 먼저 입력하세요</option>';
     renderTestCases([]);
     document.getElementById('q_points').value='10';
-    document.getElementById('q_order').value='1';
     document.getElementById('q_type').value='mc';
     window.toggleQTypeFields();
     document.getElementById('q_cancel_btn').classList.add('hidden');
@@ -2377,10 +2431,12 @@
   window.saveAssignment = async () => {
     const docId = document.getElementById('as_docId').value;
     const examId = document.getElementById('as_examId').value;
+    // 입장 코드는 선택이다. 학생에게 열지 말지는 배정 ON/OFF로 정하고, 응시
+    // 자격(열림·대상·코드)은 ohinfo의 /api/exam이 서버에서 확인한다.
     const code = document.getElementById('as_code').value.trim().toUpperCase();
     const duration = parseInt(document.getElementById('as_duration').value) || 0;
+    const entryMinutes = Math.max(0, parseInt(document.getElementById('as_entryMinutes').value) || 0);
     if (!examId) { toast('시험을 선택하세요.', 'error'); return; }
-    if (!code) { toast('시험 코드를 입력하세요.', 'error'); return; }
     showLoading(true);
     try {
       if (docId) {
@@ -2388,7 +2444,7 @@
         const grade = document.getElementById('as_grade').value;
         const cls = document.getElementById('as_class').value;
         const schoolName = document.getElementById('as_schoolName')?.value || '';
-        const data = { examId, code, grade, class: cls, schoolName, duration, status: 'ON' };
+        const data = { examId, code, grade, class: cls, schoolName, duration, entryMinutes, status: 'ON', openedAt: serverTimestamp() };
         await updateDoc(doc(db,'exam_assignments',docId), data);
       } else {
         // 저장 — 담아둔 모든 범위에 동일한 코드로 일괄 배정
@@ -2397,8 +2453,8 @@
         _pendingAs.forEach(p => {
           const ref = doc(collection(db,'exam_assignments'));
           batch.set(ref, {
-            examId, code, grade: p.grade, class: p.class, schoolName: p.schoolName, duration, status: 'ON',
-            createdAt: serverTimestamp(),
+            examId, code, grade: p.grade, class: p.class, schoolName: p.schoolName, duration, entryMinutes, status: 'ON',
+            createdAt: serverTimestamp(), openedAt: serverTimestamp(),
           });
         });
         await batch.commit();
@@ -2420,8 +2476,8 @@
       const exam = exams.find(e=>e.id===a.examId);
       return `<div class="list-item">
         <div class="list-item-info">
-          <div class="list-item-name"><svg width="15" height="15" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-target"/></svg><b style="letter-spacing:0.1em;">${a.code}</b> — ${exam?.title||a.examId}</div>
-          <div class="list-item-sub">${a.schoolName?a.schoolName+' · ':'전체 학교 · '}${!a.grade ? '전체 학년' : (!a.class ? a.grade+'학년 전체' : a.grade+'학년 '+a.class+'반')} · ${a.duration>0?a.duration+'분':'무제한'}</div>
+          <div class="list-item-name"><svg width="15" height="15" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-target"/></svg>${a.code ? `<b style="letter-spacing:0.1em;">${escHtml(a.code)}</b> — ` : ''}${escHtml(exam?.title||a.examId)}</div>
+          <div class="list-item-sub">${escHtml(a.schoolName?a.schoolName+' · ':'전체 학교 · ')}${!a.grade ? '전체 학년' : (!a.class ? escHtml(a.grade)+'학년 전체' : escHtml(a.grade)+'학년 '+escHtml(a.class)+'반')} · ${a.duration>0?Number(a.duration)+'분':'무제한'}${a.code ? '' : ' · 코드 없음'}${Number(a.entryMinutes) > 0 ? ` · 입장 마감 ON 후 ${Number(a.entryMinutes)}분` : ''}</div>
         </div>
         <div class="list-item-actions" style="display:flex;gap:8px;align-items:center;">
           <select onchange="toggleAsStatus('${a.id}',this.value)" style="font-size:0.78rem;padding:4px 8px;border-radius:8px;border:1.5px solid var(--border-card);background:var(--glass);cursor:pointer;font-weight:700;color:${a.status==='ON'?'#22c55e':'#ef4444'}">
@@ -2436,7 +2492,8 @@
 
   window.toggleAsStatus = async (id, status) => {
     showLoading(true);
-    await updateDoc(doc(db,'exam_assignments',id), { status });
+    // ON으로 여는 시각을 남긴다 — 배정의 "입장 마감"은 이 시각부터 센다.
+    await updateDoc(doc(db,'exam_assignments',id), status === 'ON' ? { status, openedAt: serverTimestamp() } : { status });
     await loadAssignList();
     showLoading(false);
   };
@@ -2455,6 +2512,7 @@
     document.getElementById('as_examId').value='';
     document.getElementById('as_code').value='';
     document.getElementById('as_duration').value='45';
+    document.getElementById('as_entryMinutes').value='0';
     const asSchEl = document.getElementById('as_schoolName'); if(asSchEl) asSchEl.value='';
     document.getElementById('as_grade').value='';
     onAsGradeChange();
@@ -2476,7 +2534,7 @@
     sel.innerHTML = '<option value="">배정을 선택하세요</option>' + list.map(a => {
       const exam = exams.find(e=>e.id===a.examId);
       const scopeLabel = !a.grade ? '전체 학년' : (!a.class ? a.grade+'학년 전체' : a.grade+'학년'+a.class+'반');
-      return `<option value="${a.id}" ${a.id===cur?'selected':''}>${a.code} — ${exam?.title||''} (${scopeLabel})</option>`;
+      return `<option value="${escHtml(a.id)}" ${a.id===cur?'selected':''}>${escHtml(a.code ? a.code+' — ' : '')}${escHtml(exam?.title||'')} (${escHtml(scopeLabel)})</option>`;
     }).join('');
   }
 
@@ -2611,7 +2669,8 @@
         const resSnap = await getDocs(query(collection(db,'exam_results'), where('asId','==',asId), where('studentId','==',p._studentId)));
         const items = resSnap.docs.map(d=>d.data()).sort((a,b)=>(a.qIdx||0)-(b.qIdx||0));
         const rows = items.map((r,ri) => {
-          const q = questions[r.qIdx] || questions.find(qq=>qq.id===r.questionId) || {};
+          // questionId가 있으면 그걸로 찾는다 — 제출 뒤에 문항 순서를 바꿨으면 번호(qIdx)는 어긋난다.
+          const q = (r.questionId && questions.find(qq=>qq.id===r.questionId)) || questions[r.qIdx] || {};
           let correctAnswerHtml;
           if (q.type === 'mc') {
             correctAnswerHtml = escHtml(q.options && q.options[parseInt(q.answer)] !== undefined ? `${parseInt(q.answer)+1}번. ${q.options[parseInt(q.answer)]}` : (q.answer??''));
@@ -2774,7 +2833,7 @@
   };
 
   // ── 제출 실패 학생의 보관 답안을 제출로 반영 ──
-  // 학생 쪽 채점 서버(/api/grade-exam)가 실패하면 exam.html이 답안을
+  // 학생 쪽 채점 서버(ohinfo /api/exam)가 실패하면 exam.html이 답안을
   // exam_progress.pendingAnswers에 남겨둔다. 여기서 서버와 같은 규칙으로
   // 채점해 exam_results를 만들고 제출 처리한다(객관식만 자동, 나머지는
   // 수동 채점 — 코드형은 여기서 실행하지 않으니 "채점"에서 직접 점수 입력).
@@ -2793,14 +2852,17 @@
         const k = await getDoc(doc(db,'exam_answers',q.id));
         return k.exists() ? k.data() : { answer: q.answer };
       }));
-      const byIdx = new Map(p.pendingAnswers.map(a => [Number(a.qIdx), a.value]));
+      // 답안은 문항 ID로 맞춘다(학생이 푸는 사이 문항 순서가 바뀌었을 수 있다).
+      // qId가 없는 예전 보관 답안만 번호로 맞춘다 — 서버(/api/exam)와 같은 규칙.
+      const byId = new Map(p.pendingAnswers.filter(a => a.qId).map(a => [a.qId, a.value]));
+      const byIdx = new Map(p.pendingAnswers.filter(a => !a.qId).map(a => [Number(a.qIdx), a.value]));
       const studentId = p._studentId;
       const batch = writeBatch(db);
       let totalScore = 0, totalPoints = 0;
       questions.forEach((q, i) => {
         const points = Number(q.points) || 0;
         totalPoints += points;
-        let value = byIdx.get(i); value = value == null ? '' : String(value);
+        let value = byId.has(q.id) ? byId.get(q.id) : byIdx.get(i); value = value == null ? '' : String(value);
         let score = 0, feedback = 'manual';
         if (q.type === 'mc' && keys[i].answer !== undefined && keys[i].answer !== null) {
           const correct = String(keys[i].answer);
@@ -2810,7 +2872,7 @@
         totalScore += score;
         batch.set(doc(db,'exam_results',`${asId}_${studentId}_${i}`), {
           asId, examId, studentId, name: p.name||'', grade: p.grade||'', class: p.class||'', num: p.num??'',
-          lang: 'ko', qIdx: i, type: q.type||'', title: q.title||'',
+          lang: 'ko', qIdx: i, questionId: q.id, type: q.type||'', title: q.title||'',
           value, score, maxScore: points, feedback, gradedAt: new Date().toISOString(),
         });
       });

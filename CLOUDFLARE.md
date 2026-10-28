@@ -84,7 +84,7 @@ curl -X POST https://admin.kakainfo.com/api/translate \
 | `ohweb` | `GOOGLE_TRANSLATE_KEY` | Google Cloud Translation API 키 | `/api/translate` |
 | `ohweb` | `FIREBASE_SERVICE_ACCOUNT_KEY` | 서비스 계정 JSON 전체 | `/api/reset-student-password` (학생 비밀번호 재설정) |
 | `ohinfo` | `GOOGLE_TRANSLATE_KEY` | 위와 같은 값 | `/api/translate` |
-| `ohinfo` | `FIREBASE_SERVICE_ACCOUNT_KEY` | 위와 같은 값 | `/api/grade-exam` (시험 채점) |
+| `ohinfo` | `FIREBASE_SERVICE_ACCOUNT_KEY` | 위와 같은 값 | `/api/exam` (시험 목록·입장·채점·결과) |
 
 **서비스 계정 키는 두 프로젝트에 같은 값을 넣으면 된다.** Pages 프로젝트가
 다르면 환경변수도 따로 관리되므로, 한쪽만 넣으면 그쪽 기능만 동작한다.
