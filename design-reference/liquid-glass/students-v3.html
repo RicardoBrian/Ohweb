@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>학생 명단 — kakainfo 관리자</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!--
+  시안 v3 — macOS 26 키트 수치 + 리퀴드 글래스 재료.
+  층: ① 벽지(한 가지 색조) ② 흰 내용 판 = "창"(불투명, 모서리 26) ③ 떠 있는 유리(사이드바·작업 패널·툴바 캡슐·탭바)
+  ?a = 중성 회색 바탕, ?b(기본) = 차분한 파란 벽지, ?dark = 다크
+-->
+<style>
+:root {
+  /* 벽지 B — macOS 26 기본 벽지 계열을 한 가지 파랑으로 낮춤 */
+  --wall:
+    radial-gradient(70% 60% at 0% 0%, #e6eefb 0%, transparent 60%),
+    radial-gradient(60% 55% at 100% 0%, #e3ecf9 0%, transparent 60%),
+    radial-gradient(90% 70% at 55% 115%, #3d74c9 0%, transparent 62%),
+    linear-gradient(165deg, #d5e3f6 0%, #a9c5ec 48%, #7fa7df 100%);
+  --sheet: #ffffff;
+  --sheet-shadow: 0 0 0 .5px rgba(0,0,0,.08), 0 16px 48px rgba(20,40,80,.18);
+
+  /* 리퀴드 글래스 (Figma 사이드바: 흰계열 67% + 그림자 0 8 40 .12 → 맑게 낮추고 반사 추가) */
+  --glass:       rgba(255,255,255,.26);
+  --glass-solid: rgba(255,255,255,.52);   /* 입력이 많은 판(작업 패널)은 조금 더 불투명 */
+  --glass-blur:  blur(14px) saturate(1.45) brightness(1.06);
+  --rim:
+    inset 0 0 0 1px rgba(255,255,255,.38),
+    inset 1.5px 2px 1px -1px rgba(255,255,255,.95),
+    inset -1.5px -2px 1px -1px rgba(255,255,255,.55),
+    inset 0 0 22px rgba(255,255,255,.22);
+  --drop: 0 8px 40px rgba(0,0,0,.12), 0 0 0 .5px rgba(0,0,0,.05);
+  --spec-a: rgba(255,255,255,1); --spec-b: rgba(255,255,255,.6);
+
+  --label: rgba(0,0,0,.85); --label-2: rgba(0,0,0,.5); --label-3: rgba(0,0,0,.25); --label-v3: #bfbfbf;
+  --fill-1: rgba(0,0,0,.11); --fill-2: rgba(0,0,0,.06); --fill-3: rgba(0,0,0,.035);
+  --stripe: rgba(0,0,0,.028); --sep: rgba(0,0,0,.09);
+  --blue: #007aff; --green: #34c759; --red: #ff3b30; --orange: #ff9500;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "IBM Plex Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
+}
+body.wall-a {
+  --wall:
+    radial-gradient(900px 520px at 12% -10%, #e2e9f3 0%, transparent 70%),
+    radial-gradient(800px 600px at 100% 110%, #dde3eb 0%, transparent 70%),
+    #e9edf2;
+  --glass: rgba(255,255,255,.34);
+}
+body.dark {
+  --wall:
+    radial-gradient(70% 60% at 0% 0%, #1b2740 0%, transparent 60%),
+    radial-gradient(90% 70% at 55% 115%, #1e4b94 0%, transparent 62%),
+    linear-gradient(165deg, #0f1726 0%, #12233f 55%, #173463 100%);
+  --sheet: #1e1e1e;
+  --sheet-shadow: 0 0 0 .5px rgba(255,255,255,.1), 0 16px 48px rgba(0,0,0,.5);
+  --glass:       rgba(40,42,48,.30);
+  --glass-solid: rgba(36,38,44,.62);
+  --glass-blur:  blur(14px) saturate(1.6) brightness(.92);
+  --rim:
+    inset 0 0 0 1px rgba(255,255,255,.08),
+    inset 1.5px 2px 1px -1px rgba(255,255,255,.35),
+    inset -1.5px -2px 1px -1px rgba(255,255,255,.12),
+    inset 0 0 22px rgba(255,255,255,.04);
+  --drop: 0 8px 40px rgba(0,0,0,.45), 0 0 0 .5px rgba(0,0,0,.4);
+  --spec-a: rgba(255,255,255,.5); --spec-b: rgba(255,255,255,.2);
+  --label: rgba(255,255,255,.88); --label-2: rgba(255,255,255,.55); --label-3: rgba(255,255,255,.25); --label-v3: #5a5a5e;
+  --fill-1: rgba(255,255,255,.12); --fill-2: rgba(255,255,255,.08); --fill-3: rgba(255,255,255,.05);
+  --stripe: rgba(255,255,255,.03); --sep: rgba(255,255,255,.1);
+  --blue: #0a84ff; --green: #30d158; --red: #ff453a; --orange: #ff9f0a;
+}
+body.dark.wall-a { --wall: radial-gradient(900px 520px at 12% -10%, #1d2532 0%, transparent 70%), #121417; }
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--wall); background-attachment: fixed; color: var(--label); font: 14px/1.45 var(--font); -webkit-font-smoothing: antialiased; min-height: 100vh; }
+button, input { font: inherit; color: inherit; }
+svg.i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ───────── 리퀴드 글래스 재료 ─────────
+   얕은 흐림 + 채도↑(뒤 색을 끌어옴) + 안쪽 테두리 반사(왼위 강·오른아래 약) + 반사 링 + 띄우는 그림자 */
+.glass {
+  position: relative; isolation: isolate;
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--rim), var(--drop);
+}
+.glass::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; padding: 1px;
+  background: linear-gradient(140deg, var(--spec-a) 0%, transparent 22%, transparent 70%, var(--spec-b) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.glass.solid { --glass: var(--glass-solid); }
+
+/* ───────── 레이아웃 ───────── */
+.app { display: grid; grid-template-columns: 248px minmax(0,1fr) 336px; gap: 10px; padding: 10px; height: 100vh; }
+
+.sidebar { border-radius: 22px; padding: 10px; display: flex; flex-direction: column; overflow: auto; }
+.sb-brand { display: flex; align-items: center; gap: 10px; padding: 6px 8px 8px; }
+.sb-brand .logo { width: 34px; height: 30px; border-radius: 9px; background: #fff; display: grid; place-items: center; box-shadow: 0 0 0 .5px rgba(0,0,0,.08); }
+.sb-brand img { width: 26px; height: 22px; object-fit: contain; }
+.sb-brand b { font-size: 14px; font-weight: 700; }
+.sb-brand small { display: block; font-size: 11px; color: var(--label-2); font-weight: 500; margin-top: -2px; }
+.sb-head { font-size: 11px; font-weight: 700; color: var(--label-2); padding: 17px 12px 8px 10px; }
+.sb-item { display: flex; align-items: center; gap: 8px; width: 100%; height: 32px; padding: 0 10px 0 8px; border: 0; background: none;
+  border-radius: 8px; font-size: 13px; font-weight: 500; text-align: left; cursor: pointer; }
+.sb-item svg.i { width: 17px; height: 17px; opacity: .85; }
+.sb-item:hover { background: rgba(255,255,255,.25); }
+/* 선택: 판 위에 한 겹 더 떠 있는 유리 방울 */
+.sb-item.on { background: rgba(255,255,255,.55); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.9), 0 2px 8px rgba(0,0,0,.08); }
+body.dark .sb-item.on { background: rgba(255,255,255,.14); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.18), 0 2px 8px rgba(0,0,0,.25); }
+.sb-item.on svg.i { color: var(--blue); opacity: 1; }
+.sb-item .d { margin-left: auto; color: var(--label-2); font-size: 12px; }
+.sb-foot { margin-top: auto; padding-top: 10px; }
+
+/* 흰 내용 판 = 창 */
+.sheet { background: var(--sheet); border-radius: 26px; box-shadow: var(--sheet-shadow); min-width: 0; overflow: auto; position: relative; }
+.sheet-in { --pad: 22px; padding: 0 var(--pad) 28px; }
+
+/* 툴바 — 막대 없음, 캡슐만. 스크롤하면 내용이 캡슐 아래로 지나감 */
+.toolbar { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px; padding: 16px 0 14px; }
+.toolbar::before { content: ""; position: absolute; z-index: -1; inset: 0 calc(var(--pad) * -1) -18px; pointer-events: none; border-radius: 26px 26px 0 0;
+  -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px);
+  background: linear-gradient(var(--sheet) 0%, color-mix(in srgb, var(--sheet) 70%, transparent) 55%, transparent);
+  -webkit-mask: linear-gradient(#000 60%, transparent); mask: linear-gradient(#000 60%, transparent); }
+.toolbar h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+.toolbar .sub { color: var(--label-2); font-size: 13px; font-weight: 500; }
+.spacer { flex: 1; }
+.tb-group { display: inline-flex; align-items: center; gap: 4px; padding: 4px; border-radius: 999px; }
+.tb-btn { height: 28px; min-width: 28px; padding: 0 10px; border: 0; background: none; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 500; cursor: pointer; }
+.tb-btn:hover { background: var(--fill-2); }
+.tb-btn .v { color: var(--label-2); }
+.tb-btn.icon { padding: 0 5px; }
+.tb-btn svg.chev { width: 10px; height: 10px; color: var(--label-2); stroke-width: 2; }
+
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 10px; margin: 4px 0 22px; }
+.stat { background: var(--fill-3); border-radius: 14px; padding: 13px 16px; }
+.stat .k { font-size: 12px; color: var(--label-2); font-weight: 600; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.stat .n { font-size: 26px; font-weight: 700; letter-spacing: -.02em; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.stat .n small { font-size: 13px; color: var(--label-2); font-weight: 500; margin-left: 2px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex: none; }
+
+.list-head { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; }
+.list-head h2 { margin: 0; font-size: 15px; font-weight: 700; }
+.list-head .cnt { color: var(--label-2); font-size: 13px; }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+thead th { text-align: left; font-size: 12px; font-weight: 600; color: var(--label-2); padding: 0 12px 8px; border-bottom: 1px solid var(--sep); white-space: nowrap; }
+tbody td { padding: 0 12px; height: 40px; white-space: nowrap; }
+tbody tr:nth-child(even) td { background: var(--stripe); }
+tbody tr td:first-child { border-radius: 8px 0 0 8px; }
+tbody tr td:last-child { border-radius: 0 8px 8px 0; }
+tbody tr:hover td { background: var(--fill-2); }
+td.num { font-variant-numeric: tabular-nums; color: var(--label-2); }
+td.name { font-weight: 600; }
+.status { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; color: var(--label-2); }
+.status.ok { color: var(--label); }
+.lock { margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: color-mix(in srgb, var(--red) 13%, transparent); color: var(--red); font-size: 12px; font-weight: 600; }
+.acts { text-align: right; }
+.ib { width: 28px; height: 28px; border: 0; background: none; border-radius: 999px; color: var(--label-2); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.ib:hover { background: var(--fill-2); color: var(--label); }
+.ib.unlock { color: var(--orange); }
+
+/* 작업 패널 — 유리 */
+.inspector { border-radius: 22px; padding: 6px 16px 16px; overflow: auto; align-self: start; max-height: 100%; }
+.insp-sec { padding: 14px 0 6px; }
+.insp-sec + .insp-sec { border-top: 1px solid var(--sep); }
+.insp-sec h3 { margin: 0 0 10px; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.insp-sec h3 svg.i { color: var(--blue); }
+.drop { border: 1.5px dashed var(--label-3); border-radius: 14px; padding: 16px 12px; text-align: center; cursor: pointer; background: rgba(255,255,255,.35); }
+body.dark .drop { background: rgba(255,255,255,.04); }
+.drop svg.i { width: 26px; height: 26px; color: var(--blue); stroke-width: 1.4; }
+.drop p { margin: 6px 0 2px; font-size: 13px; font-weight: 600; }
+.drop small { color: var(--label-2); font-size: 11.5px; }
+.fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.fgrid .full { grid-column: 1 / -1; }
+label.l { display: block; font-size: 11.5px; font-weight: 600; color: var(--label-2); margin: 0 0 4px 2px; }
+.inp { width: 100%; height: 32px; padding: 0 10px; border-radius: 9px; border: 0; outline: none; font-size: 13.5px;
+  background: rgba(255,255,255,.82); box-shadow: 0 0 0 .5px rgba(0,0,0,.14), inset 0 1px 2px rgba(0,0,0,.05); }
+body.dark .inp { background: rgba(0,0,0,.25); box-shadow: 0 0 0 .5px rgba(255,255,255,.12), inset 0 1px 2px rgba(0,0,0,.3); }
+.inp::placeholder { color: var(--label-3); }
+.inp:focus { box-shadow: 0 0 0 3.5px color-mix(in srgb, var(--blue) 35%, transparent), 0 0 0 1px var(--blue); }
+.btn { height: 32px; padding: 0 16px; border-radius: 999px; border: 0; font-size: 13.5px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+/* 강조 버튼도 유리 질감: 파란 틴트 + 위쪽 반사 */
+.btn.accent { background: linear-gradient(180deg, color-mix(in srgb, var(--blue) 82%, #fff) 0%, var(--blue) 55%); color: #fff;
+  box-shadow: inset 0 1px 1px rgba(255,255,255,.55), inset 0 -1px 2px rgba(0,0,0,.12), 0 4px 14px color-mix(in srgb, var(--blue) 35%, transparent); }
+.btn.plain { background: none; color: var(--blue); padding: 0 8px; height: 28px; font-size: 13px; font-weight: 500; }
+.btn.block { width: 100%; margin-top: 12px; }
+
+.m-only { display: none; } .tabbar { display: none; }
+.brand-m { display: none; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
+.brand-m .logo { width: 30px; height: 26px; border-radius: 8px; background: #fff; display: grid; place-items: center; }
+.brand-m img { width: 22px; height: 19px; object-fit: contain; }
+
+/* ───── 태블릿 ───── */
+@media (max-width: 1199px) {
+  .app { grid-template-columns: 232px minmax(0,1fr); height: auto; min-height: 100vh; align-items: start; }
+  .sidebar { position: sticky; top: 10px; height: calc(100vh - 20px); }
+  .sheet { overflow: visible; grid-column: 2; }
+  .inspector { grid-column: 2; display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; max-height: none; }
+  .insp-sec + .insp-sec { border-top: 0; }
+}
+/* ───── 모바일 ───── */
+@media (max-width: 759px) {
+  body { font-size: 15px; }
+  .app { display: block; padding: 8px 8px 110px; }
+  .sidebar { display: none; }
+  .top-m { display: flex !important; align-items: center; padding: 8px 8px 12px; }
+  .brand-m { display: flex; }
+  .sheet { border-radius: 26px; }
+  .sheet-in { --pad: 14px; padding: 0 var(--pad) 18px; }
+  .toolbar { flex-wrap: wrap; row-gap: 10px; padding: 16px 0 10px; }
+  .toolbar h1 { font-size: 28px; flex-basis: 100%; }
+  .toolbar .sub, .d-only { display: none !important; }
+  .m-only { display: initial; }
+  .stats { gap: 6px; margin-bottom: 18px; }
+  .stat { padding: 10px 9px 8px; border-radius: 12px; }
+  .stat .k { font-size: 11.5px; gap: 4px; }
+  .stat .n { font-size: 21px; } .stat .n small { font-size: 11px; }
+  table { font-size: 15px; }
+  thead th.h-sm, tbody td.h-sm { display: none; }
+  thead th { padding: 0 8px 8px; } tbody td { padding: 0 8px; height: 48px; }
+  .inspector { margin-top: 10px; display: block; border-radius: 26px; }
+  .insp-sec + .insp-sec { border-top: 1px solid var(--sep); }
+  .inp { height: 40px; font-size: 16px; } .btn { height: 40px; font-size: 15px; }
+  .tabbar { display: flex; position: fixed; left: 14px; right: 14px; bottom: max(14px, env(safe-area-inset-bottom)); height: 62px; border-radius: 31px; padding: 4px; z-index: 20; }
+  .tab { flex: 1; border: 0; background: none; border-radius: 27px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; font-size: 10.5px; font-weight: 600; }
+  .tab svg.i { width: 22px; height: 22px; }
+  .tab.on { color: var(--blue); background: rgba(255,255,255,.5); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.9), 0 2px 8px rgba(0,0,0,.08); }
+  body.dark .tab.on { background: rgba(255,255,255,.14); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.2); }
+}
+.top-m { display: none; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="s-school" viewBox="0 0 24 24"><path d="M3 10 12 5l9 5-9 5-9-5Z"/><path d="M7 12.5V17c3 2 7 2 10 0v-4.5"/></symbol>
+    <symbol id="s-people" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.7-3.2 3-5 5.5-5s4.8 1.8 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M16 14c2.4 0 4 1.5 4.5 4"/></symbol>
+    <symbol id="s-board" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M8 9h8M8 13h5"/></symbol>
+    <symbol id="s-clip" viewBox="0 0 24 24"><rect x="5" y="4.5" width="14" height="16" rx="3"/><path d="M9 4.5h6v2.5H9zM8.5 12l2 2 4-4"/></symbol>
+    <symbol id="s-ai" viewBox="0 0 24 24"><path d="M12 3.5 13.8 9l5.7 1.8-5.7 1.8L12 18.5l-1.8-5.9L4.5 10.8 10.2 9 12 3.5Z"/></symbol>
+    <symbol id="s-doc" viewBox="0 0 24 24"><path d="M6.5 3.5h7l4 4v13h-11z"/><path d="M13.5 3.5v4h4M9 13h6M9 16.5h4"/></symbol>
+    <symbol id="s-chat" viewBox="0 0 24 24"><path d="M4 6.5a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3h-6l-4.5 3.5v-3.5A3 3 0 0 1 4 13.5z"/></symbol>
+    <symbol id="s-timer" viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="7"/><path d="M12 13.5V10M10 3h4"/></symbol>
+    <symbol id="s-note" viewBox="0 0 24 24"><path d="M5 5.5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v13l-3.5-2.5L12 18.5 8.5 16 5 18.5z"/></symbol>
+    <symbol id="s-wallet" viewBox="0 0 24 24"><rect x="3.5" y="6" width="17" height="13" rx="3"/><path d="M3.5 10h17M16 14.5h1.5"/></symbol>
+    <symbol id="s-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1.8"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.8"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.8"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.8"/></symbol>
+    <symbol id="s-moon" viewBox="0 0 24 24"><path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10Z"/></symbol>
+    <symbol id="s-chev" viewBox="0 0 12 12"><path d="m3 4.5 3 3 3-3"/></symbol>
+    <symbol id="s-edit" viewBox="0 0 24 24"><path d="m14.5 5.5 4 4L9 19H5v-4z"/></symbol>
+    <symbol id="s-trash" viewBox="0 0 24 24"><path d="M5 7h14M9.5 7V4.5h5V7M7 7l1 13h8l1-13"/></symbol>
+    <symbol id="s-unlock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9.5" rx="2.5"/><path d="M8.5 11V8a3.5 3.5 0 0 1 6.8-1.2"/></symbol>
+    <symbol id="s-upload" viewBox="0 0 24 24"><path d="M12 15V4.5M7.5 9 12 4.5 16.5 9M5 15v3.5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V15"/></symbol>
+    <symbol id="s-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="s-filter" viewBox="0 0 24 24"><path d="M4 6.5h16M7 12h10M10 17.5h4"/></symbol>
+    <symbol id="s-more" viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18" cy="12" r="1.3"/></symbol>
+    <symbol id="s-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="3.5"/><path d="m10.5 12.5 8-8M16 7l2 2"/></symbol>
+  </defs>
+</svg>
+
+<div class="app">
+  <aside class="sidebar glass">
+    <div class="sb-brand"><span class="logo"><img src="../../ohweb/public/logo.png" alt=""></span><div><b>kakainfo</b><small>관리자</small></div></div>
+    <div class="sb-head">관리</div>
+    <button class="sb-item"><svg class="i"><use href="#s-school"/></svg>학교</button>
+    <button class="sb-item on"><svg class="i"><use href="#s-people"/></svg>학생<span class="d">128</span></button>
+    <button class="sb-item"><svg class="i"><use href="#s-grid"/></svg>앱 설정</button>
+    <div class="sb-head">수업</div>
+    <button class="sb-item"><svg class="i"><use href="#s-board"/></svg>정보 게시판</button>
+    <button class="sb-item"><svg class="i"><use href="#s-clip"/></svg>시험</button>
+    <button class="sb-item"><svg class="i"><use href="#s-ai"/></svg>AI 실험실</button>
+    <button class="sb-item"><svg class="i"><use href="#s-doc"/></svg>설문지</button>
+    <button class="sb-item"><svg class="i"><use href="#s-chat"/></svg>학생 질문<span class="d">3</span></button>
+    <div class="sb-head">도구</div>
+    <button class="sb-item"><svg class="i"><use href="#s-timer"/></svg>타이머</button>
+    <button class="sb-item"><svg class="i"><use href="#s-note"/></svg>공지 메모</button>
+    <button class="sb-item"><svg class="i"><use href="#s-wallet"/></svg>정산 관리</button>
+    <div class="sb-foot"><button class="sb-item" onclick="document.body.classList.toggle('dark')"><svg class="i"><use href="#s-moon"/></svg>다크 모드</button></div>
+  </aside>
+
+  <div class="top-m">
+    <div class="brand-m"><span class="logo"><img src="../../ohweb/public/logo.png" alt=""></span>kakainfo</div>
+    <div class="spacer"></div>
+    <div class="tb-group glass">
+      <button class="tb-btn icon" title="학생 추가"><svg class="i"><use href="#s-plus"/></svg></button>
+      <button class="tb-btn icon" title="다크 모드" onclick="document.body.classList.toggle('dark')"><svg class="i"><use href="#s-moon"/></svg></button>
+    </div>
+  </div>
+
+  <main class="sheet" id="sheet">
+    <div class="sheet-in">
+      <header class="toolbar">
+        <h1>학생 명단</h1><span class="sub">관산중학교 외 1곳</span>
+        <div class="spacer d-only"></div>
+        <div class="tb-group glass">
+          <button class="tb-btn">학교 <span class="v">전체</span><svg class="i chev"><use href="#s-chev"/></svg></button>
+          <button class="tb-btn">학년 <span class="v">1</span><svg class="i chev"><use href="#s-chev"/></svg></button>
+          <button class="tb-btn">반 <span class="v">전체</span><svg class="i chev"><use href="#s-chev"/></svg></button>
+        </div>
+      </header>
+
+      <section class="stats">
+        <div class="stat"><div class="k">전체 학생</div><div class="n">128<small>명</small></div></div>
+        <div class="stat"><div class="k"><span class="dot" style="background:var(--green)"></span>등록</div><div class="n">112<small>명</small></div></div>
+        <div class="stat"><div class="k"><span class="dot" style="background:var(--label-3)"></span>미등록</div><div class="n">14<small>명</small></div></div>
+        <div class="stat"><div class="k"><span class="dot" style="background:var(--red)"></span>잠김</div><div class="n">2<small>명</small></div></div>
+      </section>
+
+      <div class="list-head">
+        <h2>학생 목록</h2><span class="cnt">32명</span><div class="spacer"></div>
+        <button class="btn plain" title="예전 방식으로 저장된 평문 비밀번호를 안전한 로그인 계정으로 옮기고 지웁니다"><svg class="i"><use href="#s-key"/></svg>평문 비밀번호 정리</button>
+      </div>
+      <table>
+        <thead><tr><th class="h-sm">학교</th><th>학년</th><th>반</th><th>번호</th><th>이름</th><th class="h-sm">상태</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <aside class="inspector glass solid">
+    <div class="insp-sec">
+      <h3><svg class="i"><use href="#s-upload"/></svg>CSV 업로드</h3>
+      <div class="drop"><svg class="i"><use href="#s-doc"/></svg><p>CSV 파일을 클릭하여 업로드</p><small>열 순서: 학교, 학년, 반, 번호, 이름<br>첫 행은 헤더로 자동 처리</small></div>
+    </div>
+    <div class="insp-sec">
+      <h3><svg class="i"><use href="#s-plus"/></svg>학생 개별 추가</h3>
+      <div class="fgrid">
+        <div class="full"><label class="l">학교</label><input class="inp" placeholder="학교 이름 입력"></div>
+        <div><label class="l">이름</label><input class="inp" placeholder="이름"></div>
+        <div><label class="l">학년</label><input class="inp" placeholder="예: 1"></div>
+        <div><label class="l">반</label><input class="inp" placeholder="예: 3"></div>
+        <div><label class="l">번호</label><input class="inp" placeholder="번호"></div>
+      </div>
+      <button class="btn accent block">추가</button>
+    </div>
+  </aside>
+</div>
+
+<nav class="tabbar glass">
+  <button class="tab on"><svg class="i"><use href="#s-people"/></svg>학생</button>
+  <button class="tab"><svg class="i"><use href="#s-school"/></svg>학교</button>
+  <button class="tab"><svg class="i"><use href="#s-clip"/></svg>시험</button>
+  <button class="tab"><svg class="i"><use href="#s-chat"/></svg>질문</button>
+  <button class="tab"><svg class="i"><use href="#s-more"/></svg>더보기</button>
+</nav>
+
+<script>
+  const names = ['김민준','이서연','박도윤','최하은','정시우','강지유','조하준','윤서아','장예준','임지아','한주원','오채원','서지호','신수아','권은우','황다인','안건우','송유나','문서진','배하린'];
+  const rows = names.map((n, i) => ({ s: i < 14 ? '관산중학교' : '서림중학교', g: 1, c: 3 + Math.floor(i/9), no: (i % 9) + 1, n, reg: ![4, 11, 15].includes(i), lock: [7, 13].includes(i) }));
+  document.getElementById('rows').innerHTML = rows.map(r => `
+    <tr><td class="h-sm">${r.s}</td><td class="num">${r.g}</td><td class="num">${r.c}</td><td class="num">${r.no}</td><td class="name">${r.n}</td>
+      <td class="h-sm"><span class="status ${r.reg?'ok':''}"><span class="dot" style="background:${r.reg?'var(--green)':'var(--label-3)'}"></span>${r.reg?'등록':'미등록'}</span>${r.lock?'<span class="lock">잠김</span>':''}</td>
+      <td class="acts">${r.lock?'<button class="ib unlock" title="잠금 해제"><svg class="i"><use href="#s-unlock"/></svg></button>':''}<button class="ib" title="수정"><svg class="i"><use href="#s-edit"/></svg></button><button class="ib" title="삭제"><svg class="i"><use href="#s-trash"/></svg></button></td></tr>`).join('');
+  const q = location.search;
+  if (/dark/.test(q)) document.body.classList.add('dark');
+  if (/[?&]a\b/.test(q)) document.body.classList.add('wall-a');
+</script>
+</body>
+</html>
