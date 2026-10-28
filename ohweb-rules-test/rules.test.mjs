@@ -29,6 +29,9 @@ await env.withSecurityRulesDisabled(async c => {
   await setDoc(doc(db, 'exam_progress/AS2_StuA'), { studentId: 'StuA', name: '김학생', totalScore: 40, status: 'submitted' });
   await setDoc(doc(db, 'exam_results/AS2_StuA_0'), { asId: 'AS2', studentId: 'StuA', score: 10 });
   await setDoc(doc(db, 'exam_results/AS2_StuB_0'), { asId: 'AS2', studentId: 'StuB', score: 5 });
+  await setDoc(doc(db, 'exams/EX1'), { title: '중간고사' });
+  await setDoc(doc(db, 'exam_questions/Q1'), { examId: 'EX1', order: 1, type: 'mc', title: '1+1?', options: ['2', '3'] });
+  await setDoc(doc(db, 'exam_assignments/AS1'), { examId: 'EX1', code: 'ABC', status: 'ON' });
 });
 const anon = env.unauthenticatedContext().firestore();
 const A = env.authenticatedContext('uidA', { email: 'stua@ohinfo.local', email_verified: false }).firestore();
@@ -61,6 +64,18 @@ await T('시험: 채점 대기 표시 지워서 점수 미리 보기 조작', se
 await T('시험: 제출 시각·소요시간 조작', setDoc(doc(A, 'exam_progress/AS1_StuA'), { elapsedSec: 1, late: false }, { merge: true }), false);
 await T('시험: 생성 시 제출 시각 넣기', setDoc(doc(B, 'exam_progress/AS8_StuB'), { studentId: 'StuB', status: 'started', submitTime: 'x' }), false);
 await T('학생이 남의 채점 결과 조회', getDocs(query(collection(B, 'exam_results'), where('asId', '==', 'AS2'), where('studentId', '==', 'StuA'))), false);
+// 아래 넷은 /api/exam(서버)을 거쳐야 한다 — 직접 읽으면 열리기 전 문항, 입장 코드,
+// 시험 중 정답(본인 결과의 "오답 (정답: ②)")이 새어나간다.
+await T('시험: 학생이 문항 직접 읽기(열리기 전 문제 보기)', getDocs(query(collection(A, 'exam_questions'), where('examId', '==', 'EX1'))), false);
+await T('시험: 학생이 배정 직접 읽기(입장 코드 보기)', getDoc(doc(A, 'exam_assignments/AS1')), false);
+await T('시험: 학생이 본인 채점 결과 직접 읽기(시험 중 정답 보기)', getDocs(query(collection(A, 'exam_results'), where('asId', '==', 'AS2'), where('studentId', '==', 'StuA'))), false);
+await T('시험: 비로그인이 시험 목록 읽기', getDocs(collection(anon, 'exams')), false);
+await T('시험: 진행 기록 생성 시 시작 시각 넣기(제한시간 속이기)', setDoc(doc(B, 'exam_progress/AS6_StuB'), { studentId: 'StuB', alertCount: 0, startTime: new Date(Date.now() + 86400000) }), false);
+await T('시험: 시작 시각 없던 기록에 직접 기록', setDoc(doc(A, 'exam_progress/AS3_StuA'), { startTime: serverTimestamp() }, { merge: true }), false);
+await T('시험: 시험 중 이탈 횟수 0으로 되돌리기', setDoc(doc(A, 'exam_progress/AS1_StuA'), { alertCount: 0 }, { merge: true }), false);
+await T('시험: 이탈 횟수 필드 지우기', updateDoc(doc(A, 'exam_progress/AS1_StuA'), { alertCount: deleteField() }), false);
+await T('시험: 입장 횟수 조작', setDoc(doc(A, 'exam_progress/AS1_StuA'), { enterCount: 1 }, { merge: true }), false);
+await T('시험: 재입장 시각 조작', setDoc(doc(A, 'exam_progress/AS1_StuA'), { lastEnterAt: serverTimestamp() }, { merge: true }), false);
 await T('email_verified 없는 가짜 관리자', getDocs(collection(fakeAdmin, 'qna_threads')), false);
 await T('비로그인 잠금 해제 시도', updateDoc(doc(anon, 'students/StuA'), { failedAttempts: 0 }), false);
 await T('명단: 비로그인 잠금 해제', updateDoc(doc(anon, 'student_directory/StuC'), { locked: false }), false);
@@ -130,13 +145,13 @@ await T('1:1 질문: 새 학생 스레드 생성', setDoc(doc(B, 'qna_threads/St
 await T('1:1 질문: 선생님 답장 읽음 표시', updateDoc(doc(A, 'qna_threads/StuA/messages/m1'), { readAt: serverTimestamp() }), true);
 await T('시험 목록: 본인 진행 기록(없는 문서) 읽기', getDoc(doc(A, 'exam_progress/AS7_StuA')), true);
 await T('시험 목록: 본인 진행 기록 읽기', getDoc(doc(A, 'exam_progress/AS2_StuA')), true);
-await T('시험 입장: 진행 기록 생성(merge)', setDoc(doc(B, 'exam_progress/AS1_StuB'), { examId: 'E', asId: 'AS1', studentId: 'StuB', name: '박', status: 'started', alertCount: 0, pasteBlockCount: 0, startTime: serverTimestamp() }, { merge: true }), true);
-await T('시험 재입장: 시작 시각 유지 + 재입장 시각 기록', setDoc(doc(A, 'exam_progress/AS1_StuA'), { status: 'started', alertCount: 1, pasteBlockCount: 0, lastEnterAt: serverTimestamp(), name: '김학생', studentId: 'StuA' }, { merge: true }), true);
-await T('시험 입장: 시작 시각 없던 기록에 처음 기록', setDoc(doc(A, 'exam_progress/AS3_StuA'), { status: 'started', startTime: serverTimestamp(), lastEnterAt: serverTimestamp() }, { merge: true }), true);
+// 입장(시작 시각 기록)은 서버가 한다. 학생 화면은 아래 횟수·보관 답안만 직접 쓴다 —
+// 서버 입장 전에 이탈이 감지되면 진행 기록이 학생 쓰기로 먼저 생길 수도 있다.
+await T('시험 중: 진행 기록 없을 때 이탈 횟수로 생성(merge)', setDoc(doc(B, 'exam_progress/AS1_StuB'), { alertCount: 1 }, { merge: true }), true);
 await T('시험 중: 이탈 횟수 갱신', setDoc(doc(A, 'exam_progress/AS1_StuA'), { alertCount: 2 }, { merge: true }), true);
 await T('시험 중: 붙여넣기 횟수 갱신', setDoc(doc(A, 'exam_progress/AS1_StuA'), { pasteBlockCount: 1 }, { merge: true }), true);
+await T('입장 오류 기록(진행 기록 없을 때 생성)', setDoc(doc(A, 'exam_progress/AS7_StuA'), { asId: 'AS7', studentId: 'StuA', name: '김학생', enterError: 'x', enterErrorAt: serverTimestamp() }, { merge: true }), true);
 await T('제출 실패: 답안 보관', setDoc(doc(A, 'exam_progress/AS1_StuA'), { pendingAnswers: [{ qIdx: 0, value: '1' }], pendingAt: serverTimestamp(), submitError: 'x' }, { merge: true }), true);
-await T('결과 보기: 본인 채점 결과 조회', getDocs(query(collection(A, 'exam_results'), where('asId', '==', 'AS2'), where('studentId', '==', 'StuA'))), true);
 const M = env.authenticatedContext('uidM', { email: 'master@ohinfo.local' }).firestore();
 await T('게시판: 학생이 수업 게시글 읽기', getDocs(query(collection(B, 'posts'), where('classTitle', '==', 'C'))), true);
 await T('게시판: 증분 동기화 쿼리(updatedAt >)', getDocs(query(collection(B, 'posts'), where('classTitle', '==', 'C'), where('updatedAt', '>', new Date(0)))), true);
@@ -163,6 +178,7 @@ await T('설문(formlab): 설문 삭제', deleteDoc(doc(A, 'student_forms/F1')),
 await T('관리자: 학생 목록/수정/잠금해제', (async () => { await getDocs(collection(admin, 'students')); await updateDoc(doc(admin, 'students/StuA'), { name: '김', isMaster: true, locked: false, failedAttempts: 0 }); })(), true);
 await T('관리자: 학생 생성/삭제', (async () => { await addDoc(collection(admin, 'students'), { name: 'n' }); await deleteDoc(doc(admin, 'students/StuL')); })(), true);
 await T('관리자: 스레드 목록·답장', (async () => { await getDocs(collection(admin, 'qna_threads')); await addDoc(collection(admin, 'qna_threads/StuA/messages'), { sender: 'admin', text: 'a' }); await updateDoc(doc(admin, 'qna_threads/StuA'), { unreadByStudent: true }); })(), true);
+await T('관리자: 문항·배정 읽기 + 문항 순서 끌어다 놓기 저장', (async () => { await getDocs(query(collection(admin, 'exam_questions'), where('examId', '==', 'EX1'))); await getDocs(collection(admin, 'exam_assignments')); const b = writeBatch(admin); b.update(doc(admin, 'exam_questions/Q1'), { order: 2 }); await b.commit(); })(), true);
 await T('관리자: 시험 결과 목록·채점 저장·보관 답안 반영', (async () => { await getDocs(query(collection(admin, 'exam_progress'), where('asId', '==', 'AS1'))); const b = writeBatch(admin); b.set(doc(admin, 'exam_results/AS1_StuA_0'), { score: 1 }); b.set(doc(admin, 'exam_progress/AS1_StuA'), { status: 'submitted', totalScore: 1, totalPoints: 1 }, { merge: true }); await b.commit(); })(), true);
 // ── AI 실험실 ── 짝 P1 = StuA(대표) + StuB, 다른 짝 P2 = StuL
 await env.withSecurityRulesDisabled(async c => {

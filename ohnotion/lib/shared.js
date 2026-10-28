@@ -145,7 +145,7 @@ export function listPages(context) {
 }
 
 // ── 서비스 계정 → OAuth 토큰 (통계 쓰기 전용) ──
-// ohinfo/functions/api/grade-exam.js와 같은 코드 — Pages 프로젝트가 달라
+// ohinfo/functions/api/exam.js와 같은 코드 — Pages 프로젝트가 달라
 // 모듈을 공유할 수 없어서 중복이다. 한쪽을 고치면 다른 쪽도 같이 본다.
 function base64urlEncode(bytes) {
   let bin = '';

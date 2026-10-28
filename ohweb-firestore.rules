@@ -39,11 +39,13 @@ service cloud.firestore {
     // 학생 쪽에서 건드릴 일이 아예 없는 것들 — 관리자만
     match /schools/{id}          { allow read, write: if isAdmin(); }
     match /classes/{id}          { allow read: if true; allow write: if isAdmin(); }
-    match /exams/{id}            { allow read: if true; allow write: if isAdmin(); }
-    // 문항 본문은 학생이 읽어야 화면에 뜬다. 정답은 여기 없고 exam_answers에
-    // 따로 있으므로 공개 읽기로 둬도 새어나갈 게 없다.
-    match /exam_questions/{id}   { allow read: if true; allow write: if isAdmin(); }
-    match /exam_assignments/{id} { allow read: if true; allow write: if isAdmin(); }
+    // 시험(제목)·문항·배정은 관리자만. 학생 시험 화면은 ohinfo의 /api/exam을
+    // 거쳐서 받는다 — 서버가 열림(ON)·응시 대상·입장 코드를 확인한 뒤에만 문항을
+    // 내려준다. 예전엔 셋 다 공개 읽기라 시험이 열리기 전에도 문항을 볼 수 있었고,
+    // 입장 코드가 배정 문서에 들어 있어 콘솔에서 그대로 보였다.
+    match /exams/{id}            { allow read, write: if isAdmin(); }
+    match /exam_questions/{id}   { allow read, write: if isAdmin(); }
+    match /exam_assignments/{id} { allow read, write: if isAdmin(); }
     match /appSettings/{id}      { allow read: if true; allow write: if isAdmin(); }
 
     // ohshrt — 단축 URL. get(단축코드로 직접 열기)은 누구나(리다이렉트가
@@ -235,13 +237,14 @@ service cloud.firestore {
       allow delete: if isAdmin() || isOwnStudentAuth(resource.data.get('ownerId', ''));
     }
     // ── 시험 ──
-    // 채점은 ohinfo의 /api/grade-exam이 서비스 계정으로 한다. 서비스 계정은
+    // 입장·채점은 ohinfo의 /api/exam이 서비스 계정으로 한다. 서비스 계정은
     // 보안 규칙을 우회하므로, 아래에서 학생의 점수 쓰기를 완전히 막아도
     // 정상 채점은 그대로 동작한다.
 
-    // 진행 상황: 학생은 시작 시각·탭 이탈 횟수까지만 쓸 수 있고, 점수와
-    // "제출됨" 상태는 못 건드린다. 한 번 제출된 뒤에는 학생 쓰기를 전부 막아
-    // 재응시로 되돌리는 것도 차단한다.
+    // 진행 상황: 학생은 탭 이탈·붙여넣기 횟수와 제출 실패 시 보관 답안만 쓸 수
+    // 있다. 시작 시각은 서버가 입장 때 기록하고(학생이 미리 만들어 두거나 바꾸면
+    // 제한시간을 속일 수 있다), 점수와 "제출됨" 상태도 못 건드린다. 한 번
+    // 제출된 뒤에는 학생 쓰기를 전부 막아 재응시로 되돌리는 것도 차단한다.
     // 문서 ID는 `${asId}_${학생문서ID}` — 끝 부분이 학생 ID다. 문서가 아직 없을 때
     // (첫 입장 전)도 판별할 수 있도록 데이터가 아니라 ID로 본인을 가린다.
     // 예전엔 읽기가 완전 공개라 누구나 전교생의 이름·점수를 볼 수 있었다.
@@ -254,7 +257,7 @@ service cloud.firestore {
       allow create: if isAdmin()
           || (isOwnStudentAuth(progOwner(id))
               && request.resource.data.get('studentId', progOwner(id)) == progOwner(id)
-              && !request.resource.data.keys().hasAny(['totalScore', 'totalPoints', 'submitTime', 'elapsedSec', 'late', 'needsManual', 'gradedAt'])
+              && !request.resource.data.keys().hasAny(['totalScore', 'totalPoints', 'submitTime', 'elapsedSec', 'late', 'needsManual', 'gradedAt', 'startTime', 'lastEnterAt', 'enterCount'])
               && request.resource.data.get('status', '') != 'submitted');
       allow update: if isAdmin()
           || (isOwnStudentAuth(progOwner(id))
@@ -263,20 +266,19 @@ service cloud.firestore {
               && request.resource.data.get('studentId', '') == resource.data.get('studentId', '')
               && request.resource.data.get('totalScore', -1) == resource.data.get('totalScore', -1)
               && request.resource.data.get('totalPoints', -1) == resource.data.get('totalPoints', -1)
-              // 시작 시각은 한 번 기록되면 못 바꾼다(지우거나 바꾸면 제한시간이 리셋된다).
-              // 제출 시각·소요 시간·시간 초과 표시는 서버만 쓴다.
-              && (!resource.data.keys().hasAny(['startTime'])
-                  || request.resource.data.get('startTime', null) == resource.data.startTime)
-              && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['submitTime', 'elapsedSec', 'late', 'needsManual', 'gradedAt']));
+              // 시작·재입장 시각·입장 횟수, 제출 시각·소요 시간·시간 초과 표시는
+              // 서버만 쓴다(시작 시각을 지우거나 바꾸면 제한시간이 리셋된다).
+              && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['submitTime', 'elapsedSec', 'late', 'needsManual', 'gradedAt', 'startTime', 'lastEnterAt', 'enterCount'])
+              // 이탈·붙여넣기 차단 횟수는 늘어나기만 한다 — 예전엔 학생이 콘솔에서
+              // 0으로 되돌려 부정행위 기록을 지울 수 있었다.
+              && request.resource.data.get('alertCount', 0) >= resource.data.get('alertCount', 0)
+              && request.resource.data.get('pasteBlockCount', 0) >= resource.data.get('pasteBlockCount', 0));
     }
 
-    // 채점 결과: 쓰기는 서버/관리자만(예전엔 학생이 자기 점수를 임의로
-    // 써넣을 수 있었다). 읽기는 본인 것과 관리자만 — exam.html의 결과 조회는
-    // studentId로 필터링하므로 이 규칙으로 통과한다.
-    match /exam_results/{id} {
-      allow read: if isAdmin() || isOwnStudentAuth(resource.data.get('studentId', ''));
-      allow write: if isAdmin();
-    }
+    // 채점 결과: 관리자만. 학생은 /api/exam의 결과 조회로 본다 — 서버가 시험이
+    // 열려 있는 동안은 오답의 정답을 가린다. 예전엔 본인 결과를 직접 읽을 수
+    // 있어서, 먼저 낸 학생이 아직 시험 중인 친구에게 정답을 넘길 수 있었다.
+    match /exam_results/{id}     { allow read, write: if isAdmin(); }
 
     // 정답·테스트케이스. 학생은 절대 읽으면 안 된다 — 이게 exam_questions
     // 안에 같이 들어있던 탓에, 공개 읽기 규칙을 타고 시험 전에 정답이
