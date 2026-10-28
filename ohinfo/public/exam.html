@@ -527,7 +527,7 @@ const UI = {
     mypage:'마이페이지', home:'홈으로',
     mpTitle:'마이페이지', mpPhotoBtn:'사진 변경', mpPwLabel:'비밀번호 변경', mpCurPw:'현재 비밀번호', mpNewPw:'새 비밀번호 (4자 이상)', mpNewPw2:'새 비밀번호 확인', mpSave:'저장',
     mpErrCur:'현재 비밀번호가 맞지 않습니다.', mpErrShort:'새 비밀번호는 4자 이상이어야 합니다.', mpErrMatch:'새 비밀번호가 일치하지 않습니다.', mpOk:'저장되었습니다.',
-    correct:'정답', wrong:'오답 (정답: ', wrongHidden:'오답', answersLater:'정답은 선생님이 시험을 닫은 뒤에 공개됩니다.', testPass:'테스트케이스 통과', manualGrade:'수동 채점 필요',
+    correct:'정답', wrong:'오답 (정답: ', wrongHidden:'오답', answersLater:'정답은 선생님이 공개하면 볼 수 있습니다.', myAnswer:'내 답', correctIs:'정답', netErr:'인터넷 연결이 불안정합니다. 잠시 후 다시 시도해 주세요.', retry:'다시 시도', testPass:'테스트케이스 통과', manualGrade:'수동 채점 필요',
     sessionExpired:'로그인이 만료되었습니다. 다시 로그인한 뒤 제출해 주세요.',
     draftKept:'작성한 답안은 이 기기에 저장되어 있습니다. 잠시 후 다시 제출하기를 눌러 주세요.',
     pendingKept:'답안은 선생님께 전달되어 보관되었습니다. 이 화면을 선생님께 보여 주세요.',
@@ -546,7 +546,7 @@ const UI = {
     mypage:'我的页面', home:'返回主页',
     mpTitle:'我的页面', mpPhotoBtn:'更换照片', mpPwLabel:'修改密码', mpCurPw:'当前密码', mpNewPw:'新密码 (至少4位)', mpNewPw2:'确认新密码', mpSave:'保存',
     mpErrCur:'当前密码不正确。', mpErrShort:'新密码至少需要4位。', mpErrMatch:'两次输入的新密码不一致。', mpOk:'已保存。',
-    correct:'正确', wrong:'错误 (正确答案: ', wrongHidden:'错误', answersLater:'老师结束考试后将公布正确答案。', testPass:'测试用例通过', manualGrade:'需要人工评分',
+    correct:'正确', wrong:'错误 (正确答案: ', wrongHidden:'错误', answersLater:'老师公布后即可查看正确答案。', myAnswer:'我的答案', correctIs:'正确答案', netErr:'网络连接不稳定，请稍后再试。', retry:'重试', testPass:'测试用例通过', manualGrade:'需要人工评分',
     sessionExpired:'登录已过期，请重新登录后提交。',
     draftKept:'已作答的内容已保存在本设备上。请稍后再次点击提交。',
     pendingKept:'答案已保存并传给老师。请把此画面给老师看。',
@@ -565,7 +565,7 @@ const UI = {
     mypage:'Мой профиль', home:'На главную',
     mpTitle:'Мой профиль', mpPhotoBtn:'Сменить фото', mpPwLabel:'Сменить пароль', mpCurPw:'Текущий пароль', mpNewPw:'Новый пароль (мин. 4)', mpNewPw2:'Подтвердить пароль', mpSave:'Сохранить',
     mpErrCur:'Неверный текущий пароль.', mpErrShort:'Новый пароль должен быть не менее 4 символов.', mpErrMatch:'Пароли не совпадают.', mpOk:'Сохранено.',
-    correct:'Правильно', wrong:'Неверно (ответ: ', wrongHidden:'Неверно', answersLater:'Правильные ответы появятся после того, как учитель закроет тест.', testPass:'тест-кейс пройден', manualGrade:'Требует проверки',
+    correct:'Правильно', wrong:'Неверно (ответ: ', wrongHidden:'Неверно', answersLater:'Правильные ответы появятся, когда учитель их откроет.', myAnswer:'Мой ответ', correctIs:'Ответ', netErr:'Нестабильное соединение. Повторите попытку чуть позже.', retry:'Повторить', testPass:'тест-кейс пройден', manualGrade:'Требует проверки',
     sessionExpired:'Сессия истекла. Войдите снова и отправьте работу.',
     draftKept:'Ваши ответы сохранены на этом устройстве. Попробуйте отправить ещё раз чуть позже.',
     pendingKept:'Ответы сохранены и переданы учителю. Покажите этот экран учителю.',
@@ -584,7 +584,7 @@ const UI = {
     mypage:'My Page', home:'Home',
     mpTitle:'My Page', mpPhotoBtn:'Change Photo', mpPwLabel:'Change Password', mpCurPw:'Current password', mpNewPw:'New password (min. 4)', mpNewPw2:'Confirm new password', mpSave:'Save',
     mpErrCur:'Current password is incorrect.', mpErrShort:'New password must be at least 4 characters.', mpErrMatch:'Passwords do not match.', mpOk:'Saved.',
-    correct:'Correct', wrong:'Wrong (answer: ', wrongHidden:'Wrong', answersLater:'Correct answers will be shown after your teacher closes the exam.', testPass:'test cases passed', manualGrade:'Manual grading required',
+    correct:'Correct', wrong:'Wrong (answer: ', wrongHidden:'Wrong', answersLater:'Correct answers will be shown once your teacher releases them.', myAnswer:'My answer', correctIs:'Answer', netErr:'Your connection is unstable. Please try again in a moment.', retry:'Retry', testPass:'test cases passed', manualGrade:'Manual grading required',
     sessionExpired:'Your login has expired. Please sign in again and submit.',
     draftKept:'Your answers are saved on this device. Please press Submit again in a moment.',
     pendingKept:'Your answers have been saved for your teacher. Please show this screen to your teacher.',
@@ -672,26 +672,45 @@ document.getElementById('sessionInfo').innerText = `${SESSION.grade}학년 ${SES
 // 열림(ON)·응시 대상·입장 코드를 확인하고, 시험이 닫히기 전에는 정답을
 // 가린다(functions/api/exam.js 설명 참고). 본인 확인용으로 로그인 토큰을 보낸다.
 // 실패하면 Error를 던지고, 서버가 준 HTTP 상태는 err.status에 붙인다.
-async function examApi(action, extra = {}) {
+// err.transient: 네트워크·서버 쪽 일시 오류(학생이 다시 시도하면 될 수 있는 것).
+// 읽기성 요청(list/start/result)은 일시 오류면 한 번 조용히 다시 시도한다 — 한
+// 교실이 동시에 입장할 때 학교 와이파이가 순간 끊기는 일이 잦다. start는 다시
+// 불러도 시작 시각이 바뀌지 않으니 안전하다. submit은 다시 보내지 않는다.
+async function examApi(action, extra = {}, retried = false) {
   await authReady();
   const user = auth.currentUser;
   if (!user) throw new Error(UI[currentLang].sessionExpired);
-  const res = await fetch('/api/exam', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action, idToken: await user.getIdToken(), studentDocId: SESSION.id, lang: currentLang, ...extra }),
-  });
-  const data = await res.json().catch(() => ({}));
+  let res, data;
+  try {
+    res = await fetch('/api/exam', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, idToken: await user.getIdToken(), studentDocId: SESSION.id, lang: currentLang, ...extra }),
+    });
+    data = await res.json().catch(() => ({}));
+  } catch (netErr) {
+    // fetch 자체 실패("Failed to fetch") 또는 토큰 갱신 실패 — 연결 문제다.
+    console.error('exam api network:', action, netErr);
+    if (!retried && action !== 'submit') { await new Promise(r => setTimeout(r, 1500)); return examApi(action, extra, true); }
+    const err = new Error(UI[currentLang].netErr);
+    err.transient = true; err.detail = String(netErr?.message || netErr);
+    throw err;
+  }
   if (!res.ok || data.error) {
     if (data.detail) console.error('exam api:', action, data.detail);
-    const err = new Error((data.error || `HTTP ${res.status}`) + (data.detail ? `\n[${data.detail}]` : ''));
-    err.status = res.status;
+    // 서버가 200 + error로 준 건 내부 오류(설정·Firestore 실패)다. 4xx는 입장
+    // 거부·이미 제출 같은 정상 응답이라 다시 시도할 일이 아니다.
+    const transient = res.status >= 500 || (res.ok && !!data.error);
+    if (transient && !retried && action !== 'submit') { await new Promise(r => setTimeout(r, 1500)); return examApi(action, extra, true); }
+    const err = new Error((data.error || (transient ? UI[currentLang].netErr : `HTTP ${res.status}`)) + (data.detail ? `\n[${data.detail}]` : ''));
+    err.status = res.status; err.transient = transient; err.detail = data.detail || `HTTP ${res.status}`;
     throw err;
   }
   return data;
 }
 
 // ── 내 시험 목록 로드 (step0) ──
+window.loadMyExams = loadMyExams;
 async function loadMyExams() {
   const area = document.getElementById('examListArea');
   area.innerHTML = `<div style="color:var(--sub);font-size:0.85rem;">${UI[currentLang].loading}</div>`;
@@ -735,7 +754,8 @@ async function loadMyExams() {
       </div>`;
     }).join('');
   } catch(e) {
-    area.innerHTML = `<div style="color:#ef4444;font-size:0.82rem;white-space:pre-wrap;">${escHtml(e.message)}</div>`;
+    area.innerHTML = `<div style="color:#ef4444;font-size:0.82rem;white-space:pre-wrap;">${escHtml(e.message)}</div>
+      <button class="btn sm" style="margin-top:10px;" onclick="loadMyExams()">${UI[currentLang].retry}</button>`;
   }
 }
 
@@ -748,7 +768,7 @@ window.showMyResult = async (asId) => {
     const resultItems = (r.items || []).map(it => ({
       qIdx: it.qIdx||0, type: it.type, title: it.title||`Q${(it.qIdx||0)+1}`,
       value: it.value||'', score: it.score||0, maxScore: it.maxScore||0,
-      feedback: localizeFeedback(it.feedback, { type: it.type })
+      feedback: localizeFeedback(it.feedback, { type: it.type }), correct: it.correct,
     }));
     showResult(r.totalScore||0, r.totalPoints||0, resultItems, r.answersHidden);
   } catch(e) { showLoading(false); alert(UI[currentLang].errPrefix+e.message); }
@@ -882,8 +902,21 @@ window.enterExamWithCode = async (asId, code) => {
   } catch (e) {
     showLoading(false);
     showErr(e.message);
+    // 입장 거부(코드 틀림·닫힌 시험 등)가 아닌 일시 오류는 선생님이 볼 수 있게
+    // 진행 기록에 남긴다 — admin 결과 화면에 "입장 오류"로 뜬다. 예전엔 입장
+    // 오류가 학생 화면에만 떴다 사라져서 무엇이 문제였는지 알 길이 없었다.
+    if (e.transient) logEnterError(asId, e);
   }
 };
+async function logEnterError(asId, e) {
+  try {
+    await setDoc(doc(db, 'exam_progress', `${asId}_${SESSION.id}`), {
+      asId, studentId: SESSION.id, name: SESSION.name, grade: SESSION.grade, class: SESSION.cls, num: SESSION.num,
+      enterError: `${e.message}${e.detail ? ' — ' + e.detail : ''}`.slice(0, 500), enterErrorAt: serverTimestamp(),
+      enterErrorUA: navigator.userAgent.slice(0, 200),
+    }, { merge: true });
+  } catch (e2) { console.error('입장 오류 기록 실패:', e2); }
+}
 
 function startExamUI() {
   document.getElementById('step0').classList.add('hidden');
@@ -1384,8 +1417,12 @@ function showResult(score, total, items, answersHidden = false) {
   document.getElementById('resultEmoji').innerHTML = pct >= 90 ? '<svg width="46" height="46"><use href="#ic-trophy"/></svg>' : pct >= 70 ? '<svg width="46" height="46"><use href="#ic-star"/></svg>' : pct >= 50 ? '<svg width="46" height="46"><use href="#ic-book"/></svg>' : '<svg width="46" height="46"><use href="#ic-flag"/></svg>';
   document.getElementById('resultDetails').innerHTML = items.map(r => {
     const cls = r.score === r.maxScore ? 'ok' : r.score > 0 ? 'partial' : 'fail';
+    // 정답 공개가 켜져 있으면 객관식은 내 답과 정답을 같이 보여준다.
+    const circ = v => { const n = parseInt(v, 10); return Number.isNaN(n) ? String(v ?? '') : String.fromCharCode(9312 + n); };
+    const mcLine = (r.type === 'mc' && r.correct != null)
+      ? `<div class="r-fb">${escHtml(t.myAnswer)}: ${escHtml(r.value === '' ? '-' : circ(r.value))} · ${escHtml(t.correctIs)}: ${escHtml(circ(r.correct))}</div>` : '';
     return `<div class="r-item">
-      <div class="r-q">Q${r.qIdx+1}. ${escHtml(r.title)}<div class="r-fb">${escHtml(r.feedback)}</div></div>
+      <div class="r-q">Q${r.qIdx+1}. ${escHtml(r.title)}<div class="r-fb">${escHtml(r.feedback)}</div>${mcLine}</div>
       <div class="r-score ${cls}">${r.score}/${r.maxScore}${t.pts2}</div>
     </div>`;
   }).join('') + (answersHidden ? `<div class="r-fb" style="text-align:center;margin-top:14px;">${escHtml(t.answersLater)}</div>` : '');

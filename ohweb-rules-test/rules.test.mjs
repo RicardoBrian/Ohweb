@@ -72,6 +72,9 @@ await T('시험: 학생이 본인 채점 결과 직접 읽기(시험 중 정답 
 await T('시험: 비로그인이 시험 목록 읽기', getDocs(collection(anon, 'exams')), false);
 await T('시험: 진행 기록 생성 시 시작 시각 넣기(제한시간 속이기)', setDoc(doc(B, 'exam_progress/AS6_StuB'), { studentId: 'StuB', alertCount: 0, startTime: new Date(Date.now() + 86400000) }), false);
 await T('시험: 시작 시각 없던 기록에 직접 기록', setDoc(doc(A, 'exam_progress/AS3_StuA'), { startTime: serverTimestamp() }, { merge: true }), false);
+await T('시험: 시험 중 이탈 횟수 0으로 되돌리기', setDoc(doc(A, 'exam_progress/AS1_StuA'), { alertCount: 0 }, { merge: true }), false);
+await T('시험: 이탈 횟수 필드 지우기', updateDoc(doc(A, 'exam_progress/AS1_StuA'), { alertCount: deleteField() }), false);
+await T('시험: 입장 횟수 조작', setDoc(doc(A, 'exam_progress/AS1_StuA'), { enterCount: 1 }, { merge: true }), false);
 await T('시험: 재입장 시각 조작', setDoc(doc(A, 'exam_progress/AS1_StuA'), { lastEnterAt: serverTimestamp() }, { merge: true }), false);
 await T('email_verified 없는 가짜 관리자', getDocs(collection(fakeAdmin, 'qna_threads')), false);
 await T('비로그인 잠금 해제 시도', updateDoc(doc(anon, 'students/StuA'), { failedAttempts: 0 }), false);
@@ -147,6 +150,7 @@ await T('시험 목록: 본인 진행 기록 읽기', getDoc(doc(A, 'exam_progre
 await T('시험 중: 진행 기록 없을 때 이탈 횟수로 생성(merge)', setDoc(doc(B, 'exam_progress/AS1_StuB'), { alertCount: 1 }, { merge: true }), true);
 await T('시험 중: 이탈 횟수 갱신', setDoc(doc(A, 'exam_progress/AS1_StuA'), { alertCount: 2 }, { merge: true }), true);
 await T('시험 중: 붙여넣기 횟수 갱신', setDoc(doc(A, 'exam_progress/AS1_StuA'), { pasteBlockCount: 1 }, { merge: true }), true);
+await T('입장 오류 기록(진행 기록 없을 때 생성)', setDoc(doc(A, 'exam_progress/AS7_StuA'), { asId: 'AS7', studentId: 'StuA', name: '김학생', enterError: 'x', enterErrorAt: serverTimestamp() }, { merge: true }), true);
 await T('제출 실패: 답안 보관', setDoc(doc(A, 'exam_progress/AS1_StuA'), { pendingAnswers: [{ qIdx: 0, value: '1' }], pendingAt: serverTimestamp(), submitError: 'x' }, { merge: true }), true);
 const M = env.authenticatedContext('uidM', { email: 'master@ohinfo.local' }).firestore();
 await T('게시판: 학생이 수업 게시글 읽기', getDocs(query(collection(B, 'posts'), where('classTitle', '==', 'C'))), true);

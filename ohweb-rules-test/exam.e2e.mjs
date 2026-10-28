@@ -81,6 +81,8 @@ async function serveExamApi(route) {
   apiCalls.push({ req: JSON.parse(body), status: res.status, res: JSON.parse(text) });
   return route.fulfill({ status: res.status, contentType: 'application/json', body: text });
 }
+// 일시 오류 흉내: 남은 횟수만큼 시험 서버가 503, 로그인이 "너무 많은 요청"으로 실패한다.
+let failExamApi = 0, failLogin = 0;
 const lastCall = action => [...apiCalls].reverse().find(c => c.req.action === action);
 const cmFile = { 'codemirror.min.js': 'lib/codemirror.js', 'codemirror.min.css': 'lib/codemirror.css', 'python.min.js': 'mode/python/python.js', 'closebrackets.min.js': 'addon/edit/closebrackets.js' };
 
@@ -92,7 +94,12 @@ await ctx.route('**/*', async route => {
   if (m) return route.fulfill({ status: 200, contentType: 'text/javascript', body: readFileSync(path.join(FB, m[1])) });
   const c = u.match(/^https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/codemirror\/5\.65\.16\/.*?([a-z]+\.min\.(js|css))$/);
   if (c && cmFile[c[1]]) return route.fulfill({ status: 200, contentType: c[2] === 'css' ? 'text/css' : 'text/javascript', body: readFileSync(path.join(CM, cmFile[c[1]])) });
+  if (u.includes('/api/exam') && failExamApi > 0) { failExamApi--; return route.fulfill({ status: 503, contentType: 'text/html', body: '<html>503</html>' }); }
   if (u.includes('/api/exam')) return serveExamApi(route);
+  if (u.includes('accounts:signInWithPassword') && failLogin > 0 && route.request().method() === 'POST') {
+    failLogin--;
+    return route.fulfill({ status: 400, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ error: { code: 400, message: 'TOO_MANY_ATTEMPTS_TRY_LATER' } }) });
+  }
   if (u.startsWith('http://localhost:8099') || u.startsWith('http://127.0.0.1')) return route.continue();
   return route.abort();
 });
@@ -112,6 +119,13 @@ await page.waitForTimeout(300);
 await page.selectOption('#loginGrade', '1'); await page.waitForTimeout(200);
 await page.selectOption('#loginClass', '2'); await page.waitForTimeout(300);
 await page.selectOption('#loginNumber', '3');
+// 같은 학교 IP로 한꺼번에 로그인해 Firebase가 잠시 막은 상황 — "비밀번호 틀림"으로 세면 안 된다
+failLogin = 1;
+await page.fill('#loginPw', 'pass99');
+await page.evaluate(() => window.doLogin());
+await page.waitForFunction(() => /많아/.test(document.getElementById('loginErr').innerText), null, { timeout: 15000 });
+let dirA; await env.withSecurityRulesDisabled(async c => { dirA = (await getDoc(doc(c.firestore(), 'student_directory/StuA'))).data(); });
+ok(!dirA.failedAttempts && !dirA.locked, '로그인 요청 과다(too-many-requests) → "잠시 후 다시" 안내, 비밀번호 실패 횟수 안 올라감');
 await page.fill('#loginPw', 'pass99');
 await page.evaluate(() => window.doLogin());
 await page.waitForURL(/home\.html/, { timeout: 15000 });
@@ -149,6 +163,27 @@ ok(progStart1?.startTime?.toMillis && progStart1.status === 'started', '서버�
 const startRes = lastCall('start')?.res;
 ok(startRes?.questions?.length === 3 && !JSON.stringify(startRes).includes('testCases') && !/"answer"/.test(JSON.stringify(startRes)), '입장 응답: 문항 3개, 정답·테스트케이스 없음');
 ok((await page.innerHTML('#qcard_0')).includes('&lt;b&gt;3&lt;/b&gt;'), '객관식 보기의 HTML 글자는 글자 그대로 표시');
+ok(progStart1.enterCount === 1, '입장 횟수 1 기록');
+
+// ── 부정행위 방지 ──
+// 이탈: blur와 visibilitychange가 같은 이탈에 같이 오므로 한 번만 센다. 돌아온(focus) 뒤 다시 나가면 또 센다.
+await page.evaluate(() => { window.dispatchEvent(new Event('blur')); window.dispatchEvent(new Event('blur')); });
+await page.evaluate(() => { window.dispatchEvent(new Event('focus')); window.dispatchEvent(new Event('blur')); window.dispatchEvent(new Event('focus')); });
+await page.waitForTimeout(800);
+ok((await page.textContent('#alertCount')) === '2' && (await readProg('AS1_StuA'))?.alertCount === 2, '화면 이탈 감지: 두 번 나감 → 2회, 진행 기록에도 저장');
+// 붙여넣기: 100자 이상은 막고 횟수 기록, 짧은 건 허용
+const pasteInto = (sel, n) => page.evaluate(([sel, n]) => {
+  const dt = new DataTransfer(); dt.setData('text/plain', 'x'.repeat(n));
+  const ev = new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true });
+  document.querySelector(sel).dispatchEvent(ev); return ev.defaultPrevented;
+}, [sel, n]);
+ok(await pasteInto('#essay_1', 150) === true && await pasteInto('#essay_1', 50) === false, '서술형: 150자 붙여넣기 차단, 50자는 허용');
+await page.waitForSelector('#qcard_2 .CodeMirror', { timeout: 15000 });
+const cmBefore = await page.evaluate(() => document.querySelector('#qcard_2 .CodeMirror').CodeMirror.getValue());
+await page.evaluate(() => { const cm = document.querySelector('#qcard_2 .CodeMirror').CodeMirror; cm.replaceRange('y'.repeat(150), { line: 0, ch: 0 }, null, 'paste'); });
+ok(await page.evaluate(b => document.querySelector('#qcard_2 .CodeMirror').CodeMirror.getValue() === b, cmBefore), '코딩 에디터: 150자 붙여넣기 차단');
+await page.waitForTimeout(800);
+ok((await page.textContent('#pasteBlockCountEl')) === '2' && (await readProg('AS1_StuA'))?.pasteBlockCount === 2, '붙여넣기 차단 2회 → 화면 표시 + 진행 기록 저장');
 // 답 입력
 await page.evaluate(() => selectMC(0, 0));
 await page.fill('#essay_1', '자동저장 확인용 서술 답안');
@@ -180,6 +215,8 @@ const progStart2 = await readProg('AS1_StuA');
 ok(progStart2.startTime.toMillis() === progStart1.startTime.toMillis(), '재입장해도 시작 시각 그대로');
 ok((await page.inputValue('#essay_1')) === '자동저장 확인용 서술 답안', '새로고침 후 서술형 답안 복원');
 ok(await page.evaluate(() => document.querySelector('.mc-opt.selected') !== null), '새로고침 후 객관식 선택 복원');
+ok((await page.textContent('#alertCount')) === '2' && (await page.textContent('#pasteBlockCountEl')) === '2', '새로고침해도 이탈·붙여넣기 횟수 유지(0으로 안 돌아감)');
+ok(progStart2.enterCount === 2, '재입장 → 입장 횟수 2');
 
 // 7) 제출 — 실제 서버 채점
 await page.evaluate(() => submitExam());
@@ -187,10 +224,13 @@ await page.waitForSelector('#step3:not(.hidden)', { timeout: 20000 });
 const sub = lastCall('submit');
 ok(sub?.req?.answers?.[0]?.value === 0 && sub.req.answers[0].qId === 'Q1' && /자동저장/.test(sub.req.answers[1]?.value), '답안을 문항 ID와 함께 전송');
 ok(sub?.req?.answers?.[2]?.value === "print('hi')\nx = 1\ny = 2", `언어 전환 전후로 친 코드가 합쳐져 제출 (${JSON.stringify(sub?.req?.answers?.[2]?.value)})`);
-ok(sub?.res?.ok && sub.res.totalScore === 20 && sub.res.needsManual === true, `서버 채점: 객관식 10 + 코딩 10 = ${sub?.res?.totalScore}, 서술형은 수동`);
+ok(sub?.res?.ok && sub.res.totalScore === 10 && sub.res.needsManual === true, `자동 채점은 코딩만(10점) — 객관식·서술형은 선생님 채점 대기 (${sub?.res?.totalScore}점)`);
 ok(/선생님/.test(await page.textContent('#resultDetails')), '서술형 포함 → "채점 대기" 화면');
 let results; await env.withSecurityRulesDisabled(async c => { results = (await getDocs(query(collection(c.firestore(), 'exam_results'), where('asId', '==', 'AS1')))).docs.map(d => d.data()); });
 ok(results.length === 3 && results.every(r => r.questionId), '채점 결과 3건 기록 + 문항 ID 포함');
+const q1r = results.find(r => r.questionId === 'Q1');
+ok(q1r?.score === 0 && q1r.feedback === 'manual' && q1r.check === 'correct', '객관식: 점수는 0(선생님 확정 전), 맞았는지(check)만 기록');
+ok(!JSON.stringify(sub.res).includes('check'), '학생에게 가는 응답엔 맞았는지(check) 없음');
 
 // 8) 시간 초과된 시험에 재입장 → 즉시 자동 제출
 await env.withSecurityRulesDisabled(async c => { await setDoc(doc(c.firestore(), 'exam_progress/AS1_StuA'), { status: 'started', startTime: minsAgo(13) }, { merge: true }); });
@@ -202,25 +242,46 @@ await page.waitForSelector('#step3:not(.hidden)', { timeout: 20000 });
 ok(apiCalls.slice(before).some(c => c.req.action === 'submit'), '제한시간 지난 뒤 재입장 → 저장된 답으로 즉시 자동 제출');
 ok((await readProg('AS1_StuA'))?.late === true, '제한시간 초과 표시(late) 기록');
 
-// 9) 문항 순서가 바뀌어도 답은 문항 ID로 채점 + 시험이 열려 있는 동안 정답 가림
+// 9) 입장 중 일시 오류 — 한 번은 조용히 다시 시도, 그래도 안 되면 안내 + 선생님이 볼 수 있게 기록
 await page.goto('http://localhost:8099/exam.html');
 await page.waitForSelector('#examListArea button', { timeout: 15000 });
+failExamApi = 2;
+await page.evaluate(() => enterExamWithCode('AS4', ''));
+await page.waitForFunction(() => /인터넷|HTTP/.test(document.getElementById('err_AS4').innerText), null, { timeout: 15000 });
+let errProg; for (let i = 0; i < 20 && !errProg?.enterError; i++) { await page.waitForTimeout(250); errProg = await readProg('AS4_StuA'); }
+ok(errProg?.enterError && !errProg.startTime, `입장 일시 오류 → 진행 기록에 "입장 오류" 남김 (${errProg?.enterError?.slice(0, 40)})`);
+failExamApi = 1;
 await page.evaluate(() => enterExamWithCode('AS4', ''));
 await page.waitForSelector('#step2:not(.hidden)', { timeout: 15000 });
+ok(failExamApi === 0, '일시 오류 한 번은 자동으로 다시 시도해서 입장 성공');
+
+// 10) 문항 순서가 바뀌어도 답은 문항 ID로 기록 + 정답은 선생님이 공개할 때만
 await page.evaluate(() => { selectMC(0, 0); selectMC(1, 1); }); // Q4(10점) 정답, Q5(20점) 오답
 await env.withSecurityRulesDisabled(async c => { const db = c.firestore(); await updateDoc(doc(db, 'exam_questions/Q4'), { order: 2 }); await updateDoc(doc(db, 'exam_questions/Q5'), { order: 1 }); });
 await page.evaluate(() => submitExam());
 await page.waitForSelector('#step3:not(.hidden)', { timeout: 20000 });
-ok(lastCall('submit')?.res?.totalScore === 10, `푸는 사이 선생님이 순서를 바꿔도 답이 맞는 문항에 채점 (${lastCall('submit')?.res?.totalScore}점, 10점이어야 함)`);
-const hidden = await page.textContent('#resultDetails');
-ok(/오답/.test(hidden) && !/정답:/.test(hidden) && /공개/.test(hidden), '시험이 열려 있는 동안 결과에 정답 안 보임');
-await env.withSecurityRulesDisabled(async c => { await updateDoc(doc(c.firestore(), 'exam_assignments/AS4'), { status: 'OFF' }); });
+let r4; await env.withSecurityRulesDisabled(async c => { r4 = (await getDocs(query(collection(c.firestore(), 'exam_results'), where('asId', '==', 'AS4')))).docs.map(d => ({ id: d.id, ...d.data() })); });
+const chk = id => r4.find(r => r.questionId === id)?.check;
+ok(chk('Q4') === 'correct' && chk('Q5') === 'wrong', `푸는 사이 선생님이 순서를 바꿔도 답이 맞는 문항에 기록 (Q4 ${chk('Q4')}, Q5 ${chk('Q5')})`);
+ok(/선생님/.test(await page.textContent('#resultDetails')), '객관식만 있는 시험도 선생님 채점 전엔 점수 비공개');
+// 선생님이 채점 저장(admin saveGrades와 같은 쓰기)
+await env.withSecurityRulesDisabled(async c => {
+  const db = c.firestore();
+  for (const r of r4) await updateDoc(doc(db, 'exam_results/' + r.id), { score: r.check === 'correct' ? r.maxScore : 0, feedback: '' });
+  await updateDoc(doc(db, 'exam_progress/AS4_StuA'), { totalScore: 10, totalPoints: 30, needsManual: false });
+  await updateDoc(doc(db, 'exam_assignments/AS4'), { status: 'OFF' });
+});
 await page.goto('http://localhost:8099/exam.html');
 await page.waitForSelector('#examListArea button', { timeout: 15000 });
 ok((lastCall('list')?.res?.exams || []).some(e => e.asId === 'AS4'), 'OFF가 돼도 이미 낸 시험은 목록에 남음(결과 보기)');
 await page.evaluate(() => showMyResult('AS4'));
 await page.waitForSelector('#step3:not(.hidden)', { timeout: 15000 });
-ok(/정답:/.test(await page.textContent('#resultDetails')), '선생님이 OFF로 닫은 뒤에는 결과에 정답 표시');
+const hidden = await page.textContent('#resultDetails');
+ok(/10/.test(await page.textContent('#resultScore')) && !/정답:/.test(hidden) && /공개/.test(hidden) && lastCall('result')?.res?.items?.every(i => i.correct === undefined), '채점 후 점수는 보이지만, 정답 공개 전엔 OFF여도 정답 안 보임');
+await env.withSecurityRulesDisabled(async c => { await updateDoc(doc(c.firestore(), 'exam_assignments/AS4'), { revealAnswers: true }); });
+await page.evaluate(() => showMyResult('AS4'));
+await page.waitForFunction(() => /정답:/.test(document.getElementById('resultDetails').innerText), null, { timeout: 15000 });
+ok(/내 답: ② · 정답: ①/.test(await page.textContent('#resultDetails')), '선생님이 "정답 공개"를 켜면 내 답과 정답 표시');
 
 // 6) 로그인 화면 통합: 로그아웃 상태로 설문 링크 → 로그인 화면(index) → 로그인 → 다시 그 설문
 {
@@ -253,7 +314,7 @@ ok(/정답:/.test(await page.textContent('#resultDetails')), '선생님이 OFF�
   await ctx2.close();
 }
 
-const realErr = errors.filter(e => !/net::ERR_FAILED|Failed to load resource|ERR_BLOCKED|CodeMirror script not ready|Could not reach Cloud Firestore backend|exam api:/.test(e));
+const realErr = errors.filter(e => !/net::ERR_FAILED|Failed to load resource|ERR_BLOCKED|CodeMirror script not ready|Could not reach Cloud Firestore backend|exam api|login:/.test(e));
 ok(realErr.length === 0, '페이지 스크립트 오류 없음' + (realErr.length ? ' — ' + realErr.slice(0, 5).join(' | ') : ''));
 console.log(fails ? `실패 ${fails}건` : '전부 통과');
 await browser.close(); server.close(); await env.cleanup(); process.exit(fails ? 1 : 0);

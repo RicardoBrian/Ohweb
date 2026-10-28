@@ -88,6 +88,13 @@ function padPassword(pw) {
   return pw.length >= MIN_LEN ? pw : pw.padEnd(MIN_LEN, PAD_CHAR);
 }
 
+// 이메일 열거 보호가 켜진 프로젝트는 틀린 비밀번호·없는 계정을 구분하지 않고
+// invalid-credential(예전 버전은 invalid-login-credentials)로 돌려준다.
+const CREDENTIAL_ERRORS = new Set([
+  'auth/invalid-credential', 'auth/invalid-login-credentials',
+  'auth/wrong-password', 'auth/user-not-found',
+]);
+
 export class AuthError extends Error {
   constructor(code) { super(code); this.code = code; }
 }
@@ -99,7 +106,17 @@ export async function loginStudent(studentDocId, data, pw) {
   try {
     await signInWithEmailAndPassword(auth, emailFor(studentDocId), padPassword(pw));
   } catch (e) {
-    // 계정이 아직 없거나(미전환) 비밀번호가 틀렸을 수 있음 — 아래에서 판별
+    // "비밀번호가 틀렸거나 계정이 없음"일 때만 아래(옛 계정 전환·실패 횟수)로 간다.
+    // 예전엔 어떤 오류든 이 경로로 보냈는데, 한 교실이 같은 학교 IP로 동시에
+    // 로그인하면 Firebase가 auth/too-many-requests로 잠시 막고, 와이파이가
+    // 끊기면 auth/network-request-failed가 난다 — 그게 전부 "비밀번호 틀림"으로
+    // 표시되고 실패 횟수까지 올라가서, 비밀번호를 맞게 넣은 학생이 몇 번 재시도
+    // 하다 계정이 잠겼다.
+    if (!CREDENTIAL_ERRORS.has(e?.code)) {
+      console.error('login:', e?.code, e);
+      if (e?.code === 'auth/too-many-requests') throw new AuthError('busy');
+      throw new AuthError('network');
+    }
     return await loginFallback(studentDocId, data, pw);
   }
 

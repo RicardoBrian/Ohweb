@@ -7,7 +7,7 @@
  *   start  — 입장. 열림(ON)·응시 대상·입장 코드·입장 마감을 여기서 확인하고,
  *            통과하면 시작 시각을 기록한 뒤 문항(정답 제외)을 내려준다.
  *   submit — 채점하고 결과를 기록한다.
- *   result — 내 결과. 시험이 열려(ON) 있는 동안은 오답의 정답을 가린다.
+ *   result — 내 결과. 정답은 선생님이 배정의 "정답 공개"를 켰을 때만 보여준다.
  *
  * 예전엔 exam_assignments·exam_questions·exam_results를 학생이 직접 읽었다.
  * 그래서 입장 코드는 목록을 받을 때 같이 내려와 콘솔에서 보였고, 문항은
@@ -15,9 +15,12 @@
  * "오답 (정답: ②)"로 아직 시험 중인 친구에게 정답을 넘길 수 있었다. 이제 그
  * 컬렉션들은 관리자만 읽고, 학생에게 무엇을 언제 보여줄지는 여기서 정한다.
  * 선생님이 할 일은 admin에서 배정을 ON/OFF하는 것뿐이다 — 입장 코드는
- * 넣으면 확인하고, 비워두면 코드 없이 들어온다.
+ * 넣으면 확인하고, 비워두면 코드 없이 들어온다. 정답 공개는 배정마다 따로
+ * 켜는 스위치(revealAnswers)이고 기본은 꺼져 있다.
  *
- * 채점 규칙은 예전 /api/grade-exam 그대로다. 결과도 여기서 기록한다
+ * 자동 채점은 코딩 문항만 한다. 객관식·단답형·서술형은 선생님이 admin 채점
+ * 화면에서 점수를 확정한다(객관식은 맞았는지만 check로 남겨 채점 화면이 점수를
+ * 미리 채워 준다). 결과도 여기서 기록한다
  * (exam_results / exam_progress) — 서비스 계정은 보안 규칙을 우회하므로
  * 규칙 쪽에서는 학생의 점수 쓰기를 막아둘 수 있다.
  *
@@ -378,9 +381,10 @@ async function gradeCode(cfg, code, testCases) {
   return results.filter(Boolean).length;
 }
 
-// 시험이 열려 있는 동안은 오답의 정답을 감춘다 — "wrong:2" → "wrong".
-// 선생님이 배정을 OFF로 내리면 그때부터 결과 화면에 정답이 보인다.
+// 정답 공개 전에는 예전 방식으로 저장된 오답 피드백의 정답을 감춘다 —
+// "wrong:2" → "wrong". (지금은 객관식을 자동 채점하지 않아 새로 생기진 않는다.)
 const redactFeedback = (fb, reveal) => (!reveal && typeof fb === 'string' && fb.startsWith('wrong:')) ? 'wrong' : fb;
+const revealOf = a => a?.revealAnswers === true;
 
 // ── action: list ──
 async function actionList(db, studentDocId, student) {
@@ -448,6 +452,9 @@ async function actionStart(db, studentDocId, student, asId, code) {
       examId: assignment.examId || '', asId, studentId: studentDocId,
       name: student.name || '', grade: normGC(student.grade), class: normGC(student.class), num: String(student.number ?? ''),
       status: 'started', lastEnterAt: now,
+      // 입장 횟수 — 새로고침·다른 기기에서 다시 들어온 것도 센다. 선생님이 결과
+      // 화면에서 "다른 기기로 들어와 풀었는지" 가늠하는 데 쓴다.
+      enterCount: (Number(progress?.enterCount) || 0) + 1,
       ...(firstEntry ? { startTime: now } : {}),
     },
     merge: true,
@@ -472,9 +479,25 @@ async function actionResult(db, studentDocId, asId) {
   if (progress?.status !== 'submitted') return json({ error: '결과를 찾을 수 없습니다.' }, 404);
   // 선생님이 직접 채점할 문항이 남아 있으면 점수를 아직 보여주지 않는다.
   if (progress.needsManual === true) return json({ ok: true, pending: true });
-  const reveal = !assignment || !isOpen(assignment);
+  const reveal = revealOf(assignment);
   const rows = (await db.queryEq('exam_results', { asId, studentId: studentDocId }))
     .sort((a, b) => (a.qIdx || 0) - (b.qIdx || 0));
+  // 정답 공개가 켜져 있으면 객관식 정답을 같이 보낸다. 정답 문서가 없는 예전
+  // 시험은 문항 문서에, 그것도 없으면 예전 피드백("wrong:2")에 남은 값을 쓴다.
+  const correctOf = new Map();
+  if (reveal) {
+    const ids = [...new Set(rows.filter(r => r.type === 'mc' && isSafeId(r.questionId)).map(r => r.questionId))];
+    const keys = await db.getMany(ids.map(id => `exam_answers/${id}`));
+    const missing = ids.filter((id, i) => keys[i]?.answer == null);
+    const legacy = await db.getMany(missing.map(id => `exam_questions/${id}`));
+    ids.forEach((id, i) => { if (keys[i]?.answer != null) correctOf.set(id, String(keys[i].answer)); });
+    missing.forEach((id, i) => { if (legacy[i]?.answer != null) correctOf.set(id, String(legacy[i].answer)); });
+  }
+  const correctFor = r => {
+    if (!reveal || r.type !== 'mc') return undefined;
+    if (correctOf.has(r.questionId)) return correctOf.get(r.questionId);
+    return typeof r.feedback === 'string' && r.feedback.startsWith('wrong:') ? r.feedback.slice(6) : undefined;
+  };
   return json({
     ok: true,
     totalScore: progress.totalScore || 0,
@@ -484,6 +507,7 @@ async function actionResult(db, studentDocId, asId) {
       qIdx: r.qIdx || 0, type: r.type || '', title: r.title || '',
       value: r.value || '', score: r.score || 0, maxScore: r.maxScore || 0,
       feedback: redactFeedback(r.feedback, reveal),
+      correct: correctFor(r),
     })),
   });
 }
@@ -515,12 +539,6 @@ async function actionSubmit(db, env, studentDocId, student, asId, answers, lang)
   const answerDocs = (await db.getMany(questions.map(q => `exam_answers/${q.id}`)))
     .map((key, i) => key || { answer: questions[i].answer, testCases: questions[i].testCases });
 
-  // 그래도 객관식 정답이 어디에도 없으면 그 문항만 수동 채점으로 넘긴다
-  // (아래 채점 루프에서 처리) — 제출 자체는 막지 않는다.
-  const noKey = questions
-    .filter((q, i) => q.type === 'mc' && (answerDocs[i].answer === undefined || answerDocs[i].answer === null));
-  if (noKey.length) console.error(`exam: 정답 없는 객관식 ${noKey.length}건 (examId=${assignment.examId}) — 수동 채점 필요`);
-
   // 답안은 문항 ID로 맞춘다. 번호(qIdx)로만 맞추면 학생이 푸는 사이 선생님이
   // 문항 순서를 바꾸거나 문항을 추가했을 때 답이 엉뚱한 문항에 채점된다.
   // qId가 없는 답안(예전 화면에서 낸 것)만 번호로 맞춘다.
@@ -544,14 +562,15 @@ async function actionSubmit(db, env, studentDocId, student, asId, answers, lang)
     let value = raw == null ? '' : String(raw);
     let score = 0;
     let feedback = '';
+    let check = null;
 
     if (q.type === 'mc') {
-      if (key.answer === undefined || key.answer === null) {
-        feedback = 'manual'; // 정답이 등록 안 된 문항 — 선생님이 직접 채점
-      } else {
-        const correct = String(key.answer);
-        if (value !== '' && value === correct) { score = points; feedback = 'correct'; }
-        else { feedback = `wrong:${correct}`; }
+      // 객관식도 자동 채점하지 않는다 — 점수는 선생님이 admin 채점 화면에서
+      // 확정한다. 맞았는지는 check로만 남겨, 채점 화면이 점수를 미리 채워 주고
+      // 선생님은 확인 후 저장만 하면 되게 한다. check는 학생에게 보내지 않는다.
+      feedback = 'manual';
+      if (key.answer !== undefined && key.answer !== null) {
+        check = value !== '' && value === String(key.answer) ? 'correct' : 'wrong';
       }
 
     } else if (q.type === 'sa' || q.type === 'essay') {
@@ -585,7 +604,7 @@ async function actionSubmit(db, env, studentDocId, student, asId, answers, lang)
         studentId: studentDocId,
         name: student.name || '', grade: student.grade || '', class: student.class || '', num: student.number ?? '',
         lang: lang || 'ko', qIdx: i, type: q.type || '', title,
-        value, score, maxScore: points, feedback,
+        value, score, maxScore: points, feedback, check,
         gradedAt: new Date().toISOString(),
       },
     });
@@ -614,11 +633,7 @@ async function actionSubmit(db, env, studentDocId, student, asId, answers, lang)
 
   await db.commit(writes);
 
-  const reveal = !isOpen(assignment);
-  return json({
-    ok: true, totalScore, totalPoints, needsManual, answersHidden: !reveal,
-    items: resultItems.map(r => ({ ...r, feedback: redactFeedback(r.feedback, reveal) })),
-  });
+  return json({ ok: true, totalScore, totalPoints, needsManual, answersHidden: !revealOf(assignment), items: resultItems });
 }
 
 async function handle(request, env) {

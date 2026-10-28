@@ -257,7 +257,7 @@ service cloud.firestore {
       allow create: if isAdmin()
           || (isOwnStudentAuth(progOwner(id))
               && request.resource.data.get('studentId', progOwner(id)) == progOwner(id)
-              && !request.resource.data.keys().hasAny(['totalScore', 'totalPoints', 'submitTime', 'elapsedSec', 'late', 'needsManual', 'gradedAt', 'startTime', 'lastEnterAt'])
+              && !request.resource.data.keys().hasAny(['totalScore', 'totalPoints', 'submitTime', 'elapsedSec', 'late', 'needsManual', 'gradedAt', 'startTime', 'lastEnterAt', 'enterCount'])
               && request.resource.data.get('status', '') != 'submitted');
       allow update: if isAdmin()
           || (isOwnStudentAuth(progOwner(id))
@@ -266,9 +266,13 @@ service cloud.firestore {
               && request.resource.data.get('studentId', '') == resource.data.get('studentId', '')
               && request.resource.data.get('totalScore', -1) == resource.data.get('totalScore', -1)
               && request.resource.data.get('totalPoints', -1) == resource.data.get('totalPoints', -1)
-              // 시작·재입장 시각, 제출 시각·소요 시간·시간 초과 표시는 서버만 쓴다
-              // (시작 시각을 지우거나 바꾸면 제한시간이 리셋된다).
-              && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['submitTime', 'elapsedSec', 'late', 'needsManual', 'gradedAt', 'startTime', 'lastEnterAt']));
+              // 시작·재입장 시각·입장 횟수, 제출 시각·소요 시간·시간 초과 표시는
+              // 서버만 쓴다(시작 시각을 지우거나 바꾸면 제한시간이 리셋된다).
+              && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['submitTime', 'elapsedSec', 'late', 'needsManual', 'gradedAt', 'startTime', 'lastEnterAt', 'enterCount'])
+              // 이탈·붙여넣기 차단 횟수는 늘어나기만 한다 — 예전엔 학생이 콘솔에서
+              // 0으로 되돌려 부정행위 기록을 지울 수 있었다.
+              && request.resource.data.get('alertCount', 0) >= resource.data.get('alertCount', 0)
+              && request.resource.data.get('pasteBlockCount', 0) >= resource.data.get('pasteBlockCount', 0));
     }
 
     // 채점 결과: 관리자만. 학생은 /api/exam의 결과 조회로 본다 — 서버가 시험이
