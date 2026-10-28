@@ -1,0 +1,10 @@
+# CSS/JS/HTML은 매번 바뀌었는지 확인하게 한다(안 바뀌었으면 304라 빠르다).
+# 디자인을 바꿔 배포해도 예전 theme.css·admin-sky.css가 브라우저에 남아 "그대로"로 보이는 걸 막는다.
+/*.css
+  Cache-Control: no-cache
+/*.js
+  Cache-Control: no-cache
+/*.html
+  Cache-Control: no-cache
+/
+  Cache-Control: no-cache
