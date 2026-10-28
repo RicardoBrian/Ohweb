@@ -32,7 +32,8 @@
  *   환경변수 "이름" 목록을 돌려준다(값은 안 준다) — 위 셋 중 뭐가
  *   틀렸는지 바로 보라고 넣어둔 진단이다.
  *
- * 호출부는 admin.html의 saveStudentEdit()에서 붙인다.
+ * 호출부는 admin.html의 setStudentPasswords() — 학생 추가(개별·CSV)·
+ * 편집의 "1234로 초기화"·미등록 일괄 등록이 모두 이걸 거친다.
  */
 
 // 이 API들은 전부 같은 도메인의 페이지에서만 부른다. '*'로 열어두면
@@ -77,6 +78,8 @@ const json = (body, status = 200) =>
 const WEB_API_KEY = 'AIzaSyB1SuaWwJgUY6SrCnmN8dmhG2cnVnGcl2s';
 const ADMIN_EMAIL = 'qjatjr7575@gmail.com'; // ohweb-firestore.rules의 isAdmin()과 동일
 const EMAIL_SUFFIX = '@ohinfo.local';
+const MAX_BATCH = 300;   // 호출 하나에 처리할 최대 학생 수
+const CONCURRENCY = 6;   // Identity Toolkit 동시 호출 수
 
 // student-auth.js의 padPassword와 반드시 동일해야 한다 — 다르면 그
 // 학생만 로그인이 안 됨.
@@ -162,8 +165,11 @@ async function handle(request, env) {
     return json({ error: 'invalid JSON body' }, 400);
   }
 
-  const { studentDocId, newPassword, idToken } = body || {};
-  if (!studentDocId || typeof studentDocId !== 'string') return json({ error: 'studentDocId가 필요합니다.' }, 400);
+  // 한 명(studentDocId) 또는 여러 명(studentDocIds — CSV 업로드·미등록 일괄 등록)을 받는다.
+  const { studentDocId, studentDocIds, newPassword, idToken } = body || {};
+  const ids = Array.isArray(studentDocIds) ? studentDocIds : [studentDocId];
+  if (!ids.length || ids.some(x => !x || typeof x !== 'string' || x.includes('/'))) return json({ error: 'studentDocId가 필요합니다.' }, 400);
+  if (ids.length > MAX_BATCH) return json({ error: `한 번에 ${MAX_BATCH}명까지 처리할 수 있습니다.` }, 400);
   if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 4) {
     return json({ error: '비밀번호는 4자리 이상이어야 합니다.' }, 400);
   }
@@ -215,14 +221,11 @@ async function handle(request, env) {
     }, 200);
   }
 
-  const email = `${studentDocId}${EMAIL_SUFFIX}`;
   const password = padPassword(newPassword);
 
-  try {
-    const accessToken = await getAccessToken(serviceAccount);
-    const base = `https://identitytoolkit.googleapis.com/v1/projects/${serviceAccount.project_id}`;
-    const authHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` };
-
+  // 학생 한 명의 Auth 계정 비밀번호를 정한다 — 계정이 있으면 바꾸고, 없으면 만든다.
+  async function setOne(base, authHeaders, id) {
+    const email = `${id}${EMAIL_SUFFIX}`;
     const lookupRes = await fetch(`${base}/accounts:lookup`, {
       method: 'POST', headers: authHeaders, body: JSON.stringify({ email: [email] }),
     });
@@ -241,8 +244,30 @@ async function handle(request, env) {
       });
       if (!createRes.ok) throw new Error(`계정 생성 실패: ${JSON.stringify(await createRes.json())}`);
     }
+    return !existing;
+  }
 
-    return json({ ok: true, created: !existing });
+  try {
+    const accessToken = await getAccessToken(serviceAccount);
+    const base = `https://identitytoolkit.googleapis.com/v1/projects/${serviceAccount.project_id}`;
+    const authHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` };
+
+    if (!Array.isArray(studentDocIds)) {
+      const created = await setOne(base, authHeaders, ids[0]);
+      return json({ ok: true, created });
+    }
+    // 여러 명: 한 명이 실패해도 나머지는 진행하고, 학생별 결과를 돌려준다.
+    const results = new Array(ids.length);
+    let next = 0;
+    async function worker() {
+      while (next < ids.length) {
+        const i = next++;
+        try { results[i] = { id: ids[i], ok: true, created: await setOne(base, authHeaders, ids[i]) }; }
+        catch (e) { results[i] = { id: ids[i], ok: false, error: e.message }; }
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, ids.length) }, worker));
+    return json({ ok: results.every(r => r.ok), results });
   } catch (e) {
     return json({ error: e.message }, 200);
   }

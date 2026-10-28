@@ -1,0 +1,165 @@
+/* 관리 페이지 공통 하늘(ui-sky) 모양 — admin.html·forms.html·messages.html·settle.html 이 같이 쓴다.
+   색·판 재료 토큰은 theme.css 의 body.ui-sky, 메뉴 마크업은 admin-nav.js. */
+/* ============================================================
+   하늘(ui-sky) 디자인 — PC: 왼쪽 사이드바, 태블릿: 상단 바, 모바일: 상단 바 + 하단 탭바
+   색·판 재료는 theme.css 의 body.ui-sky 토큰을 쓴다.
+   ============================================================ */
+body.ui-sky { line-height: 1.55; }
+body.ui-sky .nav { background: var(--glass-nav); border-bottom: 1px solid var(--border); box-shadow: none; }
+body.ui-sky .nav-brand img { height: 28px; }
+.nav-brand-sub { font-size: 0.82rem; font-weight: 600; color: var(--sub); }
+.side-menu, .nav-dark-label, .tabbar { display: none; }
+body.ui-sky .nav-right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+/* 상단 바(태블릿·모바일): 페이지 제목이 있으면 "관리자"는 숨김 */
+body.ui-sky .nav-brand-title { font-weight: 700; }
+body.ui-sky .nav-brand-title + .nav-brand-sub { display: none; }
+body.ui-sky .waffle-btn { background: var(--sky-chip); border-color: var(--sky-chip-line); box-shadow: none; }
+
+.side-head { font-size: 0.72rem; font-weight: 600; color: var(--text-3); padding: 14px 10px 6px; letter-spacing: 0.02em; }
+.side-item {
+  display: flex; align-items: center; gap: 10px; width: 100%; height: 36px; padding: 0 10px;
+  border: 1px solid transparent; background: none; border-radius: 10px; cursor: pointer;
+  font-family: inherit; font-size: 0.88rem; font-weight: 500; color: var(--sub); text-align: left; position: relative;
+}
+.side-item svg { flex-shrink: 0; }
+.side-item:hover { background: var(--sky-chip); color: var(--text); }
+.side-item.on { background: var(--sky-chip); border-color: var(--sky-chip-line); color: var(--text); font-weight: 700; }
+.side-item.on::before { content: ''; position: absolute; left: -11px; top: 9px; bottom: 9px; width: 3px; border-radius: 3px; background: var(--accent); }
+.side-item.on svg { color: var(--accent); }
+
+/* PC — 사이드바 */
+@media (min-width: 900px) {
+  body.ui-sky .nav {
+    position: fixed; top: 14px; left: 14px; bottom: 14px; width: 236px; height: auto;
+    flex-direction: column; align-items: stretch; gap: 0; padding: 16px 10px 12px;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow);
+  }
+  body.ui-sky .nav-brand { padding: 0 8px 6px; }
+  body.ui-sky .side-menu { display: flex; flex-direction: column; flex: 1; overflow-y: auto; min-height: 0; }
+  body.ui-sky .nav-right { margin: 8px 0 0; padding: 12px 8px 2px; border-top: 1px solid var(--hairline); justify-content: space-between; overflow: visible; }
+  body.ui-sky .nav-dark-label { display: block; font-size: 0.85rem; font-weight: 500; color: var(--sub); }
+  body.ui-sky .waffle-btn { display: none; }
+  body.ui-sky .nav > div[style*="flex:1"], body.ui-sky .nav-brand-title { display: none; }
+  body.ui-sky .nav-brand-title + .nav-brand-sub { display: inline; }
+  body.ui-sky .wrap { max-width: none; margin: 0 0 0 264px; padding: 26px 28px 60px 0; }
+}
+
+/* 제목 — 가늘고 크게 */
+body.ui-sky .section-header { margin: 6px 4px 22px; }
+body.ui-sky .section-header h1 { font-size: 2.1rem; font-weight: 300; letter-spacing: -0.03em; line-height: 1.15; }
+body.ui-sky .section-header p { font-size: 0.9rem; }
+
+/* 카드 — 둥글기 16, 제목 작고 단정하게 */
+body.ui-sky .card { border-radius: 16px; padding: 22px 24px; margin-bottom: 18px; }
+body.ui-sky .card h2 { font-size: 0.98rem; font-weight: 700; margin-bottom: 16px; }
+body.ui-sky .card h2 .icon { color: var(--accent); display: inline-flex; }
+body.ui-sky .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); }
+body.ui-sky .stat-card .stat-num { font-weight: 300; font-size: 2rem; color: var(--text); letter-spacing: -0.02em; }
+body.ui-sky .stat-card .stat-label { text-transform: none; letter-spacing: 0; font-weight: 600; }
+body.ui-sky .list-item { background: var(--sky-chip); border-color: var(--sky-chip-line); backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 12px; }
+body.ui-sky .list-item:hover { box-shadow: none; background: var(--accent-light); }
+body.ui-sky .app-card, body.ui-sky .checkbox-grid, body.ui-sky .upload-zone { background: var(--sky-chip); border-color: var(--sky-chip-line); backdrop-filter: none; -webkit-backdrop-filter: none; }
+body.ui-sky .upload-zone { border-style: dashed; border-radius: 12px; }
+body.ui-sky .upload-zone:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+body.ui-sky .upload-zone .upload-icon { color: var(--accent); }
+body.ui-sky.dark .btn.accent { background: var(--sky-cta); color: var(--sky-cta-text); }
+body.ui-sky .btn.ghost { color: var(--accent); }
+body.ui-sky .btn.ghost.sm { background: var(--sky-chip); border-color: var(--sky-chip-line); }
+body.ui-sky .stu-side .inp { font-size: 0.9rem; }
+body.ui-sky .icon-action:hover { background: var(--sky-chip); }
+body.ui-sky .icon-action.danger { color: var(--danger); }
+body.ui-sky .badge.on { color: var(--accent); background: var(--accent-light); border-color: transparent; }
+body.ui-sky .badge.off { color: var(--danger); background: var(--danger-light); border-color: transparent; }
+body.ui-sky .toggle input:checked + .toggle-track { background: var(--accent); border-color: transparent; }
+
+/* 표 — 줄무늬·머리 배경 없이 얇은 구분선 */
+body.ui-sky .table-wrap { border: none; border-radius: 0; }
+body.ui-sky th { background: none; text-transform: none; letter-spacing: 0; font-weight: 500; font-size: 0.8rem; color: var(--text-3); border-bottom: 1px solid var(--border-card); padding: 8px 12px; }
+body.ui-sky td { border-bottom: 1px solid var(--hairline); padding: 11px 12px; }
+body.ui-sky tr:hover td { background: var(--sky-chip); }
+body.ui-sky .select-controls { gap: 6px 8px; }
+body.ui-sky .select-controls select.inp { padding-top: 7px; padding-bottom: 7px; font-size: 0.88rem; }
+
+/* 학생 명단 — 가운데 목록 + 오른쪽 작업 패널 */
+.stu-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; align-items: start; }
+.stu-side { position: sticky; top: 26px; }
+@media (max-width: 1199px) {
+  .stu-layout { grid-template-columns: minmax(0, 1fr); }
+  .stu-side { position: static; display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .stu-side .card { margin-bottom: 0; }
+}
+@media (max-width: 759px) { .stu-side { grid-template-columns: 1fr; gap: 0; } .stu-side .card { margin-bottom: 18px; } }
+
+/* ── 해상도별 배치 ──
+   ≥1200: "목록(가운데) | 추가·수정 폼(오른쪽 고정)" 2단 — 입력칸 하나가 화면 끝까지 늘어나지 않게
+   900–1199: 사이드바 + 한 단(폼 위, 목록 아래)   <900: 상단 바 + 한 단   <760: 하단 탭바
+   아주 넓은 화면에서는 내용 폭을 1560px로 제한 */
+body.ui-sky .wrap > .section { max-width: 1560px; }
+@media (min-width: 1200px) {
+  body.ui-sky .split:not(.hidden) { display: grid; grid-template-columns: minmax(0, 1fr) 380px; column-gap: 18px; align-items: start; grid-auto-flow: row dense; }
+  body.ui-sky .section.split:not(.active) { display: none; }
+  body.ui-sky .split > * { grid-column: 1 / -1; }
+  body.ui-sky .split > .pane-list { grid-column: 1; }
+  body.ui-sky .split > .pane-form { grid-column: 2; position: sticky; top: 26px; max-height: calc(100vh - 52px); overflow-y: auto; }
+  body.ui-sky .split.wide-form { grid-template-columns: minmax(0, 1fr) minmax(440px, 44%); }
+  body.ui-sky .stu-side { max-height: calc(100vh - 52px); overflow-y: auto; }
+  /* 좁은 오른쪽 패널 안의 가로 묶음(학교·학년·반 + 담기 등)은 칸이 모자라면 접는다 */
+  body.ui-sky .split:not(.wide-form) > .pane-form [style*="display:grid"] { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)) !important; }
+  body.ui-sky .split:not(.wide-form) > .pane-form [style*="display:grid"] > .btn { grid-column: 1 / -1; justify-self: start; }
+  body.ui-sky .split:not(.wide-form) > .pane-form [style*="display:grid"]:has(> label[style*="display:flex"]) { grid-template-columns: 1fr !important; }
+  body.ui-sky .split:not(.wide-form) > .pane-form [style*="display:grid"] > label[style*="display:flex"] { padding-bottom: 0 !important; }
+}
+@media (min-width: 1600px) {
+  body.ui-sky .split:not(.hidden), .stu-layout { grid-template-columns: minmax(0, 1fr) 420px; }
+}
+
+/* ── 관리 페이지 공통 부품: 제목·현황 카드·세그먼트·검색 줄 (forms·messages·settle) ── */
+body.ui-sky .page-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+body.ui-sky .page-head h1 { font-size: 2.1rem; font-weight: 300; letter-spacing: -0.03em; }
+body.ui-sky .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
+body.ui-sky .stat-label { text-transform: none; letter-spacing: 0; font-size: 0.78rem; font-weight: 600; }
+body.ui-sky .stat-value { font-weight: 300; font-size: 2rem; }
+body.ui-sky .seg { background: var(--sky-chip); border-color: var(--sky-chip-line); box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 10px; }
+body.ui-sky .seg button { border-radius: 8px; }
+body.ui-sky .seg button.on { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+body.ui-sky .toolbar .inp { width: auto; }
+body.ui-sky .toolbar .search { max-width: 520px; }
+body.ui-sky .empty-state, body.ui-sky .loading-state { color: var(--sub); }
+@media (max-width: 759px) {
+  body.ui-sky .stats-row { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  body.ui-sky .stat-card { padding: 12px; }
+  body.ui-sky .stat-value { font-size: 1.3rem; }
+  body.ui-sky .stat-value span { font-size: 0.72rem; margin-left: 2px; }
+}
+@media (min-width: 1200px) {
+  body.ui-sky .stats-row { grid-template-columns: repeat(3, minmax(0, 260px)); }
+}
+
+/* 메뉴 팝업(와플) */
+body.ui-sky .app-modal { background: rgba(20,22,50,0.35); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+body.ui-sky .app-modal-card, body.ui-sky.dark .app-modal-card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--shadow-lg); }
+body.ui-sky .app-modal-item, body.ui-sky.dark .app-modal-item { background: var(--sky-chip); border-color: var(--sky-chip-line); font-weight: 600; }
+body.ui-sky .app-modal-item:hover, body.ui-sky.dark .app-modal-item:hover { background: var(--accent-light); }
+body.ui-sky .app-modal-icon { color: var(--accent); }
+
+/* 모바일 — 하단 탭바 */
+@media (max-width: 759px) {
+  body.ui-sky .waffle-btn { display: none; }
+  body.ui-sky .wrap { padding-bottom: 110px; }
+  body.ui-sky .section-header h1 { font-size: 1.9rem; }
+  body.ui-sky .card { padding: 18px 16px; }
+  body.ui-sky #studentList th:first-child, body.ui-sky #studentList td:first-child { display: none; } /* 학교 열 숨김 */
+  body.ui-sky th, body.ui-sky td { white-space: nowrap; padding-left: 8px; padding-right: 8px; }
+  /* 필터: "학교 [전체]" 짝이 한 줄씩 */
+  body.ui-sky .select-controls { display: grid; grid-template-columns: auto 1fr; align-items: center; }
+  body.ui-sky .select-controls select.inp { width: 100% !important; }
+  body.ui-sky .tabbar {
+    display: flex; position: fixed; left: 12px; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); z-index: 300;
+    height: 62px; padding: 6px; border-radius: 20px;
+    background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow-md);
+    backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+  }
+  .tab { flex: 1; border: 1px solid transparent; background: none; border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-family: inherit; font-size: 0.68rem; font-weight: 600; color: var(--sub); cursor: pointer; }
+  .tab.on { color: var(--text); background: var(--sky-chip); border-color: var(--sky-chip-line); }
+  .tab.on svg { color: var(--accent); }
+}

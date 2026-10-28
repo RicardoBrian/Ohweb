@@ -45,6 +45,7 @@ console.log('── 공격 ──');
 await T('학생 본인이 isMaster:true 셀프 부여', updateDoc(doc(A, 'students/StuA'), { isMaster: true }), false);
 await T('학생 본인이 이름 변경', updateDoc(doc(A, 'students/StuA'), { name: 'x' }), false);
 await T('학생 본인이 registered를 false로', updateDoc(doc(A, 'students/StuA'), { registered: false }), false);
+await T('학생 본인이 비밀번호 변경 필요 표시를 켬', updateDoc(doc(A, 'students/StuA'), { mustChangePassword: true }), false);
 await T('비로그인이 isMaster 학생 문서 생성', setDoc(doc(anon, 'students/Evil'), { name: 'x', isMaster: true }), false);
 await T('로그인 학생이 학생 문서 생성', setDoc(doc(A, 'students/Evil2'), { name: 'x' }), false);
 await T('비로그인이 남의 1:1 질문 읽기', getDocs(collection(anon, 'qna_threads/StuA/messages')), false);
@@ -137,6 +138,7 @@ await T('레거시 전환: password 삭제 + 0 리셋(본인)', updateDoc(doc(L,
 await env.withSecurityRulesDisabled(async c => { await updateDoc(doc(c.firestore(), 'students/StuB'), { locked: false, failedAttempts: 0 }); });
 await T('가입: registered:true + 사진(본인)', updateDoc(doc(B, 'students/StuB'), { photoUrl: 'data:image/jpeg;base64,AAAA', registered: true }), true);
 await T('마이페이지 사진 변경(본인)', updateDoc(doc(A, 'students/StuA'), { photoUrl: 'data:image/jpeg;base64,BBBB' }), true);
+await T('첫 로그인 비밀번호 변경 후 표시 해제(본인)', updateDoc(doc(A, 'students/StuA'), { mustChangePassword: false }), true);
 await T('세션 확인: 본인 문서 읽기', getDoc(doc(A, 'students/StuA')), true);
 await T('1:1 질문: 본인 스레드 읽기', getDoc(doc(A, 'qna_threads/StuA')), true);
 await T('1:1 질문: 본인 메시지 목록(orderBy)', getDocs(query(collection(A, 'qna_threads/StuA/messages'), orderBy('createdAt', 'asc'))), true);

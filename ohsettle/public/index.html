@@ -160,9 +160,11 @@
   .text-center { text-align: center; }
   .text-sm { font-size: 0.8rem; color: var(--sub); }
   .mt8 { margin-top: 8px; } .mt16 { margin-top: 16px; } .mt24 { margin-top: 24px; }
+  /* 하늘(ui-sky) 디자인: 주 버튼은 남색(해 질 녘은 라벤더) */
+  body.ui-sky .cta, body.ui-sky .fab { background: var(--sky-cta); color: var(--sky-cta-text); }
 </style>
 </head>
-<body>
+<body class="ui-sky">
 
 <svg width="0" height="0" style="position:absolute;">
   <defs>

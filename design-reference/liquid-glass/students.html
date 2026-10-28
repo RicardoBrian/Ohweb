@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>학생 명단 — kakainfo 관리자</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!--
+  시안 v2 — macOS 26 키트(Figma) 수치 기반. 실제 코드 아님.
+  원칙: 바탕은 거의 불투명한 흰/검정 "창", 유리는 떠 있는 사이드바·인스펙터·툴바 컨트롤·탭바에만.
+-->
+<style>
+:root {
+  /* 창 (Figma: Window/Type=Default) */
+  --win:        #ffffff;
+  --win-shadow: 0 0 0 1px rgba(0,0,0,.23), 0 16px 48px rgba(0,0,0,.35);
+
+  /* 유리 — 사이드바 (Figma: Sidebars/Example, Fill rgba(245,245,245,.67), radius 18, shadow 0 8 40 .12) */
+  --glass:        rgba(245,245,245,.67);
+  --glass-blur:   blur(24px) saturate(1.8);
+  --glass-shadow: 0 8px 40px rgba(0,0,0,.12);
+  --glass-rim:    inset 0 0 0 .5px rgba(255,255,255,.7), inset 0 1px 0 rgba(255,255,255,.9);
+  --glass-edge:   rgba(0,0,0,.06);
+  /* 유리 — 툴바 컨트롤 (Figma: Window/Button Group·Search, #F7F7F7 + 흰 50%) */
+  --ctl-glass:    rgba(251,251,251,.82);
+
+  /* 라벨 (Figma: Colors/Text + 사이드바 항목) */
+  --label:   rgba(0,0,0,.85);
+  --label-2: rgba(0,0,0,.50);
+  --label-3: rgba(0,0,0,.25);
+  --label-v2:#727272;   /* vibrant secondary (검색 placeholder) */
+  --label-v3:#bfbfbf;   /* vibrant tertiary (사이드바 detail) */
+
+  /* 채움 */
+  --fill-1: rgba(0,0,0,.11);   /* 사이드바 선택 (multiply) */
+  --fill-2: rgba(0,0,0,.06);
+  --fill-3: rgba(0,0,0,.035);
+  --stripe: rgba(0,0,0,.028);
+  --sep:    rgba(0,0,0,.09);
+
+  /* 강조색 (Figma: Colors/Accents, 사이드바 선택 아이콘 #007AFF) */
+  --blue:  #007aff;
+  --green: #34c759;
+  --red:   #ff3b30;
+  --orange:#ff9500;
+
+  --r-win: 26px; --r-panel: 18px; --r-item: 8px; --r-box: 14px; --r-field: 8px;
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "IBM Plex Sans KR", "Apple SD Gothic Neo", system-ui, sans-serif;
+}
+body.dark {
+  --win:        #1e1e1e;
+  --glass:        rgba(42,42,44,.66);
+  --glass-shadow: 0 8px 40px rgba(0,0,0,.45);
+  --glass-rim:    inset 0 0 0 .5px rgba(255,255,255,.10), inset 0 1px 0 rgba(255,255,255,.08);
+  --glass-edge:   rgba(255,255,255,.06);
+  --ctl-glass:    rgba(58,58,60,.78);
+  --label:   rgba(255,255,255,.88);
+  --label-2: rgba(255,255,255,.55);
+  --label-3: rgba(255,255,255,.25);
+  --label-v2:#98989d;
+  --label-v3:#5a5a5e;
+  --fill-1: rgba(255,255,255,.10);
+  --fill-2: rgba(255,255,255,.08);
+  --fill-3: rgba(255,255,255,.05);
+  --stripe: rgba(255,255,255,.03);
+  --sep:    rgba(255,255,255,.10);
+  --blue:  #0a84ff; --green: #30d158; --red: #ff453a; --orange:#ff9f0a;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--win); color: var(--label);
+  font: 14px/1.45 var(--font); letter-spacing: -0.005em;
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select { font: inherit; color: inherit; }
+svg.i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ───────── 유리 재료 (두 종류만) ───────── */
+.glass {
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-rim), var(--glass-shadow), 0 0 0 .5px var(--glass-edge);
+}
+.ctl-glass {
+  background: var(--ctl-glass);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--glass-rim), 0 8px 40px rgba(0,0,0,.12), 0 0 0 .5px var(--glass-edge);
+}
+
+/* ───────── 레이아웃 ───────── */
+.app { display: grid; grid-template-columns: 252px minmax(0,1fr); min-height: 100vh; }
+
+/* 사이드바 — 창 안쪽에 8px 띄워 떠 있음 */
+.sidebar {
+  position: sticky; top: 8px; margin: 8px 0 8px 8px; height: calc(100vh - 16px);
+  border-radius: var(--r-panel); padding: 10px; display: flex; flex-direction: column; overflow: auto;
+}
+.sb-brand { display: flex; align-items: center; gap: 10px; padding: 6px 8px 10px; }
+.sb-brand img { width: 30px; height: 26px; object-fit: contain; border-radius: 4px; }
+.sb-brand b { font-size: 14px; font-weight: 700; }
+.sb-brand small { display: block; font-size: 11px; color: var(--label-2); font-weight: 500; margin-top: -2px; }
+.sb-head { font-size: 11px; font-weight: 700; color: var(--label-2); padding: 17px 12px 8px 10px; }
+.sb-item {
+  display: flex; align-items: center; gap: 8px; width: 100%; height: 32px; padding: 0 10px 0 8px;
+  border: 0; background: none; border-radius: var(--r-item); font-size: 13px; font-weight: 500; text-align: left; cursor: pointer;
+}
+.sb-item svg.i { color: var(--label); opacity: .85; width: 17px; height: 17px; }
+.sb-item:hover { background: var(--fill-3); }
+.sb-item.on { background: var(--fill-1); }
+.sb-item.on svg.i { color: var(--blue); opacity: 1; }
+.sb-item .d { margin-left: auto; color: var(--label-v3); font-size: 12px; font-weight: 500; }
+.sb-foot { margin-top: auto; padding-top: 10px; }
+
+/* 본문 */
+.main { min-width: 0; padding: 0 24px 40px 28px; }
+
+/* 툴바 — 배경 없음. 스크롤 시 내용이 아래로 지나가며 흐려짐(scroll edge) */
+.toolbar {
+  position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px;
+  padding: 18px 0 14px; margin-bottom: 6px;
+  background: linear-gradient(var(--win) 62%, transparent);
+}
+.toolbar h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -.02em; }
+.toolbar .sub { color: var(--label-2); font-size: 13px; font-weight: 500; margin-left: 2px; }
+.spacer { flex: 1; }
+
+/* 툴바 버튼 그룹 (Figma: p4 gap4, 항목 h28 min-w28, 캡슐) */
+.tb-group { display: inline-flex; align-items: center; gap: 4px; padding: 4px; border-radius: 999px; }
+.tb-btn {
+  height: 28px; min-width: 28px; padding: 0 10px; border: 0; background: none; border-radius: 999px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px; font-weight: 500; cursor: pointer;
+}
+.tb-btn:hover { background: var(--fill-2); }
+.tb-btn .v { color: var(--label-2); }
+.tb-btn.icon { padding: 0 5px; }
+.tb-btn svg.chev { width: 10px; height: 10px; color: var(--label-2); stroke-width: 2; }
+
+/* 현황 — 유리 아님. 단순 채움 박스 */
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; margin-bottom: 20px; }
+.stat { background: var(--fill-3); border-radius: var(--r-box); padding: 14px 16px; }
+.stat .k { font-size: 12px; color: var(--label-2); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.stat .n { font-size: 26px; font-weight: 700; letter-spacing: -.02em; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.stat .n small { font-size: 13px; color: var(--label-2); font-weight: 500; margin-left: 2px; }
+.dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex: none; }
+
+/* 표 + 인스펙터 */
+.work { display: grid; grid-template-columns: minmax(0,1fr) 340px; gap: 20px; align-items: start; }
+.list-head { display: flex; align-items: center; gap: 10px; margin: 0 0 8px; }
+.list-head h2 { margin: 0; font-size: 15px; font-weight: 700; }
+.list-head .cnt { color: var(--label-2); font-size: 13px; font-weight: 500; }
+
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+thead th {
+  text-align: left; font-size: 12px; font-weight: 600; color: var(--label-2);
+  padding: 0 12px 8px; border-bottom: 1px solid var(--sep); white-space: nowrap;
+}
+tbody td { padding: 0 12px; height: 40px; white-space: nowrap; }
+tbody tr:nth-child(even) td { background: var(--stripe); }
+tbody tr td:first-child { border-radius: 8px 0 0 8px; }
+tbody tr td:last-child  { border-radius: 0 8px 8px 0; }
+tbody tr:hover td { background: var(--fill-2); }
+td.num { font-variant-numeric: tabular-nums; color: var(--label-2); }
+td.name { font-weight: 600; }
+.status { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; color: var(--label-2); }
+.status.ok { color: var(--label); }
+.lock { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; padding: 1px 8px; border-radius: 999px;
+  background: color-mix(in srgb, var(--red) 13%, transparent); color: var(--red); font-size: 12px; font-weight: 600; }
+.acts { text-align: right; }
+.ib { width: 28px; height: 28px; border: 0; background: none; border-radius: 999px; color: var(--label-2);
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.ib:hover { background: var(--fill-2); color: var(--label); }
+.ib.danger:hover { color: var(--red); background: color-mix(in srgb, var(--red) 12%, transparent); }
+.ib.unlock { color: var(--orange); }
+
+/* 인스펙터 — 사이드바와 같은 유리, 오른쪽에 떠 있음 */
+.inspector { position: sticky; top: 76px; border-radius: var(--r-panel); padding: 6px 16px 16px; }
+.insp-sec + .insp-sec { border-top: 1px solid var(--sep); }
+.insp-sec { padding: 14px 0 6px; }
+.insp-sec h3 { margin: 0 0 10px; font-size: 13px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.insp-sec h3 svg.i { color: var(--blue); }
+.drop {
+  border: 1.5px dashed var(--label-3); border-radius: 12px; padding: 16px 12px; text-align: center; cursor: pointer;
+  background: color-mix(in srgb, var(--win) 55%, transparent);
+}
+.drop:hover { border-color: var(--blue); }
+.drop svg.i { width: 26px; height: 26px; color: var(--blue); stroke-width: 1.4; }
+.drop p { margin: 6px 0 2px; font-size: 13px; font-weight: 600; }
+.drop small { color: var(--label-2); font-size: 11.5px; }
+.fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.fgrid .full { grid-column: 1 / -1; }
+label.l { display: block; font-size: 11.5px; font-weight: 600; color: var(--label-2); margin: 0 0 4px 2px; }
+.inp {
+  width: 100%; height: 32px; padding: 0 10px; border-radius: var(--r-field);
+  background: var(--win); border: 0; box-shadow: 0 0 0 .5px rgba(0,0,0,.18), 0 .5px 1px rgba(0,0,0,.06);
+  font-size: 13.5px; outline: none;
+}
+body.dark .inp { background: rgba(255,255,255,.06); box-shadow: 0 0 0 .5px rgba(255,255,255,.14); }
+.inp::placeholder { color: var(--label-3); }
+.inp:focus { box-shadow: 0 0 0 3.5px color-mix(in srgb, var(--blue) 35%, transparent), 0 0 0 1px var(--blue); }
+
+.btn { height: 32px; padding: 0 16px; border-radius: 999px; border: 0; font-size: 13.5px; font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.btn.accent { background: var(--blue); color: #fff; box-shadow: inset 0 .5px 0 rgba(255,255,255,.25), 0 1px 2px rgba(0,0,0,.12); }
+.btn.accent:hover { filter: brightness(1.08); }
+.btn.ghost { background: var(--fill-2); color: var(--label); }
+.btn.plain { background: none; color: var(--blue); padding: 0 8px; height: 28px; font-size: 13px; font-weight: 500; }
+.btn.block { width: 100%; margin-top: 12px; }
+
+/* 모바일 전용 */
+.m-only { display: none; }
+.tabbar { display: none; }
+
+/* ───── 태블릿: 인스펙터를 표 아래로 ───── */
+@media (max-width: 1199px) {
+  .work { grid-template-columns: minmax(0,1fr); }
+  .inspector { position: static; display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; }
+  .insp-sec + .insp-sec { border-top: 0; }
+}
+
+/* ───── 모바일 ───── */
+@media (max-width: 759px) {
+  body { font-size: 15px; }
+  .app { display: block; }
+  .sidebar { display: none; }
+  .main { padding: 0 16px 120px; }
+  .toolbar { padding: 12px 0 8px; flex-wrap: wrap; row-gap: 10px; }
+  .toolbar h1 { font-size: 30px; order: 2; flex-basis: 100%; }
+  .toolbar .sub { display: none; }
+  .toolbar .brand-m { display: flex; order: 0; }
+  .toolbar .spacer { order: 1; }
+  .toolbar .tb-actions { order: 1; }
+  .toolbar .tb-filters { order: 3; }
+  .m-only { display: initial; }
+  .d-only { display: none !important; }
+  .stats { gap: 8px; margin-bottom: 18px; }
+  .stat { padding: 10px 10px 8px; border-radius: 12px; }
+  .stat .k { font-size: 11.5px; gap: 4px; white-space: nowrap; }
+  .stat .n { font-size: 21px; }
+  .stat .n small { font-size: 11px; }
+  table { font-size: 15px; }
+  thead th.h-sm, tbody td.h-sm { display: none; }  /* 학교·상태 열 숨김 */
+  thead th { padding: 0 8px 8px; }
+  tbody td { padding: 0 8px; height: 48px; }
+  .inspector { display: block; border-radius: 22px; margin-top: 8px; }
+  .insp-sec + .insp-sec { border-top: 1px solid var(--sep); }
+  .inp { height: 40px; font-size: 16px; }
+  .btn { height: 40px; font-size: 15px; }
+
+  /* 하단 떠 있는 탭바 (iOS 26 캡슐) */
+  .tabbar {
+    display: flex; position: fixed; left: 16px; right: 16px; bottom: max(16px, env(safe-area-inset-bottom));
+    height: 62px; border-radius: 31px; padding: 4px; z-index: 20; justify-content: space-between;
+  }
+  .tab { flex: 1; border: 0; background: none; border-radius: 27px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 1px; font-size: 10.5px; font-weight: 600; color: var(--label); }
+  .tab svg.i { width: 22px; height: 22px; stroke-width: 1.6; }
+  .tab.on { background: var(--fill-2); color: var(--blue); }
+}
+.brand-m { display: none; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
+.brand-m img { width: 28px; height: 24px; object-fit: contain; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <symbol id="s-school" viewBox="0 0 24 24"><path d="M3 10 12 5l9 5-9 5-9-5Z"/><path d="M7 12.5V17c3 2 7 2 10 0v-4.5"/></symbol>
+    <symbol id="s-people" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><path d="M3.5 19c.7-3.2 3-5 5.5-5s4.8 1.8 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M16 14c2.4 0 4 1.5 4.5 4"/></symbol>
+    <symbol id="s-board" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="3"/><path d="M8 9h8M8 13h5"/></symbol>
+    <symbol id="s-clip" viewBox="0 0 24 24"><rect x="5" y="4.5" width="14" height="16" rx="3"/><path d="M9 4.5h6v2.5H9zM8.5 12l2 2 4-4"/></symbol>
+    <symbol id="s-ai" viewBox="0 0 24 24"><path d="M12 3.5 13.8 9l5.7 1.8-5.7 1.8L12 18.5l-1.8-5.9L4.5 10.8 10.2 9 12 3.5Z"/></symbol>
+    <symbol id="s-doc" viewBox="0 0 24 24"><path d="M6.5 3.5h7l4 4v13h-11z"/><path d="M13.5 3.5v4h4M9 13h6M9 16.5h4"/></symbol>
+    <symbol id="s-chat" viewBox="0 0 24 24"><path d="M4 6.5a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3h-6l-4.5 3.5v-3.5A3 3 0 0 1 4 13.5z"/></symbol>
+    <symbol id="s-timer" viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="7"/><path d="M12 13.5V10M10 3h4"/></symbol>
+    <symbol id="s-note" viewBox="0 0 24 24"><path d="M5 5.5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v13l-3.5-2.5L12 18.5 8.5 16 5 18.5z"/></symbol>
+    <symbol id="s-wallet" viewBox="0 0 24 24"><rect x="3.5" y="6" width="17" height="13" rx="3"/><path d="M3.5 10h17M16 14.5h1.5"/></symbol>
+    <symbol id="s-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1.8"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.8"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.8"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.8"/></symbol>
+    <symbol id="s-moon" viewBox="0 0 24 24"><path d="M19.5 14.5A8 8 0 0 1 9.5 4.5a8 8 0 1 0 10 10Z"/></symbol>
+    <symbol id="s-chev" viewBox="0 0 12 12"><path d="m3 4.5 3 3 3-3"/></symbol>
+    <symbol id="s-edit" viewBox="0 0 24 24"><path d="m14.5 5.5 4 4L9 19H5v-4z"/></symbol>
+    <symbol id="s-trash" viewBox="0 0 24 24"><path d="M5 7h14M9.5 7V4.5h5V7M7 7l1 13h8l1-13"/></symbol>
+    <symbol id="s-unlock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9.5" rx="2.5"/><path d="M8.5 11V8a3.5 3.5 0 0 1 6.8-1.2"/></symbol>
+    <symbol id="s-upload" viewBox="0 0 24 24"><path d="M12 15V4.5M7.5 9 12 4.5 16.5 9M5 15v3.5a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V15"/></symbol>
+    <symbol id="s-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="s-filter" viewBox="0 0 24 24"><path d="M4 6.5h16M7 12h10M10 17.5h4"/></symbol>
+    <symbol id="s-more" viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="18" cy="12" r="1.3"/></symbol>
+    <symbol id="s-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="3.5"/><path d="m10.5 12.5 8-8M16 7l2 2"/></symbol>
+  </defs>
+</svg>
+
+<div class="app">
+  <!-- ═════ 사이드바 (⋮⋮ 메뉴 팝업 대체) ═════ -->
+  <aside class="sidebar glass">
+    <div class="sb-brand"><img src="../../ohweb/public/logo.png" alt=""><div><b>kakainfo</b><small>관리자</small></div></div>
+
+    <div class="sb-head">관리</div>
+    <button class="sb-item"><svg class="i"><use href="#s-school"/></svg>학교</button>
+    <button class="sb-item on"><svg class="i"><use href="#s-people"/></svg>학생<span class="d">128</span></button>
+    <button class="sb-item"><svg class="i"><use href="#s-grid"/></svg>앱 설정</button>
+
+    <div class="sb-head">수업</div>
+    <button class="sb-item"><svg class="i"><use href="#s-board"/></svg>정보 게시판</button>
+    <button class="sb-item"><svg class="i"><use href="#s-clip"/></svg>시험</button>
+    <button class="sb-item"><svg class="i"><use href="#s-ai"/></svg>AI 실험실</button>
+    <button class="sb-item"><svg class="i"><use href="#s-doc"/></svg>설문지</button>
+    <button class="sb-item"><svg class="i"><use href="#s-chat"/></svg>학생 질문<span class="d">3</span></button>
+
+    <div class="sb-head">도구</div>
+    <button class="sb-item"><svg class="i"><use href="#s-timer"/></svg>타이머</button>
+    <button class="sb-item"><svg class="i"><use href="#s-note"/></svg>공지 메모</button>
+    <button class="sb-item"><svg class="i"><use href="#s-wallet"/></svg>정산 관리</button>
+
+    <div class="sb-foot">
+      <button class="sb-item" onclick="document.body.classList.toggle('dark')"><svg class="i"><use href="#s-moon"/></svg>다크 모드</button>
+    </div>
+  </aside>
+
+  <!-- ═════ 본문 ═════ -->
+  <main class="main">
+    <header class="toolbar">
+      <div class="brand-m"><img src="../../ohweb/public/logo.png" alt="">kakainfo</div>
+      <h1>학생 명단</h1><span class="sub">관산중학교 외 1곳</span>
+      <div class="spacer"></div>
+      <div class="tb-group ctl-glass tb-filters">
+        <button class="tb-btn">학교 <span class="v">전체</span><svg class="i chev"><use href="#s-chev"/></svg></button>
+        <button class="tb-btn">학년 <span class="v">1</span><svg class="i chev"><use href="#s-chev"/></svg></button>
+        <button class="tb-btn">반 <span class="v">전체</span><svg class="i chev"><use href="#s-chev"/></svg></button>
+      </div>
+      <div class="tb-group ctl-glass tb-actions m-only">
+        <button class="tb-btn icon" title="학생 추가"><svg class="i"><use href="#s-plus"/></svg></button>
+        <button class="tb-btn icon" title="다크 모드" onclick="document.body.classList.toggle('dark')"><svg class="i"><use href="#s-moon"/></svg></button>
+      </div>
+    </header>
+
+    <section class="stats">
+      <div class="stat"><div class="k">전체 학생</div><div class="n">128<small>명</small></div></div>
+      <div class="stat"><div class="k"><span class="dot" style="background:var(--green)"></span>등록</div><div class="n">112<small>명</small></div></div>
+      <div class="stat"><div class="k"><span class="dot" style="background:var(--label-3)"></span>미등록</div><div class="n">14<small>명</small></div></div>
+      <div class="stat"><div class="k"><span class="dot" style="background:var(--red)"></span>잠김</div><div class="n">2<small>명</small></div></div>
+    </section>
+
+    <div class="work">
+      <section>
+        <div class="list-head">
+          <h2>학생 목록</h2><span class="cnt">32명</span>
+          <div class="spacer"></div>
+          <button class="btn plain" title="예전 방식으로 저장된 평문 비밀번호를 안전한 로그인 계정으로 옮기고 지웁니다"><svg class="i"><use href="#s-key"/></svg>평문 비밀번호 정리</button>
+        </div>
+        <table>
+          <thead><tr><th class="h-sm">학교</th><th>학년</th><th>반</th><th>번호</th><th>이름</th><th class="h-sm">상태</th><th></th></tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </section>
+
+      <aside class="inspector glass">
+        <div class="insp-sec">
+          <h3><svg class="i"><use href="#s-upload"/></svg>CSV 업로드</h3>
+          <div class="drop">
+            <svg class="i"><use href="#s-doc"/></svg>
+            <p>CSV 파일을 클릭하여 업로드</p>
+            <small>열 순서: 학교, 학년, 반, 번호, 이름<br>첫 행은 헤더로 자동 처리</small>
+          </div>
+        </div>
+        <div class="insp-sec">
+          <h3><svg class="i"><use href="#s-plus"/></svg>학생 개별 추가</h3>
+          <div class="fgrid">
+            <div class="full"><label class="l">학교</label><input class="inp" placeholder="학교 이름 입력"></div>
+            <div><label class="l">이름</label><input class="inp" placeholder="이름"></div>
+            <div><label class="l">학년</label><input class="inp" placeholder="예: 1"></div>
+            <div><label class="l">반</label><input class="inp" placeholder="예: 3"></div>
+            <div><label class="l">번호</label><input class="inp" placeholder="번호"></div>
+          </div>
+          <button class="btn accent block">추가</button>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<!-- 모바일 하단 탭바 -->
+<nav class="tabbar glass">
+  <button class="tab on"><svg class="i"><use href="#s-people"/></svg>학생</button>
+  <button class="tab"><svg class="i"><use href="#s-school"/></svg>학교</button>
+  <button class="tab"><svg class="i"><use href="#s-clip"/></svg>시험</button>
+  <button class="tab"><svg class="i"><use href="#s-chat"/></svg>질문</button>
+  <button class="tab"><svg class="i"><use href="#s-more"/></svg>더보기</button>
+</nav>
+
+<script>
+  // 시안용 가짜 데이터
+  const names = ['김민준','이서연','박도윤','최하은','정시우','강지유','조하준','윤서아','장예준','임지아','한주원','오채원','서지호','신수아','권은우','황다인','안건우','송유나'];
+  const rows = names.map((n, i) => ({ s: i < 14 ? '관산중학교' : '서림중학교', g: 1, c: 3 + Math.floor(i/9), no: (i % 9) + 1, n,
+    reg: ![4, 11, 15].includes(i), lock: [7, 13].includes(i) }));
+  document.getElementById('rows').innerHTML = rows.map(r => `
+    <tr>
+      <td class="h-sm">${r.s}</td><td class="num">${r.g}</td><td class="num">${r.c}</td><td class="num">${r.no}</td>
+      <td class="name">${r.n}</td>
+      <td class="h-sm"><span class="status ${r.reg?'ok':''}"><span class="dot" style="background:${r.reg?'var(--green)':'var(--label-3)'}"></span>${r.reg?'등록':'미등록'}</span>${r.lock?'<span class="lock">잠김</span>':''}</td>
+      <td class="acts">${r.lock?'<button class="ib unlock" title="잠금 해제"><svg class="i"><use href="#s-unlock"/></svg></button>':''}<button class="ib" title="수정"><svg class="i"><use href="#s-edit"/></svg></button><button class="ib danger" title="삭제"><svg class="i"><use href="#s-trash"/></svg></button></td>
+    </tr>`).join('');
+  if (/[?&]dark/.test(location.search)) document.body.classList.add('dark');
+</script>
+</body>
+</html>

@@ -25,21 +25,31 @@ await env.withSecurityRulesDisabled(async c => {
   await setDoc(doc(db, 'student_directory/Legacy'), dir({ number: 2, registered: true }));
   await setDoc(doc(db, 'students/Normal'), { name: '보통', schoolName: 'S', grade: '1', class: '2', number: 3, registered: true });
   await setDoc(doc(db, 'student_directory/Normal'), dir({ number: 3, registered: true }));
+  // 교사가 등록(또는 초기화)한 학생 — 서버가 계정을 1234로 만들고 mustChangePassword 표시
+  await setDoc(doc(db, 'students/Fresh'), { name: '새학생', schoolName: 'S', grade: '1', class: '2', number: 4, registered: true, mustChangePassword: true });
+  await setDoc(doc(db, 'student_directory/Fresh'), dir({ number: 4, registered: true }));
 });
 const { db, auth } = await import('./login-e2e-fbconf.mjs');
 await createUserWithEmailAndPassword(auth, 'normal@ohinfo.local', 'pass99'); await signOut(auth);
+await createUserWithEmailAndPassword(auth, 'fresh@ohinfo.local', '123400'); await signOut(auth); // 1234 → padPassword
 const SA = await import('./.student-auth.e2e.mjs');
 let fails = 0; const ok = (c, l) => { if (!c) fails++; console.log((c ? '✅ ' : '❌ ') + l); };
 const list = await SA.loadLoginDirectory();
-ok(list.length === 3 && list.every(x => !('name' in x) && !('password' in x)), `로그인 화면 명단 로드(이름·비번 없음) ${list.length}명`);
+ok(list.length === 4 && list.every(x => !('name' in x) && !('password' in x)), `로그인 화면 명단 로드(이름·비번 없음) ${list.length}명`);
 const entry = id => list.find(x => x.id === id);
-// 가입: 이름 틀림
-try { await SA.registerStudent('NewKid', {}, 'abcd', '김철수'); ok(false, '가입 이름 틀림 → 거부'); } catch (e) { ok(e.code === 'name-mismatch', '가입 이름 틀림 → 거부 (' + e.code + ')'); }
-ok(!auth.currentUser, '이름 틀림 → 방금 만든 계정 삭제됨');
-// 가입: 이름 맞음(공백 차이 허용)
-const fresh = await SA.registerStudent('NewKid', { photoUrl: 'data:image/jpeg;base64,AA' }, 'abcd', '홍길동');
-ok(fresh.name === '홍 길동' && fresh.registered === true && !fresh.password, '가입 성공 + 세션 데이터에 이름 포함');
-await env.withSecurityRulesDisabled(async c => { const d = (await getDoc(doc(c.firestore(), 'student_directory/NewKid'))).data(); ok(d.registered === true, '가입 후 공개 명단 registered=true'); });
+// 회원가입 없음: 등록 안 된 학생은 로그인 거부
+try { await SA.loginStudent('NewKid', entry('NewKid'), 'abcd'); ok(false, '미등록 학생 로그인 거부'); } catch (e) { ok(e.code === 'not-registered', '미등록 학생 → not-registered'); }
+ok(typeof SA.registerStudent === 'undefined', '학생 회원가입 함수 없음');
+// 첫 로그인: 1234 → 새 비밀번호
+await SA.loginStudent('Fresh', entry('Fresh'), '1234');
+ok(auth.currentUser?.email === 'fresh@ohinfo.local', '기본 비밀번호 1234로 첫 로그인');
+ok((await SA.fetchOwnStudent('Fresh')).mustChangePassword === true, '첫 로그인 → 비밀번호 변경 필요 표시');
+await SA.completeFirstPassword('Fresh', '1234', 'mine77');
+await env.withSecurityRulesDisabled(async c => { const d = (await getDoc(doc(c.firestore(), 'students/Fresh'))).data(); ok(d.mustChangePassword === false, '새 비밀번호 저장 후 표시 해제(본인 쓰기 허용)'); });
+await signOut(auth);
+try { await SA.loginStudent('Fresh', entry('Fresh'), '1234'); ok(false, '옛 기본 비밀번호 거부'); } catch (e) { ok(e.code === 'wrong-password', '바꾼 뒤 1234 → wrong-password'); }
+await SA.loginStudent('Fresh', { ...entry('Fresh'), failedAttempts: 1 }, 'mine77');
+ok(auth.currentUser?.email === 'fresh@ohinfo.local', '새 비밀번호로 로그인');
 await signOut(auth);
 // 일반 로그인: 비번 틀림 → 카운트
 try { await SA.loginStudent('Normal', entry('Normal'), 'wrong'); ok(false, '비번 틀림 거부'); } catch (e) { ok(e.code === 'wrong-password', '비번 틀림 → wrong-password'); }
