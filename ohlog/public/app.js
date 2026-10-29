@@ -447,6 +447,7 @@ async function renderToday() {
   const date = S.date;
   $('todayDate').value = date;
   $('todayTitle').textContent = date === todayISO() ? '오늘 수업' : `${dateLabel(date)} 수업`;
+  $('navTitle').textContent = $('todayTitle').textContent; // 폰에서는 상단 가운데 제목이 이 화면의 제목
   const w = weekOf(date);
   if (needWeek(w)) {
     $('todayList').innerHTML = '<div class="spinner"></div>';

@@ -199,3 +199,15 @@ body.ui-sky.dark .slot.bysubj { --tint-s: 24%; --tint-a: 0.20; }
 
 /* 새 버전 알림줄(작성 중일 때만 나타남) */
 .update-bar { position: fixed; z-index: 9500; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top) + 10px); max-width: calc(100vw - 24px); border: 0; border-radius: 999px; padding: 10px 18px; background: var(--accent); color: #fff; font: inherit; font-size: 0.9rem; font-weight: 700; box-shadow: 0 8px 24px rgba(0,0,0,0.25); cursor: pointer; }
+
+/* ───────── 폰·태블릿: 아이폰 설정처럼 제목은 상단 바 가운데에 한 번만 ─────────
+   화면 안의 큰 제목(h1)은 숨기고, 날짜·주 이동 같은 도구와 짧은 안내문만 남긴다. */
+@media (max-width: 899px) {
+  html body.ui-sky .nav-brand-title { position: absolute; left: 50%; top: calc(env(safe-area-inset-top) + var(--nav-h) / 2); transform: translate(-50%, -50%); max-width: 62vw; font-size: 1.08rem; font-weight: 700; text-align: center; }
+  body.ui-sky .section-header h1 { display: none; }
+  body.ui-sky .section-header > div:first-child:not(:has(p)) { display: none; }
+  body.ui-sky .section-header:not(:has(.tools)):not(:has(p)) { display: none; }
+  body.ui-sky .section-header { margin: 0 0 12px; }
+  body.ui-sky .section-header p { margin-top: 0; }
+  body.ui-sky .wrap { padding-top: 12px; }
+}
