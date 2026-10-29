@@ -319,11 +319,7 @@
   <nav class="nav">
     <a class="nav-brand" href="#" data-home><img src="logo.png" alt="kakainfo"><span class="nav-brand-title" id="navTitle">수업일지</span><span class="nav-brand-sub">수업일지</span></a>
     <div class="side-menu" id="sideMenu"></div>
-    <div class="nav-right">
-      <span class="nav-dark-label">다크 모드</span>
-      <div class="dark-toggle" data-act="dark" title="다크모드 전환"></div>
-    </div>
-  </nav>
+</nav>
   <nav class="tabbar" id="tabbar"></nav>
 
   <div class="wrap">
@@ -473,11 +469,14 @@
           </div>
         </div>
         <div class="card">
-          <h2><span class="icon" data-ic="text"></span><span class="ttl">화면<small>글자 크기를 내 눈에 맞춰요</small></span></h2>
+          <h2><span class="icon" data-ic="text"></span><span class="ttl">화면<small>밝기와 글자 크기를 내 눈에 맞춰요</small></span></h2>
+          <div class="field"><span>화면 모드</span>
+            <div class="seg" id="themeSeg"><button data-v="auto" class="on">자동</button><button data-v="light">라이트</button><button data-v="dark">다크</button></div>
+          </div>
           <div class="field"><span>글자 크기</span>
             <div class="seg" id="fsSeg"><button data-v="0.92">작게</button><button data-v="1" class="on">보통</button><button data-v="1.12">크게</button><button data-v="1.25">아주 크게</button></div>
           </div>
-          <p class="muted small">다크 모드는 위쪽(폰은 오른쪽 위) 스위치로 바꿔요.</p>
+          <p class="muted small">자동은 폰·컴퓨터의 화면 모드 설정을 따라가요.</p>
         </div>
         <div class="card hidden" id="iosTip">
           <h2><span class="icon" data-ic="phone"></span><span class="ttl">홈 화면에 앱처럼 추가<small>아이폰 Safari에서</small></span></h2>
@@ -496,7 +495,7 @@
           <h2><span class="icon" data-ic="clock"></span><span class="ttl">시간표 새로 받기<small>컴시간은 10분 저장해 두고 써요</small></span></h2>
           <p class="muted small" style="margin-bottom:12px">방금 바뀐 시간표가 안 보이면 눌러보세요.</p>
           <button class="btn" data-act="reload-tt">다시 받기</button>
-          <p class="muted small" id="ttDebug" style="margin-top:10px"></p>
+          <details id="ttDebugBox" class="hidden" style="margin-top:12px"><summary class="muted small" style="cursor:pointer">진단 정보 (관리자)</summary><p class="muted small" id="ttDebug" style="margin-top:6px"></p></details>
         </div>
       </div>
     </section>
