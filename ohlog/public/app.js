@@ -96,6 +96,32 @@ function applyTheme() {
 applyTheme();
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', applyTheme);
 
+/* ───────── 새 버전 감지 ─────────
+   홈 화면 앱(iOS)은 새로고침 동작이 없고 메모리에서 되살아나기만 해서, 새로 배포해도 옛 화면이 남는다.
+   /api/version 의 값이 처음 열 때와 달라지면 스스로 새로 불러온다(작성 중이면 알림줄만). */
+let CODE_V = null, PENDING_V = null, updating = false;
+if (location.search.includes('v=')) history.replaceState(null, '', location.pathname + location.hash); // 새로고침 때 붙인 ?v= 정리
+async function fetchVersion() { return (await (await fetch('/api/version', { cache: 'no-store' })).json()).v; }
+const busy = () => document.querySelector('.modal-overlay.show') || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
+function reloadFresh(v) { updating = true; location.replace(`${location.pathname}?v=${v}${location.hash}`); } // 주소가 달라서 캐시 없이 새로 받는다
+async function checkUpdate(manual = false) {
+  if (updating) return;
+  try {
+    const v = await fetchVersion();
+    if (!v) throw new Error('no version');
+    if (CODE_V == null) { CODE_V = v; if (manual) toast('최신 버전이에요'); return; }
+    if (v === CODE_V) { if (manual) toast('최신 버전이에요'); return; }
+    PENDING_V = v;
+    if (manual || !busy()) reloadFresh(v); else $('updateBar').classList.remove('hidden');
+  } catch { if (manual) toast('확인하지 못했어요. 연결을 확인해 주세요'); }
+}
+$('updateBar').onclick = () => reloadFresh(PENDING_V);
+checkUpdate();
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkUpdate(); });
+addEventListener('pageshow', (e) => { if (e.persisted) checkUpdate(); });
+addEventListener('online', () => checkUpdate());
+setInterval(() => { if (document.visibilityState === 'visible') checkUpdate(); }, 10 * 60 * 1000);
+
 /* ───────── 로그인·프로필 ───────── */
 $('loginBtn').onclick = async () => {
   try { await signInWithPopup(auth, new GoogleAuthProvider()); }
@@ -1104,6 +1130,7 @@ document.addEventListener('click', async (e) => {
   else if (act === 'day') { const n = Number(a.dataset.n); S.date = n ? addDays(S.date, n) : todayISO(); renderToday(); }
   else if (act === 'add-extra') openExtra();
   else if (act === 'feedback') openFeedback();
+  else if (act === 'check-update') checkUpdate(true);
   else if (act === 'wk') {
     const n = Number(a.dataset.n), i = S.weeks.findIndex((w) => w.r === S.week);
     S.week = n === 0 ? S.curWeek : S.weeks[i + n]?.r ?? S.week;
