@@ -149,6 +149,8 @@ const fit = await T.page.evaluate(() => {
   return { right: Math.max(...th.map((r) => r.right)), vw: innerWidth, scrollW: document.documentElement.scrollWidth, ths: th.length };
 });
 ok('폰 시간표가 월~금 한 화면에 꽉 참(가로 스크롤 없음)', fit.ths === 6 && fit.right <= fit.vw + 0.5 && fit.scrollW <= fit.vw + 0.5, JSON.stringify(fit));
+const fill = await T.page.evaluate(() => { const sl = document.querySelector('#weekGrid .slot'); return sl.getBoundingClientRect().width / sl.parentElement.getBoundingClientRect().width; });
+ok('폰 시간표 칸이 열 폭을 꽉 채움(안쪽 여백으로 좁아 보이지 않음)', fill > 0.92, String(fill));
 ok('칸에 학년 색(--gh)·과목 색(--sh)이 붙음', await T.page.$eval('#weekGrid .slot', (e) => /--gh:\d+;--sh:\d+/.test(e.getAttribute('style'))));
 await shot(T.page, '02b-week-m');
 

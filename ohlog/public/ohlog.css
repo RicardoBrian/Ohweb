@@ -148,3 +148,24 @@ body.ui-sky.dark .week-grid td.tdy { background: rgba(10,132,255,0.12); }
 
 /* 폰: 주 선택 줄이 한 줄에 들어가게 '이번 주' 버튼은 숨긴다(목록에 '이번 주' 표시가 있음) */
 @media (max-width: 599px) { .week-nav .btn.sm[data-n="0"] { display: none; } }
+
+/* ───────── 시간표 칸이 열을 꽉 채우게 ─────────
+   admin-sky.css 가 모든 표 칸(td)에 좌우 8~12px 여백을 줘서, 폰에서 칸이 열 폭의 70%로 쪼그라들었다.
+   시간표는 칸 자체가 여백을 가지므로 표 칸 여백은 없앤다. */
+html body.ui-sky .week-grid td, html body.ui-sky .week-grid th { padding: 0; border: 0; white-space: normal; }
+html body.ui-sky .week-grid th { padding: 6px 0 4px; }
+html body.ui-sky .week-grid td.per { padding: 0 2px; white-space: nowrap; }
+html body.ui-sky .week-grid tr:hover td { background: none; }
+html body.ui-sky .week-grid td.tdy { background: rgba(0,122,255,0.07); }
+html body.ui-sky.dark .week-grid td.tdy { background: rgba(10,132,255,0.12); }
+.slot { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+@media (max-width: 599px) {
+  /* 폰: 시간표·학급 시간표 카드를 화면 가장자리 쪽으로 넓혀 칸을 더 크게 */
+  #sec-week .card, #sec-class .card { margin-left: -8px; margin-right: -8px; }
+  .week-grid { border-spacing: 2px; }
+  .week-grid td { height: 64px; }
+  .slot { min-height: 64px; padding: 6px 2px; }
+  .slot b { font-size: 1rem; }
+  .slot small { font-size: 0.72rem; }
+  .slot small::before { width: 6px; height: 6px; }
+}
