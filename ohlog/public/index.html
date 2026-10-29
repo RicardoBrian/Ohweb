@@ -12,7 +12,7 @@
   .school{display:block;width:100%;text-align:left;margin:4px 0;background:#fff;color:inherit;border:1px solid #ddd}
   table{border-collapse:collapse;width:100%;background:#fff;border-radius:8px;overflow:hidden}
   th,td{border:1px solid #e5e5ea;padding:8px 4px;text-align:center;font-size:14px}
-  th{background:#f0f0f5} td small{display:block;color:#6e6e73}
+  th{background:#f0f0f5} td small,th small{display:block;color:#6e6e73;font-weight:400}
   td.chg{background:#fff4d6} pre{background:#fff;border-radius:8px;padding:12px;overflow:auto;white-space:pre-wrap;word-break:break-all;font-size:12px}
   .muted{color:#6e6e73}
 </style>
@@ -68,10 +68,10 @@ async function render() {
   const max = Math.max(7, ...d.lessons.map((l) => l.period));
   let h = '<table><tr><th></th>' + days.map((x) => `<th>${x}</th>`).join('') + '</tr>';
   for (let p = 1; p <= max; p++) {
-    h += `<tr><th>${p}</th>`;
+    h += `<tr><th>${p}${d.times?.[p - 1] ? `<small>${String(d.times[p - 1]).replace(/^\s*\d+\s*/, '')}</small>` : ''}</th>`;
     for (let day = 1; day <= 5; day++) {
       const ls = d.lessons.filter((l) => l.day === day && l.period === p);
-      h += `<td class="${ls.some((l) => l.changed) ? 'chg' : ''}">` + ls.map((l) => `${l.grade}-${l.class}<small>${l.subjectName}</small>`).join('') + '</td>';
+      h += `<td class="${ls.some((l) => l.changed) ? 'chg' : ''}">` + ls.map((l) => `${l.grade}-${l.class}<small>${l.subjectName}${l.room ? ' · ' + l.room : ''}</small>`).join('') + '</td>';
     }
     h += '</tr>';
   }

@@ -58,7 +58,16 @@ async function bootstrap(env) {
       const prefix = html.match(/sc_data\('([^']*)'/)?.[1];
       if (!route || prefix == null) throw new Error('/st 스크립트에서 route/prefix를 못 찾음(사이트 구조 변경?)');
       const base = host + route.slice(1, 8); // "/36179?"
-      return { host, base, search: base + route.slice(8), prefix };
+      // 스크립트가 쓰는 자료 키 번호(갱신 때마다 바뀜). 못 찾으면 파서가 값의 모양으로 추측한다.
+      const num = (re) => html.match(re)?.[1];
+      const keys = {
+        teachers: num(/Q성명\(\s*자료\.자료(\d+)\[/),
+        subjects: num(/Q과목명\(\s*자료\.자료(\d+)\[/),
+        original: num(/원자료\s*=\s*Q자료\(\s*자료\.자료(\d+)\[/),
+        daily: num(/일일자료\s*=\s*Q자료\(\s*자료\.자료(\d+)\[/),
+        room: num(/m3\s*=\s*자료\.자료(\d+)\[/),
+      };
+      return { host, base, search: base + route.slice(8), prefix, keys };
     } catch (e) {
       tried.push(`${host}: ${e.message}`);
     }
@@ -67,29 +76,38 @@ async function bootstrap(env) {
 }
 
 
-// 응답의 키 번호(자료446 …)는 컴시간이 갱신할 때마다 바뀌므로, 값의 '모양'으로 용도를 찾는다.
-//   교사 목록: ["", "김애*", …]   과목 목록: [27, "국어", …]
-//   시간표: [학년수, [반수, [요일수, [교시수, 코드…], …], …], …]  (코드 = 교사*분리 + 과목, 앞에 '>'면 변경된 수업)
+// 시간표 표: [학년수, [반수, [요일수, [교시수, 코드…], …], …], …]
+//   코드 = 교사번호*1000 + 과목코드, 과목코드 = (hundreds*분리 + 과목번호) — 컴시간 스크립트와 같은 방식.
+//   값 앞에 '>'가 붙으면 변경된 수업(일일자료에만 나옴).
+// 자료 키 번호는 /st 스크립트에서 읽고(keys), 못 읽으면 값의 모양으로 추측한다.
 const isLesson = (v) => (typeof v === 'number' && v > 0) || (typeof v === 'string' && v !== '');
 function tableHasLessons(tbl) {
   return tbl.slice(1).some((g) => g.slice(1).some((c) => c.slice(1).some((d) => d.slice(1).some(isLesson))));
 }
-function parseTimetable(raw) {
+function parseTimetable(raw, keys = {}) {
   const grades = raw['학급수'].length - 1;
-  let teachers, subjects;
-  const tables = [];
-  for (const [k, v] of Object.entries(raw)) {
-    if (!/^자료\d+$/.test(k) || !Array.isArray(v)) continue;
-    const strings = v.slice(1).every((x) => typeof x === 'string');
-    if (v[0] === '' && strings) teachers ??= v;
-    else if (typeof v[0] === 'number' && v.length > 1 && strings) subjects ??= v;
-    else if (v[0] === grades && Array.isArray(v[1]) && tableHasLessons(v)) tables.push([k, v]);
+  const pick = (id) => (id ? raw['자료' + id] : undefined);
+  let teachers = pick(keys.teachers);
+  let subjects = pick(keys.subjects);
+  let table = pick(keys.daily) || pick(keys.original);
+  let roomTable = raw['강의실'] == 1 ? pick(keys.room) : undefined;
+  const how = table && teachers && subjects ? 'script' : 'guess';
+  if (how === 'guess') {
+    const tables = [];
+    for (const [k, v] of Object.entries(raw)) {
+      if (!/^자료\d+$/.test(k) || !Array.isArray(v)) continue;
+      const strings = v.slice(1).every((x) => typeof x === 'string');
+      if (v[0] === '' && strings) teachers ??= v;
+      else if (typeof v[0] === 'number' && v.length > 1 && strings) subjects ??= v;
+      else if (v[0] === grades && Array.isArray(v[1]) && tableHasLessons(v)) tables.push(v);
+    }
+    table ??= tables.find((v) => JSON.stringify(v).includes('">')) || tables[0];
   }
-  if (!teachers || !subjects || !tables.length) throw new Error('응답 구조를 해석하지 못함(컴시간 형식 변경?): ' + Object.keys(raw).join(','));
-  // 변경('>')이 반영된 일일자료가 있으면 그걸, 없으면 첫 표를 쓴다.
-  const [tableKey, table] = tables.find(([, v]) => JSON.stringify(v).includes('">')) || tables[0];
+  if (!teachers || !subjects || !table)
+    throw new Error('응답 구조를 해석하지 못함(컴시간 형식 변경?): ' + Object.keys(raw).join(','));
 
-  const flat = [];
+  const sep = Number.isInteger(raw['분리']) && raw['분리'] > 1 ? raw['분리'] : 100;
+  const cells = [];
   for (let g = 1; g < table.length; g++)
     for (let c = 1; c < table[g].length; c++)
       for (let d = 1; d < table[g][c].length; d++)
@@ -98,15 +116,18 @@ function parseTimetable(raw) {
           if (!isLesson(item)) continue;
           const changed = typeof item === 'string' && item.startsWith('>');
           const n = Number(changed ? item.slice(1) : item);
-          if (n) flat.push({ grade: g, class: c, day: d, period: p, changed, n });
+          if (!n) continue;
+          const teacher = Math.floor(n / 1000);
+          const sb = n % 1000;
+          const subject = sb % sep;
+          const room = roomTable?.[g]?.[c]?.[d]?.[p];
+          cells.push({
+            grade: g, class: c, day: d, period: p, changed, teacher, subject,
+            subjectName: subjects[subject],
+            room: typeof room === 'string' && room.includes('_') ? room.split('_')[1] : undefined,
+          });
         }
-  // 분리값(100/1000)은 데이터에 맞는 걸 고른다.
-  const sep = [raw['분리'], 1000, 100].find(
-    (s) => s > 1 && flat.every((x) => Math.floor(x.n / s) < teachers.length && x.n % s < subjects.length),
-  );
-  if (!sep) throw new Error('교사/과목 코드 분리 방식을 못 찾음');
-  const cells = flat.map(({ n, ...x }) => ({ ...x, teacher: Math.floor(n / sep), subject: n % sep, subjectName: subjects[n % sep] }));
-  return { teachers, subjects, cells, sep, tableKeys: tables.map(([k]) => k).concat('→' + tableKey) };
+  return { teachers, subjects, cells, sep, how };
 }
 
 export async function onRequestGet({ request, env }) {
@@ -160,22 +181,28 @@ export async function onRequestGet({ request, env }) {
       return json({ host: c.host, schools });
     }
 
-    const week = url.searchParams.get('week') || '1'; // 1=이번 주, 2=다음 주 (일자자료 참고)
-    const token = btoa(`${c.prefix}${code}_0_${week}`);
-    const raw = parse(await getText(c.base + token, 'utf-8'));
+    const fetchWeek = async (w) => parse(await getText(c.base + btoa(`${c.prefix}${code}_0_${w}`), 'utf-8'));
+    // week를 안 주면 1주차를 받아 보고, 컴시간이 말하는 '오늘이 속한 주(오늘r)'가 다르면 그 주로 다시 받는다.
+    let week = url.searchParams.get('week');
+    let raw = await fetchWeek(week || 1);
+    if (!week) {
+      week = String(raw['오늘r'] > 0 ? raw['오늘r'] : 1);
+      if (week !== '1') raw = await fetchWeek(week);
+    }
     if (url.searchParams.get('raw')) return json({ host: c.host, keys: Object.keys(raw), raw });
 
-    const t = parseTimetable(raw);
+    const t = parseTimetable(raw, c.keys);
     const teacher = url.searchParams.get('teacher');
     return json({
       host: c.host,
       week,
       weeks: raw['일자자료'],
       시작일: raw['시작일'],
+      times: raw['일과시간'], // 교시별 시간 표시(예: "1(09:00)")
       teachers: t.teachers.map((name, id) => ({ id, name })).filter((x) => x.id > 0 && x.name),
       subjects: t.subjects,
       lessons: teacher == null ? undefined : t.cells.filter((x) => x.teacher === Number(teacher)),
-      debug: { sep: t.sep, tables: t.tableKeys, cells: t.cells.length },
+      debug: { sep: t.sep, keys: t.how, cells: t.cells.length },
     });
   } catch (e) {
     return json({ error: e.message }, 502);
