@@ -32,9 +32,10 @@ const store = {
   get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
   set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* 사파리 사생활 보호 모드 등 */ } },
 };
-// 학년은 칸 바탕, 과목은 이름 앞 점 — 아주 옅게. 색 값은 CSS 변수로만 넘기고 모양은 ohlog.css 가 정한다.
-const GRADE_HUE = { 1: 205, 2: 152, 3: 32 };
-const SUBJ_HUES = [262, 335, 172, 42, 214, 120, 8, 290, 190, 70];
+// 학년은 칸 바탕, 과목은 이름 앞 점 — 배경(푸른 라벤더)과 어울리게 같은 차가운 계열에서 채도를 낮춘다.
+// 색 값(색조)만 CSS 변수로 넘기고, 채도·밝기·농도는 ohlog.css 가 라이트/다크에 맞게 정한다.
+const GRADE_HUE = { 1: 198, 2: 228, 3: 268 };                     // 청회색 → 남색 → 연보라
+const SUBJ_HUES = [214, 160, 346, 36, 262, 184, 300, 22];        // 슬레이트·세이지·로즈·샌드·라벤더·틸·모브·테라코타(모두 탁한 톤)
 function subjectHue(name) { let h = 0; for (const c of String(name || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0; return SUBJ_HUES[h % SUBJ_HUES.length]; }
 const tone = (l) => `--gh:${GRADE_HUE[l.grade] ?? 268};--sh:${subjectHue(l.subject)}`;
 const isPhone = () => matchMedia('(max-width: 899px)').matches;
@@ -606,7 +607,7 @@ async function renderClass() {
   $('clsGrid').innerHTML = lessons.length ? weekTable(lessons, w.start, {
     cell: teacherMode
       ? (l) => `<div class="slot ro ${l.changed ? 'chg' : ''}" style="--gh:${GRADE_HUE[l.grade] ?? 268};--sh:${subjectHue(l.subjectName)}"><b>${l.grade}-${l.class}</b><small>${esc(l.subjectName)}${l.room ? ` · ${esc(l.room)}` : ''}</small></div>`
-      : (l) => `<div class="slot ro ${l.changed ? 'chg' : ''} ${l.teacher === S.profile.teacherId ? 'mine' : ''}" style="--gh:${subjectHue(l.subjectName)};--sh:${subjectHue(l.subjectName)}"><b>${esc(l.subjectName)}</b><small>${esc(l.teacherName)}${l.room ? ` · ${esc(l.room)}` : ''}</small></div>`,
+      : (l) => `<div class="slot ro bysubj ${l.changed ? 'chg' : ''} ${l.teacher === S.profile.teacherId ? 'mine' : ''}" style="--gh:${subjectHue(l.subjectName)};--sh:${subjectHue(l.subjectName)}"><b>${esc(l.subjectName)}</b><small>${esc(l.teacherName)}${l.room ? ` · ${esc(l.room)}` : ''}</small></div>`,
   }) : '<div class="empty-state">이 주에는 수업이 없어요.</div>';
 }
 $('clsGrade').onchange = (e) => { S.cls = { grade: Number(e.target.value), cls: 1 }; renderClass(); };
