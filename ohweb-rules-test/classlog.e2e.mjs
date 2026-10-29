@@ -256,6 +256,30 @@ await p.click('#lmUnitMenu .go-plan');
 await p.waitForSelector('#sec-plan.active');
 ok('누르면 그 학년·과목(2학년 수학)의 계획 화면이 바로 열림', (await p.inputValue('#planSel')) === '2_수학' && (await p.locator('#logModal.show').count()) === 0);
 
+// 7a2) 과목 순서·진도 계획 사용 설정: 가나다순으로 맨 위에 오는 과목(스클처럼 계획이 필요 없는 수업)을 아래로 보내고 계획에서 뺀다
+await p.click('.tab[data-go="today"]');
+await p.click('[data-act="add-extra"]');
+await p.fill('#exPeriod', '5'); await p.fill('#exGrade', '1'); await p.fill('#exCls', '1'); await p.fill('#exSubject', '가나다');
+await p.click('#exSave');
+await p.waitForSelector('#todayList .lesson:has-text("가나다")');
+await p.click('.tab[data-go="progress"]');
+await p.click('#sec-progress [data-pp="plan"]');
+await p.waitForSelector('#planSel option', { state: 'attached' });
+ok('설정 전에는 가나다순이라 "가나다"가 계획 목록 맨 위(매번 바꿔 골라야 하는 문제)', (await p.locator('#planSel option').first().textContent()).includes('가나다'));
+await p.click('#sec-plan [data-act="order"]');
+await p.waitForSelector('#orderModal.show .order-row');
+await p.click('.order-row[data-i="0"] [data-mv="1"]'); // 아래로
+ok('과목 순서 설정: ↓ 로 옮기면 순서가 바뀜', (await p.locator('.order-row').first().textContent()).includes('수학'));
+await p.click('.order-row[data-i="1"] .ios-switch'); // 가나다는 진도 계획 안 씀
+if (SHOTS) await p.screenshot({ path: path.join(SHOTS, '05b-order-m.png') });
+await p.click('#orderSave');
+await p.waitForSelector('#orderModal.show', { state: 'detached' });
+const opts2 = await p.locator('#planSel option').allTextContents();
+ok('저장하면 계획 목록에서 "가나다"가 빠지고 "수학"이 맨 위', opts2.length >= 1 && !opts2.some((t) => t.includes('가나다')) && opts2[0].includes('수학'), JSON.stringify(opts2));
+let prefsDoc = null;
+await env.withSecurityRulesDisabled(async (c) => { const q = await c.firestore().collectionGroup('plans').get(); prefsDoc = q.docs.find((d) => d.id === '_prefs')?.data() || null; });
+ok('순서 설정이 Firestore에 저장됨(기기 간 동기화)', JSON.stringify(prefsDoc?.subjectOrder) === JSON.stringify(['수학', '가나다']) && JSON.stringify(prefsDoc?.noPlan) === JSON.stringify(['가나다']), JSON.stringify(prefsDoc));
+
 // 7b) 빠른 시작: 두 번째 실행부터는 저장해 둔 시간표를 먼저 그린다.
 //     컴시간은 끊고, Firebase 도구(SDK)는 2.5초 늦춰도 시간표는 그 전에 보여야 한다.
 await p.route('**/api/comci*', (r) => r.abort());
