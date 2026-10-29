@@ -196,11 +196,14 @@ await p.waitForSelector('#todayList .lesson .badge.ok');
 ok('일지 저장 후 "작성" 표시', true);
 
 // 5) 진도 계획: 여러 줄 붙여넣기 → 저장
-await p.click('.tab[data-go="settings"]');
-await p.click('.pick-item[data-go="plan"]'); // 진도 계획은 설정의 바로가기에서 연다(폰 하단 탭에는 없음)
+await p.click('.tab[data-go="progress"]'); // 진도 탭 → 위의 [진도 현황 | 진도 계획]에서 한 번에
+await p.click('#sec-progress [data-pp="plan"]');
 await p.waitForSelector('#planBulk');
+ok('폰: 진도 탭에서 한 번 눌러 진도 계획으로 들어가고, 하단 탭은 "진도"가 켜져 있음', (await p.locator('.tab[data-go="progress"].on').count()) === 1 && (await p.locator('#sec-plan [data-pp="plan"].on').count()) === 1);
 await p.selectOption('#planSel', `${grade}_수학`);
 await p.waitForSelector('#planBulk');
+const ord2 = await p.evaluate(() => ({ side: document.getElementById('planSide').getBoundingClientRect().top, main: document.getElementById('planBody').getBoundingClientRect().top }));
+ok('폰: 차시가 아직 없으면 "여러 줄 붙여넣기"가 목록보다 위에 나옴', ord2.side < ord2.main, JSON.stringify(ord2));
 await p.fill('#planBulk', '# 2. 일차방정식\n등식의 성질\n일차방정식 풀이\n활용 문제\n# 3. 좌표평면\n순서쌍');
 await p.click('#planBulkAdd');
 await p.waitForSelector('.plan-row');
@@ -243,6 +246,16 @@ await p.click('#exSave');
 await p.waitForSelector('#todayList .lesson .badge.on');
 ok('보강 수업이 오늘 목록에 추가됨', (await p.locator('#todayList .lesson').count()) === n + 1);
 
+// 7a) 일지 화면에서 바로 그 학년·과목의 진도 계획으로
+await p.click('.tab[data-go="today"]');
+await p.locator('#todayList .lesson', { hasText: '2-1' }).first().click();
+await p.waitForSelector('#logModal.show');
+await p.click('#lmUnitBtn');
+ok('일지 ▾ 목록 맨 아래에 "2학년 수학 진도 계획 만들기"가 있음', (await p.textContent('#lmUnitMenu .go-plan')).includes('2학년 수학 진도 계획 만들기'));
+await p.click('#lmUnitMenu .go-plan');
+await p.waitForSelector('#sec-plan.active');
+ok('누르면 그 학년·과목(2학년 수학)의 계획 화면이 바로 열림', (await p.inputValue('#planSel')) === '2_수학' && (await p.locator('#logModal.show').count()) === 0);
+
 // 7b) 빠른 시작: 두 번째 실행부터는 저장해 둔 시간표를 먼저 그린다.
 //     컴시간은 끊고, Firebase 도구(SDK)는 2.5초 늦춰도 시간표는 그 전에 보여야 한다.
 await p.route('**/api/comci*', (r) => r.abort());
@@ -266,8 +279,9 @@ await p.waitForFunction(() => document.querySelector('#app:not(.hidden)'));
 await p.evaluate(() => { window.__marker = 1; });
 await p.click('.tab[data-go="settings"]');
 await p.click('[data-act="check-update"]');
-await p.waitForSelector('#toast.show');
-ok('최신이면 새로고침 없이 "최신 버전이에요"만 알려줌', (await p.textContent('#toast')).includes('최신') && (await p.evaluate(() => window.__marker)) === 1);
+await p.waitForFunction(() => document.getElementById('toast').textContent.includes('최신'));
+const upd = { toast: await p.textContent('#toast'), marker: await p.evaluate(() => window.__marker), url: p.url() };
+ok('최신이면 새로고침 없이 "최신 버전이에요"만 알려줌', upd.toast.includes('최신') && upd.marker === 1, JSON.stringify(upd));
 await deploy(); // 새 버전 배포
 await p.click('.tab[data-go="week"]');
 await p.locator('#weekGrid .slot').first().click();

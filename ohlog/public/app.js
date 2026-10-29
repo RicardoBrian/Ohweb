@@ -456,7 +456,8 @@ function buildMenu() {
   markMenu();
 }
 function markMenu() {
-  document.querySelectorAll('[data-go].side-item, [data-go].tab').forEach((b) => b.classList.toggle('on', b.dataset.go === S.view));
+  document.querySelectorAll('[data-go].side-item, [data-go].tab').forEach((b) => b.classList.toggle('on', b.dataset.go === S.view || (b.classList.contains('tab') && b.dataset.go === 'progress' && S.view === 'plan')));
+  document.querySelectorAll('[data-pp-seg] button').forEach((b) => b.classList.toggle('on', b.dataset.pp === S.view)); // 진도 현황 | 진도 계획
 }
 function go(view, replace) {
   if (!$('sec-' + view) || (view === 'admin' && !S.admin)) view = defaultView();
@@ -540,7 +541,7 @@ function renderTodaySide() {
     const last = logsOf(k).find((l) => l.status !== 'cancel');
     const now = prog ? (prog.last >= 0 ? `${prog.plan.items[prog.last].title} (${prog.last + 1}/${prog.plan.items.length})` : '시작 전') : last ? planTitle(last) || last.content || '기록 있음' : '기록 없음';
     return `<button type="button" class="mini-item" data-k="${esc(k)}"><b>${esc(classLabel(c))}</b><span class="grow">${esc(now)}</span><small>${esc(c.subject)}</small></button>`;
-  }).join('') + '</div>' : '<p class="muted small">맡은 반이 아직 없어요.</p>';
+  }).join('') + '</div>' + (S.live && !S.plans.size ? '<button type="button" class="btn sm" data-go="plan" style="margin-top:12px">진도 계획 만들기</button>' : '') : '<p class="muted small">맡은 반이 아직 없어요.</p>';
   $('todayProg').querySelectorAll('[data-k]').forEach((b) => (b.onclick = () => { S.progressKey = b.dataset.k; go('progress'); }));
 }
 // 진도 표시: 직접 적은(또는 목록에서 고른) 글자가 먼저, 없으면 계획표의 차시 이름
@@ -765,7 +766,9 @@ function unitMenuHtml(slot) {
     h += '<div class="combo-sec">이전에 쓴 진도</div>';
     for (const p of prev) h += `<button type="button" class="combo-opt" data-plan="${esc(p.plan)}" data-text="${esc(p.t)}"><span class="tx">${esc(p.t)}</span><small>${esc(p.from)}</small></button>`;
   }
-  return h || '<div class="combo-empty">아직 고를 항목이 없어요. 직접 적으면 다음부터 여기에 나타나고, 진도 계획을 만들면 계획표도 나와요.</div>';
+  const hasPlan = !!plan?.items?.length;
+  return (h || '<div class="combo-empty">아직 고를 항목이 없어요. 직접 적으면 다음부터 여기에 나타나요.</div>')
+    + `<button type="button" class="combo-opt go-plan" data-go-plan="1"><span class="tx">${slot.grade}학년 ${esc(slot.subject)} 진도 계획 ${hasPlan ? '고치기' : '만들기'} →</span></button>`;
 }
 function contentMenuHtml(slot) {
   const k = classKey(slot);
@@ -779,8 +782,14 @@ function contentMenuHtml(slot) {
 }
 $('lmUnitBtn').onclick = () => toggleCombo('lmUnitMenu', unitMenuHtml(LM));
 $('lmContentBtn').onclick = () => toggleCombo('lmContentMenu', contentMenuHtml(LM));
-$('lmUnitMenu').onclick = (e) => {
+$('lmUnitMenu').onclick = async (e) => {
   const b = e.target.closest('.combo-opt'); if (!b) return;
+  if (b.dataset.goPlan) { // 일지 화면에서 바로 이 학년·과목의 계획 화면으로
+    const key = planId(LM.grade, LM.subject);
+    await tryCloseLog();
+    if (!LM) { S.planKey = key; go('plan'); }
+    return;
+  }
   $('lmUnit').value = b.dataset.text; LM_PICK = b.dataset.plan ? { id: b.dataset.plan, title: b.dataset.text } : null;
   closeCombos(); updateSuggest();
 };
@@ -958,6 +967,7 @@ function planGroups(items) {
 }
 function drawPlan() {
   const P = PLAN_DRAFT;
+  $('sec-plan').classList.toggle('plan-empty', !P.items.length); // 폰: 차시가 없으면 '여러 줄 붙여넣기'를 맨 위로
   const used = new Set([...S.logs.values()].filter((l) => l.planItem).map((l) => l.planItem));
   const groups = planGroups(P.items);
   $('planBody').innerHTML = `
@@ -1164,6 +1174,8 @@ $('fbSend').onclick = async () => {
 /* ───────── 버튼 공통 처리 ───────── */
 document.addEventListener('click', async (e) => {
   if (e.target.closest('[data-home]')) { e.preventDefault(); go(defaultView()); return; }
+  const pp = e.target.closest('[data-pp]');
+  if (pp) { go(pp.dataset.pp); return; }
   const goBtn = e.target.closest('[data-go]');
   if (goBtn) { go(goBtn.dataset.go); return; }
   const a = e.target.closest('[data-act]');

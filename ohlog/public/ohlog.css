@@ -211,3 +211,19 @@ body.ui-sky.dark .slot.bysubj { --tint-s: 24%; --tint-a: 0.20; }
   body.ui-sky .section-header p { margin-top: 0; }
   body.ui-sky .wrap { padding-top: 12px; }
 }
+
+/* ───────── 진도 계획 진입·폰 배치 ───────── */
+.combo-opt.go-plan { color: var(--accent); font-weight: 700; border-top: 0.5px solid var(--hairline); border-radius: 0 0 9px 9px; margin-top: 6px; }
+@media (max-width: 1199px) {
+  /* 폰·태블릿: 위에서 아래로. 차시가 아직 없으면 붙여넣기 카드가 먼저 */
+  #sec-plan.active { display: flex; flex-direction: column; }
+  #sec-plan > .section-header { order: 0; }
+  #sec-plan > .main-col { order: 2; }
+  #sec-plan > .side-col { order: 3; position: static; max-height: none; }
+  #sec-plan.plan-empty > .side-col { order: 1; }
+  #sec-plan .section-header .tools { width: 100%; justify-content: space-between; flex-wrap: wrap; }
+  #sec-plan .section-header .tools select.inp { flex: 1; min-width: 0; }
+  #sec-progress .section-header .tools { width: 100%; }
+}
+.section-header .tools [data-pp-seg] { flex-shrink: 0; }
+@media (max-width: 899px) { [data-pp-seg] { width: 100%; } [data-pp-seg] button { flex: 1; } }
