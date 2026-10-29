@@ -3,12 +3,8 @@
 //   GET /api/comci?code=학교코드 → 시간표 원본 요약(키 목록·학급수·샘플)
 // 컴시간 주소는 가끔 바뀐다. 환경변수 COMCI_URL(예: http://comci.kr:4082)로 덮어쓸 수 있다.
 
-// IP 직접 접속은 Cloudflare가 1003으로 막으므로 도메인만 쓴다. (컴시간학생.kr = xn--s39aj90b0nb2xw6xh.kr)
-const HOSTS = [
-  'http://xn--s39aj90b0nb2xw6xh.kr:4082',
-  'http://xn--s39aj90b0nb2xw6xh.kr',
-  'http://comci.kr:4082',
-];
+// IP 직접 접속은 Cloudflare가 1003으로 막으므로 도메인만 쓴다.
+const HOSTS = ['http://comci.net:4082']; // 컴시간학생.kr 웹이 실제로 부르는 주소(브라우저 Network 탭으로 확인)
 
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body, null, 2), {
