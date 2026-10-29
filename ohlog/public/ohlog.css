@@ -14,16 +14,24 @@ body.ui-sky {
   --card-bg: rgba(255,255,255,0.94);
   --card-solid: #ffffff;
   --card-line: rgba(24,27,58,0.09);
-  --tint-a: 0.14;
-  --tint-hover: 0.26;
+  --tint-a: 0.20;
+  --tint-hover: 0.32;
+  --tint-s: 30%;   /* 학년 칸 바탕: 채도 낮게 */
+  --tint-l: 55%;
+  --dot-s: 24%;    /* 과목 점: 탁한 톤 */
+  --dot-l: 52%;
   --sub: rgba(24,27,58,0.72);
 }
 body.ui-sky.dark {
   --card-bg: rgba(34,36,72,0.90);
   --card-solid: #25274e;
   --card-line: rgba(255,255,255,0.12);
-  --tint-a: 0.20;
-  --tint-hover: 0.32;
+  --tint-a: 0.22;
+  --tint-hover: 0.34;
+  --tint-s: 34%;
+  --tint-l: 72%;
+  --dot-s: 30%;
+  --dot-l: 72%;
   --sub: rgba(244,244,251,0.74);
 }
 html body.ui-sky .card { background: var(--card-bg); border: 1px solid var(--card-line); box-shadow: 0 1px 2px rgba(20,30,70,0.05), 0 10px 30px rgba(30,45,100,0.10); }
@@ -43,23 +51,23 @@ body.ui-sky .section-header p { font-size: 0.92rem; }
 
 /* ───────── ② 학년·과목 색 — 아주 옅게: 학년은 칸 바탕, 과목은 이름 앞 작은 점 ───────── */
 .slot, .lesson, .class-card { --gh: 268; --sh: 268; }
-.slot { background: hsl(var(--gh) 58% 55% / var(--tint-a)); }
-.slot:hover { background: hsl(var(--gh) 58% 55% / var(--tint-hover)); }
-.slot.done { background: hsl(var(--gh) 58% 55% / var(--tint-a)); }
+.slot { background: hsl(var(--gh) var(--tint-s) var(--tint-l) / var(--tint-a)); }
+.slot:hover { background: hsl(var(--gh) var(--tint-s) var(--tint-l) / var(--tint-hover)); }
+.slot.done { background: hsl(var(--gh) var(--tint-s) var(--tint-l) / var(--tint-a)); }
 .slot.done::after { color: var(--accent); }
 .slot small, .lesson .who .subj, .class-card .t small { display: inline-flex; align-items: center; gap: 4px; }
 .slot small::before, .lesson .who .subj::before, .class-card .t small::before, .subj-dot::before {
   content: ''; width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; display: inline-block;
-  background: hsl(var(--sh) 58% 48%);
+  background: hsl(var(--sh) var(--dot-s) var(--dot-l));
 }
-body.ui-sky.dark .slot small::before, body.ui-sky.dark .lesson .who .subj::before, body.ui-sky.dark .class-card .t small::before, body.ui-sky.dark .subj-dot::before { background: hsl(var(--sh) 62% 66%); }
+body.ui-sky.dark .slot small::before, body.ui-sky.dark .lesson .who .subj::before, body.ui-sky.dark .class-card .t small::before, body.ui-sky.dark .subj-dot::before { background: hsl(var(--sh) var(--dot-s) var(--dot-l)); }
 .lesson { position: relative; padding-left: 14px; }
-.lesson::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 4px; border-radius: 4px; background: hsl(var(--gh) 55% 55% / 0.75); }
+.lesson::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 4px; border-radius: 4px; background: hsl(var(--gh) var(--tint-s) var(--tint-l) / 0.9); }
 .lesson .who .subj { font-weight: 600; color: var(--text-2); font-size: 0.86rem; }
-.class-card { background: hsl(var(--gh) 58% 55% / var(--tint-a)); }
-.class-card:hover { background: hsl(var(--gh) 58% 55% / var(--tint-hover)); }
-.class-card.on { background: hsl(var(--gh) 58% 55% / var(--tint-hover)); box-shadow: inset 0 0 0 2px hsl(var(--gh) 60% 50%); }
-.legend i.g1 { background: hsl(205 58% 55% / 0.38); } .legend i.g2 { background: hsl(152 50% 45% / 0.38); } .legend i.g3 { background: hsl(32 70% 52% / 0.42); }
+.class-card { background: hsl(var(--gh) var(--tint-s) var(--tint-l) / var(--tint-a)); }
+.class-card:hover { background: hsl(var(--gh) var(--tint-s) var(--tint-l) / var(--tint-hover)); }
+.class-card.on { background: hsl(var(--gh) var(--tint-s) var(--tint-l) / var(--tint-hover)); box-shadow: inset 0 0 0 2px hsl(var(--gh) var(--tint-s) var(--tint-l)); }
+.legend i.g1 { background: hsl(198 30% 55% / 0.45); } .legend i.g2 { background: hsl(228 30% 55% / 0.45); } .legend i.g3 { background: hsl(268 30% 55% / 0.45); }
 .legend i.done { background: none; box-shadow: none; } .legend i.done::before { content: '✓'; color: var(--accent); font-size: 0.8rem; font-weight: 800; position: relative; top: -1px; }
 .legend i.sdot { width: 8px; height: 8px; border-radius: 50%; background: var(--text-3); }
 
@@ -140,7 +148,7 @@ body.ui-sky.dark .slot small::before, body.ui-sky.dark .lesson .who .subj::befor
 .week-grid td.tdy { background: rgba(0,122,255,0.07); border-radius: 12px; }
 body.ui-sky.dark .week-grid td.tdy { background: rgba(10,132,255,0.12); }
 .slot.ro { cursor: default; }
-.slot.ro:hover { background: hsl(var(--gh) 58% 55% / var(--tint-a)); }
+.slot.ro:hover { background: hsl(var(--gh) var(--tint-s) var(--tint-l) / var(--tint-a)); }
 .slot.ro small::before { display: none; }
 .slot.mine { box-shadow: inset 0 0 0 2px var(--accent); }
 .tip-list { margin: 4px 0 0; padding-left: 20px; font-size: 0.92rem; line-height: 1.8; color: var(--text-2); }
@@ -169,3 +177,7 @@ html body.ui-sky.dark .week-grid td.tdy { background: rgba(10,132,255,0.12); }
   .slot small { font-size: 0.72rem; }
   .slot small::before { width: 6px; height: 6px; }
 }
+
+/* 학급별 시간표는 칸 바탕이 과목 색이라 학년 색보다 한 단계 더 옅고 탁하게 */
+.slot.bysubj { --tint-s: 18%; --tint-a: 0.16; }
+body.ui-sky.dark .slot.bysubj { --tint-s: 24%; --tint-a: 0.20; }
