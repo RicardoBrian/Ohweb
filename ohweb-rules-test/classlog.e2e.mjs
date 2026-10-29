@@ -323,14 +323,17 @@ ok('관리자 계정에는 교사의 일지가 섞이지 않음', true);
 await P.click('.side-item[data-go="admin"]');
 await P.waitForSelector('#adminFeedback .user-row');
 ok('관리자 화면에 받은 피드백이 보임', (await P.textContent('#adminFeedback')).includes('오류 신고'));
-await P.click('.dark-toggle');
+await P.click('.side-item[data-go="settings"]');
+await shot(P, '10b-settings-pc');
+ok('사이드바·상단 바에 "다크 모드" 스위치가 없음', (await P.locator('.dark-toggle, .nav-dark-label').count()) === 0);
+await P.click('#themeSeg button[data-v="dark"]');
+ok('설정에서 다크를 고르면 어두운 화면이 됨', await P.$eval('body', (b) => b.classList.contains('dark')));
 await P.click('.side-item[data-go="week"]');
 await P.waitForSelector('#weekGrid .slot');
 await shot(P, '10-week-dark');
 
 // 10) 해상도별 화면(SHOTS 를 줄 때만): 휴대폰·태블릿·노트북·큰 모니터
 if (SHOTS) {
-  await P.click('.dark-toggle');
   for (const [w, h] of [[390, 844], [1024, 768], [1440, 900], [1920, 1080]]) {
     await p.setViewportSize({ width: w, height: h });
     for (const v of ['today', 'week', 'class', 'progress', 'plan', 'export', 'settings']) {

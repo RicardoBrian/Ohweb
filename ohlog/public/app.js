@@ -87,8 +87,14 @@ function show(screen) {
 }
 
 /* ───────── 다크 모드(ohweb과 같은 방식) ───────── */
-if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
-function toggleDark() { localStorage.setItem('dark', document.body.classList.toggle('dark') ? '1' : '0'); }
+// 화면 모드: 기본은 기기(폰·PC) 설정을 따르고, 설정에서 라이트/다크로 고정할 수 있다
+const themeMode = () => store.get('classlog-theme') || 'auto';
+function applyTheme() {
+  const m = themeMode();
+  document.body.classList.toggle('dark', m === 'dark' || (m === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches));
+}
+applyTheme();
+matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', applyTheme);
 
 /* ───────── 로그인·프로필 ───────── */
 $('loginBtn').onclick = async () => {
@@ -1007,13 +1013,17 @@ function renderSettings() {
     <div class="pick-item" style="cursor:default"><span class="muted small" style="width:70px">이름</span>${esc(p.teacherName)} <span class="muted small">(컴시간 ${p.teacherId}번)</span></div>
   </div>`;
   const d = S.ttDebug;
+  $('ttDebugBox').classList.toggle('hidden', !(S.admin && d)); // 개발용 진단은 관리자에게만, 접어서
   $('ttDebug').textContent = d ? `해석: ${d.mode} · 분리 ${d.sep} · 겹침 ${d.clashes} · 전체 수업 ${d.cells}칸 · 담임표 ${d.homeroom}` : '';
+  const tm = themeMode();
+  $('themeSeg').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === tm));
   const fs = store.get('classlog-fs') || '1';
   $('fsSeg').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === fs));
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const standalone = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
   $('iosTip').classList.toggle('hidden', !(ios && !standalone));
 }
+$('themeSeg').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; store.set('classlog-theme', b.dataset.v); applyTheme(); renderSettings(); };
 $('fsSeg').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; store.set('classlog-fs', b.dataset.v); applyFs(b.dataset.v); renderSettings(); };
 
 /* ───────── 승인 관리(관리자) ───────── */
@@ -1091,7 +1101,6 @@ document.addEventListener('click', async (e) => {
   if (!a) return;
   const act = a.dataset.act;
   if (act === 'logout') logout();
-  else if (act === 'dark') toggleDark();
   else if (act === 'day') { const n = Number(a.dataset.n); S.date = n ? addDays(S.date, n) : todayISO(); renderToday(); }
   else if (act === 'add-extra') openExtra();
   else if (act === 'feedback') openFeedback();
