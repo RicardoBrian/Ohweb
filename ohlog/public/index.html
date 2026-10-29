@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>수업일지 · 컴시간 조회 테스트</title>
+<style>
+  body{font:15px/1.5 system-ui,sans-serif;max-width:720px;margin:0 auto;padding:16px;color:#1c1c1e;background:#f5f5f7}
+  h1{font-size:20px} form{display:flex;gap:8px;margin:12px 0}
+  input{flex:1;padding:10px;border:1px solid #ccc;border-radius:8px;font:inherit}
+  button{padding:10px 14px;border:0;border-radius:8px;background:#0071e3;color:#fff;font:inherit}
+  pre{background:#fff;border-radius:8px;padding:12px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+  .school{display:block;width:100%;text-align:left;margin:4px 0;background:#fff;color:inherit;border:1px solid #ddd}
+</style>
+</head>
+<body>
+<h1>컴시간 조회 테스트</h1>
+<form id="f"><input id="q" placeholder="학교명 (예: 서울고)" required><button>검색</button></form>
+<div id="list"></div>
+<pre id="out">학교를 검색하세요.</pre>
+<script>
+const $ = (id) => document.getElementById(id);
+const show = (o) => ($('out').textContent = typeof o === 'string' ? o : JSON.stringify(o, null, 2));
+async function call(qs) {
+  const r = await fetch('/api/comci?' + qs);
+  return r.json();
+}
+$('f').onsubmit = async (e) => {
+  e.preventDefault(); $('list').innerHTML = ''; show('검색 중…');
+  const d = await call('q=' + encodeURIComponent($('q').value.trim()));
+  show(d);
+  (d.schools || []).forEach((s) => {
+    const b = document.createElement('button');
+    b.className = 'school'; b.textContent = `${s.region} ${s.name} (${s.sccode})`;
+    b.onclick = async () => { show('시간표 조회 중…'); show(await call('code=' + s.sccode)); };
+    $('list').appendChild(b);
+  });
+};
+</script>
+</body>
+</html>

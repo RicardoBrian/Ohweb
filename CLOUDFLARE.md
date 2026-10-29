@@ -13,6 +13,7 @@ Cloudflare 대시보드 → Workers & Pages → Create → Pages → Connect to 
 | `ohinfo` | `ohinfo` | *(비움)* | `public` | `kakainfo.com` (학생용, 루트 도메인) |
 | `ohweb` | `ohweb` | *(비움)* | `public` | `admin.kakainfo.com` |
 | `ohsettle` | `ohsettle` | *(비움)* | `public` | `settle.kakainfo.com` |
+| `ohlog` | `ohlog` | *(비움)* | `public` | `log.kakainfo.com` (수업일지, 컴시간 조회 테스트) |
 
 - **Build command는 반드시 비운다.** 빌드 스텝이 없는 정적 사이트다. 프레임워크 프리셋은 `None`.
 - Build output directory는 root directory 기준 상대경로다. 즉 실제 경로는 `ohinfo/public`이 된다.

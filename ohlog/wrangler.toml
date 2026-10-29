@@ -1,0 +1,4 @@
+# Pages 전용 설정 — 수업일지 테스트(컴시간 조회 확인용)
+name = "ohlog"
+pages_build_output_dir = "public"
+compatibility_date = "2025-01-01"
