@@ -426,6 +426,23 @@ service cloud.firestore {
       allow delete: if col in ['logs', 'plans', 'extras'] && clApproved(uid);
     }
 
+    // 수업일지 피드백 — 승인된 교사가 쓰고(알림은 ohinfo 질문방과 같은 Apps Script), 읽는 건 관리자만.
+    match /classlog_feedback/{id} {
+      allow read, delete: if isAdmin();
+      allow create: if clGoogle()
+          && get(/databases/$(database)/documents/classlog_users/$(request.auth.uid)).data.status == 'approved'
+          && request.resource.data.keys().hasOnly(['uid', 'email', 'teacherName', 'schoolName', 'kind', 'text', 'view', 'ua', 'createdAt'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.email == request.auth.token.email
+          && request.resource.data.kind in ['idea', 'ux', 'bug', 'etc']
+          && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 1000
+          && request.resource.data.teacherName is string && request.resource.data.teacherName.size() <= 30
+          && request.resource.data.schoolName is string && request.resource.data.schoolName.size() <= 60
+          && request.resource.data.view is string && request.resource.data.view.size() <= 20
+          && request.resource.data.ua is string && request.resource.data.ua.size() <= 200
+          && request.resource.data.createdAt == request.time;
+    }
+
     // 명시 안 한 나머지 컬렉션은 전부 거부(기본값)
   }
 }

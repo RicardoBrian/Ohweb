@@ -11,8 +11,15 @@
 | `public/theme.css` · `public/admin-sky.css` | **ohweb/public에서 복사**. 디자인을 바꾸면 같이 복사한다 |
 | `public/firebase-config.js` | ohweb과 같은 Firebase 프로젝트(ohweb-93062), Auth·Firestore만 |
 
-데이터는 `classlog_users/{uid}`(프로필·승인 상태)와 그 아래 `logs`·`plans`·`extras`.
-규칙은 레포 루트 `ohweb-firestore.rules`의 "수업일지" 부분.
+데이터는 `classlog_users/{uid}`(프로필·승인 상태)와 그 아래 `logs`·`plans`·`extras`, 그리고 `classlog_feedback`(피드백, 읽기는 관리자만).
+규칙은 레포 루트 `ohweb-firestore.rules`의 "수업일지" 부분. **규칙을 고치면 Firebase 콘솔에 다시 붙여넣어 게시해야 한다.**
+
+## 기능 요약
+- 폰(홈 화면 앱)에서는 처음에 **시간표**가 열린다(`manifest.webmanifest` + iOS 메타). 시간표는 localStorage 에 보관해 컴시간이 느려도 바로 보인다.
+- **학급·교사 시간표**: 학급별(담임 확인) / 교사별(다른 선생님 수업 확인). 보기 전용 — 일지는 내 수업(시간표·오늘)에서만 열린다.
+- 일지 **진도**는 직접 적기가 기본이고, ▾ 로 계획표·이전 진도에서 고른다. 닫기 전 변경 확인, "저장 후 다음 수업".
+- 학년은 칸 바탕 색, 과목은 이름 앞 점 색(옅게). 글자 크기는 설정에서 4단계.
+- 우측 하단 푸터: 저작권·인스타·메일 + **피드백**(Firestore 저장 + ohinfo 질문방과 같은 Apps Script `notify` 로 텔레그램 알림).
 
 ## 배포 전에 한 번
 
