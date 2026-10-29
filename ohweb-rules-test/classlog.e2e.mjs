@@ -174,6 +174,11 @@ await shot(T.page, '02b-week-m');
 const p = T.page;
 await p.click('.tab[data-go="today"]');
 await p.waitForSelector('#todayList .lesson');
+const hd = await p.evaluate(() => {
+  const t = document.getElementById('navTitle').getBoundingClientRect();
+  return { h1: getComputedStyle(document.getElementById('todayTitle')).display, text: document.getElementById('navTitle').textContent, center: (t.left + t.right) / 2, vw: innerWidth };
+});
+ok('폰: 큰 제목은 숨기고 상단 바 가운데에만 "오늘 수업"이 한 번 나옴', hd.h1 === 'none' && hd.text === '오늘 수업' && Math.abs(hd.center - hd.vw / 2) < 3, JSON.stringify(hd));
 const n = await p.locator('#todayList .lesson').count();
 ok('오늘(목) 수업 카드가 나옴', n > 0, `count=${n}`);
 const debug = await p.evaluate(async () => (await (await fetch('/api/comci?code=43917&teacher=10')).json()).debug);
