@@ -19,7 +19,7 @@
 1. **Firestore 규칙**: `ohweb-firestore.rules`를 Firebase 콘솔 → Firestore → 규칙에 붙여넣고 게시.
    붙여넣기 전 `ohweb-rules-test`에서 `npm run test:rules`.
 2. **로그인 허용 도메인**: Firebase 콘솔 → Authentication → 설정 → 승인된 도메인에
-   `classnotee.pages.dev`(와 붙일 커스텀 도메인)를 추가. 안 하면 Google 로그인 팝업이 `auth/unauthorized-domain`으로 실패한다.
+   `classnotee.pages.dev`와 `classnote.gwansan.com`을 추가. 안 하면 Google 로그인 팝업이 `auth/unauthorized-domain`으로 실패한다.
 3. 관리자(`qjatjr7575@gmail.com`)는 가입하면 바로 승인되고, 메뉴에 "승인 관리"가 생긴다.
 
 ## 테스트
