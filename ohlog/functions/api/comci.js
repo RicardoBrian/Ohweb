@@ -42,7 +42,7 @@ const parse = (text) => {
 };
 
 async function getText(url, charset) {
-  const res = await fetch(url, { headers: { 'user-agent': 'Mozilla/5.0' } });
+  const res = await fetch(url, { headers: { 'user-agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(4000) });
   if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`);
   return new TextDecoder(charset).decode(await res.arrayBuffer());
 }
@@ -67,6 +67,23 @@ async function bootstrap(env) {
 
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
+  if (url.searchParams.get('diag')) {
+    // 후보 주소마다 /st 접속 결과를 그대로 보여준다(어디서 막히는지 확인용)
+    const hosts = [env.COMCI_URL, ...HOSTS].filter(Boolean);
+    const results = await Promise.all(
+      hosts.map(async (h) => {
+        const t = Date.now();
+        try {
+          const r = await fetch(h + '/st', { signal: AbortSignal.timeout(5000) });
+          const body = new TextDecoder('euc-kr').decode(await r.arrayBuffer());
+          return { host: h, status: r.status, ms: Date.now() - t, len: body.length, head: body.slice(0, 120) };
+        } catch (e) {
+          return { host: h, error: `${e.name}: ${e.message}`, ms: Date.now() - t };
+        }
+      }),
+    );
+    return json({ results });
+  }
   const q = url.searchParams.get('q');
   const code = url.searchParams.get('code');
   if (!q && !code) return json({ error: 'q(학교명) 또는 code(학교코드) 필요' }, 400);
