@@ -66,6 +66,49 @@ async function bootstrap(env) {
   throw new Error('컴시간 접속 실패\n' + tried.join('\n'));
 }
 
+
+// 응답의 키 번호(자료446 …)는 컴시간이 갱신할 때마다 바뀌므로, 값의 '모양'으로 용도를 찾는다.
+//   교사 목록: ["", "김애*", …]   과목 목록: [27, "국어", …]
+//   시간표: [학년수, [반수, [요일수, [교시수, 코드…], …], …], …]  (코드 = 교사*분리 + 과목, 앞에 '>'면 변경된 수업)
+const isLesson = (v) => (typeof v === 'number' && v > 0) || (typeof v === 'string' && v !== '');
+function tableHasLessons(tbl) {
+  return tbl.slice(1).some((g) => g.slice(1).some((c) => c.slice(1).some((d) => d.slice(1).some(isLesson))));
+}
+function parseTimetable(raw) {
+  const grades = raw['학급수'].length - 1;
+  let teachers, subjects;
+  const tables = [];
+  for (const [k, v] of Object.entries(raw)) {
+    if (!/^자료\d+$/.test(k) || !Array.isArray(v)) continue;
+    const strings = v.slice(1).every((x) => typeof x === 'string');
+    if (v[0] === '' && strings) teachers ??= v;
+    else if (typeof v[0] === 'number' && v.length > 1 && strings) subjects ??= v;
+    else if (v[0] === grades && Array.isArray(v[1]) && tableHasLessons(v)) tables.push([k, v]);
+  }
+  if (!teachers || !subjects || !tables.length) throw new Error('응답 구조를 해석하지 못함(컴시간 형식 변경?): ' + Object.keys(raw).join(','));
+  // 변경('>')이 반영된 일일자료가 있으면 그걸, 없으면 첫 표를 쓴다.
+  const [tableKey, table] = tables.find(([, v]) => JSON.stringify(v).includes('">')) || tables[0];
+
+  const flat = [];
+  for (let g = 1; g < table.length; g++)
+    for (let c = 1; c < table[g].length; c++)
+      for (let d = 1; d < table[g][c].length; d++)
+        for (let p = 1; p < table[g][c][d].length; p++) {
+          const item = table[g][c][d][p];
+          if (!isLesson(item)) continue;
+          const changed = typeof item === 'string' && item.startsWith('>');
+          const n = Number(changed ? item.slice(1) : item);
+          if (n) flat.push({ grade: g, class: c, day: d, period: p, changed, n });
+        }
+  // 분리값(100/1000)은 데이터에 맞는 걸 고른다.
+  const sep = [raw['분리'], 1000, 100].find(
+    (s) => s > 1 && flat.every((x) => Math.floor(x.n / s) < teachers.length && x.n % s < subjects.length),
+  );
+  if (!sep) throw new Error('교사/과목 코드 분리 방식을 못 찾음');
+  const cells = flat.map(({ n, ...x }) => ({ ...x, teacher: Math.floor(n / sep), subject: n % sep, subjectName: subjects[n % sep] }));
+  return { teachers, subjects, cells, sep, tableKeys: tables.map(([k]) => k).concat('→' + tableKey) };
+}
+
 export async function onRequestGet({ request, env }) {
   const url = new URL(request.url);
   if (url.searchParams.get('diag')) {
@@ -117,19 +160,22 @@ export async function onRequestGet({ request, env }) {
       return json({ host: c.host, schools });
     }
 
-    const token = btoa(`${c.prefix}${code}_0_1`);
+    const week = url.searchParams.get('week') || '1'; // 1=이번 주, 2=다음 주 (일자자료 참고)
+    const token = btoa(`${c.prefix}${code}_0_${week}`);
     const raw = parse(await getText(c.base + token, 'utf-8'));
-    const keys = Object.keys(raw);
+    if (url.searchParams.get('raw')) return json({ host: c.host, keys: Object.keys(raw), raw });
+
+    const t = parseTimetable(raw);
+    const teacher = url.searchParams.get('teacher');
     return json({
       host: c.host,
-      keys, // 구조 파악용 — 다음 단계에서 이걸 보고 파서를 확정한다
-      학교명: raw['학교명'],
-      학급수: raw['학급수'],
+      week,
+      weeks: raw['일자자료'],
       시작일: raw['시작일'],
-      일자자료: raw['일자자료']?.slice?.(0, 3),
-      sample: Object.fromEntries(
-        keys.filter((k) => /^자료\d+$/.test(k)).map((k) => [k, JSON.stringify(raw[k]).slice(0, 300)]),
-      ),
+      teachers: t.teachers.map((name, id) => ({ id, name })).filter((x) => x.id > 0 && x.name),
+      subjects: t.subjects,
+      lessons: teacher == null ? undefined : t.cells.filter((x) => x.teacher === Number(teacher)),
+      debug: { sep: t.sep, tables: t.tableKeys, cells: t.cells.length },
     });
   } catch (e) {
     return json({ error: e.message }, 502);
