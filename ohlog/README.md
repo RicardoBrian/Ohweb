@@ -19,6 +19,11 @@
 `app.js` 의 `checkUpdate` 가 처음 열 때 기억한 값과 달라지면(앱으로 돌아올 때·10분마다·설정의 "앱 업데이트 확인") 새로 불러온다. 작성 중이면 "새 버전이 있어요" 알림줄만 띄운다.
 화면 파일은 `_headers` 로 캐시하지 않는다. **화면 파일을 새로 추가하면 `version.js` 의 `FILES` 에 넣어야 변경이 감지된다.**
 
+## 빠른 시작(홈 화면 앱)
+켜자마자 로그인·Firestore 를 기다리지 않고, 지난번 승인된 계정이면 저장해 둔 시간표(`classlog:tt:*`)와 프로필(`classlog:last`)로 **먼저 화면을 그린다**(`bootFromCache`).
+Firebase SDK 는 `index.html` 의 `modulepreload` 로 미리 받고 `app.js` 에서 늦게 불러오며(`sdkReady`), 일지 데이터가 도착하기 전(`S.live` 가 false)에는 일지·계획 쓰기를 막아 덮어쓰기를 방지한다.
+`theme.css` 의 구글 폰트 `@import` 는 화면 그리기를 막아 뺐다. Firebase SDK 를 쓰는 새 코드는 반드시 `await sdkReady` 뒤에 둔다.
+
 ## 기능 요약
 - 폰(홈 화면 앱)에서는 처음에 **시간표**가 열린다(`manifest.webmanifest` + iOS 메타). 시간표는 localStorage 에 보관해 컴시간이 느려도 바로 보인다.
 - **학급·교사 시간표**: 학급별(담임 확인) / 교사별(다른 선생님 수업 확인). 보기 전용 — 일지는 내 수업(시간표·오늘)에서만 열린다.

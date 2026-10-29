@@ -5,11 +5,18 @@
 //   classlog_users/{uid}/plans/{id}       진도 계획(학년·과목별 단원·차시 목록). id = 학년_과목
 //   classlog_users/{uid}/extras/{id}      직접 추가한 수업(보강·교환)
 // 시간표는 /api/comci 가 컴시간에서 받아온다(Firestore에 저장하지 않음).
-import { auth, db } from './firebase-config.js';
-import { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import {
-  doc, setDoc, updateDoc, deleteDoc, addDoc, collection, onSnapshot, serverTimestamp, query, orderBy, limit,
-} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+// Firebase SDK(수백 KB)는 첫 화면을 그린 뒤에 받는다 — 앱을 켜면 저장해 둔 시간표가 먼저 보이고(bootFromCache),
+// SDK 는 그동안 index.html 의 modulepreload 로 이미 받는 중이다. SDK 를 쓰는 곳은 sdkReady 뒤에서만 실행된다.
+let auth, db, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged;
+let doc, setDoc, updateDoc, deleteDoc, addDoc, collection, onSnapshot, serverTimestamp, query, orderBy, limit;
+const GS = 'https://www.gstatic.com/firebasejs/10.12.2/';
+const sdkReady = (async () => {
+  const [cfg, A, F] = await Promise.all([import('./firebase-config.js'), import(GS + 'firebase-auth.js'), import(GS + 'firebase-firestore.js')]);
+  ({ auth, db } = cfg);
+  ({ GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } = A);
+  ({ doc, setDoc, updateDoc, deleteDoc, addDoc, collection, onSnapshot, serverTimestamp, query, orderBy, limit } = F);
+})();
 
 const ADMIN_EMAIL = 'qjatjr7575@gmail.com';
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
@@ -22,7 +29,7 @@ const S = {
   weeks: [], times: [], tt: new Map(), ttLoading: new Map(), ttFail: new Set(), curWeek: null, ttDebug: null,
   view: 'today', date: todayISO(), week: null,
   progressKey: null, planKey: null, adminFilter: 'pending',
-  unsub: [], profileUnsub: null,
+  unsub: [], profileUnsub: null, live: false, fromCache: false,
   classCount: [], homeroom: [], teachers: [], clsMode: 'class', tchr: null, cls: null, clsTT: new Map(), stale: new Set(), feedback: [], fbAt: 0,
 };
 
@@ -82,7 +89,7 @@ async function api(qs) {
   return d;
 }
 function show(screen) {
-  for (const id of ['screenLogin', 'screenOnboard', 'screenPending']) $(id).classList.toggle('show', id === screen);
+  for (const id of ['screenBoot', 'screenLogin', 'screenOnboard', 'screenPending']) $(id).classList.toggle('show', id === screen);
   $('app').classList.toggle('hidden', screen !== 'app');
 }
 
@@ -116,7 +123,7 @@ async function checkUpdate(manual = false) {
   } catch { if (manual) toast('확인하지 못했어요. 연결을 확인해 주세요'); }
 }
 $('updateBar').onclick = () => reloadFresh(PENDING_V);
-checkUpdate();
+setTimeout(checkUpdate, 1500); // 켜자마자 다른 요청과 겹치지 않게 첫 화면 뒤에 기준 버전을 기록
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkUpdate(); });
 addEventListener('pageshow', (e) => { if (e.persisted) checkUpdate(); });
 addEventListener('online', () => checkUpdate());
@@ -124,24 +131,41 @@ setInterval(() => { if (document.visibilityState === 'visible') checkUpdate(); }
 
 /* ───────── 로그인·프로필 ───────── */
 $('loginBtn').onclick = async () => {
+  await sdkReady;
   try { await signInWithPopup(auth, new GoogleAuthProvider()); }
   catch (e) { if (e.code !== 'auth/popup-closed-by-user') toast('로그인 실패: ' + (e.code || e.message)); }
 };
-async function logout() { await signOut(auth); }
+async function logout() { await sdkReady; store.set('classlog:last', ''); await signOut(auth); }
 
-onAuthStateChanged(auth, (user) => {
+sdkReady.then(() => onAuthStateChanged(auth, (user) => {
   S.profileUnsub?.(); S.profileUnsub = null;
   stopApp();
   S.user = user;
   S.admin = !!user && user.email === ADMIN_EMAIL;
   document.body.classList.toggle('is-admin', S.admin);
-  if (!user) { show('screenLogin'); return; }
+  if (!user) { store.set('classlog:last', ''); S.profile = null; S.fromCache = false; show('screenLogin'); return; }
   S.profileUnsub = onSnapshot(userRef(), (snap) => {
     const before = S.profile;
     S.profile = snap.exists() ? snap.data() : null;
     route(before);
   }, (e) => { toast('프로필을 못 읽음: ' + e.code); show('screenLogin'); });
-});
+}));
+
+// 지난번에 승인돼 있던 계정이면, 로그인 확인·Firestore 를 기다리지 않고 저장해 둔 시간표부터 바로 그린다.
+// 일지 데이터(✓ 표시 등)는 연결되는 대로 채워지고, 그 전에는 쓰기를 막는다(S.live).
+function bootFromCache() {
+  try {
+    const c = JSON.parse(store.get('classlog:last') || 'null');
+    if (!c?.user || c.profile?.status !== 'approved') return false;
+    S.user = c.user; S.admin = c.user.email === ADMIN_EMAIL; S.profile = c.profile;
+    if (!restoreTt()) { S.profile = null; S.user = null; return false; }
+    S.fromCache = true;
+    document.body.classList.toggle('is-admin', S.admin);
+    show('app'); buildMenu(); fillIcons(); fillCredit();
+    go(location.hash.slice(1) || defaultView(), true);
+    return true;
+  } catch { return false; }
+}
 
 // 프로필 상태에 맞는 화면으로
 function route(before) {
@@ -157,7 +181,8 @@ function route(before) {
     show('screenPending');
     return;
   }
-  const changed = !before || before.status !== 'approved' || before.schoolCode !== p.schoolCode || before.teacherId !== p.teacherId;
+  const changed = S.fromCache || !before || before.status !== 'approved' || before.schoolCode !== p.schoolCode || before.teacherId !== p.teacherId;
+  S.fromCache = false;
   if (changed) startApp(); else renderAll();
 }
 
@@ -223,6 +248,7 @@ async function previewTeacher() {
   }
 }
 $('obSubmit').onclick = async () => {
+  await sdkReady;
   const id = Number($('obTeacherSel').value);
   const t = OB.teachers.find((x) => x.id === id);
   if (!t || !OB.school) return;
@@ -257,15 +283,23 @@ $('setChange').onclick = async () => {
 /* ───────── 앱 시작·종료 ───────── */
 function stopApp() {
   S.unsub.forEach((u) => u()); S.unsub = [];
+  S.live = false;
   S.logs.clear(); S.plans.clear(); S.extras.clear(); S.tt.clear(); S.ttLoading.clear(); S.ttFail.clear(); S.clsTT.clear(); S.stale.clear(); S.users = []; S.feedback = [];
   S.weeks = []; S.curWeek = null; S.week = null;
 }
 async function startApp() {
   stopApp();
+  const p0 = S.profile;
+  store.set('classlog:last', JSON.stringify({
+    user: { uid: S.user.uid, email: S.user.email, displayName: S.user.displayName || '' },
+    profile: { status: p0.status, schoolCode: p0.schoolCode, schoolName: p0.schoolName, region: p0.region || '', teacherId: p0.teacherId, teacherName: p0.teacherName },
+  }));
   show('app');
   buildMenu(); fillIcons(); fillCredit();
   const live = (name, map) => onSnapshot(sub(name), (snap) => {
-    map.clear(); snap.forEach((d) => map.set(d.id, { id: d.id, ...d.data() })); renderAll();
+    map.clear(); snap.forEach((d) => map.set(d.id, { id: d.id, ...d.data() }));
+    if (name === 'logs') S.live = true; // 일지가 도착한 뒤에야 쓰기 허용(덮어쓰기 방지)
+    renderAll();
   }, (e) => toast(`${name} 읽기 실패: ${e.code}`));
   S.unsub.push(live('logs', S.logs), live('plans', S.plans), live('extras', S.extras));
   if (S.admin) {
@@ -655,6 +689,7 @@ let LM_NEXT = null;   // 같은 날 다음 미작성 수업
 const lmState = () => JSON.stringify([segVal('lmStatus'), $('lmUnit').value, $('lmContent').value, $('lmHomework').value, $('lmNote').value]);
 
 function openLog(slot) {
+  if (!S.live) { toast('일지를 불러오는 중이에요. 잠시만요'); return; }
   LM = slot;
   const id = logId(slot);
   const log = S.logs.get(id);
@@ -768,6 +803,7 @@ async function tryCloseLog() {
 $('lmCancel').onclick = tryCloseLog;
 $('logModal').addEventListener('mousedown', (e) => { if (e.target === $('logModal')) tryCloseLog(); });
 async function saveLog() {
+  await sdkReady;
   if (!LM) return false;
   const s = LM, unit = $('lmUnit').value.trim();
   const data = {
@@ -786,6 +822,7 @@ async function saveLog() {
 $('lmSave').onclick = async () => { if (await saveLog()) closeLog(); };
 $('lmSaveNext').onclick = async () => { const nx = LM_NEXT; if (await saveLog()) { closeLog(); if (nx) openLog(nx); } };
 $('lmDelete').onclick = async () => {
+  await sdkReady;
   if (!LM) return;
   const s = LM;
   const log = S.logs.get(logId(s));
@@ -817,6 +854,7 @@ function openExtra() {
 }
 $('exCancel').onclick = () => $('extraModal').classList.remove('show');
 $('exSave').onclick = async () => {
+  await sdkReady;
   const data = {
     date: $('exDate').value, period: Number($('exPeriod').value), grade: Number($('exGrade').value), cls: Number($('exCls').value),
     subject: $('exSubject').value.trim(), kind: segVal('exKind') || 'etc', createdAt: serverTimestamp(),
@@ -896,6 +934,7 @@ function planTargets() {
   return [...m.entries()].sort((a, b) => a[1].subject.localeCompare(b[1].subject) || a[1].grade - b[1].grade);
 }
 function renderPlan() {
+  if (!S.live) { $('planBody').innerHTML = '<div class="card"><div class="spinner"></div></div>'; $('planSide').innerHTML = ''; return; }
   const targets = planTargets();
   if (!targets.length) { $('planSel').innerHTML = ''; $('planSide').innerHTML = ''; $('planBody').innerHTML = '<div class="card"><div class="empty-state">시간표를 불러오면 맡은 학년·과목이 여기에 나와요.</div></div>'; return; }
   if (!S.planKey || !targets.some(([id]) => id === S.planKey)) S.planKey = targets[0][0];
@@ -986,6 +1025,7 @@ function drawPlan() {
     dirty();
   };
   $('planSave').onclick = async () => {
+    await sdkReady;
     const items = P.items.map((x) => ({ id: x.id, unit: x.unit.trim(), title: x.title.trim() })).filter((x) => x.title);
     try {
       await setDoc(doc(sub('plans'), P.id), { grade: P.grade, subject: P.subject, items, updatedAt: serverTimestamp() });
@@ -1073,6 +1113,7 @@ function renderAdmin() {
       ${u.status === 'approved' && u.uid !== S.user.uid ? `<button class="btn sm" data-uid="${esc(u.uid)}" data-s="pending">승인 취소</button>` : ''}
     </div></div>`).join('') : '<div class="empty-state">해당하는 선생님이 없어요.</div>';
   $('adminList').querySelectorAll('[data-uid]').forEach((b) => (b.onclick = async () => {
+    await sdkReady;
     const data = { status: b.dataset.s, updatedAt: serverTimestamp() };
     if (b.dataset.s === 'approved') data.approvedAt = serverTimestamp();
     try { await updateDoc(doc(db, 'classlog_users', b.dataset.uid), data); toast('바꿨어요'); }
@@ -1098,6 +1139,7 @@ function openFeedback() {
 $('fbText').addEventListener('input', () => { $('fbCount').textContent = String($('fbText').value.length); });
 $('fbCancel').onclick = () => $('fbModal').classList.remove('show');
 $('fbSend').onclick = async () => {
+  await sdkReady;
   const text = $('fbText').value.trim();
   if (!text) { toast('내용을 적어주세요'); return; }
   if (Date.now() - S.fbAt < 15000) { toast('잠시 뒤에 다시 보내주세요'); return; }
@@ -1149,3 +1191,4 @@ document.addEventListener('click', async (e) => {
 });
 
 fillIcons(); fillCredit();
+if (!bootFromCache()) show('screenBoot'); // 저장해 둔 게 없으면(처음·로그아웃) 로그인 확인이 끝날 때까지 잠깐 스플래시
