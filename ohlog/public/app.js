@@ -415,7 +415,6 @@ async function renderToday() {
   const date = S.date;
   $('todayDate').value = date;
   $('todayTitle').textContent = date === todayISO() ? '오늘 수업' : `${dateLabel(date)} 수업`;
-  $('todaySub').textContent = `${S.profile.schoolName} · ${S.profile.teacherName}`;
   const w = weekOf(date);
   if (needWeek(w)) {
     $('todayList').innerHTML = '<div class="spinner"></div>';
@@ -512,7 +511,6 @@ async function renderWeek() {
   syncWeekControls();
   if (!S.weeks.length) { $('weekGrid').innerHTML = '<div class="spinner"></div>'; return; }
   const w = S.weeks.find((x) => x.r === S.week) || S.weeks[0];
-  $('weekSub').textContent = `${S.profile.schoolName} · ${S.profile.teacherName}`;
   if (needWeek(w)) {
     $('weekGrid').innerHTML = '<div class="spinner"></div>';
     try { await loadWeek(w.r); } catch (e) { toast('시간표 불러오기 실패: ' + e.message); }
