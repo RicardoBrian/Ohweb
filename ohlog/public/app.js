@@ -371,13 +371,13 @@ const icon = (n, s) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill
 // 카드 머리글: 아이콘 + 제목 + 한 줄 설명 (+ 오른쪽 버튼) — 상자마다 역할이 보이게
 const ch = (ic, title, desc = '', right = '') => `<h2><span class="icon">${icon(ic, 17)}</span><span class="ttl">${title}${desc ? `<small>${desc}</small>` : ''}</span>${right ? `<span class="right">${right}</span>` : ''}</h2>`;
 function fillIcons() { document.querySelectorAll('[data-ic]').forEach((el) => { el.innerHTML = icon(el.dataset.ic, 17); }); }
-// 저작권·문의 푸터. data-fb 가 있으면 피드백 버튼도(앱 안에서만)
+// 저작권·문의 푸터: 문구는 저작권만, 인스타·메일·피드백은 아이콘만(이름은 aria-label·title)
 function fillCredit() {
   document.querySelectorAll('.credit-slot').forEach((el) => {
     el.innerHTML = `<div>© ${new Date().getFullYear()} 관산중학교 오범석 · 수업일지</div><div class="links">
-      <a href="https://instagram.com/nosuk.beom" target="_blank" rel="noopener">${icon('ig', 14)}@nosuk.beom</a>
-      <a href="mailto:qjatjr7575@gmail.com">${icon('mail', 14)}qjatjr7575@gmail.com</a>
-      ${el.dataset.fb ? `<button type="button" class="link-btn" data-act="feedback">${icon('chat', 14)}피드백 남기기</button>` : ''}</div>`;
+      <a href="https://instagram.com/nosuk.beom" target="_blank" rel="noopener" aria-label="인스타그램 @nosuk.beom" title="인스타그램 @nosuk.beom">${icon('ig', 18)}</a>
+      <a href="mailto:qjatjr7575@gmail.com" aria-label="메일 qjatjr7575@gmail.com" title="메일 qjatjr7575@gmail.com">${icon('mail', 18)}</a>
+      ${el.dataset.fb ? `<button type="button" class="link-btn" data-act="feedback" aria-label="피드백 남기기" title="피드백 남기기">${icon('chat', 18)}</button>` : ''}</div>`;
   });
 }
 function buildMenu() {

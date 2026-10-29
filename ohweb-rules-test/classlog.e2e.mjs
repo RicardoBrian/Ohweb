@@ -265,6 +265,7 @@ await p.waitForSelector('#clsTitle:has-text("3학년 2반")');
 await p.waitForSelector('#clsGrid .slot.ro');
 await p.selectOption('#clsGrade', '1');
 await p.waitForSelector('#clsTitle:has-text("1학년 1반")');
+await p.waitForSelector('#clsGrid .slot.ro');
 ok('학급 시간표: 학년·반을 바꾸면 그 반 시간표가 나옴', (await p.locator('#clsGrid .slot.ro').count()) > 0);
 await shot(p, '07b-class-pc');
 // 8c2) 교사별: 다른 선생님 수업은 볼 수만 있고 일지는 못 연다

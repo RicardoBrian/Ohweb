@@ -226,10 +226,9 @@
 
     /* 푸터(저작권·문의) */
     .credit { margin-top: 28px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; font-size: 0.82rem; color: var(--sub); text-align: right; }
-    .credit .links { display: flex; gap: 4px 14px; flex-wrap: wrap; justify-content: flex-end; }
-    .credit a, .credit .link-btn { color: var(--sub); text-decoration: none; display: inline-flex; align-items: center; gap: 5px; font-size: 0.82rem; font-weight: 500; padding: 2px 0; }
-    .credit a:hover, .credit .link-btn:hover { color: var(--accent); }
-    .credit .link-btn { font-weight: 600; }
+    .credit .links { display: flex; gap: 8px; justify-content: flex-end; }
+    .credit a, .credit .link-btn { width: 38px; height: 38px; border-radius: 50%; border: 0; background: var(--fill); color: var(--sub); text-decoration: none; display: inline-flex; align-items: center; justify-content: center; padding: 0; cursor: pointer; }
+    .credit a:hover, .credit .link-btn:hover { background: var(--accent-light); color: var(--accent); }
     .credit.center { align-items: center; text-align: center; margin: 22px auto 8px; }
     .credit.center .links { justify-content: center; }
     #fbKind { flex-wrap: wrap; }
