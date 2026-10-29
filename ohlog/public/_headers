@@ -1,10 +1,13 @@
-# CSS/JS/HTML은 매번 바뀌었는지 확인하게 한다(안 바뀌었으면 304라 빠르다).
-# 디자인을 바꿔 배포해도 예전 theme.css·admin-sky.css가 브라우저에 남아 "그대로"로 보이는 걸 막는다.
+# 화면 파일은 아예 보관하지 않고 매번 새로 받는다(작은 파일).
+# 아이폰 홈 화면 앱이 옛 파일을 붙들고 있다가 새로 배포한 화면이 안 보이는 일을 막는다.
+# (앱이 열려 있는 채로 새 버전이 나온 경우는 app.js 의 checkUpdate 가 /api/version 으로 감지해 새로 불러온다)
 /*.css
-  Cache-Control: no-cache
+  Cache-Control: no-cache, no-store, must-revalidate
 /*.js
-  Cache-Control: no-cache
+  Cache-Control: no-cache, no-store, must-revalidate
 /*.html
-  Cache-Control: no-cache
+  Cache-Control: no-cache, no-store, must-revalidate
+/*.webmanifest
+  Cache-Control: no-cache, no-store, must-revalidate
 /
-  Cache-Control: no-cache
+  Cache-Control: no-cache, no-store, must-revalidate

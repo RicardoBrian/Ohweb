@@ -70,6 +70,10 @@ const app = initializeApp({ apiKey: 'fake', projectId: 'ohweb-93062', authDomain
 export const db = getFirestore(app); connectFirestoreEmulator(db, '127.0.0.1', 8181);
 export const auth = getAuth(app); connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
 window.__signIn = (email) => signInWithCredential(auth, GoogleAuthProvider.credential(JSON.stringify({ sub: email, email, email_verified: true })));`;
+// 새 버전 감지: 실제 version.js 를 돌리고(ASSETS 는 정적 파일로 대신), '배포'는 소금 값을 올려 흉내 낸다
+const version = await import(new URL('../ohlog/functions/api/version.js', import.meta.url));
+let deploySalt = 0;
+const assets = { fetch: async (u) => { const f = path.join(ROOT, new URL(u).pathname === '/' ? 'index.html' : new URL(u).pathname); return existsSync(f) ? new Response(readFileSync(f)) : new Response('', { status: 404 }); } };
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml' };
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://localhost');
@@ -77,6 +81,12 @@ const server = http.createServer(async (req, res) => {
     const r = await comci.onRequestGet({ request: new Request('http://localhost' + req.url), env: {} });
     res.writeHead(r.status, { 'content-type': 'application/json' }); res.end(await r.text()); return;
   }
+  if (u.pathname === '/api/version') {
+    const r = await version.onRequestGet({ request: new Request('http://localhost' + req.url), env: { ASSETS: assets } });
+    const { v } = await r.json();
+    res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(JSON.stringify({ v: v + '-' + deploySalt })); return;
+  }
+  if (u.pathname === '/__deploy') { deploySalt++; res.writeHead(204); res.end(); return; }
   if (u.pathname === '/firebase-config.js') { res.writeHead(200, { 'content-type': 'text/javascript' }); res.end(fbconf); return; }
   const f = path.join(ROOT, u.pathname === '/' ? 'index.html' : u.pathname);
   if (!f.startsWith(ROOT) || !existsSync(f)) { res.writeHead(404); res.end(); return; }
@@ -235,6 +245,33 @@ await p.waitForSelector('#app:not(.hidden) #sec-week.active');
 await p.waitForSelector('#weekGrid .slot', { timeout: 5000 });
 ok('컴시간이 끊겨도 보관해 둔 시간표가 바로 보이고, 폰에서는 처음에 시간표', true);
 await p.unroute('**/api/comci*');
+
+// 7c) 새 버전 감지: 홈 화면 앱은 새로고침이 없으니 앱이 스스로 확인해서 적용한다
+const deploy = () => fetch('http://localhost:8098/__deploy');
+await p.waitForFunction(() => document.querySelector('#app:not(.hidden)'));
+await p.evaluate(() => { window.__marker = 1; });
+await p.click('.tab[data-go="settings"]');
+await p.click('[data-act="check-update"]');
+await p.waitForSelector('#toast.show');
+ok('최신이면 새로고침 없이 "최신 버전이에요"만 알려줌', (await p.textContent('#toast')).includes('최신') && (await p.evaluate(() => window.__marker)) === 1);
+await deploy(); // 새 버전 배포
+await p.click('.tab[data-go="week"]');
+await p.locator('#weekGrid .slot').first().click();
+await p.waitForSelector('#logModal.show');
+await p.fill('#lmContent', '쓰는 중');
+await p.evaluate(() => document.dispatchEvent(new Event('visibilitychange')));
+await p.waitForSelector('#updateBar:not(.hidden)');
+ok('일지 작성 중에는 자동으로 새로고침하지 않고 알림줄만 띄움', (await p.evaluate(() => window.__marker)) === 1 && (await p.locator('#logModal.show').count()) === 1);
+await p.click('#updateBar');
+await p.waitForFunction(() => !window.__marker);
+await p.waitForSelector('#app:not(.hidden)');
+ok('알림줄을 누르면 새 버전으로 다시 열리고 주소의 ?v= 는 정리됨', !p.url().includes('v='));
+await p.evaluate(() => { window.__marker = 1; });
+await deploy(); // 또 배포 — 이번엔 아무것도 안 하고 있을 때
+await p.evaluate(() => { document.activeElement?.blur?.(); document.dispatchEvent(new Event('visibilitychange')); });
+await p.waitForFunction(() => !window.__marker, null, { timeout: 8000 });
+await p.waitForSelector('#app:not(.hidden)');
+ok('아무것도 안 하는 중이면 앱으로 돌아올 때 자동으로 새 버전이 적용됨', true);
 
 // 8) 주간·진도·내보내기 (PC 화면)
 const P = A.page; // 관리자도 같은 교사 번호로 가입 → 데이터는 사람마다 따로
