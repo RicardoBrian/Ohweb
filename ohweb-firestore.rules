@@ -379,6 +379,53 @@ service cloud.firestore {
       }
     }
 
+    // ── 수업일지(ohlog) ──
+    // 교사는 Google 로그인으로 프로필을 만들고(status 'pending'), 관리자가 승인('approved')해야
+    // 일지·계획·추가 수업을 읽고 쓸 수 있다. 학생 계정(@ohinfo.local, 이메일/비밀번호)은 못 만든다.
+    function clGoogle() {
+      return request.auth != null
+          && request.auth.token.firebase.sign_in_provider == 'google.com'
+          && request.auth.token.email_verified == true;
+    }
+    function clProfileOk(d) {
+      return d.keys().hasOnly(['email', 'name', 'schoolCode', 'schoolName', 'region', 'teacherId', 'teacherName',
+                               'status', 'createdAt', 'updatedAt', 'approvedAt'])
+          && d.email == request.auth.token.email
+          && d.name is string && d.name.size() <= 80
+          && d.schoolCode is int && d.teacherId is int
+          && d.schoolName is string && d.schoolName.size() <= 60
+          && d.region is string && d.region.size() <= 20
+          && d.teacherName is string && d.teacherName.size() <= 30
+          && d.status in ['pending', 'approved', 'rejected'];
+    }
+    function clApproved(uid) {
+      return request.auth != null && request.auth.uid == uid
+          && get(/databases/$(database)/documents/classlog_users/$(uid)).data.status == 'approved';
+    }
+    match /classlog_users/{uid} {
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+      // 본인 신청: 처음엔 반드시 대기, 승인 시각은 못 넣음
+      allow create: if isAdmin()
+          || (clGoogle() && request.auth.uid == uid && clProfileOk(request.resource.data)
+              && request.resource.data.status == 'pending'
+              && !('approvedAt' in request.resource.data));
+      // 본인 수정: 승인 상태·승인 시각은 못 올린다. 학교·이름을 바꾸거나 다시 신청하면 대기로만 갈 수 있다.
+      allow update: if isAdmin()
+          || (clGoogle() && request.auth.uid == uid && clProfileOk(request.resource.data)
+              && request.resource.data.get('approvedAt', null) == resource.data.get('approvedAt', null)
+              && (request.resource.data.status == 'pending'
+                  || (request.resource.data.status == resource.data.status
+                      && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['schoolCode', 'teacherId']))));
+      allow delete: if isAdmin();
+    }
+    // 일지(logs)·진도 계획(plans)·직접 추가한 수업(extras) — 승인된 본인만. 관리자는 읽기만.
+    match /classlog_users/{uid}/{col}/{id} {
+      allow read: if isAdmin() || clApproved(uid);
+      allow create, update: if col in ['logs', 'plans', 'extras'] && clApproved(uid)
+          && request.resource.data.size() <= 20;
+      allow delete: if col in ['logs', 'plans', 'extras'] && clApproved(uid);
+    }
+
     // 명시 안 한 나머지 컬렉션은 전부 거부(기본값)
   }
 }

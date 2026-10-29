@@ -233,5 +233,47 @@ await T('AI(admin): 배정·짝 구성·대표 변경·숨김·전체 조회', (
 await T('노션(admin): 페이지 등록·순서·숨김·삭제, 통계 조회', (async () => { await setDoc(doc(admin, 'notion_pages/공지'), { title: '공지', url: 'https://kakainfo.notion.site/abc123?pvs=4', order: 0, hidden: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }); await updateDoc(doc(admin, 'notion_pages/공지'), { order: 1, updatedAt: serverTimestamp() }); await setDoc(doc(admin, 'notion_pages/tmp'), { title: 't', url: 'https://notion.site/x' }); await setDoc(doc(admin, 'notion_pages/so'), { title: 't', url: 'https://www.notion.so/ws/Page-1a2b3c4d5e6f708192a3b4c5d6e7f809', pageId: '1a2b3c4d5e6f708192a3b4c5d6e7f809' }); await deleteDoc(doc(admin, 'notion_pages/tmp')); await getDocs(query(collection(admin, 'notion_stats'), where('day', '>=', '2026-01-01'))); })(), true);
 await T('노션: 비로그인이 페이지 목록·개별 읽기(학생 화면)', (async () => { await getDocs(collection(anon, 'notion_pages')); await getDoc(doc(anon, 'notion_pages/공지')); })(), true);
 
+// ── 수업일지(ohlog) ── 교사는 Google 로그인, 관리자 승인 후에만 일지를 쓴다.
+{
+  const g = (uid, email) => env.authenticatedContext(uid, { email, email_verified: true, firebase: { sign_in_provider: 'google.com' } }).firestore();
+  const T1 = g('tch1', 't1@gmail.com'), T2 = g('tch2', 't2@gmail.com'), T3 = g('tch3', 't3@gmail.com');
+  const prof = (email, extra = {}) => ({ email, name: '선생님', schoolCode: 43917, schoolName: '관산중학교', region: '경기', teacherId: 10, teacherName: '김현*', status: 'pending', createdAt: serverTimestamp(), updatedAt: serverTimestamp(), ...extra });
+  const log = { date: '2026-10-29', period: 3, grade: 3, cls: 2, subject: '수학', status: 'normal', planItem: '', unit: '', content: '방정식', homework: '', note: '', updatedAt: serverTimestamp() };
+  console.log('── 수업일지: 공격 ──');
+  await T('수업일지: 학생 계정(@ohinfo.local)이 교사 신청', setDoc(doc(A, 'classlog_users/uidA'), prof('stua@ohinfo.local')), false);
+  await T('수업일지: 처음부터 승인 상태로 신청', setDoc(doc(T1, 'classlog_users/tch1'), prof('t1@gmail.com', { status: 'approved' })), false);
+  await T('수업일지: 승인 시각을 넣어 신청', setDoc(doc(T1, 'classlog_users/tch1'), prof('t1@gmail.com', { approvedAt: serverTimestamp() })), false);
+  await T('수업일지: 남의 uid로 신청', setDoc(doc(T1, 'classlog_users/tch2'), prof('t1@gmail.com')), false);
+  await T('수업일지: 다른 이메일로 신청', setDoc(doc(T1, 'classlog_users/tch1'), prof('other@gmail.com')), false);
+  await T('수업일지: 모르는 필드 넣어 신청', setDoc(doc(T1, 'classlog_users/tch1'), prof('t1@gmail.com', { isAdmin: true })), false);
+  await setDoc(doc(T1, 'classlog_users/tch1'), prof('t1@gmail.com'));
+  await T('수업일지: 대기 중에 일지 쓰기', setDoc(doc(T1, 'classlog_users/tch1/logs/2026-10-29_3_3-2'), log), false);
+  await T('수업일지: 대기 중에 스스로 승인', updateDoc(doc(T1, 'classlog_users/tch1'), { status: 'approved' }), false);
+  await updateDoc(doc(admin, 'classlog_users/tch1'), { status: 'approved', approvedAt: serverTimestamp() });
+  await setDoc(doc(T2, 'classlog_users/tch2'), prof('t2@gmail.com', { teacherId: 11 }));
+  await T('수업일지: 승인된 교사가 학교를 바꾸며 승인 유지', setDoc(doc(T1, 'classlog_users/tch1'), { schoolCode: 1, schoolName: '다른중', updatedAt: serverTimestamp() }, { merge: true }), false);
+  await T('수업일지: 승인 시각 지우기', setDoc(doc(T1, 'classlog_users/tch1'), { approvedAt: null }, { merge: true }), false);
+  await T('수업일지: 다른 교사 프로필 읽기', getDoc(doc(T2, 'classlog_users/tch1')), false);
+  await T('수업일지: 교사가 다른 교사 승인', updateDoc(doc(T1, 'classlog_users/tch2'), { status: 'approved' }), false);
+  await T('수업일지: 교사가 프로필 목록 조회', getDocs(collection(T1, 'classlog_users')), false);
+  await T('수업일지: 다른 교사 일지 읽기', getDocs(collection(T2, 'classlog_users/tch1/logs')), false);
+  await T('수업일지: 다른 교사 일지에 쓰기', setDoc(doc(T2, 'classlog_users/tch1/logs/x'), log), false);
+  await T('수업일지: 정해지지 않은 하위 컬렉션에 쓰기', setDoc(doc(T1, 'classlog_users/tch1/secrets/x'), { a: 1 }), false);
+  await T('수업일지: 비로그인 일지 읽기', getDocs(collection(anon, 'classlog_users/tch1/logs')), false);
+  console.log('── 수업일지: 정상 기능 ──');
+  await T('수업일지: 신청(대기)', setDoc(doc(T3, 'classlog_users/tch3'), prof('t3@gmail.com')), true);
+  await T('수업일지: 본인 프로필 읽기(승인 상태 확인)', getDoc(doc(T3, 'classlog_users/tch3')), true);
+  await T('수업일지: 대기 중 이름 다시 고르기', setDoc(doc(T3, 'classlog_users/tch3'), { teacherId: 12, teacherName: '이성*', status: 'pending', updatedAt: serverTimestamp() }, { merge: true }), true);
+  await T('수업일지: 관리자 목록 조회·승인·거절', (async () => { await getDocs(collection(admin, 'classlog_users')); await updateDoc(doc(admin, 'classlog_users/tch3'), { status: 'rejected', updatedAt: serverTimestamp() }); })(), true);
+  await T('수업일지: 거절된 교사가 같은 이름으로 다시 신청', setDoc(doc(T3, 'classlog_users/tch3'), { status: 'pending', updatedAt: serverTimestamp() }, { merge: true }), true);
+  await T('수업일지: 승인 교사 일지 쓰기·읽기·삭제', (async () => { await setDoc(doc(T1, 'classlog_users/tch1/logs/2026-10-29_3_3-2'), log); await getDocs(collection(T1, 'classlog_users/tch1/logs')); await deleteDoc(doc(T1, 'classlog_users/tch1/logs/2026-10-29_3_3-2')); })(), true);
+  await T('수업일지: 진도 계획 저장', setDoc(doc(T1, 'classlog_users/tch1/plans/3_수학'), { grade: 3, subject: '수학', items: [{ id: 'a', unit: '1단원', title: '1차시' }], updatedAt: serverTimestamp() }), true);
+  await T('수업일지: 보강 수업 추가·삭제', (async () => { const r = await addDoc(collection(T1, 'classlog_users/tch1/extras'), { date: '2026-10-30', period: 7, grade: 3, cls: 1, subject: '수학', kind: 'makeup', createdAt: serverTimestamp() }); await deleteDoc(r); })(), true);
+  await T('수업일지: 승인 교사가 같은 이름 다시 저장(승인 유지)', setDoc(doc(T1, 'classlog_users/tch1'), { name: '김선생', status: 'approved', updatedAt: serverTimestamp() }, { merge: true }), true);
+  await T('수업일지: 승인 교사가 학교 바꾸기(대기로)', setDoc(doc(T1, 'classlog_users/tch1'), { schoolCode: 1, schoolName: '다른중', status: 'pending', updatedAt: serverTimestamp() }, { merge: true }), true);
+  await T('수업일지: 관리자 본인 바로 승인·일지 쓰기', (async () => { await setDoc(doc(admin, 'classlog_users/adm'), { ...prof('qjatjr7575@gmail.com'), status: 'approved' }); await setDoc(doc(admin, 'classlog_users/adm/logs/2026-10-29_1_1-1'), log); })(), true);
+  await T('수업일지: 관리자가 교사 일지 읽기', getDocs(collection(admin, 'classlog_users/tch1/logs')), true);
+}
+
 console.log(fails ? `\n실패 ${fails}건` : '\n전부 통과'); process.exitCode = fails ? 1 : 0;
 await env.cleanup();

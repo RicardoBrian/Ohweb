@@ -1,0 +1,477 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@300;400;500;600;700&display=swap');
+/* ============================================================
+   OHinfo — Liquid Glass Design System
+   Apple iOS 26 / macOS Tahoe 풍의 굴절 유리 + 가독성 사수
+   ============================================================ */
+
+:root {
+  /* ---- Background: subtle color mesh (vibrancy 원천) ---- */
+  --bg:
+    radial-gradient(at 18% 18%, #e7ecff 0%, transparent 52%),
+    radial-gradient(at 82% 12%, #ffe7f2 0%, transparent 46%),
+    radial-gradient(at 65% 88%, #e0f5ff 0%, transparent 52%),
+    radial-gradient(at 8% 92%, #eee6ff 0%, transparent 44%),
+    #f4f5fa;
+  --bg-elevated:   #ffffff;
+
+  /* ---- Glass surfaces (translucent + blur) ---- */
+  --surface:       rgba(255,255,255,0.62);
+  --surface-2:     rgba(255,255,255,0.48);
+  --glass:         rgba(255,255,255,0.50);
+  --glass-strong:  rgba(255,255,255,0.74);
+  --glass-nav:     rgba(255,255,255,0.62);
+  --blur:          saturate(180%) blur(22px);
+
+  /* ---- Text (항상 또렷) ---- */
+  --text:    #1a1c22;
+  --text-2:  #5b606b;
+  --text-3:  #8a8f99;
+  --sub:     #5b606b;
+
+  /* ---- Accent ---- */
+  --accent:        #0071e3;
+  --accent-hover:  #0a84ff;
+  --accent-press:  #006edb;
+  --accent-light:  rgba(0,113,227,0.12);
+  --accent-text:   #ffffff;
+  --accent-grad:   linear-gradient(180deg, #3a9bff 0%, #0071e3 100%);
+  --danger:        #ff3b30;
+  --danger-light:  rgba(255,59,48,0.12);
+  --success:       #34c759;
+  --success-light: rgba(52,199,89,0.16);
+
+  /* ---- Edges & depth (glass) ---- */
+  --border:        rgba(255,255,255,0.55);
+  --border-card:   rgba(255,255,255,0.55);
+  --hairline:      rgba(0,0,0,0.06);
+  --highlight:     inset 0 1px 0 rgba(255,255,255,0.9), inset 0 0 0 0.5px rgba(255,255,255,0.4);
+  --shadow-sm:     0 2px 8px rgba(40,60,130,0.08);
+  --shadow:        0 10px 30px rgba(40,60,130,0.12);
+  --shadow-md:     0 18px 50px rgba(40,60,130,0.16);
+  --shadow-lg:     0 30px 70px rgba(40,60,130,0.22);
+
+  --radius: 20px; --radius-sm: 13px; --radius-lg: 26px; --radius-pill: 980px;
+  --nav-h: 56px;
+  --ease: cubic-bezier(0.4,0.0,0.2,1); --dur: 0.26s;
+  --font: "IBM Plex Sans KR", -apple-system, BlinkMacSystemFont, "SF Pro Display",
+          "Pretendard", system-ui, "Helvetica Neue", Arial, sans-serif;
+}
+
+body.dark {
+  --bg:
+    radial-gradient(at 18% 18%, #1b2444 0%, transparent 55%),
+    radial-gradient(at 82% 12%, #2c1a44 0%, transparent 48%),
+    radial-gradient(at 65% 90%, #0e2438 0%, transparent 52%),
+    radial-gradient(at 8% 92%, #1a1530 0%, transparent 46%),
+    #07080d;
+  --bg-elevated:   #1c1c1e;
+
+  --surface:       rgba(44,46,58,0.58);
+  --surface-2:     rgba(58,60,74,0.46);
+  --glass:         rgba(40,42,54,0.52);
+  --glass-strong:  rgba(54,56,70,0.74);
+  --glass-nav:     rgba(20,21,28,0.62);
+
+  --text:    #f2f4f8;
+  --text-2:  #aab0bd;
+  --text-3:  #7e848f;
+  --sub:     #aab0bd;
+
+  --accent:        #0a84ff;
+  --accent-hover:  #409cff;
+  --accent-light:  rgba(10,132,255,0.18);
+  --accent-grad:   linear-gradient(180deg, #2b95ff 0%, #0a84ff 100%);
+  --danger:        #ff453a;
+  --danger-light:  rgba(255,69,58,0.18);
+  --success:       #30d158;
+  --success-light: rgba(48,209,88,0.2);
+
+  --border:        rgba(255,255,255,0.14);
+  --border-card:   rgba(255,255,255,0.12);
+  --hairline:      rgba(255,255,255,0.08);
+  --highlight:     inset 0 1px 0 rgba(255,255,255,0.16), inset 0 0 0 0.5px rgba(255,255,255,0.06);
+  --shadow-sm:     0 2px 8px rgba(0,0,0,0.4);
+  --shadow:        0 10px 30px rgba(0,0,0,0.5);
+  --shadow-md:     0 18px 50px rgba(0,0,0,0.6);
+  --shadow-lg:     0 30px 70px rgba(0,0,0,0.7);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  background-attachment: fixed;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 17px; line-height: 1.5; letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility; min-height: 100vh;
+}
+
+/* ---- Glass surfaces get refraction ---- */
+.card, .login-card, .app-modal-card, .modal-box {
+  backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+  box-shadow: var(--highlight), var(--shadow);
+  border: 1px solid var(--border-card);
+}
+
+/* ---- Buttons ---- */
+.btn {
+  font-family: inherit; font-size: 0.95rem; font-weight: 600;
+  cursor: pointer; border-radius: var(--radius-pill);
+  padding: 10px 20px; border: 1px solid var(--border-card);
+  background: var(--glass); color: var(--text);
+  backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+  box-shadow: var(--highlight), var(--shadow-sm);
+  transition: background var(--dur) var(--ease), transform 0.08s var(--ease), box-shadow var(--dur) var(--ease);
+  white-space: nowrap; line-height: 1.2;
+}
+.btn:hover { background: var(--glass-strong); }
+.btn:active { transform: scale(0.97); }
+.btn:focus-visible { outline: 3px solid var(--accent-light); outline-offset: 2px; }
+.btn.accent {
+  background: #1d1d1f; color: #fff; border-color: transparent;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), var(--shadow-md);
+}
+body.dark .btn.accent { background: #f5f5f7; color: #1d1d1f; }
+.btn.accent:hover { opacity: 0.88; }
+.btn.ghost { background: transparent; box-shadow: none; backdrop-filter: none; }
+.btn.ghost:hover { background: var(--accent-light); color: var(--accent); }
+.btn.danger { color: var(--danger); background: var(--danger-light); border-color: transparent; box-shadow: none; backdrop-filter: none; }
+.btn.sm { padding: 6px 14px; font-size: 0.85rem; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ---- Inputs (frosted) ---- */
+.inp {
+  width: 100%; padding: 12px 14px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border-card); background: var(--glass-strong);
+  backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+  color: var(--text); font-family: inherit; font-size: 1rem; outline: none;
+  box-shadow: var(--highlight);
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.inp::placeholder { color: var(--text-3); }
+.inp:focus { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-light); }
+select.inp {
+  cursor: pointer; appearance: none; padding-right: 34px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238a8f99' d='M6 8L1.5 3.5l1-1L6 6l3.5-3.5 1 1z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center;
+}
+
+/* ---- Frosted nav ---- */
+.nav {
+  position: sticky; top: 0; z-index: 200; height: var(--nav-h);
+  display: flex; align-items: center; gap: 12px; padding: 0 20px;
+  background: var(--glass-nav);
+  backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+  border-bottom: 1px solid var(--hairline);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.4);
+}
+
+/* ---- Dark toggle ---- */
+.dark-toggle {
+  width: 44px; height: 26px; border-radius: var(--radius-pill);
+  background: var(--glass-strong); border: 1px solid var(--border-card); cursor: pointer;
+  position: relative; transition: background var(--dur) var(--ease); flex-shrink: 0;
+  box-shadow: var(--highlight);
+}
+body.dark .dark-toggle { background: var(--accent); border-color: transparent; }
+.dark-toggle::after {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  transition: transform var(--dur) var(--ease);
+}
+body.dark .dark-toggle::after { transform: translateX(18px); }
+
+/* ---- Toast ---- */
+.toast {
+  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px);
+  background: rgba(28,28,30,0.78); color: #fff; font-size: 0.9rem; font-weight: 600;
+  padding: 12px 22px; border-radius: var(--radius-pill); z-index: 9999;
+  box-shadow: var(--shadow-md); backdrop-filter: saturate(180%) blur(16px);
+  transition: transform var(--dur) var(--ease), opacity var(--dur) var(--ease);
+  opacity: 0; pointer-events: none;
+}
+.toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+.hidden { display: none !important; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+/* ============================================================
+   공통 상단 바 브랜드 — 로고 + 지금 페이지 이름(허브 화면은 로고만)
+   모든 사이트·페이지가 같은 모양을 쓰도록 여기서 정의한다.
+   페이지 안에 .nav-brand 스타일을 따로 만들지 않는다.
+   ============================================================ */
+.nav-brand { display: flex; align-items: center; gap: 10px; min-width: 0; flex-shrink: 1; text-decoration: none; color: var(--text); cursor: pointer; }
+.nav-brand img { height: 30px; width: auto; display: block; flex-shrink: 0; }
+.nav-brand-title { font-weight: 800; font-size: 1rem; letter-spacing: -0.02em; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* 로고가 진한 자주색이라 다크 모드의 어두운 상단 바에서 묻힌다 — 밝게 띄운다 */
+body.dark .nav-brand img, body.dark .toolbar-brand img { filter: brightness(1.7) saturate(1.1); }
+
+/* ============================================================
+   공통 로그인/입장 화면 머리말 — 로고 + kakainfo + 부제
+   학생 로그인·관리자 로그인·단축 URL·정산 입장 화면이 모두 이걸 쓴다.
+   ============================================================ */
+.auth-head { text-align: center; margin-bottom: 26px; }
+.auth-head .auth-logo { display: block; height: 64px; width: auto; margin: 0 auto 14px; }
+.auth-head .auth-word { font-size: 1.7rem; font-weight: 900; letter-spacing: -0.04em; color: var(--text); line-height: 1.1; }
+.auth-head .auth-sub { font-size: 0.9rem; font-weight: 600; color: var(--sub); margin-top: 6px; }
+body.dark .auth-head .auth-logo { filter: brightness(1.7) saturate(1.1); }
+.auth-card {
+  width: 100%; max-width: 440px; margin: 24px auto;
+  background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+  border: 1px solid var(--border); border-radius: 30px; padding: 44px 40px;
+  box-shadow: var(--highlight), var(--shadow-md);
+}
+@media (max-width: 480px) { .auth-card { padding: 30px 22px; border-radius: 22px; margin: 16px auto; } }
+/* 로그인·입장의 주 버튼 — 모든 화면 같은 검정 버튼(다크 모드는 흰 버튼) */
+.auth-btn {
+  display: block; width: 100%; padding: 14px; margin-top: 8px; border: none; border-radius: var(--radius-pill);
+  background: #1d1d1f; color: #fff; font-family: inherit; font-size: 1rem; font-weight: 700; cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), var(--shadow); transition: opacity 0.2s, transform 0.15s;
+}
+.auth-btn:hover { opacity: 0.88; }
+.auth-btn:active { transform: scale(0.98); }
+.auth-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+body.dark .auth-btn { background: #f5f5f7; color: #1d1d1f; }
+
+/* ============================================================
+   하늘(sky) 디자인 — Superhuman 첫 화면 느낌 참고 (2026-10 리디자인)
+   <body class="ui-sky"> 를 붙인 페이지에만 적용된다. 아직 안 바꾼 페이지는 위의 기본 모양 그대로.
+   바탕은 한 방향 그라데이션 하나(얼룩 없음), 판은 반투명 + 1px 얇은 테두리.
+   글자 대비: 낮 본문 15:1·보조 4.9:1, 해 질 녘 본문 13:1·보조 7:1 (WCAG AA 이상)
+   ============================================================ */
+body.ui-sky {
+  --bg: linear-gradient(180deg, #c9d5f1 0%, #dcdff3 45%, #ece8f4 100%);
+  --bg-elevated: #ffffff;
+  --surface:      rgba(255,255,255,0.80);
+  --surface-2:    rgba(255,255,255,0.62);
+  --glass:        rgba(255,255,255,0.62);
+  --glass-strong: rgba(255,255,255,0.80);
+  --glass-nav:    rgba(255,255,255,0.58);
+  --blur:         blur(20px) saturate(1.25);
+  --text:   #181b3a;
+  --text-2: rgba(24,27,58,0.64);
+  --text-3: rgba(24,27,58,0.42);
+  --sub:    rgba(24,27,58,0.64);
+  --accent:       #5a48d6;
+  --accent-hover: #4b3ac4;
+  --accent-press: #4232b3;
+  --accent-light: rgba(90,72,214,0.12);
+  --accent-text:  #ffffff;
+  --accent-grad:  linear-gradient(135deg, #8f7bff 0%, #5a48d6 100%);
+  --danger: #d93a40; --danger-light: rgba(217,58,64,0.12);
+  --success: #1f9d5a; --success-light: rgba(31,157,90,0.14);
+  --border:      rgba(255,255,255,0.85);
+  --border-card: rgba(24,27,58,0.10);
+  --hairline:    rgba(24,27,58,0.08);
+  --highlight:   inset 0 0 0 0 transparent;
+  --shadow-sm:   0 1px 3px rgba(40,50,110,0.08);
+  --shadow:      0 8px 30px rgba(40,50,110,0.10);
+  --shadow-md:   0 16px 44px rgba(40,50,110,0.16);
+  --shadow-lg:   0 28px 64px rgba(40,50,110,0.22);
+  --radius: 16px; --radius-sm: 10px; --radius-lg: 20px;
+  --sky-chip:      rgba(24,27,58,0.05);
+  --sky-chip-line: rgba(24,27,58,0.10);
+  --sky-cta:       #1d1f3f;
+  --sky-cta-text:  #ffffff;
+  background: var(--bg); background-attachment: fixed; color: var(--text);
+}
+body.ui-sky.dark {
+  --bg: linear-gradient(180deg, #1c2142 0%, #2a2b58 50%, #433a6c 100%);
+  --bg-elevated: #1d1f40;
+  --surface:      rgba(22,24,58,0.66);
+  --surface-2:    rgba(22,24,58,0.50);
+  --glass:        rgba(255,255,255,0.07);
+  --glass-strong: rgba(22,24,58,0.66);
+  --glass-nav:    rgba(22,24,58,0.55);
+  --blur:         blur(20px) saturate(1.15);
+  --text:   #f4f4fb;
+  --text-2: rgba(244,244,251,0.68);
+  --text-3: rgba(244,244,251,0.44);
+  --sub:    rgba(244,244,251,0.68);
+  --accent:       #b4a8ff;
+  --accent-hover: #c4baff;
+  --accent-press: #a497f5;
+  --accent-light: rgba(180,168,255,0.16);
+  --accent-text:  #1f1950;
+  --accent-grad:  linear-gradient(135deg, #b4a8ff 0%, #8f7bff 100%);
+  --danger: #ff7a80; --danger-light: rgba(255,122,128,0.16);
+  --success: #5be39a; --success-light: rgba(91,227,154,0.16);
+  --border:      rgba(255,255,255,0.14);
+  --border-card: rgba(255,255,255,0.12);
+  --hairline:    rgba(255,255,255,0.08);
+  --shadow-sm:   0 1px 3px rgba(5,5,25,0.3);
+  --shadow:      0 8px 30px rgba(5,5,25,0.30);
+  --shadow-md:   0 16px 44px rgba(5,5,25,0.40);
+  --shadow-lg:   0 28px 64px rgba(5,5,25,0.50);
+  --sky-chip:      rgba(255,255,255,0.07);
+  --sky-chip-line: rgba(255,255,255,0.14);
+  --sky-cta:       #d9d1ff;
+  --sky-cta-text:  #1f1950;
+}
+/* 판: 반투명 + 1px 테두리, 반사 광택 없음 */
+body.ui-sky .card, body.ui-sky .login-card, body.ui-sky .modal-box, body.ui-sky .auth-card {
+  background: var(--surface); border: 1px solid var(--border); box-shadow: var(--shadow);
+  backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+}
+/* 주 버튼: 어두운 남색(해 질 녘은 라벤더) */
+body.ui-sky .btn { border-radius: 10px; box-shadow: none; background: var(--sky-chip); border-color: var(--sky-chip-line); backdrop-filter: none; -webkit-backdrop-filter: none; }
+body.ui-sky .btn:hover { background: var(--accent-light); color: var(--text); }
+body.ui-sky .btn.accent, body.ui-sky .auth-btn { background: var(--sky-cta); color: var(--sky-cta-text); border-color: transparent; box-shadow: 0 6px 18px rgba(20,20,60,0.18); }
+body.ui-sky .btn.accent:hover, body.ui-sky .auth-btn:hover { opacity: 1; filter: brightness(1.12); }
+body.ui-sky .btn.ghost { background: transparent; border-color: transparent; }
+body.ui-sky .btn.ghost:hover { background: var(--sky-chip); }
+body.ui-sky .btn.danger { background: var(--danger-light); color: var(--danger); border-color: transparent; }
+/* 입력칸 */
+body.ui-sky .inp { background: var(--sky-chip); border: 1px solid var(--sky-chip-line); box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 10px; color: var(--text); }
+body.ui-sky.dark .inp { background: rgba(0,0,0,0.18); }
+body.ui-sky .inp:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+body.ui-sky select.inp option { background: var(--bg-elevated); color: var(--text); }
+/* 토글·토스트 */
+body.ui-sky .dark-toggle { background: var(--sky-chip); border-color: var(--sky-chip-line); box-shadow: none; }
+body.ui-sky.dark .dark-toggle { background: var(--accent); }
+body.ui-sky .toast { background: var(--sky-cta); color: var(--sky-cta-text); }
+/* 로고: 배경 없이 원본 PNG. 해 질 녘에는 흰색 단색으로 */
+body.ui-sky.dark .nav-brand img, body.ui-sky.dark .toolbar-brand img, body.ui-sky.dark .auth-head .auth-logo { filter: brightness(0) invert(1); opacity: 0.94; }
+/* 로그인 카드: 좁은 화면에서도 좌우 16px 띄움 */
+@media (max-width: 480px) { body.ui-sky .auth-card { width: calc(100% - 32px); } }
+/* 학생 사이트(ohinfo) 공통 부품: 검정·파랑으로 박혀 있던 주 버튼과 선택 상태를 하늘 색으로 */
+body.ui-sky.dark .btn.accent, body.ui-sky.dark .auth-btn { background: var(--sky-cta); color: var(--sky-cta-text); }
+body.ui-sky :is(.qna-fab, .btn-modal-save, .send-btn, .comment-send, .col-board-add),
+body.ui-sky.dark :is(.qna-fab, .btn-modal-save, .send-btn, .comment-send, .col-board-add) { background: var(--sky-cta); color: var(--sky-cta-text); }
+body.ui-sky :is(.lang-btn.active, .tab-btn.active, .sort-group button.active),
+body.ui-sky.dark :is(.lang-btn.active, .tab-btn.active, .sort-group button.active) { background: var(--sky-cta); color: var(--sky-cta-text); border-color: transparent; box-shadow: none; }
+body.ui-sky :is(.info-box, .edit-banner, .section-title-card, .score-card) { border-color: var(--accent-light); }
+
+/* ============================================================
+   애플(HIG) 방식 마감 — 하늘(ui-sky) 페이지  (바탕색은 위 v1 그대로)
+   층 구분이 핵심이다:
+   ① 내비게이션 층(사이드바·상단 바·하단 탭바·팝업) = 리퀴드 글래스: 맑은 반투명 + 큰 흐림, 테두리 없음
+   ② 내용 판(카드·현황·목록 판) = 테두리 없는 반투명 둥근 판 + 은은한 그림자
+   ③ 판 안의 줄 = 상자 대신 얇은 구분선(iOS 목록), 입력칸·보조 버튼 = 테두리 없는 회색 채움
+   글꼴: 맥·아이폰은 SF(시스템), 그 밖(Windows 등)은 원래 쓰던 IBM Plex Sans KR
+   ============================================================ */
+body.ui-sky {
+  --font: -apple-system, BlinkMacSystemFont, "IBM Plex Sans KR", "Pretendard", system-ui, sans-serif;
+  --accent: #007aff; --accent-hover: #0a84ff; --accent-press: #0062cc;
+  --accent-light: rgba(0,122,255,0.12);
+  --accent-grad: linear-gradient(180deg, #2b95ff 0%, #007aff 100%);
+  --success: #34c759; --danger: #ff3b30;
+  --sky-cta: #007aff; --sky-cta-text: #ffffff;
+  /* 내용 판 */
+  --surface:      rgba(255,255,255,0.62);
+  --glass-strong: rgba(255,255,255,0.62);
+  --glass:        rgba(255,255,255,0.45);
+  --blur:         blur(30px) saturate(1.8);
+  --border:       transparent;
+  --border-card:  rgba(60,60,67,0.12);
+  --hairline:     rgba(60,60,67,0.14);
+  --shadow-sm:    0 1px 2px rgba(20,30,70,0.05);
+  --shadow:       0 1px 2px rgba(20,30,70,0.04), 0 8px 28px rgba(30,45,100,0.09);
+  --shadow-md:    0 2px 6px rgba(20,30,70,0.06), 0 16px 44px rgba(30,45,100,0.14);
+  --shadow-lg:    0 24px 64px rgba(30,45,100,0.22);
+  /* 내비게이션 유리 */
+  --nav-glass:    rgba(255,255,255,0.42);
+  --nav-blur:     blur(40px) saturate(1.9);
+  /* 회색 채움(입력칸·보조 버튼·선택) — iOS systemFill */
+  --fill:         rgba(118,118,128,0.12);
+  --fill-strong:  rgba(118,118,128,0.20);
+  --sky-chip:      var(--fill);
+  --sky-chip-line: transparent;
+  font-family: var(--font);
+}
+body.ui-sky.dark {
+  --accent: #0a84ff; --accent-hover: #409cff; --accent-press: #0071e3;
+  --accent-light: rgba(10,132,255,0.20);
+  --accent-grad: linear-gradient(180deg, #409cff 0%, #0a84ff 100%);
+  --success: #30d158; --danger: #ff453a;
+  --sky-cta: #0a84ff; --sky-cta-text: #ffffff;
+  --surface:      rgba(30,32,58,0.58);
+  --glass-strong: rgba(30,32,58,0.58);
+  --glass:        rgba(255,255,255,0.06);
+  --blur:         blur(30px) saturate(1.5);
+  --border-card:  rgba(235,235,245,0.14);
+  --hairline:     rgba(235,235,245,0.12);
+  --shadow:       0 1px 2px rgba(0,0,0,0.2), 0 8px 28px rgba(0,0,0,0.28);
+  --shadow-md:    0 16px 44px rgba(0,0,0,0.4);
+  --nav-glass:    rgba(28,30,56,0.45);
+  --nav-blur:     blur(40px) saturate(1.6);
+  --fill:         rgba(118,118,128,0.24);
+  --fill-strong:  rgba(118,118,128,0.34);
+}
+
+/* ② 내용 판: 테두리 없이 */
+html body.ui-sky :is(.card, .stat-card, .trip-item, .survey-item, .group-head, .create-card, .tile, .auth-card, .modal-box, .modal, .title-card, .timer-setup-card, .edit-textarea, .inspector) {
+  background: var(--surface); border: 0; box-shadow: var(--shadow);
+  backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+}
+/* ① 내비게이션 층: 리퀴드 글래스 */
+@media (min-width: 900px) {
+  html body.ui-sky .nav { background: var(--nav-glass); border: 0; box-shadow: var(--shadow-md); backdrop-filter: var(--nav-blur); -webkit-backdrop-filter: var(--nav-blur); }
+}
+html body.ui-sky :is(.tabbar, .topbar, .toolbar#toolbar, .app-modal-card) { background: var(--nav-glass); border: 0; box-shadow: var(--shadow-md); backdrop-filter: var(--nav-blur); -webkit-backdrop-filter: var(--nav-blur); }
+@media (max-width: 899px) { html body.ui-sky .nav { background: var(--nav-glass); border: 0; border-bottom: 0.5px solid var(--hairline); box-shadow: none; backdrop-filter: var(--nav-blur); -webkit-backdrop-filter: var(--nav-blur); } }
+/* 사이드바 선택: 테두리·막대 없이 회색 채움 + 파란 아이콘 */
+html body.ui-sky .side-item { border: 0; }
+html body.ui-sky .side-item.on { background: var(--fill-strong); border: 0; }
+html body.ui-sky .side-item.on::before { display: none; }
+html body.ui-sky .tab.on { background: var(--fill); border: 0; }
+
+/* ③ 판 안의 줄: 상자 대신 얇은 구분선 */
+html body.ui-sky :is(.list-item, .app-card, .thread-item) { background: transparent; border: 0; border-bottom: 0.5px solid var(--hairline); border-radius: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; margin-bottom: 0; }
+html body.ui-sky .list-item:last-child { border-bottom: 0; }
+html body.ui-sky .list-item:hover { background: var(--fill); border-radius: 10px; }
+/* 넓은 화면에서 여러 열 카드로 놓일 때는 회색 채움 타일 */
+@media (min-width: 1600px) {
+  html body.ui-sky .pane-list div:has(> .list-item + .list-item) > .list-item { background: var(--fill); border: 0; border-radius: 12px; }
+}
+html body.ui-sky :is(.upload-zone, .drop, .checkbox-grid, .response-panel, .thread-panel, .trans-chip) { background: var(--fill); border: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+html body.ui-sky :is(.upload-zone, .drop) { border: 1.5px dashed rgba(60,60,67,0.25); }
+html body.ui-sky table th { border-bottom: 0.5px solid var(--hairline); }
+html body.ui-sky table td { border-bottom: 0.5px solid var(--hairline); }
+
+/* 입력칸: 테두리 없는 회색 채움(iOS 검색칸 모양) */
+html body.ui-sky :is(.inp, .title-inp, .custom-inp, .reply-input, .modal-inp, .comment-input) { background: var(--fill); border: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; border-radius: 10px; }
+html body.ui-sky :is(.inp, .title-inp, .custom-inp, .reply-input, .modal-inp, .comment-input):focus { background: var(--bg-elevated); box-shadow: 0 0 0 3.5px rgba(0,122,255,0.35); }
+body.ui-sky select.inp option { background: var(--bg-elevated); color: var(--text); }
+
+/* 버튼: 주 버튼은 파란 캡슐, 나머지는 테두리 없는 회색 채움 + 파란 글자 */
+html body.ui-sky :is(.btn, .btn-translate, .preset-btn, .btn-back, .btn-sound, .tb-btn, .btn-ghost, .seg) { border: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+html body.ui-sky .btn { background: var(--fill); color: var(--accent); border-radius: 999px; }
+html body.ui-sky .btn:hover { background: var(--fill-strong); }
+html body.ui-sky .btn.ghost { background: transparent; }
+html body.ui-sky .btn.ghost:hover { background: var(--fill); }
+html body.ui-sky .btn.danger { background: rgba(255,59,48,0.12); color: var(--danger); }
+html body.ui-sky :is(.btn.accent, .auth-btn, .btn-start-big, .btn-pause, .cta, .fab, .reply-send, #previewBtn, .preset-btn.active, .qna-fab, .btn-modal-save, .send-btn, .comment-send) { background: var(--accent); color: #fff; border: 0; border-radius: 999px; box-shadow: none; }
+html body.ui-sky :is(.btn.accent, .auth-btn, .btn-start-big, .reply-send):hover { background: var(--accent-hover); filter: none; opacity: 1; }
+html body.ui-sky :is(.btn-translate, .preset-btn, .btn-back, .btn-sound, .tb-btn) { background: var(--fill); border-radius: 999px; }
+/* 세그먼트 컨트롤(iOS) */
+html body.ui-sky .seg { background: var(--fill); border-radius: 9px; padding: 2px; }
+html body.ui-sky .seg button { border-radius: 7px; }
+html body.ui-sky .seg button.on { background: var(--bg-elevated); color: var(--text); box-shadow: 0 3px 8px rgba(0,0,0,0.12), 0 1px 1px rgba(0,0,0,0.04); }
+/* 배지는 채움만 */
+html body.ui-sky .badge { border: 0; }
+
+/* 큰 제목(Large Title)·숫자 */
+html body.ui-sky :is(.section-header h1, .page-head h1) { font-weight: 700; letter-spacing: -0.02em; }
+html body.ui-sky :is(.stat-card .stat-num, .stat-value, .tile-n) { font-weight: 600; }
+
+/* iOS 스위치 — 켜기/끄기는 드롭다운 대신 이걸 쓴다(한 번 누르면 바뀜) */
+.ios-switch { position: relative; display: inline-block; width: 51px; height: 31px; flex-shrink: 0; cursor: pointer; vertical-align: middle; }
+.ios-switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.ios-switch span { position: absolute; inset: 0; border-radius: 999px; background: rgba(120,120,128,0.32); transition: background 0.2s; }
+.ios-switch span::after { content: ''; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff; box-shadow: 0 3px 8px rgba(0,0,0,0.15), 0 1px 1px rgba(0,0,0,0.16); transition: transform 0.22s cubic-bezier(0.3,0.7,0.4,1); }
+.ios-switch input:checked + span { background: #34c759; }
+.ios-switch input:checked + span::after { transform: translateX(20px); }
+.ios-switch input:focus-visible + span { outline: 3px solid rgba(0,122,255,0.4); outline-offset: 2px; }
+/* 기존 토글들도 iOS 모양: 꺼짐 회색, 켜짐 초록 */
+html body.ui-sky :is(.toggle-track, .mail-toggle) { background: rgba(120,120,128,0.32); border-color: transparent; }
+html body.ui-sky .toggle input:checked + .toggle-track, html body.ui-sky .mail-toggle.on { background: var(--success); }
+html body.ui-sky .dark-toggle { width: 51px; height: 31px; border-radius: 999px; background: rgba(120,120,128,0.32); border: 0; box-shadow: none; }
+html body.ui-sky .dark-toggle::after { top: 2px; left: 2px; width: 27px; height: 27px; }
+html body.ui-sky.dark .dark-toggle { background: var(--success); }
+html body.ui-sky.dark .dark-toggle::after { transform: translateX(20px); }
