@@ -8,7 +8,7 @@
 import { auth, db } from './firebase-config.js';
 import { GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {
-  doc, setDoc, updateDoc, deleteDoc, addDoc, collection, onSnapshot, serverTimestamp,
+  doc, setDoc, updateDoc, deleteDoc, addDoc, collection, onSnapshot, serverTimestamp, query, orderBy, limit,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const ADMIN_EMAIL = 'qjatjr7575@gmail.com';
@@ -23,10 +23,25 @@ const S = {
   view: 'today', date: todayISO(), week: null,
   progressKey: null, planKey: null, adminFilter: 'pending',
   unsub: [], profileUnsub: null,
+  classCount: [], homeroom: [], teachers: [], clsMode: 'class', tchr: null, cls: null, clsTT: new Map(), stale: new Set(), feedback: [], fbAt: 0,
 };
 
 /* ───────── 공통 ───────── */
 const $ = (id) => document.getElementById(id);
+const store = {
+  get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* 사파리 사생활 보호 모드 등 */ } },
+};
+// 학년은 칸 바탕, 과목은 이름 앞 점 — 아주 옅게. 색 값은 CSS 변수로만 넘기고 모양은 ohlog.css 가 정한다.
+const GRADE_HUE = { 1: 205, 2: 152, 3: 32 };
+const SUBJ_HUES = [262, 335, 172, 42, 214, 120, 8, 290, 190, 70];
+function subjectHue(name) { let h = 0; for (const c of String(name || '')) h = (h * 31 + c.charCodeAt(0)) >>> 0; return SUBJ_HUES[h % SUBJ_HUES.length]; }
+const tone = (l) => `--gh:${GRADE_HUE[l.grade] ?? 268};--sh:${subjectHue(l.subject)}`;
+const isPhone = () => matchMedia('(max-width: 899px)').matches;
+const defaultView = () => (isPhone() ? 'week' : 'today'); // 폰(홈 화면 앱)에서는 처음에 시간표
+// 글자 크기(설정) — rem 으로 된 글자가 전부 같이 변한다
+const applyFs = (v) => document.documentElement.style.setProperty('--fs', v);
+applyFs(store.get('classlog-fs') || '1');
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 function todayISO(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -150,7 +165,7 @@ async function pickSchool(s) {
     const d = await api(`code=${s.sccode}`);
     OB.teachers = d.teachers;
     $('obTeacherSel').innerHTML = '<option value="">이름을 고르세요</option>' +
-      d.teachers.map((t) => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
+      d.teachers.map((t) => `<option value="${t.id}">${esc(tLabel(t))}</option>`).join('');
     if (S.profile?.schoolCode === s.sccode) { $('obTeacherSel').value = S.profile.teacherId; previewTeacher(); }
   } catch (e) {
     $('obTeacherSel').innerHTML = `<option>불러오기 실패: ${esc(e.message)}</option>`;
@@ -209,13 +224,13 @@ $('setChange').onclick = async () => {
 /* ───────── 앱 시작·종료 ───────── */
 function stopApp() {
   S.unsub.forEach((u) => u()); S.unsub = [];
-  S.logs.clear(); S.plans.clear(); S.extras.clear(); S.tt.clear(); S.ttLoading.clear(); S.ttFail.clear(); S.users = [];
-  S.weeks = []; S.curWeek = null;
+  S.logs.clear(); S.plans.clear(); S.extras.clear(); S.tt.clear(); S.ttLoading.clear(); S.ttFail.clear(); S.clsTT.clear(); S.stale.clear(); S.users = []; S.feedback = [];
+  S.weeks = []; S.curWeek = null; S.week = null;
 }
 async function startApp() {
   stopApp();
   show('app');
-  buildMenu();
+  buildMenu(); fillIcons(); fillCredit();
   const live = (name, map) => onSnapshot(sub(name), (snap) => {
     map.clear(); snap.forEach((d) => map.set(d.id, { id: d.id, ...d.data() })); renderAll();
   }, (e) => toast(`${name} 읽기 실패: ${e.code}`));
@@ -224,10 +239,38 @@ async function startApp() {
     S.unsub.push(onSnapshot(collection(db, 'classlog_users'), (snap) => {
       S.users = snap.docs.map((d) => ({ uid: d.id, ...d.data() })); renderAdmin(); buildMenu();
     }, (e) => toast('사용자 목록 실패: ' + e.code)));
+    S.unsub.push(onSnapshot(query(collection(db, 'classlog_feedback'), orderBy('createdAt', 'desc'), limit(30)), (snap) => {
+      S.feedback = snap.docs.map((d) => ({ id: d.id, ...d.data() })); renderAdmin();
+    }, () => {}));
   }
-  go(location.hash.slice(1) || 'today', true);
+  // 지난번 시간표를 먼저 보여주고(홈 화면 앱처럼 바로 열림), 뒤에서 새로 받아 바꾼다
+  const cached = restoreTt();
+  go(location.hash.slice(1) || defaultView(), true);
+  if (cached) renderAll();
   try { await loadWeek(null); } catch (e) { toast('시간표 불러오기 실패: ' + e.message); }
+  // 주말이면 다음 주를 먼저 보여준다
+  if ([0, 6].includes(dow(todayISO()))) {
+    const nx = S.weeks[S.weeks.findIndex((w) => w.r === S.curWeek) + 1];
+    if (nx?.start) { S.week = nx.r; S.date = nx.start; }
+  }
   renderAll();
+  for (const r of [...S.stale]) loadWeek(r, true).then(renderAll).catch(() => {});
+}
+
+// 시간표 보관(localStorage): 컴시간이 느리거나 끊겨도 마지막 시간표가 바로 보이게
+const ttKey = () => `classlog:tt:${S.profile.schoolCode}:${S.profile.teacherId}`;
+function saveTt() {
+  store.set(ttKey(), JSON.stringify({ weeks: S.weeks, times: S.times, cur: S.curWeek, classCount: S.classCount, homeroom: S.homeroom, teachers: S.teachers, debug: S.ttDebug, tt: Object.fromEntries(S.tt) }));
+}
+function restoreTt() {
+  try {
+    const c = JSON.parse(store.get(ttKey()) || 'null');
+    if (!c?.tt) return false;
+    S.weeks = c.weeks || []; S.times = c.times || []; S.curWeek = c.cur ?? null; S.week = S.week ?? c.cur ?? null;
+    S.classCount = c.classCount || []; S.homeroom = c.homeroom || []; S.teachers = c.teachers || []; S.ttDebug = c.debug || null;
+    for (const [r, v] of Object.entries(c.tt)) { S.tt.set(Number(r), v); S.stale.add(Number(r)); }
+    return S.tt.size > 0;
+  } catch { return false; }
 }
 
 // 컴시간 한 주. r=null 이면 '오늘이 속한 주'
@@ -239,11 +282,13 @@ function loadWeek(r, force) {
   const p = S.profile;
   const job = api(`code=${p.schoolCode}&teacher=${p.teacherId}` + (r != null ? `&week=${r}` : ''))
     .then((d) => {
-      S.weeks = d.weeks; S.times = d.times; S.ttDebug = d.debug;
+      S.weeks = d.weeks; S.times = d.times; S.ttDebug = d.debug; S.classCount = d.classCount || []; S.homeroom = d.homeroom || []; S.teachers = d.teachers || [];
       S.tt.set(r ?? d.week, d.lessons.map(fromComci));
-      S.ttFail.delete(r ?? d.week);
-      if (S.curWeek == null) S.curWeek = d.week;
-      if (S.week == null) S.week = d.week;
+      S.ttFail.delete(r ?? d.week); S.stale.delete(r ?? d.week);
+      saveTt();
+      // '오늘이 속한 주'는 week 를 안 주고 받았을 때만 알 수 있다(다른 주를 받은 응답으로 정하면 안 됨)
+      if (r == null) S.curWeek = d.week;
+      if (S.week == null) S.week = S.curWeek ?? d.week;
       return d.week;
     })
     .catch((e) => { if (r != null) S.ttFail.add(r); throw e; })
@@ -298,10 +343,11 @@ function progressOf(k, grade, subject) {
 
 /* ───────── 메뉴·화면 이동 ───────── */
 const MENU = [
-  ['수업', [['today', '오늘 수업', 'sun'], ['week', '주간 시간표', 'calendar'], ['progress', '반별 진도', 'chart']]],
+  ['수업', [['today', '오늘 수업', 'sun'], ['week', '시간표', 'calendar'], ['class', '학급·교사 시간표', 'people'], ['progress', '반별 진도', 'chart']]],
   ['관리', [['plan', '진도 계획', 'list'], ['export', '내보내기', 'download'], ['settings', '설정', 'gear'], ['admin', '승인 관리', 'check', true]]],
 ];
-const TABS = [['today', '오늘', 'sun'], ['week', '주간', 'calendar'], ['progress', '진도', 'chart'], ['plan', '계획', 'list'], ['settings', '설정', 'gear']];
+// 폰 하단 탭: 시간표가 맨 앞(처음 열면 시간표). 진도 계획·내보내기는 설정의 바로가기에서도 열 수 있다
+const TABS = [['week', '시간표', 'calendar'], ['today', '오늘', 'sun'], ['progress', '진도', 'chart'], ['class', '학급·교사', 'people'], ['settings', '설정', 'gear']];
 const ICONS = {
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/>',
   calendar: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
@@ -310,8 +356,30 @@ const ICONS = {
   download: '<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5"/><path d="M4 19.5h16"/>',
   gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-2.7 1.1V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.6 1.6 0 0 0 3.3 14H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.6 1.6 0 0 0 9 4.6V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 2.7 1.1l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0 1.1 2.7H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1.3Z"/>',
   check: '<circle cx="12" cy="12" r="8.5"/><path d="m8 12.2 2.7 2.7L16.2 9"/>',
+  people: '<circle cx="9" cy="8" r="3"/><path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5"/><circle cx="17" cy="9" r="2.4"/><path d="M14.8 19c.2-2.3 1.9-4 3.9-4.3"/>',
+  clipboard: '<rect x="5" y="5" width="14" height="16" rx="2"/><rect x="9" y="3.3" width="6" height="3.2" rx="1"/><path d="M8 12h8M8 16h6"/>',
+  clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+  doc: '<path d="M7 3.5h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z"/><path d="M14 3.5V8h4M8.5 13h7M8.5 16.5H13"/>',
+  bell: '<path d="M6 17V11a6 6 0 0 1 12 0v6l1.5 2h-15z"/><path d="M10 21h4"/>',
+  chat: '<path d="M4 5.5h16a1 1 0 0 1 1 1V16a1 1 0 0 1-1 1H9l-4.5 4V17H4a1 1 0 0 1-1-1V6.5a1 1 0 0 1 1-1Z"/>',
+  phone: '<rect x="7" y="3" width="10" height="18" rx="2.5"/><path d="M11 18h2"/>',
+  text: '<path d="M4 19 9.5 5 15 19M6 14h7M16.5 19l2.5-6 2.5 6M17.4 17h3.2"/>',
+  ig: '<rect x="4" y="4" width="16" height="16" rx="4.5"/><circle cx="12" cy="12" r="3.6"/><circle cx="16.6" cy="7.4" r=".6"/>',
+  mail: '<rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="m4 7 8 6 8-6"/>',
 };
 const icon = (n, s) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;
+// 카드 머리글: 아이콘 + 제목 + 한 줄 설명 (+ 오른쪽 버튼) — 상자마다 역할이 보이게
+const ch = (ic, title, desc = '', right = '') => `<h2><span class="icon">${icon(ic, 17)}</span><span class="ttl">${title}${desc ? `<small>${desc}</small>` : ''}</span>${right ? `<span class="right">${right}</span>` : ''}</h2>`;
+function fillIcons() { document.querySelectorAll('[data-ic]').forEach((el) => { el.innerHTML = icon(el.dataset.ic, 17); }); }
+// 저작권·문의 푸터. data-fb 가 있으면 피드백 버튼도(앱 안에서만)
+function fillCredit() {
+  document.querySelectorAll('.credit-slot').forEach((el) => {
+    el.innerHTML = `<div>© ${new Date().getFullYear()} 관산중학교 오범석 · 수업일지</div><div class="links">
+      <a href="https://instagram.com/nosuk.beom" target="_blank" rel="noopener">${icon('ig', 14)}@nosuk.beom</a>
+      <a href="mailto:qjatjr7575@gmail.com">${icon('mail', 14)}qjatjr7575@gmail.com</a>
+      ${el.dataset.fb ? `<button type="button" class="link-btn" data-act="feedback">${icon('chat', 14)}피드백 남기기</button>` : ''}</div>`;
+  });
+}
 function buildMenu() {
   const pending = S.users.filter((u) => u.status === 'pending').length;
   $('sideMenu').innerHTML = MENU.map(([head, items]) => `<div class="side-head">${head}</div>` + items.map(([id, label, ic, adminOnly]) =>
@@ -324,21 +392,21 @@ function markMenu() {
   document.querySelectorAll('[data-go].side-item, [data-go].tab').forEach((b) => b.classList.toggle('on', b.dataset.go === S.view));
 }
 function go(view, replace) {
-  if (!$('sec-' + view) || (view === 'admin' && !S.admin)) view = 'today';
+  if (!$('sec-' + view) || (view === 'admin' && !S.admin)) view = defaultView();
   S.view = view;
   document.querySelectorAll('.section').forEach((s) => s.classList.toggle('active', s.id === 'sec-' + view));
-  const title = { today: '오늘 수업', week: '주간 시간표', progress: '반별 진도', plan: '진도 계획', export: '내보내기', settings: '설정', admin: '승인 관리' }[view];
+  const title = { today: '오늘 수업', week: '시간표', class: '학급·교사 시간표', progress: '반별 진도', plan: '진도 계획', export: '내보내기', settings: '설정', admin: '승인 관리' }[view];
   $('navTitle').textContent = title;
   if (replace) history.replaceState(null, '', '#' + view); else history.pushState(null, '', '#' + view);
   markMenu();
   renderView();
   window.scrollTo(0, 0);
 }
-window.addEventListener('popstate', () => { if (!$('app').classList.contains('hidden')) go(location.hash.slice(1) || 'today', true); });
+window.addEventListener('popstate', () => { if (!$('app').classList.contains('hidden')) go(location.hash.slice(1) || defaultView(), true); });
 
 function renderAll() { if ($('app').classList.contains('hidden')) return; buildMenu(); renderView(); }
 function renderView() {
-  ({ today: renderToday, week: renderWeek, progress: renderProgress, plan: renderPlan, export: renderExport, settings: renderSettings, admin: renderAdmin })[S.view]?.();
+  ({ today: renderToday, week: renderWeek, class: renderClass, progress: renderProgress, plan: renderPlan, export: renderExport, settings: renderSettings, admin: renderAdmin })[S.view]?.();
 }
 
 /* ───────── 오늘 ───────── */
@@ -364,16 +432,17 @@ async function renderToday() {
     $('todayList').innerHTML = `<div class="empty-state">${[0, 6].includes(dow(date)) ? '주말이에요.' : '수업이 없어요.'}</div>`;
     return;
   }
+  const nowP = date === todayISO() ? currentPeriod() : 0;
   $('todayList').innerHTML = slots.map((s, i) => {
     const log = S.logs.get(logId(s));
     const prog = progressOf(classKey(s), s.grade, s.subject);
     const what = log ? [planTitle(log), log.content].filter(Boolean).join(' · ') || '작성함'
       : prog?.next ? `다음 차시: ${prog.next.title}` : '아직 안 썼어요';
-    return `<div class="lesson" data-slot="${i}">
+    return `<div class="lesson ${s.period === nowP ? 'now' : ''}" style="${tone(s)}" data-slot="${i}" role="button" tabindex="0">
       <div class="per"><b>${s.period}</b><small>${esc(timeOf(s.period))}</small></div>
       <div style="min-width:0">
-        <div class="who">${esc(classLabel(s))} <span class="muted small" style="font-weight:600">${esc(s.subject)}</span>
-          ${s.changed ? '<span class="badge warn">변경</span>' : ''}${s.src === 'extra' ? `<span class="badge on">${KIND[s.kind] || '추가'}</span>` : ''}
+        <div class="who">${esc(classLabel(s))} <span class="subj">${esc(s.subject)}</span>
+          ${s.period === nowP ? '<span class="badge now-badge">지금</span>' : ''}${s.changed ? '<span class="badge warn">변경</span>' : ''}${s.src === 'extra' ? `<span class="badge on">${KIND[s.kind] || '추가'}</span>` : ''}
           ${log && log.status !== 'normal' ? `<span class="badge muted">${STATUS[log.status]}</span>` : ''}${s.room ? `<span class="muted small">${esc(s.room)}</span>` : ''}</div>
         <div class="what ${log ? 'has' : ''}">${esc(what)}</div>
       </div>
@@ -407,19 +476,40 @@ function renderTodaySide() {
   }).join('') + '</div>' : '<p class="muted small">맡은 반이 아직 없어요.</p>';
   $('todayProg').querySelectorAll('[data-k]').forEach((b) => (b.onclick = () => { S.progressKey = b.dataset.k; go('progress'); }));
 }
+// 진도 표시: 직접 적은(또는 목록에서 고른) 글자가 먼저, 없으면 계획표의 차시 이름
 function planTitle(log) {
-  if (!log.planItem) return log.unit || '';
-  const it = planOf(log.grade, log.subject)?.items?.find((x) => x.id === log.planItem);
-  return it ? it.title : log.unit || '';
+  if (log.unit) return log.unit;
+  if (!log.planItem) return '';
+  return planOf(log.grade, log.subject)?.items?.find((x) => x.id === log.planItem)?.title || '';
 }
+// 지금이 몇 교시인지(교시별 시작 시각에서 50분)
+function currentPeriod() {
+  const d = new Date(); const now = d.getHours() * 60 + d.getMinutes();
+  for (let p = 1; p <= S.times.length; p++) {
+    const m = timeOf(p).match(/(\d+):(\d+)/); if (!m) continue;
+    const st = Number(m[1]) * 60 + Number(m[2]);
+    if (now >= st && now < st + 50) return p;
+  }
+  return 0;
+}
+$('todayList').addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && e.target.classList.contains('lesson')) { e.preventDefault(); e.target.click(); } });
 $('todayDate').onchange = (e) => { if (e.target.value) { S.date = e.target.value; renderToday(); } };
 
 /* ───────── 주간 ───────── */
+// 주 선택(내 시간표·학급 시간표가 같은 주를 본다): 이전·다음 버튼과 목록
+function syncWeekControls() {
+  // 폰에서 잘리지 않게 "10/26 ~ 10/31" 짧은 모양으로
+  const opts = S.weeks.map((w) => `<option value="${w.r}">${w.start ? `${md(w.start)} ~ ${md(addDays(w.start, 5))}` : esc(w.label)}${w.r === S.curWeek ? ' · 이번 주' : ''}</option>`).join('');
+  for (const id of ['weekSel', 'clsWeekSel']) { $(id).innerHTML = opts; if (S.week != null) $(id).value = S.week; }
+  const i = S.weeks.findIndex((w) => w.r === S.week);
+  document.querySelectorAll('[data-act="wk"]').forEach((b) => {
+    const n = Number(b.dataset.n);
+    b.disabled = n === -1 ? i <= 0 : n === 1 ? i < 0 || i >= S.weeks.length - 1 : S.week === S.curWeek;
+  });
+}
 async function renderWeek() {
-  const sel = $('weekSel');
-  sel.innerHTML = S.weeks.map((w) => `<option value="${w.r}">${esc(w.label)}${w.r === S.curWeek ? ' (이번 주)' : ''}</option>`).join('');
+  syncWeekControls();
   if (!S.weeks.length) { $('weekGrid').innerHTML = '<div class="spinner"></div>'; return; }
-  sel.value = S.week;
   const w = S.weeks.find((x) => x.r === S.week) || S.weeks[0];
   $('weekSub').textContent = `${S.profile.schoolName} · ${S.profile.teacherName}`;
   if (needWeek(w)) {
@@ -433,13 +523,13 @@ async function renderWeek() {
   $('weekGrid').innerHTML = weekTable(slots, w.start);
   $('weekGrid').querySelectorAll('.slot').forEach((b) => (b.onclick = () => openLog(slots[b.dataset.i])));
 }
-$('weekSel').onchange = (e) => { S.week = Number(e.target.value); renderWeek(); };
+for (const id of ['weekSel', 'clsWeekSel']) $(id).onchange = (e) => { S.week = Number(e.target.value); renderView(); };
 
-// 요일×교시 표. preview: 가입 화면 미리보기(누를 수 없음)
-function weekTable(slots, start, { preview } = {}) {
+// 요일×교시 표. preview: 가입 화면 미리보기(누를 수 없음). cell: 칸 모양을 바꿀 때(학급 시간표)
+function weekTable(slots, start, { preview, cell } = {}) {
   const maxP = Math.max(6, ...slots.map((s) => s.period), S.times.length ? Math.min(S.times.length, 7) : 0);
   const today = todayISO();
-  let h = '<table class="week-grid"><tr><th style="width:52px"></th>';
+  let h = '<table class="week-grid"><tr><th></th>';
   for (let d = 0; d < 5; d++) {
     const date = start ? addDays(start, d) : null;
     h += `<th class="${date === today ? 'today' : ''}">${DAYS[d + 1]}${date ? `<small>${md(date)}</small>` : ''}</th>`;
@@ -450,82 +540,219 @@ function weekTable(slots, start, { preview } = {}) {
     for (let d = 1; d <= 5; d++) {
       const date = start ? addDays(start, d - 1) : null;
       const here = slots.map((s, i) => [s, i]).filter(([s]) => s.period === p && (date ? s.date === date : s.day === d));
-      h += '<td>' + here.map(([s, i]) => {
-        const log = preview ? null : S.logs.get(logId(s));
-        const cls = ['slot', log ? 'done' : '', s.changed ? 'chg' : '', s.src === 'extra' ? 'extra' : '', log?.status === 'cancel' ? 'off' : ''].join(' ');
-        const note = log ? planTitle(log) || log.content || '' : '';
-        return `<button type="button" class="${cls}" data-i="${i}" ${preview ? 'disabled style="cursor:default"' : ''}><b>${esc(classLabel(s))}</b><small>${esc(s.subject)}</small>${note ? `<i>${esc(note)}</i>` : ''}</button>`;
-      }).join('') + '</td>';
+      h += `<td class="${date && date === today ? 'tdy' : ''}">` + here.map(([s, i]) => cell ? cell(s, i) : ownCell(s, i, preview)).join('') + '</td>';
     }
     h += '</tr>';
   }
   return h + '</table>';
 }
+function ownCell(s, i, preview) {
+  const log = preview ? null : S.logs.get(logId(s));
+  const cls = ['slot', log ? 'done' : '', s.changed ? 'chg' : '', s.src === 'extra' ? 'extra' : '', log?.status === 'cancel' ? 'off' : ''].join(' ');
+  const note = log ? planTitle(log) || log.content || '' : '';
+  return `<button type="button" class="${cls}" data-i="${i}" style="${tone(s)}${preview ? ';cursor:default' : ''}" ${preview ? 'disabled' : ''}><b>${esc(classLabel(s))}</b><small>${esc(s.subject)}</small>${note ? `<i>${esc(note)}</i>` : ''}</button>`;
+}
+
+/* ───────── 학급·교사 시간표(보기 전용) ───────── */
+// 학급별: 담임이 반 시간표를 확인 / 교사별: 다른 선생님 수업 확인. 칸은 div 라서 눌러도 일지가 열리지 않는다(일지는 내 수업만).
+const tLabel = (t) => `${t.name}${t.subjects?.length ? ` · ${t.subjects.join('·')}` : ''}`;
+async function renderClass() {
+  syncWeekControls();
+  const cc = S.classCount;
+  if (!cc.length || !S.weeks.length) { $('clsGrid').innerHTML = '<div class="spinner"></div>'; return; }
+  const teacherMode = S.clsMode === 'teacher';
+  $('clsMode').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === (teacherMode ? 'teacher' : 'class')));
+  for (const id of ['clsGrade', 'clsNum']) $(id).classList.toggle('hidden', teacherMode);
+  $('clsTeacher').classList.toggle('hidden', !teacherMode);
+  const w = S.weeks.find((x) => x.r === S.week) || S.weeks[0];
+  let key, qs, title, badge = '', sub;
+  if (teacherMode) {
+    if (!S.teachers.length) { $('clsGrid').innerHTML = '<div class="spinner"></div>'; return; }
+    if (!S.tchr || !S.teachers.some((t) => t.id === S.tchr)) S.tchr = (S.teachers.find((t) => t.id !== S.profile.teacherId) || S.teachers[0]).id;
+    $('clsTeacher').innerHTML = S.teachers.map((t) => `<option value="${t.id}">${esc(tLabel(t))}${t.id === S.profile.teacherId ? ' (나)' : ''}</option>`).join('');
+    $('clsTeacher').value = S.tchr;
+    const t = S.teachers.find((x) => x.id === S.tchr);
+    title = `${t.name} 선생님 시간표`; sub = `${t.subjects.join('·') || '담당 과목 없음'} · 반·과목 (컴시간 기준)`;
+    badge = t.id === S.profile.teacherId ? '<span class="badge on">나 · 일지는 ‘시간표’에서</span>' : '<span class="badge muted">보기 전용</span>';
+    key = `${w.r}|t${t.id}`; qs = `code=${S.profile.schoolCode}&week=${w.r}&teacher=${t.id}`;
+  } else {
+    if (!S.cls) {
+      const hr = S.homeroom[0], mine = myClasses()[0];
+      S.cls = hr ? { grade: hr.grade, cls: hr.class } : mine ? { grade: mine.grade, cls: mine.cls } : { grade: 1, cls: 1 };
+    }
+    const grades = []; for (let g = 1; g < cc.length; g++) if (cc[g] > 0) grades.push(g);
+    if (!grades.includes(S.cls.grade)) S.cls = { grade: grades[0] || 1, cls: 1 };
+    S.cls.cls = Math.min(Math.max(S.cls.cls, 1), cc[S.cls.grade] || 1);
+    $('clsGrade').innerHTML = grades.map((g) => `<option value="${g}">${g}학년</option>`).join('');
+    $('clsGrade').value = S.cls.grade;
+    $('clsNum').innerHTML = Array.from({ length: cc[S.cls.grade] || 1 }, (_, i) => `<option value="${i + 1}">${i + 1}반</option>`).join('');
+    $('clsNum').value = S.cls.cls;
+    const { grade, cls } = S.cls;
+    title = `${grade}학년 ${cls}반 시간표`; sub = '과목 · 선생님 (컴시간 기준)';
+    badge = S.homeroom.some((h) => h.grade === grade && h.class === cls) ? '<span class="badge on">내 담임 반</span>' : '<span class="badge muted">보기 전용</span>';
+    key = `${w.r}|${grade}-${cls}`; qs = `code=${S.profile.schoolCode}&week=${w.r}&grade=${grade}&class=${cls}`;
+  }
+  $('clsTitle').textContent = title; $('clsSub').textContent = sub; $('clsBadge').innerHTML = badge;
+  if (!S.clsTT.has(key)) {
+    $('clsGrid').innerHTML = '<div class="spinner"></div>';
+    try {
+      const d = await api(qs);
+      S.clsTT.set(key, (teacherMode ? d.lessons : d.classLessons) || []);
+    } catch (e) { $('clsGrid').innerHTML = `<div class="empty-state">불러오지 못했어요: ${esc(e.message)}</div>`; return; }
+    if (S.view === 'class') renderClass();
+    return;
+  }
+  const lessons = S.clsTT.get(key);
+  $('clsGrid').innerHTML = lessons.length ? weekTable(lessons, w.start, {
+    cell: teacherMode
+      ? (l) => `<div class="slot ro ${l.changed ? 'chg' : ''}" style="--gh:${GRADE_HUE[l.grade] ?? 268};--sh:${subjectHue(l.subjectName)}"><b>${l.grade}-${l.class}</b><small>${esc(l.subjectName)}${l.room ? ` · ${esc(l.room)}` : ''}</small></div>`
+      : (l) => `<div class="slot ro ${l.changed ? 'chg' : ''} ${l.teacher === S.profile.teacherId ? 'mine' : ''}" style="--gh:${subjectHue(l.subjectName)};--sh:${subjectHue(l.subjectName)}"><b>${esc(l.subjectName)}</b><small>${esc(l.teacherName)}${l.room ? ` · ${esc(l.room)}` : ''}</small></div>`,
+  }) : '<div class="empty-state">이 주에는 수업이 없어요.</div>';
+}
+$('clsGrade').onchange = (e) => { S.cls = { grade: Number(e.target.value), cls: 1 }; renderClass(); };
+$('clsNum').onchange = (e) => { S.cls = { ...S.cls, cls: Number(e.target.value) }; renderClass(); };
+$('clsTeacher').onchange = (e) => { S.tchr = Number(e.target.value); renderClass(); };
+$('clsMode').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; S.clsMode = b.dataset.v; renderClass(); };
 
 /* ───────── 일지 쓰기 ───────── */
-let LM = null; // 지금 열린 칸
+// 진도는 '직접 적기'가 기본. ▾ 를 누르면 계획표·이전에 쓴 진도에서 골라 채운다.
+let LM = null;        // 지금 열린 칸
+let LM_SNAP = '';     // 열었을 때 입력 상태(닫을 때 바뀌었는지 확인)
+let LM_PICK = null;   // 목록에서 고른 계획 차시 { id, title } — 글자를 안 고쳤을 때만 계획표와 연결
+let LM_NEXT = null;   // 같은 날 다음 미작성 수업
+const lmState = () => JSON.stringify([segVal('lmStatus'), $('lmUnit').value, $('lmContent').value, $('lmHomework').value, $('lmNote').value]);
+
 function openLog(slot) {
   LM = slot;
   const id = logId(slot);
   const log = S.logs.get(id);
   const k = classKey(slot);
+  closeCombos();
   $('lmTitle').textContent = `${classLabel(slot)} · ${slot.subject}`;
   $('lmSub').textContent = `${dateLabel(slot.date)} ${slot.period}교시${timeOf(slot.period) ? ` (${timeOf(slot.period)})` : ''}${slot.changed ? ' · 변경된 수업' : ''}${slot.src === 'extra' ? ` · ${KIND[slot.kind] || '직접 추가'}` : ''}`;
   // 같은 반 바로 전 기록
   const prev = logsOf(k).find((l) => l.id !== id && ord(l) < ord(slot));
   $('lmPrev').innerHTML = prev
-    ? `<div class="card" style="padding:12px 14px;margin-bottom:14px;box-shadow:none;background:var(--fill)"><div class="muted small" style="font-weight:700">지난 수업 · ${dateLabel(prev.date)} ${prev.period}교시</div>
-       <div style="font-weight:700;margin-top:2px">${esc(planTitle(prev) || '-')}</div>${prev.content ? `<div class="small" style="white-space:pre-wrap;margin-top:2px">${esc(prev.content)}</div>` : ''}${prev.homework ? `<div class="muted small" style="margin-top:2px">과제: ${esc(prev.homework)}</div>` : ''}</div>`
+    ? `<div class="inset" style="margin-bottom:14px"><div class="muted small" style="font-weight:700">지난 수업 · ${dateLabel(prev.date)} ${prev.period}교시</div>
+       <div style="font-weight:700;margin-top:2px">${esc(planTitle(prev) || '(진도 미기록)')}</div>${prev.content ? `<div class="small" style="white-space:pre-wrap;margin-top:2px">${esc(prev.content)}</div>` : ''}${prev.homework ? `<div class="muted small" style="margin-top:2px">과제: ${esc(prev.homework)}</div>` : ''}</div>`
     : '';
-  // 진도 계획
-  const prog = progressOf(k, slot.grade, slot.subject);
-  const plan = planOf(slot.grade, slot.subject);
-  $('lmPlanField').classList.toggle('hidden', !plan?.items?.length);
-  if (plan?.items?.length) {
-    let unit = null;
-    const opts = ['<option value="">(계획표에서 고르지 않음)</option>'];
-    plan.items.forEach((it) => {
-      if (it.unit !== unit) { if (unit !== null) opts.push('</optgroup>'); opts.push(`<optgroup label="${esc(it.unit || '단원 없음')}">`); unit = it.unit; }
-      const d = prog?.done.get(it.id);
-      opts.push(`<option value="${esc(it.id)}">${esc(it.title)}${d && (!log || log.planItem !== it.id) ? ` ✓ ${md(d)}` : ''}</option>`);
-    });
-    opts.push('</optgroup>');
-    $('lmPlan').innerHTML = opts.join('');
-    // 저장된 차시가 없으면(계획을 나중에 만든 경우 포함) 이 반의 다음 차시를 미리 골라둔다
-    $('lmPlan').value = log?.planItem || prog?.next?.id || '';
-  }
   setSeg('lmStatus', log?.status || (slot.src === 'extra' && slot.kind === 'makeup' ? 'makeup' : 'normal'));
-  $('lmUnit').value = log?.unit || '';
+  $('lmUnit').value = log ? planTitle(log) : '';
+  LM_PICK = log?.planItem ? { id: log.planItem, title: planTitle(log) } : null;
   $('lmContent').value = log?.content || '';
   $('lmHomework').value = log?.homework || '';
   $('lmNote').value = log?.note || '';
+  updateSuggest();
+  const day = slotsFor(slot.date);
+  LM_NEXT = day.slice(day.findIndex((x) => logId(x) === id) + 1).find((x) => !S.logs.has(logId(x))) || null;
+  $('lmSaveNext').classList.toggle('hidden', !LM_NEXT);
   $('lmDelete').classList.toggle('hidden', !log && slot.src !== 'extra');
   $('lmDelete').textContent = log ? '일지 삭제' : '추가한 수업 삭제';
   $('logModal').classList.add('show');
+  LM_SNAP = lmState();
 }
+// 비어 있고 계획표가 있으면 '다음 차시' 한 줄만 작게 권한다(누를 때만 채움)
+function updateSuggest() {
+  const el = $('lmSuggest');
+  const prog = LM && progressOf(classKey(LM), LM.grade, LM.subject);
+  if (prog?.next && !$('lmUnit').value.trim()) {
+    el.innerHTML = `<button type="button" class="suggest">다음 차시 · <span>${esc(prog.next.title)}</span></button>`;
+    el.firstChild.onclick = () => { $('lmUnit').value = prog.next.title; LM_PICK = { id: prog.next.id, title: prog.next.title }; updateSuggest(); };
+  } else el.innerHTML = '';
+}
+$('lmUnit').addEventListener('input', updateSuggest);
+
+function closeCombos() { document.querySelectorAll('.combo-menu').forEach((m) => m.classList.add('hidden')); }
+document.addEventListener('pointerdown', (e) => { if (!e.target.closest('.combo')) closeCombos(); });
+function toggleCombo(menuId, html) {
+  const m = $(menuId);
+  const willOpen = m.classList.contains('hidden');
+  closeCombos();
+  if (!willOpen) return;
+  m.innerHTML = html; m.classList.remove('hidden');
+  m.scrollIntoView({ block: 'nearest' });
+}
+// 진도 목록: ① 계획표(다음 차시 강조·한 날짜 표시) ② 이 학년·과목에서 이전에 쓴 진도
+function unitMenuHtml(slot) {
+  const k = classKey(slot);
+  const plan = planOf(slot.grade, slot.subject);
+  const prog = progressOf(k, slot.grade, slot.subject);
+  let h = '';
+  if (plan?.items?.length) {
+    h += '<div class="combo-sec">진도 계획표에서 고르기</div>';
+    let unit = null;
+    for (const it of plan.items) {
+      if (it.unit !== unit) { unit = it.unit; h += `<div class="combo-grp">${esc(unit || '단원 없음')}</div>`; }
+      const d = prog?.done.get(it.id), isNext = prog?.next?.id === it.id;
+      h += `<button type="button" class="combo-opt ${isNext ? 'next' : ''} ${d ? 'done' : ''}" data-plan="${esc(it.id)}" data-text="${esc(it.title)}"><span class="tx">${esc(it.title)}</span><small>${isNext ? '다음 차시' : d ? `✓ ${md(d)}` : ''}</small></button>`;
+    }
+  }
+  const seen = new Set(), prev = [];
+  for (const l of [...S.logs.values()].filter((x) => x.grade === slot.grade && x.subject === slot.subject && x.id !== logId(slot)).sort((a, b) => ord(b).localeCompare(ord(a)))) {
+    const t = planTitle(l);
+    if (!t || seen.has(t)) continue;
+    seen.add(t); prev.push({ t, plan: l.planItem || '', from: `${classLabel(l)} · ${md(l.date)}` });
+    if (prev.length >= 10) break;
+  }
+  if (prev.length) {
+    h += '<div class="combo-sec">이전에 쓴 진도</div>';
+    for (const p of prev) h += `<button type="button" class="combo-opt" data-plan="${esc(p.plan)}" data-text="${esc(p.t)}"><span class="tx">${esc(p.t)}</span><small>${esc(p.from)}</small></button>`;
+  }
+  return h || '<div class="combo-empty">아직 고를 항목이 없어요. 직접 적으면 다음부터 여기에 나타나고, 진도 계획을 만들면 계획표도 나와요.</div>';
+}
+function contentMenuHtml(slot) {
+  const k = classKey(slot);
+  const seen = new Set(), rows = [];
+  const logs = [...S.logs.values()].filter((x) => x.grade === slot.grade && x.subject === slot.subject && x.id !== logId(slot) && x.content)
+    .sort((a, b) => (classKey(b) === k) - (classKey(a) === k) || ord(b).localeCompare(ord(a)));
+  for (const l of logs) { if (seen.has(l.content)) continue; seen.add(l.content); rows.push(l); if (rows.length >= 8) break; }
+  return rows.length
+    ? '<div class="combo-sec">이전에 쓴 수업 내용</div>' + rows.map((l) => `<button type="button" class="combo-opt" data-text="${esc(l.content)}"><span class="tx">${esc(l.content)}</span><small>${esc(classLabel(l))} · ${md(l.date)}</small></button>`).join('')
+    : '<div class="combo-empty">이 학년·과목에서 쓴 수업 내용이 아직 없어요.</div>';
+}
+$('lmUnitBtn').onclick = () => toggleCombo('lmUnitMenu', unitMenuHtml(LM));
+$('lmContentBtn').onclick = () => toggleCombo('lmContentMenu', contentMenuHtml(LM));
+$('lmUnitMenu').onclick = (e) => {
+  const b = e.target.closest('.combo-opt'); if (!b) return;
+  $('lmUnit').value = b.dataset.text; LM_PICK = b.dataset.plan ? { id: b.dataset.plan, title: b.dataset.text } : null;
+  closeCombos(); updateSuggest();
+};
+$('lmContentMenu').onclick = (e) => {
+  const b = e.target.closest('.combo-opt'); if (!b) return;
+  const cur = $('lmContent').value.trim();
+  $('lmContent').value = cur ? `${cur}\n${b.dataset.text}` : b.dataset.text;
+  closeCombos();
+};
+
 function setSeg(id, v) { $(id).querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === v)); }
 const segVal = (id) => $(id).querySelector('button.on')?.dataset.v;
-for (const id of ['lmStatus', 'exKind']) $(id).onclick = (e) => { const b = e.target.closest('button'); if (b) setSeg(id, b.dataset.v); };
-const closeLog = () => { $('logModal').classList.remove('show'); LM = null; };
-$('lmCancel').onclick = closeLog;
-$('lmSave').onclick = async () => {
-  if (!LM) return;
-  const s = LM;
+for (const id of ['lmStatus', 'exKind', 'fbKind']) $(id).onclick = (e) => { const b = e.target.closest('button'); if (b) setSeg(id, b.dataset.v); };
+const closeLog = () => { $('logModal').classList.remove('show'); closeCombos(); LM = null; };
+// 쓰던 내용이 있으면 닫기 전에 한 번 묻는다(실수로 바깥을 눌러도 안 날아가게)
+async function tryCloseLog() {
+  if (LM && lmState() !== LM_SNAP && !(await ask('저장하지 않고 닫을까요?', '쓰던 내용이 사라져요.', '닫기'))) return;
+  closeLog();
+}
+$('lmCancel').onclick = tryCloseLog;
+$('logModal').addEventListener('mousedown', (e) => { if (e.target === $('logModal')) tryCloseLog(); });
+async function saveLog() {
+  if (!LM) return false;
+  const s = LM, unit = $('lmUnit').value.trim();
   const data = {
     date: s.date, period: s.period, grade: s.grade, cls: s.cls, subject: s.subject,
     status: segVal('lmStatus') || 'normal',
-    planItem: $('lmPlanField').classList.contains('hidden') ? '' : $('lmPlan').value,
-    unit: $('lmUnit').value.trim(), content: $('lmContent').value.trim(),
+    planItem: LM_PICK && LM_PICK.title === unit ? LM_PICK.id : '',
+    unit, content: $('lmContent').value.trim(),
     homework: $('lmHomework').value.trim(), note: $('lmNote').value.trim(),
     updatedAt: serverTimestamp(),
   };
-  $('lmSave').disabled = true;
-  try {
-    await setDoc(doc(sub('logs'), logId(s)), data);
-    toast('저장했어요'); closeLog();
-  } catch (e) { toast('저장 실패: ' + e.code); }
-  $('lmSave').disabled = false;
-};
+  $('lmSave').disabled = $('lmSaveNext').disabled = true;
+  try { await setDoc(doc(sub('logs'), logId(s)), data); toast('저장했어요'); return true; }
+  catch (e) { toast('저장 실패: ' + e.code); return false; }
+  finally { $('lmSave').disabled = $('lmSaveNext').disabled = false; }
+}
+$('lmSave').onclick = async () => { if (await saveLog()) closeLog(); };
+$('lmSaveNext').onclick = async () => { const nx = LM_NEXT; if (await saveLog()) { closeLog(); if (nx) openLog(nx); } };
 $('lmDelete').onclick = async () => {
   if (!LM) return;
   const s = LM;
@@ -539,8 +766,13 @@ $('lmDelete').onclick = async () => {
   }
   closeLog(); toast('지웠어요');
 };
-for (const m of ['logModal', 'extraModal']) $(m).addEventListener('mousedown', (e) => { if (e.target === $(m)) $(m).classList.remove('show'); });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.show').forEach((m) => m.id !== 'askModal' && m.classList.remove('show')); });
+for (const m of ['extraModal', 'fbModal']) $(m).addEventListener('mousedown', (e) => { if (e.target === $(m)) $(m).classList.remove('show'); });
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if ($('askModal').classList.contains('show')) return;
+  if ($('logModal').classList.contains('show')) { tryCloseLog(); return; }
+  document.querySelectorAll('.modal-overlay.show').forEach((m) => m.classList.remove('show'));
+});
 
 /* ───────── 수업 직접 추가 ───────── */
 function openExtra() {
@@ -576,7 +808,7 @@ function renderProgress() {
     const head = c.subject !== subject ? `${subject !== null ? '</div>' : ''}<div class="muted small" style="font-weight:700;margin:${subject !== null ? 16 : 0}px 0 8px">${esc(c.subject)}</div><div class="class-cards">` : '';
     subject = c.subject;
     const pct = prog ? Math.round(((prog.last + 1) / prog.plan.items.length) * 100) : 0;
-    return head + `<button type="button" class="class-card ${k === S.progressKey ? 'on' : ''}" data-k="${esc(k)}">
+    return head + `<button type="button" class="class-card ${k === S.progressKey ? 'on' : ''}" style="${tone(c)}" data-k="${esc(k)}">
       <div class="t">${esc(classLabel(c))}<small>${esc(c.subject)}</small></div>
       <div class="u">${esc(prog ? (prog.last >= 0 ? prog.plan.items[prog.last].title : '아직 시작 전') : last ? planTitle(last) || last.content || '기록 있음' : '기록 없음')}</div>
       <div class="m">기록 ${logs.length}회${last ? ` · 마지막 ${dateLabel(last.date)}` : ''}${prog ? ` · ${prog.last + 1}/${prog.plan.items.length}차시` : ''}</div>
@@ -589,7 +821,7 @@ function renderProgress() {
   const logs = logsOf(S.progressKey);
   const plan = planOf(cur.grade, cur.subject);
   const peers = mine.filter((c) => c.grade === cur.grade && c.subject === cur.subject);
-  let html = `<div class="card"><h2>${esc(classLabel(cur))} ${esc(cur.subject)} 수업 기록<span class="right"><button class="btn sm" data-act="export-class">내보내기</button></span></h2>`;
+  let html = `<div class="card">${ch('clipboard', `${esc(classLabel(cur))} ${esc(cur.subject)} 수업 기록`, '날짜순 · 눌러서 고칠 수 있어요', '<button class="btn sm" data-act="export-class">내보내기</button>')}`;
   html += logs.length ? '<div class="timeline">' + logs.map((l) => `<div class="tl-item" data-id="${esc(l.id)}">
       <div class="d">${dateLabel(l.date)}<small>${l.period}교시${l.status !== 'normal' ? ` · ${STATUS[l.status]}` : ''}</small></div>
       <div><div class="u">${esc(planTitle(l) || '(진도 미기록)')}</div>${l.content ? `<div class="c">${esc(l.content)}</div>` : ''}
@@ -599,7 +831,7 @@ function renderProgress() {
 
   $('progressDetail').innerHTML = html;
   // 같은 학년·과목 반끼리 계획표 대비 진도 비교(넓은 화면에서는 오른쪽 칸)
-  html = `<div class="card"><h2>${cur.grade}학년 ${esc(cur.subject)} 반별 진도 비교<span class="right"><button class="btn sm" data-go-plan="${esc(planId(cur.grade, cur.subject))}">${plan ? '계획 고치기' : '계획 만들기'}</button></span></h2>`;
+  html = `<div class="card">${ch('chart', `${cur.grade}학년 ${esc(cur.subject)} 반별 진도 비교`, '반마다 어느 차시까지 했는지', `<button class="btn sm" data-go-plan="${esc(planId(cur.grade, cur.subject))}">${plan ? '계획 고치기' : '계획 만들기'}</button>`)}`;
   if (plan?.items?.length) {
     const progs = peers.map((c) => progressOf(classKey(c), c.grade, c.subject));
     html += '<div class="matrix-wrap"><table class="matrix"><tr><th class="item">차시</th>' + peers.map((c) => `<th>${esc(classLabel(c))}</th>`).join('') + '</tr>';
@@ -659,7 +891,7 @@ function drawPlan() {
   const groups = planGroups(P.items);
   $('planBody').innerHTML = `
     <div class="card">
-      <h2>${P.grade}학년 ${esc(P.subject)} 차시 목록<span class="right">${P.dirty ? '<span class="badge warn">저장 안 됨</span>' : ''}<button class="btn accent sm" id="planSave" ${P.dirty ? '' : 'disabled'}>저장</button></span></h2>
+      ${ch('list', `${P.grade}학년 ${esc(P.subject)} 차시 목록`, '단원 이름 아래에 차시를 적어요', `${P.dirty ? '<span class="badge warn">저장 안 됨</span>' : ''}<button class="btn accent sm" id="planSave" ${P.dirty ? '' : 'disabled'}>저장</button>`)}
       ${P.items.length ? '' : '<p class="muted small" style="margin-bottom:12px">아직 차시가 없어요. 단원을 추가하거나, 아래 "여러 줄 붙여넣기"로 한 번에 넣으세요.</p>'}
       ${groups.map((g, gi) => `
         <div class="plan-unit">
@@ -677,7 +909,7 @@ function drawPlan() {
     </div>`;
   if (!$('planBulk')) $('planSide').innerHTML = `
     <div class="card">
-      <h2>여러 줄 붙여넣기</h2>
+      ${ch('doc', '여러 줄 붙여넣기', '많은 차시를 한 번에 넣을 때')}
       <p class="muted small" style="margin-bottom:10px"><b>#</b>으로 시작하는 줄은 단원, 나머지는 그 단원의 차시예요.</p>
       <textarea class="inp" id="planBulk" style="min-height:140px" placeholder="# 1. 문자와 식&#10;문자의 사용&#10;식의 값&#10;# 2. 일차방정식&#10;등식의 성질"></textarea>
       <div class="modal-actions"><button class="btn" id="planBulkAdd">목록 뒤에 추가</button></div>
@@ -776,12 +1008,22 @@ function renderSettings() {
     <div class="pick-item" style="cursor:default"><span class="muted small" style="width:70px">이름</span>${esc(p.teacherName)} <span class="muted small">(컴시간 ${p.teacherId}번)</span></div>
   </div>`;
   const d = S.ttDebug;
-  $('ttDebug').textContent = d ? `해석: ${d.mode} · 분리 ${d.sep} · 겹침 ${d.clashes} · 전체 수업 ${d.cells}칸` : '';
+  $('ttDebug').textContent = d ? `해석: ${d.mode} · 분리 ${d.sep} · 겹침 ${d.clashes} · 전체 수업 ${d.cells}칸 · 담임표 ${d.homeroom}` : '';
+  const fs = store.get('classlog-fs') || '1';
+  $('fsSeg').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === fs));
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const standalone = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
+  $('iosTip').classList.toggle('hidden', !(ios && !standalone));
 }
+$('fsSeg').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; store.set('classlog-fs', b.dataset.v); applyFs(b.dataset.v); renderSettings(); };
 
 /* ───────── 승인 관리(관리자) ───────── */
+const FB_KIND = { idea: '기능 제안', ux: '불편한 점', bug: '오류 신고', etc: '기타' };
 function renderAdmin() {
   if (!S.admin || S.view !== 'admin') return;
+  $('adminFeedback').innerHTML = S.feedback.length ? S.feedback.map((f) => `<div class="user-row"><div style="min-width:0">
+    <div class="nm">${esc(FB_KIND[f.kind] || '기타')} <span class="muted small" style="font-weight:500">${esc(f.teacherName)} · ${esc(f.schoolName)}${f.createdAt?.toDate ? ` · ${md(todayISO(f.createdAt.toDate()))}` : ''}</span></div>
+    <div style="white-space:pre-wrap;font-size:0.92rem;margin-top:2px">${esc(f.text)}</div></div></div>`).join('') : '<div class="empty-state">아직 받은 피드백이 없어요.</div>';
   const f = S.adminFilter;
   const list = S.users.filter((u) => f === 'all' || u.status === f)
     .sort((a, b) => (b.updatedAt?.seconds || 0) - (a.updatedAt?.seconds || 0));
@@ -808,8 +1050,42 @@ $('adminSeg').onclick = (e) => {
   renderAdmin();
 };
 
+/* ───────── 피드백(질문방과 같은 Apps Script → 텔레그램 알림) ───────── */
+// ohinfo 질문방(qna.html)이 쓰는 웹앱을 그대로 쓴다. 알림이 실패해도 Firestore 에는 남는다.
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzepbMXVCYAwoBcmFbmWQWRes1bSGfvhVHKGFNX6VHanVy-1mirxLkyHlROp0-agBX2/exec';
+const GAS_SECRET = 'ohweb-upload-2026';
+function openFeedback() {
+  if (S.profile?.status !== 'approved') { toast('승인된 뒤에 보낼 수 있어요'); return; }
+  $('fbText').value = ''; $('fbCount').textContent = '0'; setSeg('fbKind', 'idea');
+  $('fbModal').classList.add('show');
+}
+$('fbText').addEventListener('input', () => { $('fbCount').textContent = String($('fbText').value.length); });
+$('fbCancel').onclick = () => $('fbModal').classList.remove('show');
+$('fbSend').onclick = async () => {
+  const text = $('fbText').value.trim();
+  if (!text) { toast('내용을 적어주세요'); return; }
+  if (Date.now() - S.fbAt < 15000) { toast('잠시 뒤에 다시 보내주세요'); return; }
+  const kind = segVal('fbKind') || 'etc', p = S.profile;
+  $('fbSend').disabled = true;
+  try {
+    await addDoc(collection(db, 'classlog_feedback'), {
+      uid: S.user.uid, email: S.user.email, teacherName: p.teacherName, schoolName: p.schoolName,
+      kind, text, view: S.view, ua: navigator.userAgent.slice(0, 160), createdAt: serverTimestamp(),
+    });
+    fetch(GAS_URL, { method: 'POST', body: JSON.stringify({
+      secret: GAS_SECRET, action: 'notify',
+      studentName: `[수업일지 ${FB_KIND[kind]}] ${p.teacherName}`, school: p.schoolName, grade: '', class: '', number: '',
+      preview: `${text}\n— ${p.teacherName} (${p.schoolName}, ${S.user.email})`,
+    }) }).catch(() => {}); // 알림 실패는 조용히(기록은 이미 저장됨)
+    S.fbAt = Date.now();
+    $('fbModal').classList.remove('show'); toast('보냈어요. 고맙습니다!');
+  } catch (e) { toast('보내기 실패: ' + e.code); }
+  $('fbSend').disabled = false;
+};
+
 /* ───────── 버튼 공통 처리 ───────── */
 document.addEventListener('click', async (e) => {
+  if (e.target.closest('[data-home]')) { e.preventDefault(); go(defaultView()); return; }
   const goBtn = e.target.closest('[data-go]');
   if (goBtn) { go(goBtn.dataset.go); return; }
   const a = e.target.closest('[data-act]');
@@ -819,13 +1095,21 @@ document.addEventListener('click', async (e) => {
   else if (act === 'dark') toggleDark();
   else if (act === 'day') { const n = Number(a.dataset.n); S.date = n ? addDays(S.date, n) : todayISO(); renderToday(); }
   else if (act === 'add-extra') openExtra();
+  else if (act === 'feedback') openFeedback();
+  else if (act === 'wk') {
+    const n = Number(a.dataset.n), i = S.weeks.findIndex((w) => w.r === S.week);
+    S.week = n === 0 ? S.curWeek : S.weeks[i + n]?.r ?? S.week;
+    renderView();
+  }
   else if (act === 'csv') downloadCsv();
   else if (act === 'print') window.print();
   else if (act === 'export-class') { go('export'); $('exClass').value = S.progressKey; $('exFrom').value = ''; renderExport(); }
   else if (act === 'reload-tt') {
     const r = S.week ?? S.curWeek;
-    S.tt.clear(); S.ttFail.clear();
+    S.tt.clear(); S.ttFail.clear(); S.clsTT.clear();
     try { await loadWeek(r, true); toast('시간표를 다시 받았어요(최대 10분 전 자료일 수 있어요)'); } catch (err) { toast('실패: ' + err.message); }
     renderAll();
   }
 });
+
+fillIcons(); fillCredit();

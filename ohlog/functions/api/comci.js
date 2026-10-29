@@ -2,6 +2,7 @@
 //   GET /api/comci?q=학교명                      → 학교 검색
 //   GET /api/comci?code=학교코드[&week=r]          → 교사 목록·주 목록·일과시간
 //   GET /api/comci?code=학교코드&teacher=번호[&week=r] → 위 + 그 교사의 수업(lessons, 날짜 포함)
+//   GET /api/comci?code=학교코드&grade=3&class=2[&week=r] → 위 + 그 학급의 시간표(classLessons, 교사 이름 포함)
 //   GET /api/comci?diag=1                        → 컴시간 접속 진단
 //   …&raw=1                                      → 컴시간 원본 응답(구조 확인용)
 // 컴시간 주소는 가끔 바뀐다. 환경변수 COMCI_URL(예: http://comci.net:4082)로 덮어쓸 수 있다.
@@ -172,6 +173,14 @@ function readWeeks(raw) {
     return { r: Number(r), label, start: m ? `20${m[1]}-${m[2]}-${m[3]}` : null };
   });
 }
+// 담임 표(자료의 '담임')에서 이 교사가 담임인 학급을 찾는다. 모양이 [학년][반] = 교사번호 라고 보고, 다르면 빈 목록.
+function findHomeroom(raw, teacher) {
+  const hr = raw['담임'];
+  const out = [];
+  if (!Array.isArray(hr) || !teacher) return out;
+  hr.forEach((row, g) => { if (g > 0 && Array.isArray(row)) row.forEach((v, c) => { if (c > 0 && Number(v) === teacher) out.push({ grade: g, class: c }); }); });
+  return out;
+}
 function addDays(iso, n) {
   const d = new Date(iso + 'T00:00:00Z');
   d.setUTCDate(d.getUTCDate() + n);
@@ -227,7 +236,20 @@ export async function onRequestGet({ request, env }) {
     const t = parseTimetable(raw, c.keys);
     const weeks = readWeeks(raw);
     const start = weeks.find((w) => String(w.r) === week)?.start;
+    // 이름 끝 글자가 가려져 같은 이름이 많으니, 담당 과목(많이 가르치는 순 2개)을 같이 내려 구분하게 한다
+    const subjectsOf = new Map();
+    {
+      const cnt = new Map();
+      for (const x of t.cells) { const m = cnt.get(x.teacher) || new Map(); m.set(x.subjectName, (m.get(x.subjectName) || 0) + 1); cnt.set(x.teacher, m); }
+      for (const [id, m] of cnt) subjectsOf.set(id, [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 2).map(([n]) => n));
+    }
     const teacher = url.searchParams.get('teacher');
+    const gParam = url.searchParams.get('grade'), cParam = url.searchParams.get('class');
+    const classLessons = /^\d{1,2}$/.test(gParam || '') && /^\d{1,2}$/.test(cParam || '')
+      ? t.cells
+          .filter((x) => x.grade === Number(gParam) && x.class === Number(cParam))
+          .map((x) => ({ ...x, teacherName: t.teachers[x.teacher] || '', date: start ? addDays(start, x.day - 1) : null }))
+      : undefined;
     const lessons =
       teacher == null
         ? undefined
@@ -239,9 +261,11 @@ export async function onRequestGet({ request, env }) {
       weeks,
       times: raw['일과시간'] || [], // 교시별 시간 표시(예: "1(09:00)")
       classCount: raw['학급수'],
-      teachers: t.teachers.map((name, id) => ({ id, name })).filter((x) => x.id > 0 && x.name),
+      teachers: t.teachers.map((name, id) => ({ id, name, subjects: subjectsOf.get(id) || [] })).filter((x) => x.id > 0 && x.name),
       lessons,
-      debug: { sep: t.sep, mode: t.mode, clashes: t.clashes, cells: t.cells.length },
+      classLessons,
+      homeroom: findHomeroom(raw, Number(teacher)),
+      debug: { sep: t.sep, mode: t.mode, clashes: t.clashes, cells: t.cells.length, homeroom: JSON.stringify(raw['담임'] ?? null).slice(0, 80) },
     });
   } catch (e) {
     return json({ error: e.message }, 502);

@@ -49,6 +49,7 @@ function weekJson(r) {
     학급수: [14, 4, 5, 5], 분리: 1000, 강의실: 0, 오늘r: 1, 학교명: '컴시간중',
     일자자료: [[1, '26-10-26 ~ 26-10-31'], [2, '26-11-02 ~ 26-11-07']], 시작일: '20' + start,
     일과시간: ['1(09:00)', '2(09:55)', '3(10:50)', '4(11:45)', '5(13:30)', '6(14:25)', '7(15:20)'],
+    담임: [0, [0, 1, 2, 3, 4], [0, 5, 6, 7, 8, 9], [0, 10, 11, 12, 13, 14]], // 3학년 1반 담임 = 10번 교사
     자료446: TEACHERS, 자료492: SUBJECTS, 자료481: timetable(r), 자료147: timetable(r), 자료245: [3],
   }) + '\0\0';
 }
@@ -139,11 +140,21 @@ await A.page.click('.side-item[data-go="admin"]');
 await A.page.waitForSelector('#adminList [data-s="approved"]');
 await shot(A.page, '03-admin');
 await A.page.click('#adminList [data-s="approved"]');
-await T.page.waitForSelector('#app:not(.hidden) #sec-today.active', { timeout: 10000 });
-ok('승인되면 교사 화면이 자동으로 앱으로 바뀜', true);
+// 폰(홈 화면 앱)에서는 처음 열면 시간표가 나와야 한다
+await T.page.waitForSelector('#app:not(.hidden) #sec-week.active', { timeout: 10000 });
+ok('승인되면 교사 화면이 자동으로 앱으로 바뀜 — 폰에서는 처음에 시간표', true);
+await T.page.waitForSelector('#weekGrid .slot');
+const fit = await T.page.evaluate(() => {
+  const th = [...document.querySelectorAll('#weekGrid .week-grid th')].map((e) => e.getBoundingClientRect());
+  return { right: Math.max(...th.map((r) => r.right)), vw: innerWidth, scrollW: document.documentElement.scrollWidth, ths: th.length };
+});
+ok('폰 시간표가 월~금 한 화면에 꽉 참(가로 스크롤 없음)', fit.ths === 6 && fit.right <= fit.vw + 0.5 && fit.scrollW <= fit.vw + 0.5, JSON.stringify(fit));
+ok('칸에 학년 색(--gh)·과목 색(--sh)이 붙음', await T.page.$eval('#weekGrid .slot', (e) => /--gh:\d+;--sh:\d+/.test(e.getAttribute('style'))));
+await shot(T.page, '02b-week-m');
 
 // 4) 오늘 수업: 컴시간 수업 목록 + 일지 쓰기
 const p = T.page;
+await p.click('.tab[data-go="today"]');
 await p.waitForSelector('#todayList .lesson');
 const n = await p.locator('#todayList .lesson').count();
 ok('오늘(목) 수업 카드가 나옴', n > 0, `count=${n}`);
@@ -153,6 +164,7 @@ await shot(p, '04-today-m');
 const [grade, cls] = (await p.locator('#todayList .lesson .who').first().textContent()).trim().match(/^(\d+)-(\d+)/).slice(1);
 await p.locator('#todayList .lesson').first().click();
 await p.waitForSelector('#logModal.show');
+ok('진도 칸은 비어 있고(직접 적기가 기본) 계획표 선택 칸은 따로 없음', (await p.inputValue('#lmUnit')) === '' && (await p.locator('#lmPlan').count()) === 0);
 await p.fill('#lmContent', '일차방정식 풀이 연습');
 await p.fill('#lmUnit', '2단원 1차시');
 await p.fill('#lmHomework', '익힘책 10쪽');
@@ -161,7 +173,8 @@ await p.waitForSelector('#todayList .lesson .badge.ok');
 ok('일지 저장 후 "작성" 표시', true);
 
 // 5) 진도 계획: 여러 줄 붙여넣기 → 저장
-await p.click('.tab[data-go="plan"]');
+await p.click('.tab[data-go="settings"]');
+await p.click('.pick-item[data-go="plan"]'); // 진도 계획은 설정의 바로가기에서 연다(폰 하단 탭에는 없음)
 await p.waitForSelector('#planBulk');
 await p.selectOption('#planSel', `${grade}_수학`);
 await p.waitForSelector('#planBulk');
@@ -173,17 +186,32 @@ await p.click('#planSave');
 await p.waitForSelector('#planSave[disabled]');
 await shot(p, '05-plan-m');
 
-// 6) 다시 일지를 열면 다음 차시가 골라져 있음 → 계획 차시로 저장
+// 6) 계획이 생긴 뒤: 기본은 비어 있고, 추천 칩·▾ 목록에서 골라 채움
 await p.click('.tab[data-go="today"]');
 await p.locator('#todayList .lesson').first().click();
 await p.waitForSelector('#logModal.show');
-const planVisible = await p.isVisible('#lmPlanField');
-ok('계획이 있으면 진도 선택 칸이 보임', planVisible);
-const opt = await p.$eval('#lmPlan', (s) => s.selectedOptions[0]?.textContent);
-ok('다음 차시(첫 차시)가 미리 골라짐', opt === '등식의 성질', opt);
+ok('저장해 둔 진도(직접 적은 글)가 그대로 보임', (await p.inputValue('#lmUnit')) === '2단원 1차시');
+await p.click('#lmUnitBtn');
+await p.waitForSelector('#lmUnitMenu .combo-opt');
+const nextOpt = await p.$eval('#lmUnitMenu .combo-opt.next', (e) => e.dataset.text);
+ok('▾ 목록에 계획표가 단원별로 나오고 다음 차시가 강조됨', nextOpt === '등식의 성질' && (await p.locator('#lmUnitMenu .combo-grp').count()) === 2, nextOpt);
 await shot(p, '06-log-modal-m');
-await p.click('#lmSave');
+await p.click('#lmUnitMenu .combo-opt.next');
+ok('목록에서 고르면 진도 칸이 채워짐', (await p.inputValue('#lmUnit')) === '등식의 성질');
+ok('"저장 후 다음 수업" 버튼이 보임', await p.isVisible('#lmSaveNext'));
+await p.click('#lmSaveNext');
+await p.waitForSelector('#lmTitle:has-text("2-1")');
+ok('저장 후 같은 날 다음 수업(2-1)이 바로 열림, 진도는 비어 있음', (await p.inputValue('#lmUnit')) === '');
+ok('계획표가 없는 학년(2학년)에서는 추천 칩이 없음', (await p.locator('#lmSuggest .suggest').count()) === 0);
+await p.fill('#lmContent', '쓰다 만 내용');
+await p.click('#lmCancel');
+await p.waitForSelector('#askModal.show');
+ok('쓰던 내용이 있으면 닫기 전에 한 번 확인함', true);
+await p.click('#askNo');
+await p.fill('#lmContent', '');
+await p.click('#lmCancel');
 await p.waitForSelector('#logModal.show', { state: 'detached' });
+ok('바뀐 게 없으면 확인 없이 닫힘', true);
 
 // 7) 보강 수업 추가 → 오늘 목록에 나옴
 await p.click('[data-act="add-extra"]');
@@ -191,6 +219,14 @@ await p.fill('#exPeriod', '7');
 await p.click('#exSave');
 await p.waitForSelector('#todayList .lesson .badge.on');
 ok('보강 수업이 오늘 목록에 추가됨', (await p.locator('#todayList .lesson').count()) === n + 1);
+
+// 7b) 시간표 보관: 컴시간이 안 돼도 마지막 시간표가 바로 뜬다 + 처음 화면은 시간표
+await p.route('**/api/comci*', (r) => r.abort());
+await p.goto('http://localhost:8098/');
+await p.waitForSelector('#app:not(.hidden) #sec-week.active');
+await p.waitForSelector('#weekGrid .slot', { timeout: 5000 });
+ok('컴시간이 끊겨도 보관해 둔 시간표가 바로 보이고, 폰에서는 처음에 시간표', true);
+await p.unroute('**/api/comci*');
 
 // 8) 주간·진도·내보내기 (PC 화면)
 const P = A.page; // 관리자도 같은 교사 번호로 가입 → 데이터는 사람마다 따로
@@ -202,6 +238,48 @@ await shot(p, '07-week-pc');
 await p.selectOption('#weekSel', '2');
 await p.waitForSelector('#weekGrid .slot');
 ok('다음 주 시간표 불러오기', (await p.locator('#weekGrid .slot').count()) > 0);
+// 8b) 진도 드롭다운: 같은 학년 다른 반(아직 안 쓴 칸)에서도 계획표·이전 진도가 나옴
+await p.locator('#weekGrid .slot:not(.done)', { hasText: /^3-\d/ }).first().click();
+await p.waitForSelector('#logModal.show');
+ok('다른 3학년 반(진도는 반마다 따로): 비어 있으면 첫 차시 추천 칩이 작게 보임', (await p.textContent('#lmSuggest .suggest')).includes('등식의 성질'));
+await p.click('#lmUnitBtn');
+await p.waitForSelector('#lmUnitMenu .combo-opt');
+ok('같은 학년 다른 반에서도 계획표 4차시 + 이전에 쓴 진도가 목록에 나옴', (await p.locator('#lmUnitMenu .combo-opt').count()) >= 5 && (await p.locator('#lmUnitMenu .combo-sec').allTextContents()).some((t) => t.includes('이전에 쓴 진도')));
+await p.click('#lmTitle'); // 바깥을 누르면 목록이 닫힘
+ok('목록 바깥을 누르면 닫힘', await p.$eval('#lmUnitMenu', (e) => e.classList.contains('hidden')));
+await p.click('#lmContentBtn');
+await p.waitForSelector('#lmContentMenu .combo-opt');
+await p.click('#lmContentMenu .combo-opt');
+ok('이전 수업 내용을 눌러 가져옴', (await p.inputValue('#lmContent')).includes('일차방정식 풀이 연습'));
+await p.fill('#lmContent', '');
+await p.click('#lmCancel');
+await p.waitForSelector('#logModal.show', { state: 'detached' });
+
+// 8c) 학급 시간표(담임용)
+await p.click('.side-item[data-go="class"]');
+await p.waitForSelector('#clsGrid .slot.ro');
+ok('학급 시간표: 내 담임 반(3-1)이 기본으로 열리고 배지가 보임', (await p.textContent('#clsTitle')).includes('3학년 1반') && (await p.textContent('#clsBadge')).includes('내 담임'));
+ok('학급 시간표: 과목과 선생님 이름이 보임', /교사\d+\*/.test(await p.textContent('#clsGrid')) && (await p.locator('#clsGrid .slot.mine').count()) >= 1);
+await p.selectOption('#clsNum', '2');
+await p.waitForSelector('#clsTitle:has-text("3학년 2반")');
+await p.waitForSelector('#clsGrid .slot.ro');
+await p.selectOption('#clsGrade', '1');
+await p.waitForSelector('#clsTitle:has-text("1학년 1반")');
+ok('학급 시간표: 학년·반을 바꾸면 그 반 시간표가 나옴', (await p.locator('#clsGrid .slot.ro').count()) > 0);
+await shot(p, '07b-class-pc');
+// 8c2) 교사별: 다른 선생님 수업은 볼 수만 있고 일지는 못 연다
+await p.click('#clsMode button[data-v="teacher"]');
+await p.waitForSelector('#clsTeacher:not(.hidden)');
+await p.waitForSelector('#clsGrid .slot.ro');
+ok('교사별: 선생님 목록에 이름 옆 담당 과목이 같이 나옴', (await p.locator('#clsTeacher option', { hasText: '교사10* · 수학' }).count()) === 1);
+ok('교사별: 다른 선생님 시간표가 "보기 전용"으로 나옴(눌러지는 버튼 없음)', (await p.textContent('#clsBadge')).includes('보기 전용') && (await p.locator('#clsGrid .slot.ro').count()) > 0 && (await p.locator('#clsGrid button').count()) === 0);
+await shot(p, '07c-teacher-pc');
+await p.locator('#clsGrid .slot.ro').first().click();
+ok('교사별: 다른 선생님 칸을 눌러도 일지가 열리지 않음', (await p.locator('#logModal.show').count()) === 0);
+await p.selectOption('#clsTeacher', '10');
+await p.waitForSelector('#clsBadge .badge.on');
+ok('교사별: 나를 고르면 "일지는 시간표에서" 안내', (await p.textContent('#clsBadge')).includes('시간표'));
+await p.click('#clsMode button[data-v="class"]');
 await p.click('.side-item[data-go="progress"]');
 await p.waitForSelector('.class-card');
 await p.locator(`.class-card[data-k="${grade}-${cls}|수학"]`).click();
@@ -216,10 +294,26 @@ const csv = readFileSync(await dl.path(), 'utf8');
 ok('CSV에 진도·내용이 들어감', csv.includes('등식의 성질') && csv.includes('일차방정식 풀이 연습'), csv.slice(0, 200));
 await shot(p, '09-export-pc');
 
+// 8d) 푸터(저작권·인스타·메일) + 피드백
+ok('푸터: 관산중학교 오범석 저작권', (await p.textContent('#app .credit')).includes('관산중학교 오범석'));
+ok('푸터: 인스타그램·메일 링크', (await p.locator('#app .credit a[href="https://instagram.com/nosuk.beom"]').count()) === 1 && (await p.locator('#app .credit a[href="mailto:qjatjr7575@gmail.com"]').count()) === 1);
+await p.click('#app .credit [data-act="feedback"]');
+await p.waitForSelector('#fbModal.show');
+await p.click('#fbKind button[data-v="bug"]');
+await p.fill('#fbText', '학급 시간표에서 선택과목이 겹쳐 보여요');
+await p.click('#fbSend');
+await p.waitForSelector('#fbModal.show', { state: 'detached' });
+let fbDocs = [];
+await env.withSecurityRulesDisabled(async (c) => { fbDocs = (await c.firestore().collection('classlog_feedback').get()).docs.map((d) => d.data()); });
+ok('피드백이 Firestore에 저장됨(종류·내용·보낸 사람)', fbDocs.length === 1 && fbDocs[0].kind === 'bug' && fbDocs[0].text.includes('선택과목') && fbDocs[0].teacherName === '교사10*', JSON.stringify(fbDocs));
+
 // 9) 다른 사람 데이터는 안 보임(관리자 일지 0건)
 await P.click('.side-item[data-go="export"]');
 await P.waitForSelector('#exTable .empty-state');
 ok('관리자 계정에는 교사의 일지가 섞이지 않음', true);
+await P.click('.side-item[data-go="admin"]');
+await P.waitForSelector('#adminFeedback .user-row');
+ok('관리자 화면에 받은 피드백이 보임', (await P.textContent('#adminFeedback')).includes('오류 신고'));
 await P.click('.dark-toggle');
 await P.click('.side-item[data-go="week"]');
 await P.waitForSelector('#weekGrid .slot');
@@ -230,7 +324,7 @@ if (SHOTS) {
   await P.click('.dark-toggle');
   for (const [w, h] of [[390, 844], [1024, 768], [1440, 900], [1920, 1080]]) {
     await p.setViewportSize({ width: w, height: h });
-    for (const v of ['today', 'week', 'progress', 'plan', 'export']) {
+    for (const v of ['today', 'week', 'class', 'progress', 'plan', 'export', 'settings']) {
       await p.evaluate((v) => { location.hash = v; }, v);
       await p.waitForTimeout(250);
       await p.screenshot({ path: path.join(SHOTS, `res-${w}-${v}.png`) });
