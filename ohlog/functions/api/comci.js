@@ -85,6 +85,25 @@ export async function onRequestGet({ request, env }) {
     );
     return json({ results });
   }
+  if (url.searchParams.get('st')) {
+    // /st 스크립트에서 prefix·route·자료 번호가 들어 있는 부분만 잘라 보여준다(정규식 확정용)
+    try {
+      const host = env.COMCI_URL || HOSTS[0];
+      const html = await getText(host + '/st', 'euc-kr');
+      const around = (re, n = 160) =>
+        [...html.matchAll(re)].slice(0, 6).map((m) => html.slice(Math.max(0, m.index - n), m.index + n));
+      return json({
+        len: html.length,
+        sc_data: around(/sc_data/g),
+        url: around(/url:\s*'/g, 80),
+        일일자료: around(/일일자료/g),
+        원자료: around(/원자료/g),
+        성명: around(/성명/g),
+      });
+    } catch (e) {
+      return json({ error: e.message }, 502);
+    }
+  }
   const q = url.searchParams.get('q');
   const code = url.searchParams.get('code');
   if (!q && !code) return json({ error: 'q(학교명) 또는 code(학교코드) 필요' }, 400);
