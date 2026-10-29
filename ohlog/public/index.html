@@ -11,6 +11,13 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="format-detection" content="telephone=no">
   <link rel="manifest" href="manifest.webmanifest">
+  <!-- 첫 화면을 그리는 동안 코드와 Firebase 도구를 미리 받는다(순서대로 받으면 LTE에서 수 초 걸림) -->
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="modulepreload" href="app.js">
+  <link rel="modulepreload" href="firebase-config.js">
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js" crossorigin>
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js" crossorigin>
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js" crossorigin>
   <title>수업일지 — kakainfo</title>
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -252,6 +259,9 @@
 
 <div class="toast" id="toast"></div>
 <button type="button" class="update-bar hidden" id="updateBar">새 버전이 있어요 · 눌러서 적용</button>
+
+<!-- 시작 중(저장해 둔 화면이 없을 때만 잠깐) -->
+<div class="screen" id="screenBoot"><div class="spinner" style="margin-top:42vh"></div></div>
 
 <!-- 로그인 -->
 <div class="screen" id="screenLogin">

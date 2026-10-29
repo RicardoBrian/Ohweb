@@ -243,12 +243,21 @@ await p.click('#exSave');
 await p.waitForSelector('#todayList .lesson .badge.on');
 ok('보강 수업이 오늘 목록에 추가됨', (await p.locator('#todayList .lesson').count()) === n + 1);
 
-// 7b) 시간표 보관: 컴시간이 안 돼도 마지막 시간표가 바로 뜬다 + 처음 화면은 시간표
+// 7b) 빠른 시작: 두 번째 실행부터는 저장해 둔 시간표를 먼저 그린다.
+//     컴시간은 끊고, Firebase 도구(SDK)는 2.5초 늦춰도 시간표는 그 전에 보여야 한다.
 await p.route('**/api/comci*', (r) => r.abort());
+await p.route('https://www.gstatic.com/**', async (r) => { await new Promise((res) => setTimeout(res, 2500)); await r.fallback(); });
+const t0 = Date.now();
 await p.goto('http://localhost:8098/');
-await p.waitForSelector('#app:not(.hidden) #sec-week.active');
-await p.waitForSelector('#weekGrid .slot', { timeout: 5000 });
-ok('컴시간이 끊겨도 보관해 둔 시간표가 바로 보이고, 폰에서는 처음에 시간표', true);
+await p.waitForSelector('#app:not(.hidden) #sec-week.active #weekGrid .slot', { timeout: 5000 });
+const firstPaint = Date.now() - t0;
+ok('빠른 시작: Firebase 도구가 2.5초 늦어도 시간표가 먼저 뜸(폰에서는 처음에 시간표)', firstPaint < 2200, `${firstPaint}ms`);
+await p.click('.slot', { trial: true }).catch(() => {});
+await p.locator('#weekGrid .slot').first().click();
+ok('일지를 불러오기 전에는 칸을 눌러도 안 열림(덮어쓰기 방지)', (await p.locator('#logModal.show').count()) === 0);
+await p.waitForSelector('#weekGrid .slot.done', { timeout: 15000 });
+ok('도구가 도착하면 ✓ 표시(일지 데이터)가 채워짐', true);
+await p.unroute('https://www.gstatic.com/**');
 await p.unroute('**/api/comci*');
 
 // 7c) 새 버전 감지: 홈 화면 앱은 새로고침이 없으니 앱이 스스로 확인해서 적용한다
@@ -272,6 +281,7 @@ await p.waitForFunction(() => !window.__marker);
 await p.waitForSelector('#app:not(.hidden)');
 ok('알림줄을 누르면 새 버전으로 다시 열리고 주소의 ?v= 는 정리됨', !p.url().includes('v='));
 await p.evaluate(() => { window.__marker = 1; });
+await p.waitForTimeout(2000); // 앱이 기준 버전을 기록할 때까지(시작 1.5초 뒤)
 await deploy(); // 또 배포 — 이번엔 아무것도 안 하고 있을 때
 await p.evaluate(() => { document.activeElement?.blur?.(); document.dispatchEvent(new Event('visibilitychange')); });
 await p.waitForFunction(() => !window.__marker, null, { timeout: 8000 });
