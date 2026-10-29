@@ -181,3 +181,18 @@ html body.ui-sky.dark .week-grid td.tdy { background: rgba(10,132,255,0.12); }
 /* 학급별 시간표는 칸 바탕이 과목 색이라 학년 색보다 한 단계 더 옅고 탁하게 */
 .slot.bysubj { --tint-s: 18%; --tint-a: 0.16; }
 body.ui-sky.dark .slot.bysubj { --tint-s: 24%; --tint-a: 0.20; }
+
+/* ───────── 폰 시간표: 한 화면(세로까지)에 다 보이게 ─────────
+   위쪽 제목·카드 머리글은 숨기고(상단 바에 이미 '시간표'가 있음), 칸 높이는 화면 높이에 맞춰 자동으로 줄고 늘어난다. */
+@media (max-width: 599px) {
+  .wrap:has(#sec-week.active) { padding-top: 8px; }
+  #sec-week .section-header > div:first-child { display: none; }
+  #sec-week .section-header { margin: 0 0 8px; }
+  #sec-week .section-header .tools { margin-left: 0; width: 100%; justify-content: space-between; flex-wrap: nowrap; }
+  #sec-week .week-nav select.inp { flex: 1; max-width: none; text-align: center; text-align-last: center; }
+  #sec-week .card > h2 { display: none; }
+  #sec-week .card { padding-top: 6px; }
+  #sec-week .week-grid th { padding: 2px 0 2px; }
+  #weekGrid .week-grid td { height: 66px; height: clamp(44px, calc((100vh - 318px) / 7.2), 66px); height: clamp(44px, calc((100dvh - 318px) / 7.2), 66px); }
+  #weekGrid .slot { min-height: 0; height: 100%; padding: 3px 2px; }
+}

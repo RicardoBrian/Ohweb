@@ -152,6 +152,12 @@ ok('폰 시간표가 월~금 한 화면에 꽉 참(가로 스크롤 없음)', fi
 const fill = await T.page.evaluate(() => { const sl = document.querySelector('#weekGrid .slot'); return sl.getBoundingClientRect().width / sl.parentElement.getBoundingClientRect().width; });
 ok('폰 시간표 칸이 열 폭을 꽉 채움(안쪽 여백으로 좁아 보이지 않음)', fill > 0.92, String(fill));
 ok('칸에 학년 색(--gh)·과목 색(--sh)이 붙음', await T.page.$eval('#weekGrid .slot', (e) => /--gh:\d+;--sh:\d+/.test(e.getAttribute('style'))));
+const vfit = await T.page.evaluate(() => {
+  const rows = [...document.querySelectorAll('#weekGrid .week-grid tr')];
+  return { lastBottom: rows.at(-1).getBoundingClientRect().bottom, tabTop: document.querySelector('.tabbar').getBoundingClientRect().top, periods: rows.length - 1, top: document.querySelector('#weekGrid').getBoundingClientRect().top };
+});
+ok('폰 시간표가 세로로도 한 화면에 다 들어옴(마지막 교시가 하단 탭 위)', vfit.lastBottom <= vfit.tabTop, JSON.stringify(vfit));
+if (SHOTS) await T.page.screenshot({ path: path.join(SHOTS, '02c-week-m-viewport.png') });
 await shot(T.page, '02b-week-m');
 
 // 4) 오늘 수업: 컴시간 수업 목록 + 일지 쓰기
