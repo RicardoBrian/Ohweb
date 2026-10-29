@@ -383,12 +383,19 @@ function slotsFor(date) {
   return out.sort((a, b) => a.period - b.period || a.grade - b.grade || a.cls - b.cls);
 }
 // 내가 맡은 반(학년-반|과목) — 시간표·추가 수업·일지에서 모은다
+// 사용자 설정: 과목 순서(subjectOrder)와 진도 계획을 안 쓰는 과목(noPlan). plans 컬렉션의 '_prefs' 문서에 저장한다.
+const PREFS_ID = '_prefs';
+const prefs = () => S.plans.get(PREFS_ID) || {};
+const planDocs = () => [...S.plans.values()].filter((p) => p.id !== PREFS_ID && Array.isArray(p.items));
+const noPlan = (subject) => (prefs().noPlan || []).includes(subject);
+const subjIdx = (subject) => { const i = (prefs().subjectOrder || []).indexOf(subject); return i < 0 ? 1000 : i; };
+const bySubject = (a, b) => subjIdx(a.subject) - subjIdx(b.subject) || a.subject.localeCompare(b.subject);
 function myClasses() {
   const m = new Map();
   const add = (l) => { if (l.subject) m.set(classKey(l), { grade: l.grade, cls: l.cls, subject: l.subject }); };
   for (const ls of S.tt.values()) ls.forEach(add);
   S.extras.forEach(add); S.logs.forEach(add);
-  return [...m.values()].sort((a, b) => a.subject.localeCompare(b.subject) || a.grade - b.grade || a.cls - b.cls);
+  return [...m.values()].sort((a, b) => bySubject(a, b) || a.grade - b.grade || a.cls - b.cls);
 }
 const ord = (l) => l.date + String(l.period).padStart(2, '0');
 const logsOf = (k) => [...S.logs.values()].filter((l) => classKey(l) === k).sort((a, b) => ord(b).localeCompare(ord(a)));
@@ -541,7 +548,7 @@ function renderTodaySide() {
     const last = logsOf(k).find((l) => l.status !== 'cancel');
     const now = prog ? (prog.last >= 0 ? `${prog.plan.items[prog.last].title} (${prog.last + 1}/${prog.plan.items.length})` : '시작 전') : last ? planTitle(last) || last.content || '기록 있음' : '기록 없음';
     return `<button type="button" class="mini-item" data-k="${esc(k)}"><b>${esc(classLabel(c))}</b><span class="grow">${esc(now)}</span><small>${esc(c.subject)}</small></button>`;
-  }).join('') + '</div>' + (S.live && !S.plans.size ? '<button type="button" class="btn sm" data-go="plan" style="margin-top:12px">진도 계획 만들기</button>' : '') : '<p class="muted small">맡은 반이 아직 없어요.</p>';
+  }).join('') + '</div>' + (S.live && !planDocs().length && myClasses().some((c) => !noPlan(c.subject)) ? '<button type="button" class="btn sm" data-go="plan" style="margin-top:12px">진도 계획 만들기</button>' : '') : '<p class="muted small">맡은 반이 아직 없어요.</p>';
   $('todayProg').querySelectorAll('[data-k]').forEach((b) => (b.onclick = () => { S.progressKey = b.dataset.k; go('progress'); }));
 }
 // 진도 표시: 직접 적은(또는 목록에서 고른) 글자가 먼저, 없으면 계획표의 차시 이름
@@ -767,6 +774,7 @@ function unitMenuHtml(slot) {
     for (const p of prev) h += `<button type="button" class="combo-opt" data-plan="${esc(p.plan)}" data-text="${esc(p.t)}"><span class="tx">${esc(p.t)}</span><small>${esc(p.from)}</small></button>`;
   }
   const hasPlan = !!plan?.items?.length;
+  if (noPlan(slot.subject) && !hasPlan) return h || '<div class="combo-empty">직접 적으면 다음부터 여기에 나타나요.</div>';
   return (h || '<div class="combo-empty">아직 고를 항목이 없어요. 직접 적으면 다음부터 여기에 나타나요.</div>')
     + `<button type="button" class="combo-opt go-plan" data-go-plan="1"><span class="tx">${slot.grade}학년 ${esc(slot.subject)} 진도 계획 ${hasPlan ? '고치기' : '만들기'} →</span></button>`;
 }
@@ -939,13 +947,15 @@ let PLAN_DRAFT = null; // { id, grade, subject, items }
 function planTargets() {
   const m = new Map();
   for (const c of myClasses()) m.set(planId(c.grade, c.subject), { grade: c.grade, subject: c.subject });
-  for (const p of S.plans.values()) m.set(p.id, { grade: p.grade, subject: p.subject });
-  return [...m.entries()].sort((a, b) => a[1].subject.localeCompare(b[1].subject) || a[1].grade - b[1].grade);
+  for (const p of planDocs()) m.set(p.id, { grade: p.grade, subject: p.subject });
+  // 설정한 과목 순서대로, '진도 계획 안 씀'인 과목(스클 등)은 목록에서 뺀다
+  return [...m.entries()].filter(([, t]) => !noPlan(t.subject)).sort((a, b) => bySubject(a[1], b[1]) || a[1].grade - b[1].grade);
 }
 function renderPlan() {
   if (!S.live) { $('planBody').innerHTML = '<div class="card"><div class="spinner"></div></div>'; $('planSide').innerHTML = ''; return; }
   const targets = planTargets();
-  if (!targets.length) { $('planSel').innerHTML = ''; $('planSide').innerHTML = ''; $('planBody').innerHTML = '<div class="card"><div class="empty-state">시간표를 불러오면 맡은 학년·과목이 여기에 나와요.</div></div>'; return; }
+  if (!targets.length) { $('planSel').innerHTML = ''; $('planSide').innerHTML = ''; $('planBody').innerHTML = '<div class="card"><div class="empty-state">진도 계획을 쓰는 과목이 없어요.<br>시간표를 불러오는 중이거나, 과목을 모두 ‘안 씀’으로 해 둔 상태예요.<div style="margin-top:12px"><button class="btn sm" data-act="order">과목 순서·사용 설정</button></div></div></div>'; return; }
+  S.planKey ??= store.get('classlog-plankey'); // 지난번에 보던 과목을 기억
   if (!S.planKey || !targets.some(([id]) => id === S.planKey)) S.planKey = targets[0][0];
   $('planSel').innerHTML = targets.map(([id, t]) => `<option value="${esc(id)}">${t.grade}학년 ${esc(t.subject)}${S.plans.get(id)?.items?.length ? ` (${S.plans.get(id).items.length}차시)` : ''}</option>`).join('');
   $('planSel').value = S.planKey;
@@ -1046,8 +1056,49 @@ function drawPlan() {
 const newId = () => Math.random().toString(36).slice(2, 10);
 $('planSel').onchange = async (e) => {
   if (PLAN_DRAFT?.dirty && !(await ask('저장 안 한 변경', '저장하지 않은 차시 목록이 있어요. 버리고 넘어갈까요?', '버리기'))) { e.target.value = S.planKey; return; }
-  S.planKey = e.target.value; PLAN_DRAFT = null; if ($('planBulk')) $('planBulk').value = ''; renderPlan();
+  S.planKey = e.target.value; store.set('classlog-plankey', S.planKey); PLAN_DRAFT = null; if ($('planBulk')) $('planBulk').value = ''; renderPlan();
 };
+
+/* ───────── 과목 순서·진도 계획 사용 설정 ───────── */
+let OD = null; // { order: [과목…], off: Set(과목) }
+function openOrder() {
+  const subjects = [...new Set(myClasses().map((c) => c.subject))]; // myClasses 가 이미 설정한 순서(없으면 가나다)로 정렬해 줌
+  OD = { order: subjects, off: new Set(prefs().noPlan || []) };
+  drawOrder();
+  $('orderModal').classList.add('show');
+}
+function drawOrder() {
+  const grades = (sub) => [...new Set(myClasses().filter((c) => c.subject === sub).map((c) => c.grade))].sort().join('·') + '학년';
+  $('orderList').innerHTML = OD.order.map((sub, i) => `<div class="order-row" data-i="${i}">
+    <span class="mv"><button type="button" data-mv="-1" aria-label="위로" ${i === 0 ? 'disabled' : ''}>↑</button><button type="button" data-mv="1" aria-label="아래로" ${i === OD.order.length - 1 ? 'disabled' : ''}>↓</button></span>
+    <span class="nm"><b>${esc(sub)}</b><small>${esc(grades(sub))}</small></span>
+    <label class="ios-switch" title="진도 계획 사용"><input type="checkbox" ${OD.off.has(sub) ? '' : 'checked'}><span></span></label>
+  </div>`).join('') || '<div class="empty-state">시간표를 불러오면 과목이 나와요.</div>';
+}
+$('orderList').onclick = (e) => {
+  const b = e.target.closest('[data-mv]'); if (!b) return;
+  const i = Number(b.closest('.order-row').dataset.i), j = i + Number(b.dataset.mv);
+  if (j < 0 || j >= OD.order.length) return;
+  [OD.order[i], OD.order[j]] = [OD.order[j], OD.order[i]];
+  drawOrder();
+};
+$('orderList').onchange = (e) => {
+  const row = e.target.closest('.order-row'); if (!row) return;
+  const sub = OD.order[Number(row.dataset.i)];
+  if (e.target.checked) OD.off.delete(sub); else OD.off.add(sub);
+};
+$('orderCancel').onclick = () => $('orderModal').classList.remove('show');
+$('orderSave').onclick = async () => {
+  await sdkReady;
+  $('orderSave').disabled = true;
+  try {
+    await setDoc(doc(sub('plans'), PREFS_ID), { subjectOrder: OD.order, noPlan: [...OD.off], updatedAt: serverTimestamp() });
+    $('orderModal').classList.remove('show'); toast('순서를 저장했어요');
+    PLAN_DRAFT = null; S.planKey = null; // 새 순서의 맨 위 과목으로
+  } catch (e) { toast('저장 실패: ' + e.code); }
+  $('orderSave').disabled = false;
+};
+$('orderModal').addEventListener('mousedown', (e) => { if (e.target === $('orderModal')) $('orderModal').classList.remove('show'); });
 
 /* ───────── 내보내기 ───────── */
 function exportRows() {
@@ -1186,6 +1237,7 @@ document.addEventListener('click', async (e) => {
   else if (act === 'add-extra') openExtra();
   else if (act === 'feedback') openFeedback();
   else if (act === 'check-update') checkUpdate(true);
+  else if (act === 'order') openOrder();
   else if (act === 'wk') {
     const n = Number(a.dataset.n), i = S.weeks.findIndex((w) => w.r === S.week);
     S.week = n === 0 ? S.curWeek : S.weeks[i + n]?.r ?? S.week;
