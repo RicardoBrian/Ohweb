@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <script src="/vibe/shared/demo.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>설문 관리 — kakainfo 관리자</title>
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="theme.css">
+  <script src="admin-auth.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); line-height: 1.6; }
+    .hidden { display: none !important; }
+
+    /* NAV */
+    .nav {
+      position: sticky; top: 0; z-index: 200;
+      background: var(--glass-nav); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 1px 0 rgba(255,255,255,0.35), var(--shadow);
+      padding: 0 20px; height: var(--nav-h);
+      display: flex; align-items: center; gap: 12px;
+    }
+    .nav-title { font-weight: 800; font-size: 0.95rem; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+    .waffle-btn {
+      width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border-card);
+      background: var(--glass); color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center;
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight); transition: background 0.2s; flex-shrink: 0;
+    }
+    .waffle-btn:hover { background: var(--glass-strong); }
+    .app-modal { display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(20,22,40,0.45); align-items: center; justify-content: center; }
+    .app-modal.open { display: flex; }
+    .app-modal-card { background: #ffffff; border-radius: 22px; padding: 24px; width: min(460px, 92vw); box-shadow: 0 24px 70px rgba(0,0,0,0.3); }
+    body.dark .app-modal-card { background: #1a1d2e; }
+    .app-modal-head { display: flex; align-items: center; justify-content: space-between; font-size: 1.05rem; font-weight: 900; color: var(--text); margin-bottom: 18px; }
+    .app-modal-x { background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--sub); line-height: 1; }
+    .app-modal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .app-modal-item { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 20px 8px; border-radius: 16px; cursor: pointer; background: #f4f5fa; border: 1px solid var(--border-card); font-family: inherit; font-size: 0.85rem; font-weight: 700; color: var(--text); transition: background 0.15s, transform 0.1s; }
+    body.dark .app-modal-item { background: rgba(255,255,255,0.06); }
+    .app-modal-item:hover { background: #e8eaf3; transform: translateY(-2px); }
+    body.dark .app-modal-item:hover { background: rgba(255,255,255,0.12); }
+    .app-modal-icon { font-size: 2rem; line-height: 1; }
+    .dark-toggle {
+      width: 42px; height: 24px; border-radius: 50px;
+      background: var(--glass); border: 1px solid var(--border);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight); cursor: pointer; position: relative; transition: 0.3s; flex-shrink: 0;
+    }
+    body.dark .dark-toggle { background: rgba(42,92,230,0.6); border-color: rgba(100,140,255,0.4); }
+    .dark-toggle::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.2); transition: transform 0.3s;
+    }
+    body.dark .dark-toggle::after { transform: translateX(18px); }
+
+    /* LAYOUT */
+    .wrap { max-width: 880px; margin: 0 auto; padding: 32px 20px 80px; }
+    @media (max-width: 600px) { .wrap { padding: 18px 14px 80px; } }
+
+    .page-head { margin-bottom: 20px; }
+    .page-head h1 { font-size: 1.5rem; font-weight: 900; letter-spacing: -0.03em; }
+    .page-head p { font-size: 0.85rem; color: var(--sub); margin-top: 2px; }
+
+    /* STATS */
+    .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 18px; }
+    @media (max-width: 560px) { .stats-row { grid-template-columns: 1fr 1fr; } }
+    .stat-card {
+      background: var(--glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-card); border-radius: var(--radius);
+      padding: 16px 18px; box-shadow: var(--highlight), var(--shadow);
+    }
+    .stat-label { font-size: 0.68rem; font-weight: 700; color: var(--sub); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 4px; }
+    .stat-value { font-size: 1.7rem; font-weight: 900; line-height: 1; letter-spacing: -0.03em; }
+    .stat-value span { font-size: 0.9rem; font-weight: 600; color: var(--sub); margin-left: 3px; }
+
+    /* TOOLBAR */
+    .toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+    .inp {
+      padding: 9px 14px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border-card); background: var(--glass); color: var(--text);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--highlight);
+      font-family: inherit; font-size: 0.9rem; outline: none; transition: border-color 0.2s;
+    }
+    .inp::placeholder { color: var(--sub); }
+    .inp:focus { border-color: rgba(42,92,230,0.5); box-shadow: var(--highlight), 0 0 0 3px rgba(42,92,230,0.13); }
+    .toolbar .search { flex: 1; min-width: 150px; }
+    select.inp {
+      cursor: pointer; appearance: none; padding-right: 30px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 11px center;
+    }
+
+    /* SEGMENTED */
+    .seg { display: inline-flex; background: var(--glass); border: 1px solid var(--border-card); border-radius: 50px; padding: 3px; box-shadow: var(--highlight); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
+    .seg button {
+      font-family: inherit; font-size: 0.8rem; font-weight: 700; color: var(--sub);
+      border: none; background: none; cursor: pointer; padding: 6px 16px; border-radius: 50px; transition: 0.2s; white-space: nowrap;
+    }
+    .seg button.on { background: rgba(42,92,230,0.9); color: #fff; box-shadow: 0 2px 8px rgba(42,92,230,0.3); }
+
+    /* BTN */
+    .btn {
+      font-family: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; border-radius: 50px;
+      padding: 7px 16px; border: 1px solid var(--border); background: var(--glass); color: var(--text);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight), var(--shadow); transition: background 0.2s, transform 0.15s; white-space: nowrap;
+    }
+    .btn:hover { background: var(--glass-strong); }
+    .btn:active { transform: scale(0.96); }
+    .btn.danger { color: #ef4444; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.08); box-shadow: none; }
+    .btn.sm { padding: 5px 12px; font-size: 0.76rem; }
+
+    /* ICON ACTION — 텍스트 없이 아이콘만, 색은 상태(위험)에만 예외 */
+    .icon-action {
+      width: 32px; height: 32px; border-radius: 50%; border: none; background: none; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; color: var(--sub); flex-shrink: 0;
+      transition: background 0.15s, color 0.15s;
+    }
+    .icon-action:hover { background: var(--glass); color: var(--text); }
+    .icon-action.danger { color: #ef4444; }
+    .icon-action.danger:hover { background: rgba(239,68,68,0.1); color: #ef4444; }
+    .icon-action svg { width: 17px; height: 17px; }
+
+    /* GROUP (학생별) */
+    .group { margin-bottom: 14px; }
+    .group-head {
+      display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none;
+      padding: 12px 16px; border-radius: var(--radius);
+      background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border); box-shadow: var(--highlight), var(--shadow);
+    }
+    .group-avatar {
+      width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 0.9rem; color: #fff;
+      background: linear-gradient(135deg, var(--accent), #7c4dff);
+    }
+    .group-name { font-weight: 800; font-size: 0.98rem; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .group-meta { font-size: 0.74rem; color: var(--sub); white-space: nowrap; }
+    .group-caret { color: var(--sub); transition: transform 0.2s; flex-shrink: 0; }
+    .group.collapsed .group-caret { transform: rotate(-90deg); }
+    .group.collapsed .group-body { display: none; }
+    .group-body { padding: 10px 0 2px 8px; }
+
+    /* SURVEY ITEM */
+    .survey-item {
+      background: var(--glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-card); border-radius: var(--radius-sm);
+      margin-bottom: 9px; overflow: hidden; transition: box-shadow 0.2s;
+    }
+    .survey-item:hover { box-shadow: var(--shadow-md); }
+    .survey-header { display: flex; align-items: center; gap: 9px; padding: 13px 15px; flex-wrap: wrap; }
+    .survey-title { font-weight: 700; font-size: 0.92rem; flex: 1; min-width: 120px; }
+    .survey-meta { font-size: 0.73rem; color: var(--sub); white-space: nowrap; }
+    .badge { font-size: 0.67rem; font-weight: 700; padding: 2px 9px; border-radius: 50px; white-space: nowrap; flex-shrink: 0; }
+    .badge.open { background: rgba(34,197,94,0.15); color: #15803d; border: 1px solid rgba(34,197,94,0.3); }
+    body.dark .badge.open { color: #4ade80; }
+    .badge.closed { background: rgba(239,68,68,0.1); color: #b91c1c; border: 1px solid rgba(239,68,68,0.2); }
+    body.dark .badge.closed { color: #f87171; }
+    .badge.draft { background: rgba(100,100,100,0.1); color: var(--sub); border: 1px solid var(--border-card); }
+    .badge.responses { background: var(--accent-light); color: var(--accent); border: 1px solid rgba(42,92,230,0.2); }
+    .survey-actions { display: flex; gap: 6px; padding: 0 15px 12px; flex-wrap: wrap; align-items: center; }
+
+    /* RESPONSE PANEL */
+    .response-panel { border-top: 1px solid var(--border-card); padding: 16px; background: rgba(0,0,0,0.02); animation: slideDown 0.2s ease; }
+    body.dark .response-panel { background: rgba(255,255,255,0.02); }
+    @keyframes slideDown { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }
+    .response-panel h4 { font-size: 0.78rem; font-weight: 700; color: var(--sub); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 14px; }
+    .q-block { margin-bottom: 18px; }
+    .q-text { font-size: 0.87rem; font-weight: 700; margin-bottom: 8px; }
+    .q-type-tag { font-size: 0.64rem; font-weight: 700; color: var(--sub); text-transform: uppercase; margin-left: 6px; }
+    .q-count { font-size: 0.72rem; font-weight: 600; color: var(--sub); margin-left: 4px; }
+    .bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+    .bar-label { font-size: 0.78rem; min-width: 90px; max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .bar-track { flex: 1; height: 10px; border-radius: 50px; background: var(--glass-strong); border: 1px solid var(--border-card); overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 50px; background: linear-gradient(90deg, var(--accent), #7c4dff); transition: width 0.5s ease; }
+    .bar-count { font-size: 0.72rem; color: var(--sub); min-width: 34px; text-align: right; }
+    .file-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+    .file-tile { width: 110px; cursor: pointer; text-decoration: none; color: var(--text);
+      border: 1px solid var(--border-card); border-radius: var(--radius-sm); overflow: hidden;
+      background: var(--surface); display: flex; flex-direction: column; transition: transform 0.1s var(--ease), box-shadow 0.2s var(--ease); }
+    .file-tile:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+    .file-tile img { width: 100%; height: 90px; object-fit: cover; display: block; background: var(--surface-2); }
+    .file-doc-ico { height: 90px; display: flex; align-items: center; justify-content: center; font-size: 2rem; background: var(--surface-2); }
+    .file-tile-cap { font-size: 0.7rem; padding: 6px 8px; line-height: 1.3; word-break: break-all; color: var(--text-2); }
+    .drive-modal { display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(20,22,40,0.55); align-items: center; justify-content: center; padding: 24px; }
+    .drive-modal.open { display: flex; }
+    .drive-modal-box { background: var(--surface); border-radius: var(--radius-lg); width: min(880px, 96vw); height: min(80vh, 760px); display: flex; flex-direction: column; box-shadow: var(--shadow-md); overflow: hidden; }
+    .drive-modal-head { display: flex; justify-content: flex-end; padding: 10px; }
+    .drive-modal-head button { border: none; background: var(--surface-2); width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 1rem; }
+    .drive-modal iframe { flex: 1; width: 100%; border: none; background: var(--surface-2); }
+    .text-responses { display: flex; flex-direction: column; gap: 6px; }
+    .text-resp-item { font-size: 0.82rem; padding: 7px 11px; border-radius: 8px; background: var(--glass); border: 1px solid var(--border-card); }
+    .text-resp-item b { color: var(--accent); font-size: 0.72rem; margin-right: 6px; }
+    .q-no-data { font-size: 0.8rem; color: var(--sub); font-style: italic; }
+    .resp-loading { font-size: 0.85rem; color: var(--sub); padding: 8px 0; }
+
+    .loading-state, .empty-state { text-align: center; padding: 48px 20px; color: var(--sub); font-size: 0.9rem; }
+    .empty-state .empty-icon { font-size: 3rem; margin-bottom: 12px; }
+
+    /* TOAST */
+    .toast {
+      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px);
+      background: rgba(20,24,40,0.9); color: #fff; font-size: 0.85rem; font-weight: 600;
+      padding: 10px 22px; border-radius: 50px; z-index: 9999;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.35); backdrop-filter: blur(12px);
+      transition: transform 0.3s ease, opacity 0.3s ease; opacity: 0; pointer-events: none; white-space: nowrap;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+    /* ── 하늘(ui-sky) 디자인 — 공통 틀은 admin-sky.css ──
+       ≥1200: 설문 묶음을 여러 열 카드로(펼친 묶음만 한 줄 전체), 응답 통계도 여러 열 */
+    body.ui-sky .group-head { background: var(--surface); border-color: var(--border); box-shadow: var(--shadow); border-radius: 16px; }
+    body.ui-sky .group-avatar { background: var(--accent-grad); }
+    body.ui-sky .survey-item { background: var(--surface); border-color: var(--border); border-radius: 12px; }
+    body.ui-sky .survey-item:hover { box-shadow: var(--shadow); }
+    body.ui-sky .badge.open { background: var(--success-light); color: var(--success); border-color: transparent; }
+    body.ui-sky .badge.closed { background: var(--danger-light); color: var(--danger); border-color: transparent; }
+    body.ui-sky .badge.draft { background: var(--sky-chip); border-color: transparent; }
+    body.ui-sky .badge.responses { background: var(--accent-light); color: var(--accent); border-color: transparent; }
+    body.ui-sky .response-panel { background: var(--sky-chip); }
+    body.ui-sky .response-panel h4 { text-transform: none; letter-spacing: 0; }
+    body.ui-sky .bar-track { background: var(--sky-chip); border-color: var(--sky-chip-line); }
+    body.ui-sky .bar-fill { background: var(--accent-grad); }
+    body.ui-sky .text-resp-item { background: var(--surface); }
+    body.ui-sky .drive-modal-box { background: var(--bg-elevated); }
+    @media (max-width: 759px) {
+      body.ui-sky .toolbar .search { flex-basis: 100%; }
+      body.ui-sky .toolbar select.inp { flex: 1; }
+    }
+    @media (min-width: 1200px) {
+      body.ui-sky #surveyList { display: grid; grid-template-columns: repeat(auto-fill, minmax(440px, 1fr)); gap: 14px; align-items: start; }
+      body.ui-sky #surveyList > .empty-state, body.ui-sky #surveyList > .loading-state { grid-column: 1 / -1; }
+      body.ui-sky #surveyList > .group { margin-bottom: 0; }
+      /* 응답을 펼친 묶음·항목은 한 줄 전체로, 통계는 여러 열로 */
+      body.ui-sky #surveyList > .group:has(.response-panel:not(.hidden)),
+      body.ui-sky #surveyList > .survey-item:has(.response-panel:not(.hidden)) { grid-column: 1 / -1; }
+      body.ui-sky #surveyList > .survey-item { margin-bottom: 0; }
+      body.ui-sky .response-panel:not(.hidden) { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 4px 24px; }
+      body.ui-sky .response-panel > h4 { grid-column: 1 / -1; }
+      /* 제목줄과 아이콘 버튼을 한 줄로 */
+      body.ui-sky .survey-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+      body.ui-sky .survey-actions { padding: 0 12px 0 0; flex-wrap: nowrap; gap: 2px; }
+      body.ui-sky .survey-item > .response-panel { grid-column: 1 / -1; }
+    }
+  </style>
+  <link rel="stylesheet" href="admin-sky.css">
+</head>
+<body class="ui-sky">
+
+<svg width="0" height="0" style="position:absolute;">
+  <defs>
+    <symbol id="ic-school" viewBox="0 0 24 24"><path d="M12 4 3 8.5 12 13l9-4.5Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M7 10.8V16c0 1.2 2.2 3 5 3s5-1.8 5-3v-5.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><line x1="20" y1="8.5" x2="20" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-people" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="17" cy="9" r="2.4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M14.8 19c.2-2.3 1.9-4 3.9-4.3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="ic-board" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><line x1="7" y1="12.5" x2="12" y2="12.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="9" y1="16" x2="6" y2="20.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="15" y1="16" x2="18" y2="20.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="ic-clipboard" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="9" y="3.3" width="6" height="3.2" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"/><line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="8" y1="16" x2="14" y2="16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="ic-doc" viewBox="0 0 24 24"><path d="M7 3.5h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><line x1="8.5" y1="13" x2="15.5" y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="8.5" y1="16.5" x2="13" y2="16.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="ic-chat" viewBox="0 0 24 24"><path d="M4 5.5h16a1 1 0 0 1 1 1V16a1 1 0 0 1-1 1H9l-4.5 4V17H4a1 1 0 0 1-1-1V6.5a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="4" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="4" y="13" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="13" y="13" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+    <symbol id="ic-link" viewBox="0 0 24 24"><circle cx="7" cy="12" r="3.4" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="17" cy="12" r="3.4" fill="none" stroke="currentColor" stroke-width="1.8"/><line x1="10" y1="12" x2="14" y2="12" stroke="currentColor" stroke-width="1.8"/></symbol>
+    <symbol id="ic-download" viewBox="0 0 24 24"><line x1="12" y1="4" x2="12" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="7,10 12,15 17,10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><line x1="5" y1="19" x2="19" y2="19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-chart" viewBox="0 0 24 24"><line x1="6" y1="19" x2="6" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="19" x2="12" y2="7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="18" y1="19" x2="18" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="ic-lock" viewBox="0 0 24 24"><rect x="5.5" y="11" width="13" height="9.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="15.3" r="1.3" fill="currentColor"/></symbol>
+    <symbol id="ic-unlock" viewBox="0 0 24 24"><rect x="5.5" y="11" width="13" height="9.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8.5 11V8a3.5 3.5 0 0 1 6.7-2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="15.3" r="1.3" fill="currentColor"/></symbol>
+    <symbol id="ic-trash" viewBox="0 0 24 24"><line x1="5" y1="7" x2="19" y2="7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8 7V5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M7 7l1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><line x1="10" y1="11" x2="10" y2="17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="14" y1="11" x2="14" y2="17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="ic-refresh" viewBox="0 0 24 24"><path d="M5 12a7 7 0 0 1 12-4.9M19 12a7 7 0 0 1-12 4.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="17,3 17,7.5 12.5,7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><polyline points="7,21 7,16.5 11.5,16.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-close" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-alert" viewBox="0 0 24 24"><path d="M12 3.5 21 19.5H3Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><line x1="12" y1="9.5" x2="12" y2="14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></symbol>
+    <symbol id="ic-paperclip" viewBox="0 0 24 24"><path d="M8 12.5 15 5.5a3.2 3.2 0 0 1 4.5 4.5l-8.3 8.3a2.1 2.1 0 0 1-3-3l7.3-7.3a1 1 0 0 1 1.4 1.4L10 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-image" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="10" r="1.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 16.5 9.5 12l3 3 3.5-4 3.5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-wallet" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 9h14a3 3 0 0 1 3 3v0" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="16.5" cy="13" r="1.3" fill="currentColor"/></symbol>
+  </defs>
+</svg>
+
+<nav class="nav">
+  <a href="admin.html" class="nav-brand"><img src="logo.png" alt="kakainfo"><span class="nav-brand-title">설문 관리</span></a>
+  <div style="flex:1"></div>
+  <button class="waffle-btn" id="waffleBtn" title="메뉴" onclick="openAppModal()">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="0" y="0" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="6.5" y="0" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="13" y="0" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="0" y="6.5" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="6.5" y="6.5" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="13" y="6.5" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="0" y="13" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="6.5" y="13" width="5" height="5" rx="1.2" fill="currentColor"/><rect x="13" y="13" width="5" height="5" rx="1.2" fill="currentColor"/></svg>
+  </button>
+  <div class="dark-toggle" onclick="toggleDark()" title="다크모드 전환"></div>
+</nav>
+
+<!-- 메뉴 모달 (와플) -->
+<div class="app-modal" id="appModal" onclick="if(event.target===this)closeAppModal()">
+  <div class="app-modal-card">
+    <div class="app-modal-head">
+      <span>메뉴</span>
+      <button class="app-modal-x" onclick="closeAppModal()"><svg width="16" height="16"><use href="#ic-close"/></svg></button>
+    </div>
+    <div class="app-modal-grid">
+      <button class="app-modal-item" onclick="location.href='admin.html#schools'"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-school"/></svg></span><span>학교</span></button>
+      <button class="app-modal-item" onclick="location.href='admin.html#students'"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-people"/></svg></span><span>학생</span></button>
+      <button class="app-modal-item" onclick="location.href='admin.html#paddlet'"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-board"/></svg></span><span>정보 게시판</span></button>
+      <button class="app-modal-item" onclick="location.href='admin.html#exam'"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-clipboard"/></svg></span><span>시험</span></button>
+      <button class="app-modal-item" onclick="closeAppModal()"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-doc"/></svg></span><span>설문지</span></button>
+      <button class="app-modal-item" onclick="location.href='messages.html'"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-chat"/></svg></span><span>학생 질문</span></button>
+      <button class="app-modal-item" onclick="location.href='settle.html'"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-wallet"/></svg></span><span>정산 관리</span></button>
+      <button class="app-modal-item" onclick="location.href='admin.html#apps'"><span class="app-modal-icon"><svg width="28" height="28"><use href="#ic-grid"/></svg></span><span>앱 설정</span></button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="page-head">
+    <h1>설문 관리</h1>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-label">전체 설문</div><div class="stat-value" id="statForms">—<span>개</span></div></div>
+    <div class="stat-card"><div class="stat-label">전체 응답</div><div class="stat-value" id="statResponses">—<span>건</span></div></div>
+    <div class="stat-card"><div class="stat-label">작성 학생</div><div class="stat-value" id="statAuthors">—<span>명</span></div></div>
+  </div>
+
+  <div class="toolbar">
+    <input class="inp search" type="search" id="searchInput" placeholder="설문 제목·작성자 검색…" oninput="renderList()">
+    <select class="inp" id="authorFilter" onchange="renderList()"><option value="">작성자 전체</option></select>
+    <select class="inp" id="statusFilter" onchange="renderList()">
+      <option value="">상태 전체</option>
+      <option value="open">공개</option>
+      <option value="closed">마감</option>
+      <option value="draft">초안</option>
+    </select>
+  </div>
+
+  <div class="toolbar" style="justify-content:space-between;">
+    <div class="seg" id="viewSeg">
+      <button class="on" data-view="group" onclick="setView('group')">학생별</button>
+      <button data-view="recent" onclick="setView('recent')">최신순</button>
+    </div>
+    <button class="icon-action" title="새로고침" onclick="reload()"><svg><use href="#ic-refresh"/></svg></button>
+  </div>
+
+  <div id="surveyList"><div class="loading-state">설문 목록 불러오는 중…</div></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+await window.AdminAuth.ready;
+if (!window.AdminAuth.isValid()) { window.location.href = 'index.html'; }
+import { db } from './firebase-config.js';
+import {
+  collection, getDocs, doc, deleteDoc, updateDoc, query, where
+} from '/vibe/shared/fake-firebase/firebase-firestore.js';
+
+const COLORS = ['#2a5ce6','#7c4dff','#00b8d4','#ff7043','#26a69a','#ec407a','#ffa726','#5c6bc0'];
+
+// ── State ──
+let allForms = [];
+let responsesByForm = {};   // formId -> [response,...]
+let studentById = {};       // 학생 문서 id -> {schoolName,grade,class,number,name}
+let viewMode = 'group';
+let expandedId = null;
+const collapsedGroups = new Set();
+
+const nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
+const pad2 = v => { const n = parseInt(nv(v),10); return isNaN(n) ? nv(v) : String(n).padStart(2,'0'); };
+
+// 작성자 식별/표시: 학생 매칭되면 "학교 학번 이름", 아니면 ownerName
+function studentNo(s) { return `${nv(s.grade)}${pad2(s.class)}${pad2(s.number)}`; }
+function ownerKey(f) { return f.ownerId ? ('id:'+f.ownerId) : ('nm:'+((f.ownerName||f.createdBy||'').trim()||'?')); }
+function ownerName(f) {
+  const s = f.ownerId && studentById[f.ownerId];
+  if (s) return s.name || f.ownerName || '(이름없음)';
+  return (f.ownerName || f.createdBy || '').trim() || '(작성자 미상)';
+}
+function ownerLabel(f) {
+  const s = f.ownerId && studentById[f.ownerId];
+  if (s) {
+    const parts = [];
+    if (s.schoolName) parts.push(s.schoolName);
+    parts.push(studentNo(s));
+    parts.push(s.name || f.ownerName || '');
+    return parts.join(' ').trim();
+  }
+  return (f.ownerName || f.createdBy || '').trim() || '(작성자 미상)';
+}
+
+// ── Helpers ──
+function safeTitle(t) {
+  if (!t) return '(제목없음)';
+  if (typeof t === 'string') return t || '(제목없음)';
+  return t.ko || t.en || t.zh || t.ru || '(제목없음)';
+}
+function millis(ts) { return ts?.toMillis ? ts.toMillis() : (ts?.seconds ? ts.seconds*1000 : (typeof ts==='number'?ts:0)); }
+function fmtDateTime(ts) {
+  const ms = millis(ts); if (!ms) return '';
+  const d = new Date(ms);
+  return d.toLocaleString('ko-KR', { year:'2-digit', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+}
+function statusLabel(s) {
+  if (s === 'closed') return { text:'마감', cls:'closed' };
+  if (s === 'draft') return { text:'초안', cls:'draft' };
+  return { text:'공개', cls:'open' };
+}
+function escHtml(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+// 설문·응답은 학생(비로그인 포함)이 쓰는 데이터다. 이 관리자 화면에서 스크립트가
+// 돌면 관리자 권한을 그대로 쓰게 되므로: 문서 ID는 우리 코드가 만드는 모양만,
+// 링크는 https만, onclick 인자는 JS 문자열로 만든 뒤 이스케이프한다.
+const SAFE_ID = /^[A-Za-z0-9_-]{1,128}$/;
+function safeHttpsUrl(u) { const s = String(u ?? '').trim(); return /^https:\/\/[^\s"'<>]+$/i.test(s) ? s : ''; }
+function jsArg(s) { return escHtml(JSON.stringify(String(s ?? ''))); }
+function initials(name) {
+  const n = (name||'').trim();
+  if (!n || n === '(작성자 미상)') return '?';
+  return n.slice(0, 2);
+}
+function showToast(msg, dur = 2200) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), dur);
+}
+
+// 응답 배열/객체 두 형태 모두 지원: 질문 q (index qi) 에 대한 원시 답 반환
+function rawAnswer(resp, q, qi) {
+  const ans = resp.answers;
+  if (!ans) return undefined;
+  if (Array.isArray(ans)) {
+    let el = ans[qi];
+    // 위치가 어긋난 경우 질문 텍스트로 매칭 시도
+    if ((el === undefined) || (el && typeof el === 'object' && el.question && q.text && el.question !== q.text)) {
+      const byText = ans.find(a => a && typeof a === 'object' && a.question === (q.text||''));
+      if (byText) el = byText;
+    }
+    if (el && typeof el === 'object' && 'answer' in el) return el.answer;
+    return el;
+  }
+  return ans[q.id];   // 객체(질문id 키) 형태
+}
+
+// ── Load ──
+async function loadAll() {
+  const list = document.getElementById('surveyList');
+  list.innerHTML = `<div class="loading-state">설문 목록 불러오는 중…</div>`;
+  try {
+    const [formSnap, respSnap, studSnap] = await Promise.all([
+      getDocs(collection(db, 'student_forms')),
+      getDocs(collection(db, 'student_form_responses')),
+      getDocs(collection(db, 'students')),
+    ]);
+    allForms = formSnap.docs.filter(d => SAFE_ID.test(d.id)).map(d => ({ id: d.id, ...d.data() }));
+    responsesByForm = {};
+    respSnap.docs.forEach(d => {
+      const r = d.data(); const fid = r.formId;
+      if (!fid) return;
+      (responsesByForm[fid] = responsesByForm[fid] || []).push(r);
+    });
+    studentById = {};
+    studSnap.docs.forEach(d => { studentById[d.id] = d.data(); });
+
+    // 실시간 집계로 응답 수 보정
+    allForms.forEach(f => { f._respCount = (responsesByForm[f.id] || []).length; });
+    // 시간순 정렬 (최신 먼저)
+    allForms.sort((a, b) => millis(b.createdAt) - millis(a.createdAt));
+
+    // 통계
+    const totalResp = allForms.reduce((s, f) => s + f._respCount, 0);
+    const authorKeys = new Set(allForms.map(ownerKey));
+    document.getElementById('statForms').innerHTML = `${allForms.length}<span>개</span>`;
+    document.getElementById('statResponses').innerHTML = `${totalResp}<span>건</span>`;
+    document.getElementById('statAuthors').innerHTML = `${authorKeys.size}<span>명</span>`;
+
+    // 작성자 필터 옵션 (값=ownerKey, 표시=학교 학번 이름)
+    const sel = document.getElementById('authorFilter');
+    const cur = sel.value;
+    const seen = new Map();
+    allForms.forEach(f => { const k = ownerKey(f); if (!seen.has(k)) seen.set(k, ownerLabel(f)); });
+    const entries = [...seen.entries()].sort((a,b)=>a[1].localeCompare(b[1],'ko'));
+    sel.innerHTML = `<option value="">작성자 전체</option>` +
+      entries.map(([k,label]) => `<option value="${escHtml(k)}">${escHtml(label)}</option>`).join('');
+    sel.value = cur;
+
+    renderList();
+  } catch (err) {
+    list.innerHTML = `<div class="empty-state"><div class="empty-icon"><svg width="40" height="40"><use href="#ic-alert"/></svg></div><p>불러오기 실패: ${escHtml(err.message)}</p></div>`;
+  }
+}
+
+// ── Filter ──
+function getFiltered() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const af = document.getElementById('authorFilter').value;
+  const sf = document.getElementById('statusFilter').value;
+  return allForms.filter(f => {
+    const title = safeTitle(f.title).toLowerCase();
+    const label = ownerLabel(f).toLowerCase();
+    const matchQ = !q || title.includes(q) || label.includes(q);
+    const matchA = !af || ownerKey(f) === af;
+    const matchS = !sf || (f.status || 'open') === sf;
+    return matchQ && matchA && matchS;
+  });
+}
+
+// ── Render ──
+function renderList() {
+  const container = document.getElementById('surveyList');
+  const filtered = getFiltered();
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon"><svg width="40" height="40"><use href="#ic-clipboard"/></svg></div><p>해당하는 설문이 없습니다.</p></div>`;
+    return;
+  }
+  container.innerHTML = viewMode === 'group' ? renderGrouped(filtered) : renderFlat(filtered);
+  if (expandedId) {
+    const panel = document.getElementById(`panel-${expandedId}`);
+    if (panel) { panel.classList.remove('hidden'); renderResponses(expandedId); }
+  }
+}
+
+function renderFlat(forms) {
+  return forms.map(buildItem).join('');
+}
+
+function renderGrouped(forms) {
+  // 작성자별(ownerKey) 그룹화, 그룹은 가장 최근 활동 순
+  const groups = {};
+  forms.forEach(f => { const k = ownerKey(f); (groups[k] = groups[k] || []).push(f); });
+  const order = Object.keys(groups).sort((a, b) => {
+    const la = Math.max(...groups[a].map(f => millis(f.createdAt)));
+    const lb = Math.max(...groups[b].map(f => millis(f.createdAt)));
+    return lb - la;
+  });
+  return order.map(key => {
+    const items = groups[key];                        // 이미 시간순(최신 먼저)
+    const label = ownerLabel(items[0]);
+    const resp = items.reduce((s, f) => s + f._respCount, 0);
+    const collapsed = collapsedGroups.has(key) ? ' collapsed' : '';
+    return `
+    <div class="group${collapsed}" id="grp-${cssId(key)}">
+      <div class="group-head" onclick="toggleGroup(${jsArg(key)})">
+        <div class="group-avatar">${escHtml(initials(ownerName(items[0])))}</div>
+        <span class="group-name">${escHtml(label)}</span>
+        <span class="group-meta">설문 ${items.length} · 응답 ${resp}</span>
+        <span class="group-caret">▾</span>
+      </div>
+      <div class="group-body">${items.map(buildItem).join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+function buildItem(f) {
+  const st = statusLabel(f.status || 'open');
+  const date = fmtDateTime(f.createdAt);
+  return `
+  <div class="survey-item" id="item-${f.id}">
+    <div class="survey-header">
+      <span class="survey-title">${escHtml(safeTitle(f.title))}</span>
+      <span class="badge ${st.cls}">${st.text}</span>
+      <span class="badge responses">응답 ${f._respCount}</span>
+      <span class="survey-meta">${escHtml(ownerLabel(f))} · ${date}</span>
+    </div>
+    <div class="survey-actions">
+      <button class="icon-action" title="링크 복사" onclick="copyLink('${f.id}')"><svg><use href="#ic-link"/></svg></button>
+      <button class="icon-action" title="응답 보기" onclick="togglePanel('${f.id}')"><svg><use href="#ic-chart"/></svg></button>
+      <button class="icon-action" title="CSV 내보내기" onclick="exportCsv('${f.id}')"><svg><use href="#ic-download"/></svg></button>
+      <button class="icon-action" title="${(f.status||'open')==='closed'?'공개로 전환':'마감하기'}" onclick="toggleStatus('${f.id}','${f.status === 'closed' ? 'closed' : 'open'}')"><svg><use href="#${(f.status||'open')==='closed'?'ic-unlock':'ic-lock'}"/></svg></button>
+      <button class="icon-action danger" title="삭제" onclick="deleteSurvey('${f.id}')"><svg><use href="#ic-trash"/></svg></button>
+    </div>
+    <div class="response-panel hidden" id="panel-${f.id}"></div>
+  </div>`;
+}
+
+function cssId(s) { return encodeURIComponent(s).replace(/[^a-zA-Z0-9]/g, '_'); }
+function jsStr(s) { return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+// ── Responses ──
+function renderResponses(id) {
+  const panel = document.getElementById(`panel-${id}`);
+  if (!panel) return;
+  const form = allForms.find(f => f.id === id);
+  if (!form) return;
+  const responses = responsesByForm[id] || [];
+  const questions = form.questions || [];
+
+  if (responses.length === 0) {
+    panel.innerHTML = `<h4>응답 결과</h4><div class="q-no-data">아직 응답이 없습니다.</div>`;
+    return;
+  }
+
+  let html = `<h4>응답 결과 · ${responses.length}건</h4>`;
+  questions.forEach((q, qi) => {
+    const qType = q.type || 'short';
+    if (qType === 'section') { html += `<h4 style="margin-top:18px;color:var(--accent);">${escHtml(typeof q.text==='string'?q.text:(q.text?.ko||'섹션'))}</h4>`; return; }
+    const qText = typeof q.text === 'string' ? q.text : (q.text?.ko || '(질문)');
+    const raw = responses.map(r => rawAnswer(r, q, qi))
+      .filter(a => a !== undefined && a !== null && a !== '');
+
+    html += `<div class="q-block"><div class="q-text">${escHtml(qText)}<span class="q-type-tag">${escHtml(qType)}</span><span class="q-count">(${raw.length}/${responses.length})</span></div>`;
+
+    if (raw.length === 0) {
+      html += `<div class="q-no-data">응답 없음</div>`;
+    } else if (qType === 'mc' || qType === 'dropdown') {
+      const counts = {};
+      raw.forEach(a => { const lbl = optLabel(q, a); counts[lbl] = (counts[lbl]||0)+1; });
+      html += bars(counts, raw.length);
+    } else if (qType === 'checkbox') {
+      const counts = {};
+      raw.forEach(a => { (Array.isArray(a)?a:[a]).forEach(idx => { const lbl = optLabel(q, idx); counts[lbl] = (counts[lbl]||0)+1; }); });
+      html += bars(counts, raw.length);
+    } else if (qType === 'file') {
+      const tiles = responses.flatMap(r => {
+        const a = rawAnswer(r, q, qi);
+        return Array.isArray(a) ? a.map(f => fileTile(f, r.respondentName)) : [];
+      });
+      html += `<div class="file-grid">${tiles.join('') || '<div class="q-no-data">제출 없음</div>'}</div>`;
+    } else {
+      // short / long / 기타 텍스트
+      const items = responses.map(r => ({ a: rawAnswer(r, q, qi), name: r.respondentName }))
+        .filter(x => x.a !== undefined && x.a !== null && x.a !== '');
+      const shown = items.slice(0, 8);
+      html += `<div class="text-responses">${shown.map(x => `<div class="text-resp-item">${x.name?`<b>${escHtml(x.name)}</b>`:''}${escHtml(String(x.a))}</div>`).join('')}</div>`;
+      if (items.length > 8) html += `<div class="q-no-data" style="margin-top:4px">+${items.length-8}개 더 있음</div>`;
+    }
+    html += `</div>`;
+  });
+  panel.innerHTML = html;
+}
+
+function optLabel(q, a) {
+  // mc/dropdown/checkbox 답은 옵션 인덱스. 옵션 없으면 원시값.
+  if (q.options && typeof a === 'number' && q.options[a] !== undefined) return String(q.options[a]);
+  if (q.options && q.options[a] !== undefined) return String(q.options[a]);
+  return String(a);
+}
+function bars(counts, total) {
+  const entries = Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+  return entries.map(([label,count],i) => {
+    const pct = total ? Math.round(count/total*100) : 0;
+    return `<div class="bar-row">
+      <span class="bar-label" title="${escHtml(label)}">${escHtml(label)}</span>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${COLORS[i%COLORS.length]}"></div></div>
+      <span class="bar-count">${count}</span></div>`;
+  }).join('');
+}
+
+// ── Actions (window) ──
+window.setView = (v) => {
+  viewMode = v;
+  document.querySelectorAll('#viewSeg button').forEach(b => b.classList.toggle('on', b.dataset.view === v));
+  renderList();
+};
+window.toggleGroup = (name) => {
+  if (collapsedGroups.has(name)) collapsedGroups.delete(name); else collapsedGroups.add(name);
+  const el = document.getElementById(`grp-${cssId(name)}`);
+  if (el) el.classList.toggle('collapsed');
+};
+window.togglePanel = (id) => {
+  const panel = document.getElementById(`panel-${id}`);
+  if (!panel) return;
+  if (expandedId === id) { panel.classList.add('hidden'); expandedId = null; return; }
+  if (expandedId) { const prev = document.getElementById(`panel-${expandedId}`); if (prev) prev.classList.add('hidden'); }
+  expandedId = id;
+  panel.classList.remove('hidden');
+  renderResponses(id);
+};
+window.copyLink = (id) => {
+  const url = `https://kakainfo.com/formfill.html?id=${id}`;
+  navigator.clipboard.writeText(url).then(() => showToast('링크가 복사되었습니다!')).catch(() => prompt('아래 링크를 복사하세요:', url));
+};
+window.toggleStatus = async (id, currentStatus) => {
+  const newStatus = currentStatus === 'closed' ? 'open' : 'closed';
+  try {
+    await updateDoc(doc(db, 'student_forms', id), { status: newStatus });
+    const f = allForms.find(x => x.id === id); if (f) f.status = newStatus;
+    showToast(newStatus === 'closed' ? '설문을 마감했습니다.' : '공개로 변경했습니다.');
+    renderList();
+  } catch (err) { showToast('상태 변경 실패: ' + err.message); }
+};
+window.deleteSurvey = async (id) => {
+  const form = allForms.find(f => f.id === id);
+  const title = form ? safeTitle(form.title) : id;
+  if (!confirm(`"${title}" 설문을 삭제하시겠습니까?\n응답 데이터도 함께 삭제됩니다.`)) return;
+  try {
+    const respSnap = await getDocs(query(collection(db, 'student_form_responses'), where('formId', '==', id)));
+    await Promise.all(respSnap.docs.map(d => deleteDoc(d.ref)));
+    await deleteDoc(doc(db, 'student_forms', id));
+    allForms = allForms.filter(f => f.id !== id);
+    delete responsesByForm[id];
+    if (expandedId === id) expandedId = null;
+    // 통계 갱신
+    const totalResp = allForms.reduce((s, f) => s + (f._respCount||0), 0);
+    document.getElementById('statForms').innerHTML = `${allForms.length}<span>개</span>`;
+    document.getElementById('statResponses').innerHTML = `${totalResp}<span>건</span>`;
+    document.getElementById('statAuthors').innerHTML = `${new Set(allForms.map(ownerKey)).size}<span>명</span>`;
+    showToast('설문이 삭제되었습니다.');
+    renderList();
+  } catch (err) { showToast('삭제 실패: ' + err.message); }
+};
+// ── 첨부 파일 타일 / 드라이브 미리보기 ──
+window._imgFallback = function(img) {
+  const d = document.createElement('div');
+  d.className = 'file-doc-ico';
+  d.innerHTML = '<svg width="16" height="16"><use href="#ic-image"/></svg>';
+  img.replaceWith(d);
+};
+function _driveId(url) { const m = String(url||'').match(/\/d\/([^/]+)|[?&]id=([^&]+)/); return m ? (m[1]||m[2]) : ''; }
+function _isImg(name) { return /\.(jpe?g|png|gif|webp|bmp|heic|heif|svg)$/i.test(String(name||'')); }
+function fileTile(f, who) {
+  f = { ...f, url: safeHttpsUrl(f?.url) };
+  const rawId = _driveId(f.url);
+  const id = /^[A-Za-z0-9_-]+$/.test(rawId) ? rawId : '';
+  const cap = `${who?escHtml(who)+' · ':''}${escHtml(f.name||'파일')}`;
+  if (f.url && id && _isImg(f.name)) {
+    return `<div class="file-tile" onclick="openDrivePreview('${id}')">
+      <img src="https://drive.google.com/thumbnail?id=${id}&sz=w400" loading="lazy" referrerpolicy="no-referrer" onerror="window._imgFallback(this)">
+      <div class="file-tile-cap">${cap}</div></div>`;
+  }
+  if (f.url) {
+    return id
+      ? `<div class="file-tile" onclick="openDrivePreview('${id}')"><div class="file-doc-ico"><svg width="16" height="16"><use href="#ic-paperclip"/></svg></div><div class="file-tile-cap">${cap}</div></div>`
+      : `<a class="file-tile" href="${escHtml(f.url)}" target="_blank" rel="noopener"><div class="file-doc-ico"><svg width="16" height="16"><use href="#ic-paperclip"/></svg></div><div class="file-tile-cap">${cap}</div></a>`;
+  }
+  return `<div class="file-tile"><div class="file-doc-ico"><svg width="16" height="16"><use href="#ic-paperclip"/></svg></div><div class="file-tile-cap">${cap}${f.folder?'<br>(드라이브: '+escHtml(f.folder)+')':''}</div></div>`;
+}
+window.openDrivePreview = (id) => {
+  document.getElementById('driveFrame').src = `https://drive.google.com/file/d/${id}/preview`;
+  document.getElementById('driveModal').classList.add('open');
+};
+window.closeDrivePreview = () => {
+  document.getElementById('driveModal').classList.remove('open');
+  document.getElementById('driveFrame').src = '';
+};
+// ── CSV 다운로드 ──
+window.exportCsv = (id) => {
+  const form = allForms.find(f => f.id === id); if (!form) return;
+  const responses = responsesByForm[id] || [];
+  const qs = (form.questions || []).filter(q => q.type !== 'section');
+  const qLabel = q => typeof q.text === 'string' ? q.text : (q.text?.ko || '질문');
+  const headers = ['제출자', '제출시각', ...qs.map(qLabel)];
+  const rows = responses.map(r => {
+    const when = r.submittedAt ? new Date(r.submittedAt.toMillis ? r.submittedAt.toMillis() : r.submittedAt).toLocaleString('ko-KR') : '';
+    return [r.respondentName || '익명', when, ...qs.map((q, qi) => {
+      const a = rawAnswer(r, q, qi);
+      if (q.type === 'file') return Array.isArray(a) ? a.map(f => f.url || f.name).join(' | ') : '';
+      if (q.type === 'checkbox') return Array.isArray(a) ? a.map(v => optLabel(q, v)).join(' | ') : '';
+      if (q.type === 'mc' || q.type === 'dropdown') return (a !== undefined && a !== null) ? optLabel(q, a) : '';
+      return (a === undefined || a === null) ? '' : String(a);
+    })];
+  });
+  const csv = [headers, ...rows].map(row => row.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `${safeTitle(form.title)}_응답.csv`; a.click();
+  URL.revokeObjectURL(url);
+};
+window.reload = () => loadAll();
+window.renderList = renderList;
+
+// ── Init ──
+loadAll();
+</script>
+
+<script>
+function toggleDark() {
+  const isDark = document.body.classList.toggle('dark');
+  localStorage.setItem('dark', isDark ? '1' : '0');
+}
+function openAppModal() { document.getElementById('appModal').classList.add('open'); }
+function closeAppModal() { document.getElementById('appModal').classList.remove('open'); }
+(function(){ if (localStorage.getItem('dark') === '1') document.body.classList.add('dark'); })();
+</script>
+<script src="admin-nav.js"></script>
+
+<!-- 드라이브 파일 미리보기 모달 -->
+<div class="drive-modal" id="driveModal" onclick="if(event.target===this)closeDrivePreview()">
+  <div class="drive-modal-box">
+    <div class="drive-modal-head"><button onclick="closeDrivePreview()"><svg width="15" height="15"><use href="#ic-close"/></svg></button></div>
+    <iframe id="driveFrame" src=""></iframe>
+  </div>
+</div>
+</body>
+</html>

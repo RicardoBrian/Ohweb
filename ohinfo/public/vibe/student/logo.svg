@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <!-- Diamond background -->
+  <polygon points="100,6 194,100 100,194 6,100" fill="#7a1f2e"/>
+
+  <!-- Left: building icon (ㄱ shape - outer rectangle with inner notch) -->
+  <!-- Outer rect minus top-right notch = ㄱ/building silhouette -->
+  <path d="M42,78 L42,128 L88,128 L88,78 L68,78 L68,100 L64,100 L64,78 Z
+           M42,78 L88,78 L88,128 L42,128 Z" fill="none"/>
+  <!-- Solid ㄱ shape using polygon -->
+  <polygon points="42,78 88,78 88,100 66,100 66,128 42,128" fill="white"/>
+
+  <!-- Right: mountain triangle -->
+  <polygon points="97,128 158,128 127,76" fill="white"/>
+</svg>

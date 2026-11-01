@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <script src="/vibe/shared/demo.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>kakainfo</title>
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="theme.css">
+  <link rel="stylesheet" href="student-sky.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); line-height: 1.6; }
+    .hidden { display: none !important; }
+
+    .nav {
+      position: sticky; top: 0; z-index: 200;
+      background: var(--glass-nav);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 1px 0 rgba(255,255,255,0.35), var(--shadow);
+      padding: 0 20px; height: var(--nav-h);
+      display: flex; align-items: center; gap: 10px;
+    }
+    /* 글로브 언어 선택 */
+    .lang-globe { position: relative; flex-shrink: 0; }
+    .lang-globe-btn { font-family: inherit; font-size: 1rem; cursor: pointer; border-radius: 50%; width: 32px; height: 32px; border: 1px solid var(--border-card); background: var(--glass); color: var(--sub); display: flex; align-items: center; justify-content: center; transition: 0.2s; box-shadow: var(--highlight); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
+    .lang-globe-btn:hover { background: var(--glass-strong); color: var(--text); }
+    .lang-globe-dd { position: absolute; top: calc(100% + 8px); right: 0; background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border-card); border-radius: var(--radius-sm); box-shadow: var(--shadow-md); overflow: hidden; min-width: 110px; z-index: 400; }
+    .lang-globe-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; font-size: 0.85rem; font-weight: 700; cursor: pointer; color: var(--text); transition: 0.15s; }
+    .lang-globe-item:hover { background: var(--accent-light); }
+    .lang-globe-item .check { color: var(--accent); font-size: 0.8rem; }
+    .nav-right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+    .nav-user {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--glass); border: 1px solid var(--border-card);
+      border-radius: 50px; padding: 5px 14px 5px 5px;
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight);
+    }
+    .nav-avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), #7c4dff);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-weight: 800; font-size: 0.78rem; flex-shrink: 0;
+    }
+    .nav-user-name { font-size: 0.82rem; font-weight: 700; }
+    .dark-toggle {
+      width: 42px; height: 24px; border-radius: 50px;
+      background: var(--glass); border: 1px solid var(--border);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight); cursor: pointer; position: relative; transition: 0.3s; flex-shrink: 0;
+    }
+    body.dark .dark-toggle { background: rgba(42,92,230,0.6); border-color: rgba(100,140,255,0.4); }
+    .dark-toggle::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.2); transition: transform 0.3s;
+    }
+    body.dark .dark-toggle::after { transform: translateX(18px); }
+    .nav-user { cursor: pointer; position: relative; user-select: none; }
+    .nav-user:hover { background: var(--glass-strong); }
+    @media (max-width: 520px) {
+      .nav { padding: 0 14px; gap: 6px; }
+      .nav-user-name { display: none; }
+      .nav-user { padding: 4px; }
+    }
+
+    /* ── 유저 드롭다운 ── */
+    .user-dropdown {
+      position: absolute; top: calc(100% + 8px); right: 0;
+      min-width: 160px;
+      background: var(--glass-strong);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-card); border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-md); z-index: 300; overflow: hidden;
+    }
+    .user-dropdown-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 12px 16px; font-size: 0.88rem; font-weight: 700;
+      cursor: pointer; color: var(--text); transition: 0.15s;
+    }
+    .user-dropdown-item:hover { background: var(--accent-light); }
+    .user-dropdown-item.danger { color: #ef4444; }
+    .user-dropdown-sep { height: 1px; background: var(--border-card); margin: 0 10px; }
+
+    /* ── 마이페이지 모달 ── */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 500;
+      background: rgba(0,0,0,0.35); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-card {
+      background: var(--glass-strong);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-card); border-radius: var(--radius);
+      box-shadow: var(--shadow-md);
+      width: 100%; max-width: 360px; padding: 28px 26px 22px;
+      position: relative;
+    }
+    .modal-title { font-size: 1.1rem; font-weight: 900; letter-spacing: -0.02em; margin-bottom: 20px; }
+    .modal-close {
+      position: absolute; top: 14px; right: 14px;
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--glass); border: 1px solid var(--border-card);
+      cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center;
+      color: var(--sub); transition: 0.15s;
+    }
+    .modal-close:hover { background: var(--glass-strong); }
+    .photo-section { text-align: center; margin-bottom: 22px; }
+    .photo-preview {
+      width: 80px; height: 80px; border-radius: 50%; margin: 0 auto 10px;
+      background: linear-gradient(135deg, var(--accent), #7c4dff);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-weight: 800; font-size: 1.6rem;
+      overflow: hidden; border: 2px solid var(--border-card);
+    }
+    .photo-preview img { width: 100%; height: 100%; object-fit: cover; }
+    .btn-photo-change {
+      font-family: inherit; font-size: 0.8rem; font-weight: 700;
+      cursor: pointer; border-radius: 50px; padding: 6px 16px;
+      border: 1px solid var(--border-card); background: var(--glass); color: var(--sub);
+      transition: 0.2s;
+    }
+    .btn-photo-change:hover { background: var(--glass-strong); color: var(--text); }
+    .modal-section { margin-bottom: 14px; }
+    .modal-section-label {
+      font-size: 0.7rem; font-weight: 700; color: var(--sub);
+      letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px;
+    }
+    .modal-inp {
+      width: 100%; padding: 10px 13px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border-card);
+      background: var(--glass); color: var(--text);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      font-family: inherit; font-size: 0.92rem; outline: none; margin-bottom: 7px;
+      transition: border-color 0.2s;
+    }
+    .modal-inp:last-of-type { margin-bottom: 0; }
+    .modal-inp:focus { border-color: rgba(42,92,230,0.55); }
+    .modal-inp::placeholder { color: var(--sub); }
+    .btn-modal-save {
+      width: 100%; padding: 12px; border-radius: var(--radius);
+      border: none;
+      background: #1d1d1f; color: #fff;
+      font-family: inherit; font-size: 0.95rem; font-weight: 700; cursor: pointer;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), var(--shadow-md);
+      transition: opacity 0.2s; margin-top: 14px;
+    }
+    body.dark .btn-modal-save { background: #f5f5f7; color: #1d1d1f; }
+    .btn-modal-save:hover { opacity: 0.88; }
+    .btn-modal-save:disabled { opacity: 0.6; cursor: not-allowed; }
+    .modal-msg { font-size: 0.82rem; font-weight: 600; margin-top: 10px; text-align: center; min-height: 18px; }
+    .modal-msg.ok { color: #22c55e; }
+    .modal-msg.err { color: #ef4444; }
+
+    .wrap { max-width: 800px; margin: 0 auto; padding: 36px 22px 80px; }
+    @media (max-width: 600px) { .wrap { padding: 22px 14px 60px; } }
+
+    .greeting { margin-bottom: 28px; }
+    .greeting h1 { font-size: 1.8rem; font-weight: 900; letter-spacing: -0.02em; line-height: 1.2; }
+    @media (max-width: 480px) { .greeting h1 { font-size: 1.45rem; } }
+    .greeting h1 span {
+      background: linear-gradient(135deg, var(--accent), #7c4dff);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .greeting p { font-size: 0.88rem; color: var(--sub); margin-top: 6px; font-weight: 600; }
+
+    .section-label { font-size: 0.72rem; font-weight: 700; color: var(--sub); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 14px; }
+
+    .app-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; }
+    @media (max-width: 480px) { .app-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } }
+
+    .app-card {
+      background: var(--glass-strong);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 26px 20px; cursor: pointer;
+      box-shadow: var(--highlight), var(--shadow);
+      transition: box-shadow 0.25s, transform 0.25s;
+      text-align: center; text-decoration: none; color: var(--text);
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+      opacity: 0; transform: translateY(14px);
+    }
+    .app-card.visible { opacity: 1; transform: translateY(0); transition: opacity 0.35s ease, transform 0.35s ease, box-shadow 0.25s; }
+    .app-card:hover { box-shadow: var(--highlight), var(--shadow-md); transform: translateY(-4px); }
+    .app-card:active { transform: scale(0.97); }
+
+    .app-icon {
+      width: 60px; height: 60px; border-radius: 18px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; box-shadow: 0 4px 16px rgba(60,80,160,0.15);
+    }
+    .app-name { font-size: 0.98rem; font-weight: 800; letter-spacing: -0.01em; }
+    .app-desc { font-size: 0.75rem; color: var(--sub); font-weight: 600; line-height: 1.4; }
+
+    .icon-ohdlet { background: linear-gradient(135deg, #667eea, #764ba2); }
+    .icon-exam   { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+    .icon-form   { background: linear-gradient(135deg, #43e97b, #38f9d7); }
+    .icon-ai     { background: linear-gradient(135deg, #a18cd1, #fbc2eb); }
+
+    .empty-state { text-align: center; padding: 64px 0; color: var(--sub); grid-column: 1/-1; }
+    .empty-state .icon { font-size: 3rem; margin-bottom: 12px; }
+    .empty-state p { font-size: 0.9rem; font-weight: 600; }
+    .empty-state small { font-size: 0.8rem; opacity: 0.7; }
+
+    .qna-fab {
+      position: fixed; bottom: 22px; right: 22px; z-index: 400;
+      width: 54px; height: 54px; border-radius: 50%; border: none;
+      background: #1d1d1f; color: #fff; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-md);
+      text-decoration: none; transition: transform 0.15s;
+    }
+    body.dark .qna-fab { background: #f5f5f7; color: #1d1d1f; }
+    .qna-fab:hover { transform: translateY(-2px); }
+    .qna-fab .badge {
+      position: absolute; top: -3px; right: -3px; width: 14px; height: 14px; border-radius: 50%;
+      background: #ff3b30; border: 2px solid var(--bg-elevated); display: none;
+    }
+    .qna-fab .badge.on { display: block; }
+    .qna-tip {
+      position: absolute; right: calc(100% + 12px); top: 50%; transform: translateY(-50%) translateX(8px);
+      background: #1a1d2e; color: #fff; font-size: 0.78rem; font-weight: 600; line-height: 1.4;
+      padding: 10px 14px; border-radius: 12px; width: 200px; white-space: normal; text-align: left;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.25); opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s;
+    }
+    .qna-tip::after {
+      content: ''; position: absolute; right: -5px; top: 50%; transform: translateY(-50%);
+      width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 5px solid #1a1d2e;
+    }
+    .qna-fab:hover .qna-tip { opacity: 1; transform: translateY(-50%) translateX(0); }
+
+    #loadingOverlay {
+      position: fixed; inset: 0; z-index: 9000;
+      display: none; justify-content: center; align-items: center;
+      background: rgba(190,205,255,0.3); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    }
+    body.dark #loadingOverlay { background: rgba(0,0,0,0.5); }
+    .spinner { width: 36px; height: 36px; border-radius: 50%; border: 3px solid var(--border); border-top-color: var(--accent); animation: spin 0.75s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body class="ui-sky">
+
+<svg width="0" height="0" style="position:absolute;">
+  <defs>
+    <symbol id="ic-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7"/><ellipse cx="12" cy="12" rx="3.6" ry="8.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="3.5" y1="12" x2="20.5" y2="12" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="ic-chat" viewBox="0 0 24 24"><path d="M4 5.5h16a1 1 0 0 1 1 1V16a1 1 0 0 1-1 1H9l-4.5 4V17H4a1 1 0 0 1-1-1V6.5a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-close" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-user" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.6" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M4.5 20c0-3.6 3.4-6 7.5-6s7.5 2.4 7.5 6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="ic-exit" viewBox="0 0 24 24"><path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 8l4 4-4 4M19 12H9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-check" viewBox="0 0 24 24"><polyline points="5,13 9.5,17.5 19,6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-board" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><line x1="7" y1="12.5" x2="12" y2="12.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="9" y1="16" x2="6" y2="20.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="15" y1="16" x2="18" y2="20.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="ic-clipboard" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="9" y="3.3" width="6" height="3.2" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"/><line x1="8" y1="12" x2="16" y2="12" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="8" y1="16" x2="14" y2="16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="ic-chart" viewBox="0 0 24 24"><line x1="6" y1="19" x2="6" y2="13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="12" y1="19" x2="12" y2="7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="18" y1="19" x2="18" y2="10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="ic-lock" viewBox="0 0 24 24"><rect x="5.5" y="11" width="13" height="9.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8.5 11V8a3.5 3.5 0 0 1 7 0v3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="15.3" r="1.3" fill="currentColor"/></symbol>
+    <symbol id="ic-alert" viewBox="0 0 24 24"><path d="M12 3.5 21 19.5H3Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><line x1="12" y1="9.5" x2="12" y2="14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="17" r="1" fill="currentColor"/></symbol>
+    <symbol id="ic-ai" viewBox="0 0 24 24"><rect x="5" y="7" width="14" height="11" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="9.5" cy="12.5" r="1.4" fill="currentColor"/><circle cx="14.5" cy="12.5" r="1.4" fill="currentColor"/><line x1="12" y1="7" x2="12" y2="4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="3.3" r="1.1" fill="currentColor"/><line x1="3" y1="11.5" x2="3" y2="14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="21" y1="11.5" x2="21" y2="14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  </defs>
+</svg>
+
+<div id="loadingOverlay"><div class="spinner"></div></div>
+
+<nav class="nav">
+  <a class="nav-brand" href="home.html"><img src="logo.png" alt="kakainfo"></a>
+  <div class="nav-right">
+    <div class="lang-globe" id="langGlobe">
+      <button class="lang-globe-btn" onclick="toggleLangDD()" title="언어"><svg width="16" height="16"><use href="#ic-globe"/></svg></button>
+      <div class="lang-globe-dd hidden" id="langGlobeDD" onclick="event.stopPropagation()">
+        <div class="lang-globe-item" onclick="setLang('ko');closeLangDD()"><span>한국어</span><span class="check" id="lck-ko"></span></div>
+        <div class="lang-globe-item" onclick="setLang('zh');closeLangDD()"><span>中文</span><span class="check" id="lck-zh"></span></div>
+        <div class="lang-globe-item" onclick="setLang('ru');closeLangDD()"><span>Рус</span><span class="check" id="lck-ru"></span></div>
+        <div class="lang-globe-item" onclick="setLang('en');closeLangDD()"><span>English</span><span class="check" id="lck-en"></span></div>
+      </div>
+    </div>
+    <div class="nav-user" id="navUser" onclick="toggleUserMenu()">
+      <div class="nav-avatar" id="navAvatar"></div>
+      <div class="nav-user-name" id="navName"></div>
+      <div class="user-dropdown hidden" id="userDropdown" onclick="event.stopPropagation()">
+        <div class="user-dropdown-item" onclick="openMyPage()" id="dropMyPage"><svg width="15" height="15"><use href="#ic-user"/></svg> 마이페이지</div>
+        <div class="user-dropdown-sep"></div>
+        <div class="user-dropdown-item danger" onclick="logout()" id="dropLogout">로그아웃</div>
+      </div>
+    </div>
+    <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="greeting">
+    <h1 id="greetH1">안녕하세요, <span id="greetName"></span>님</h1>
+    <p id="greetSub"></p>
+  </div>
+  <div class="section-label" id="appsLabel">공개된 앱</div>
+  <div class="app-grid" id="appGrid"></div>
+</div>
+
+<a class="qna-fab" href="qna.html"><svg width="24" height="24"><use href="#ic-chat"/></svg><span class="badge" id="qnaBadge"></span><span class="qna-tip">정보 관련 질문이나 웹사이트 버그가 있으면 알려주세요.</span></a>
+
+<!-- 마이페이지 모달 -->
+<div class="modal-overlay hidden" id="myPageOverlay" onclick="closeMyPage()">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeMyPage()"><svg width="13" height="13"><use href="#ic-close"/></svg></button>
+    <div class="modal-title" id="mpTitle">마이페이지</div>
+
+    <div class="photo-section">
+      <div class="photo-preview" id="mpPhotoPreview"></div>
+      <input type="file" id="mpPhotoInput" accept="image/*" style="display:none" onchange="onPhotoChange(this)">
+      <button class="btn-photo-change" onclick="document.getElementById('mpPhotoInput').click()" id="mpPhotoBtn">사진 변경</button>
+    </div>
+
+    <div class="modal-section">
+      <div class="modal-section-label" id="mpPwLabel">비밀번호 변경</div>
+      <input class="modal-inp" id="mpCurPw" type="password" placeholder="현재 비밀번호">
+      <input class="modal-inp" id="mpNewPw" type="password" placeholder="새 비밀번호 (4자 이상)">
+      <input class="modal-inp" id="mpNewPw2" type="password" placeholder="새 비밀번호 확인" onkeydown="if(event.key==='Enter')saveMyPage()">
+    </div>
+
+    <button class="btn-modal-save" onclick="saveMyPage()" id="mpSaveBtn">저장</button>
+    <div class="modal-msg" id="mpMsg"></div>
+  </div>
+</div>
+
+<script>
+  const TH = {
+    ko: { appsLabel:'공개된 앱', logout:'로그아웃', mypage:'마이페이지',
+      mpTitle:'마이페이지', mpPhotoBtn:'사진 변경', mpPwLabel:'비밀번호 변경',
+      mpCurPw:'현재 비밀번호', mpNewPw:'새 비밀번호 (4자 이상)', mpNewPw2:'새 비밀번호 확인',
+      mpSave:'저장', mpErrCurPw:'현재 비밀번호를 입력하세요.', mpErrWrongPw:'현재 비밀번호가 올바르지 않습니다.',
+      mpErrShort:'새 비밀번호는 4자 이상이어야 합니다.', mpErrMismatch:'새 비밀번호가 일치하지 않습니다.',
+      mpErrNone:'변경할 내용이 없습니다.', mpOk:'저장되었습니다.',
+      greeting: n => `안녕하세요, ${n}님`,
+      apps: { ohdlet:{name:'정보 게시판',desc:'정보 공유 게시판'}, exam:{name:'시험',desc:'온라인 시험'}, form:{name:'설문지 만들기',desc:'설문지를 만들어요'}, ai:{name:'AI 실험실',desc:'짝과 함께 AI 모델 만들기'} },
+      empty:'현재 공개된 앱이 없습니다.', emptySub:'선생님이 앱을 공개하면 여기에 표시됩니다.' },
+    zh: { appsLabel:'已开放的应用', logout:'退出', mypage:'我的页面',
+      mpTitle:'我的页面', mpPhotoBtn:'更换头像', mpPwLabel:'修改密码',
+      mpCurPw:'当前密码', mpNewPw:'新密码 (至少4位)', mpNewPw2:'确认新密码',
+      mpSave:'保存', mpErrCurPw:'请输入当前密码。', mpErrWrongPw:'当前密码不正确。',
+      mpErrShort:'新密码至少需要4位。', mpErrMismatch:'两次输入的密码不一致。',
+      mpErrNone:'没有可更改的内容。', mpOk:'保存成功。',
+      greeting: n => `你好，${n}`,
+      apps: { ohdlet:{name:'共享白板',desc:'共享黑板空间'}, exam:{name:'考试',desc:'在线考试'}, form:{name:'问卷练习',desc:'问卷和练习'}, ai:{name:'AI实验室',desc:'和搭档一起做AI模型'} },
+      empty:'目前没有开放的应用。', emptySub:'老师开放应用后将显示在这里。' },
+    ru: { appsLabel:'Доступные приложения', logout:'Выйти', mypage:'Мой профиль',
+      mpTitle:'Мой профиль', mpPhotoBtn:'Сменить фото', mpPwLabel:'Изменить пароль',
+      mpCurPw:'Текущий пароль', mpNewPw:'Новый пароль (мин. 4 символа)', mpNewPw2:'Подтвердить новый пароль',
+      mpSave:'Сохранить', mpErrCurPw:'Введите текущий пароль.', mpErrWrongPw:'Неверный текущий пароль.',
+      mpErrShort:'Новый пароль должен содержать не менее 4 символов.', mpErrMismatch:'Пароли не совпадают.',
+      mpErrNone:'Нет изменений для сохранения.', mpOk:'Сохранено.',
+      greeting: n => `Привет, ${n}`,
+      apps: { ohdlet:{name:'Паддлет',desc:'Общая доска'}, exam:{name:'Тест',desc:'Онлайн тест'}, form:{name:'Опрос',desc:'Опросы и практика'}, ai:{name:'ИИ-лаборатория',desc:'Создаём модель ИИ в паре'} },
+      empty:'Приложений пока нет.', emptySub:'Когда учитель откроет приложения, они появятся здесь.' },
+    en: { appsLabel:'Available Apps', logout:'Logout', mypage:'My Page',
+      mpTitle:'My Page', mpPhotoBtn:'Change Photo', mpPwLabel:'Change Password',
+      mpCurPw:'Current password', mpNewPw:'New password (min. 4 chars)', mpNewPw2:'Confirm new password',
+      mpSave:'Save', mpErrCurPw:'Please enter your current password.', mpErrWrongPw:'Current password is incorrect.',
+      mpErrShort:'New password must be at least 4 characters.', mpErrMismatch:'Passwords do not match.',
+      mpErrNone:'Nothing to change.', mpOk:'Saved successfully.',
+      greeting: n => `Hello, ${n}`,
+      apps: { ohdlet:{name:'Paddlet',desc:'Shared board space'}, exam:{name:'Exam',desc:'Online exam'}, form:{name:'Survey',desc:'Surveys and practice'}, ai:{name:'AI Lab',desc:'Build an AI model with your partner'} },
+      empty:'No apps available.', emptySub:'Apps shared by your teacher will appear here.' },
+  };
+  let homeLang = localStorage.getItem('ohinfo_lang') || 'ko';
+  function applyHomeLang() {
+    const t = TH[homeLang];
+    const appsLabelEl = document.getElementById('appsLabel');
+    if (appsLabelEl) appsLabelEl.innerText = t.appsLabel;
+    const dropLogout = document.getElementById('dropLogout');
+    if (dropLogout) dropLogout.innerHTML = '<svg width="15" height="15"><use href="#ic-exit"/></svg> ' + t.logout;
+    const dropMyPage = document.getElementById('dropMyPage');
+    if (dropMyPage) dropMyPage.innerHTML = '<svg width="15" height="15"><use href="#ic-user"/></svg> ' + t.mypage;
+    // mypage modal
+    ['mpTitle','mpPhotoBtn','mpPwLabel','mpSaveBtn'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      if (id === 'mpTitle') el.innerText = t.mpTitle;
+      else if (id === 'mpPhotoBtn') el.innerText = t.mpPhotoBtn;
+      else if (id === 'mpPwLabel') el.innerText = t.mpPwLabel;
+      else if (id === 'mpSaveBtn') el.innerText = t.mpSave;
+    });
+    const mpCurPw = document.getElementById('mpCurPw');
+    if (mpCurPw) mpCurPw.placeholder = t.mpCurPw;
+    const mpNewPw = document.getElementById('mpNewPw');
+    if (mpNewPw) mpNewPw.placeholder = t.mpNewPw;
+    const mpNewPw2 = document.getElementById('mpNewPw2');
+    if (mpNewPw2) mpNewPw2.placeholder = t.mpNewPw2;
+    ['ko','zh','ru','en'].forEach(l => { const el = document.getElementById('lck-'+l); if(el) el.innerHTML = l===homeLang ? '<svg width="13" height="13"><use href="#ic-check"/></svg>' : ''; });
+    // re-render app grid if already rendered
+    if (window._renderApps) window._renderApps();
+  }
+  window.setLang = function(l) { homeLang = l; localStorage.setItem('ohinfo_lang', l); applyHomeLang(); };
+  window.toggleLangDD = () => { document.getElementById('langGlobeDD').classList.toggle('hidden'); };
+  window.closeLangDD = () => { document.getElementById('langGlobeDD').classList.add('hidden'); };
+  document.addEventListener('click', e => {
+    const lg = document.getElementById('langGlobe');
+    if (lg && !lg.contains(e.target)) window.closeLangDD();
+  });
+  applyHomeLang();
+</script>
+<script type="module">
+  import { db } from './firebase-config.js';
+  import { escHtml, safePhotoUrl } from './escape.js';
+  import { doc, getDoc, updateDoc, collection, query, where, orderBy, getDocs, onSnapshot } from "/vibe/shared/fake-firebase/firebase-firestore.js";
+  import { saveSession, loadSession, clearSession, verifyStudentAuth, authReady } from './session.js';
+  import { changeStudentPassword, AuthError } from './student-auth.js';
+
+  const student = loadSession();
+  if (!student) { window.location.href = 'index.html'; }
+  // localStorage 세션은 브라우저에서 고칠 수 있다 — 실제 로그인 계정과
+  // 맞는지 뒤이어 확인하고, 안 맞으면 로그인 화면으로 돌려보낸다.
+  verifyStudentAuth(student);
+
+  window.toggleDark = () => {
+    document.body.classList.toggle('dark');
+    localStorage.setItem('dark', document.body.classList.contains('dark') ? '1' : '0');
+  };
+  if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
+  window.logout = () => { clearSession(); window.location.href = 'index.html'; };
+
+  // ── 유저 드롭다운 ──
+  window.toggleUserMenu = () => {
+    document.getElementById('userDropdown').classList.toggle('hidden');
+  };
+  document.addEventListener('click', e => {
+    const navUser = document.getElementById('navUser');
+    if (navUser && !navUser.contains(e.target)) {
+      document.getElementById('userDropdown').classList.add('hidden');
+    }
+  });
+
+  // ── 아바타 렌더 (사진 or 이니셜) ──
+  function renderAvatar(el, s) {
+    if (s.photoUrl) {
+      el.innerHTML = `<img src="${escHtml(safePhotoUrl(s.photoUrl))}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+    } else {
+      el.innerText = s.name[0];
+    }
+  }
+
+  // ── 마이페이지 ──
+  let _mpPhotoB64 = null;
+
+  window.openMyPage = () => {
+    document.getElementById('userDropdown').classList.add('hidden');
+    _mpPhotoB64 = null;
+    const prev = document.getElementById('mpPhotoPreview');
+    if (student.photoUrl) {
+      prev.innerHTML = `<img src="${escHtml(safePhotoUrl(student.photoUrl))}">`;
+    } else {
+      prev.innerText = student.name[0];
+    }
+    ['mpCurPw','mpNewPw','mpNewPw2'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('mpMsg').innerText = '';
+    document.getElementById('mpMsg').className = 'modal-msg';
+    document.getElementById('myPageOverlay').classList.remove('hidden');
+  };
+
+  window.closeMyPage = () => {
+    document.getElementById('myPageOverlay').classList.add('hidden');
+  };
+
+  window.onPhotoChange = (input) => {
+    if (!input.files || !input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX = 200;
+        let w = img.width, h = img.height;
+        if (w > h) { if (w > MAX) { h = Math.round(h * MAX / w); w = MAX; } }
+        else { if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; } }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        _mpPhotoB64 = canvas.toDataURL('image/jpeg', 0.8);
+        document.getElementById('mpPhotoPreview').innerHTML = `<img src="${_mpPhotoB64}">`;
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(input.files[0]);
+  };
+
+  window.saveMyPage = async () => {
+    const t = TH[homeLang];
+    const msgEl = document.getElementById('mpMsg');
+    msgEl.className = 'modal-msg'; msgEl.innerText = '';
+    const curPw = document.getElementById('mpCurPw').value;
+    const newPw = document.getElementById('mpNewPw').value;
+    const newPw2 = document.getElementById('mpNewPw2').value;
+    const updates = {};
+
+    if (_mpPhotoB64) updates.photoUrl = _mpPhotoB64;
+
+    let pwChange = false;
+    if (newPw || curPw) {
+      if (!curPw) { msgEl.className='modal-msg err'; msgEl.innerText=t.mpErrCurPw; return; }
+      if (newPw.length < 4) { msgEl.className='modal-msg err'; msgEl.innerText=t.mpErrShort; return; }
+      if (newPw !== newPw2) { msgEl.className='modal-msg err'; msgEl.innerText=t.mpErrMismatch; return; }
+      pwChange = true;
+    }
+
+    if (!Object.keys(updates).length && !pwChange) { msgEl.className='modal-msg err'; msgEl.innerText=t.mpErrNone; return; }
+
+    const saveBtn = document.getElementById('mpSaveBtn');
+    saveBtn.disabled = true;
+    try {
+      if (pwChange) {
+        try { await changeStudentPassword(student.id, curPw, newPw); }
+        catch (ae) {
+          if (ae instanceof AuthError && ae.code === 'wrong-password') { msgEl.className='modal-msg err'; msgEl.innerText=t.mpErrWrongPw; saveBtn.disabled=false; return; }
+          throw ae;
+        }
+      }
+      if (Object.keys(updates).length) await updateDoc(doc(db, 'students', student.id), updates);
+      Object.assign(student, updates);
+      saveSession(student);
+      renderAvatar(document.getElementById('navAvatar'), student);
+      msgEl.className = 'modal-msg ok'; msgEl.innerText = t.mpOk;
+      setTimeout(() => closeMyPage(), 1300);
+    } catch(e) {
+      msgEl.className = 'modal-msg err'; msgEl.innerText = '오류: ' + e.message;
+    }
+    saveBtn.disabled = false;
+  };
+
+  const APP_META = {
+    ohdlet: { icon: 'ic-board',     cls: 'icon-ohdlet', href: 'ohdlet.html' },
+    exam:   { icon: 'ic-clipboard', cls: 'icon-exam',   href: 'exam.html'   },
+    form:   { icon: 'ic-chart',     cls: 'icon-form',   href: 'formlab.html' },
+    ai:     { icon: 'ic-ai',        cls: 'icon-ai',     href: 'ailab.html'  },
+  };
+
+  let enabledApps = [];
+
+  window._renderApps = () => {
+    const t = TH[homeLang];
+    const grid = document.getElementById('appGrid');
+    if (!grid) return;
+    if (!enabledApps.length) {
+      grid.innerHTML = `<div class="empty-state"><div class="icon"><svg width="40" height="40"><use href="#ic-lock"/></svg></div><p>${t.empty}</p><small>${t.emptySub}</small></div>`;
+    } else {
+      grid.innerHTML = enabledApps.map(id => {
+        const m = APP_META[id]; const a = t.apps[id] || {name:id,desc:''};
+        return `<a class="app-card" href="${m.href}"><div class="app-icon ${m.cls}"><svg width="26" height="26"><use href="#${m.icon}"/></svg></div><div class="app-name">${a.name}</div></a>`;
+      }).join('');
+      const obs = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } }), { threshold: 0.05 });
+      grid.querySelectorAll('.app-card').forEach(c => obs.observe(c));
+    }
+    // update greeting
+    const greetEl = document.getElementById('greetH1');
+    if (greetEl) greetEl.innerHTML = t.greeting(`<span>${student.name}</span>`);
+  };
+
+  renderAvatar(document.getElementById('navAvatar'), student);
+  document.getElementById('navName').innerText = student.name;
+  {
+    const _d = v => String(v||'').replace(/[^0-9]/g,'') || String(v||'').trim();
+    const _g = _d(student.grade), _c = _d(student.class), _n = String(student.number||'').trim();
+    document.getElementById('greetSub').innerText =
+      `${student.schoolName || ''}${_g?` ${_g}학년`:''}${_c?` ${_c}반`:''}${_n?` ${_n}번`:''}`;
+  }
+  window._renderApps(); // initial greeting render
+
+  document.getElementById('loadingOverlay').style.display = 'flex';
+  // 마스터 계정: 전체 앱 공개
+  if (student.isMaster) {
+    enabledApps = Object.keys(APP_META);
+    window._renderApps();
+    document.getElementById('loadingOverlay').style.display = 'none';
+  } else {
+  // appSettings 키: 학교명(자유텍스트)+정규화된 학년/반. admin과 동일 규칙 유지.
+  const nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
+  const appKey = (school, grade, cls) => `${String(school||'').replace(/\//g,'_')}__g${nv(grade)}__c${nv(cls)}`;
+  const docId = appKey(student.schoolName, student.grade, student.class);
+  getDoc(doc(db, 'appSettings', docId)).then(snap => {
+    const settings = snap.exists() ? snap.data() : {};
+    const apps = settings.apps || {};
+    enabledApps = Object.keys(APP_META).filter(id => apps[id]);
+    window._renderApps();
+  }).catch(e => {
+    document.getElementById('appGrid').innerHTML = `<div class="empty-state"><div class="icon"><svg width="40" height="40"><use href="#ic-alert"/></svg></div><p>오류: ${e.message}</p></div>`;
+  }).finally(() => {
+    document.getElementById('loadingOverlay').style.display = 'none';
+  });
+  } // end else (non-master)
+
+  // 설문은 대시보드에 공개하지 않음 — 링크(formfill.html?id=)로만 접근
+
+  // 질문하기 안읽음 뱃지
+  authReady().then(() => onSnapshot(doc(db, 'qna_threads', student.id), snap => {
+    const badge = document.getElementById('qnaBadge');
+    if (badge) badge.classList.toggle('on', !!(snap.exists() && snap.data().unreadByStudent));
+  }, () => {}));
+</script>
+</body>
+</html>

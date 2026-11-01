@@ -1,0 +1,507 @@
+/*
+ * 견본용 시험 서버 — ohinfo/functions/api/exam.js를 브라우저 안에서 돌린다.
+ *
+ * 실제 서버는 Cloudflare에서 서비스 계정으로 Firestore를 읽고 쓰지만, 견본은
+ * 가짜 Firebase(이 브라우저의 localStorage)를 읽고 쓴다. 배정 확인·입장 코드·
+ * 문항 섞기·채점·결과 같은 시험 로직은 원본 코드를 그대로 가져왔다.
+ * 바뀐 것: 저장소(makeDb), 본인 확인(견본 로그인 학생만), 코드 실행(견본에서는 안 됨).
+ * demo.js가 fetch('/api/exam')을 가로채 handle()을 부른다.
+ */
+import '../fake-firebase/core.js';
+
+const F = globalThis.FakeFB;
+const NS = 'vibe-school';
+
+const json = (body, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+// ohinfo/public/firebase-config.js와 동일한 공개 웹 API 키 — 클라이언트에
+// 이미 노출된 값이라 비밀이 아니다. 학생 idToken 검증에만 쓴다.
+const EMAIL_SUFFIX = '@ohinfo.local';
+const PISTON_PYTHON_VERSION = '3.10.0';
+const SETUP_ERROR = { error: '시험 기능이 아직 준비되지 않았습니다. 선생님께 문의해 주세요.', detail: 'FIREBASE_SERVICE_ACCOUNT_KEY 설정 문제' };
+const SAFE_ID = /^[A-Za-z0-9_-]{1,128}$/;
+const isSafeId = s => typeof s === 'string' && SAFE_ID.test(s);
+
+// ── 견본 저장소: 실제 서버의 REST 클라이언트와 같은 모양 ──
+// 실제 REST 응답처럼 타임스탬프는 ISO 문자열로 돌려준다.
+function plain(v) {
+  if (Array.isArray(v)) return v.map(plain);
+  if (v && typeof v === 'object') {
+    if (typeof v.__ts === 'number' && Object.keys(v).length === 1) return new Date(v.__ts).toISOString();
+    const o = {};
+    for (const k in v) o[k] = plain(v[k]);
+    return o;
+  }
+  return v;
+}
+function makeDb() {
+  const get = (path) => { const raw = F.rawDoc(NS, path); return raw === undefined ? null : plain(raw); };
+  const list = (col) => F.runQuery({ ns: NS, path: col, constraints: [] }).map((p) => ({ id: p.split('/').pop(), ...plain(F.rawDoc(NS, p)) }));
+  return {
+    async get(path) { return get(path); },
+    async getMany(paths) { return paths.map(get); },
+    async queryAll(col) { return list(col); },
+    async queryEq(col, conds) { return list(col).filter((d) => Object.entries(conds).every(([k, v]) => d[k] === v)); },
+    async commit(writes) {
+      F.write(NS, writes.map((w) => {
+        if (!w.merge) return { kind: 'set', path: w.path, data: w.data };
+        const cur = F.rawDoc(NS, w.path);
+        return cur === undefined ? { kind: 'set', path: w.path, data: w.data } : { kind: 'update', path: w.path, pairs: Object.entries(w.data) };
+      }));
+    },
+  };
+}
+
+// ── 응시 자격 ──
+// 학년·반 값은 "1학년", "2반", "1" 등 섞여 들어와 있어서 숫자만 남겨 비교한다
+// (exam.html이 예전에 쓰던 _nv와 같은 규칙).
+const normGC = v => String(v ?? '').replace(/학년|년급|학|반|班|кл\./g, '').trim();
+function isTarget(a, student) {
+  if (student.isMaster) return true;
+  const gradeOk = !a.grade || normGC(a.grade) === normGC(student.grade);
+  const clsOk = !a.class || normGC(a.class) === normGC(student.class);
+  const schoolOk = !a.schoolName || a.schoolName === (student.schoolName || '');
+  return gradeOk && clsOk && schoolOk;
+}
+const isOpen = a => a.status === 'ON';
+const normCode = v => String(v ?? '').trim().toUpperCase();
+
+// 결과 문서에 문항 제목을 같이 남긴다 — 나중에 학생이 결과를 다시 볼 때는
+// 문항을 안 불러오므로, 제목이 없으면 "Q1"처럼만 보인다.
+// 제출 당시 언어로 고른다: exam.html의 getQTitle과 같은 규칙.
+function pickTitle(q, lang) {
+  if (lang === 'zh' && q.titleZh) return q.titleZh;
+  if (lang === 'ru' && q.titleRu) return q.titleRu;
+  if (lang === 'en' && q.titleEn) return q.titleEn;
+  return q.title || '';
+}
+
+// 문항 순서: order 오름차순, 같으면 만든 순서. order가 빠진 문항도 버리지 않는다
+// (예전 exam.html은 orderBy('order')로 읽어서 order 없는 문항을 빠뜨렸고, 서버는
+// 안 빠뜨려서 학생 화면과 채점의 문항 번호가 어긋날 수 있었다).
+function sortQuestions(qs) {
+  return qs.sort((a, b) => (a.order || 0) - (b.order || 0)
+    || String(a.createdAt || '').localeCompare(String(b.createdAt || ''))
+    || a.id.localeCompare(b.id));
+}
+async function loadQuestions(db, examId) {
+  return sortQuestions(await db.queryEq('exam_questions', { examId }));
+}
+
+// 학생에게 내려보내는 문항 필드 — 정답(answer)·테스트케이스(testCases)는
+// exam_answers로 옮겼지만, admin의 "정답 분리"를 안 돌린 예전 문항에는 아직
+// 문항 문서에 남아 있을 수 있어서 명시적으로 고른 필드만 보낸다.
+const PUBLIC_Q_FIELDS = [
+  'type', 'points', 'imageUrl', 'minLen', 'maxLen', 'boilerplate', 'inDesc', 'outDesc', 'inEx', 'outEx',
+  'title', 'titleZh', 'titleRu', 'titleEn', 'content', 'contentZh', 'contentRu', 'contentEn',
+  'options', 'optionsZh', 'optionsRu', 'optionsEn',
+];
+// optOrder가 있으면(보기 섞기) 보기를 그 순서로 내려보낸다 — optOrder[화면 번호] = 원래 번호.
+// 번역 보기가 원문과 개수가 다르면 같은 순서로 섞을 수 없으니 빼서 원문을 보게 한다.
+function publicQuestion({ q, optOrder }) {
+  const out = { id: q.id };
+  for (const k of PUBLIC_Q_FIELDS) if (q[k] !== undefined && q[k] !== null) out[k] = q[k];
+  if (optOrder) {
+    for (const k of ['options', 'optionsZh', 'optionsRu', 'optionsEn']) {
+      if (!Array.isArray(out[k])) continue;
+      if (out[k].length === optOrder.length) out[k] = optOrder.map(i => out[k][i]);
+      else delete out[k];
+    }
+  }
+  return out;
+}
+
+// ── 시험지 유형(A/B/C/D형) ──
+// 시험(exams)의 forms에 쓰는 유형을 고른다(예: ['A','B','C']). 문항의 form이
+// 비어 있으면 공통 문항이고, 'B'처럼 적혀 있으면 B형 학생만 받는다.
+// shuffleForms가 켜져 있으면 첫 유형(A형)은 선생님이 정한 순서 그대로, 나머지
+// 유형은 문항 순서와 객관식 보기 순서를 섞는다. 같은 유형끼리는 시험지가 같다
+// (섞는 순서가 시험·유형으로 정해지는 고정값이라 새로고침해도 안 바뀐다).
+// 유형을 안 쓰는 시험(forms 없음)은 문항 표시를 무시하고 전부 낸다.
+const FORM_LETTERS = ['A', 'B', 'C', 'D'];
+const examForms = exam => (Array.isArray(exam?.forms) ? exam.forms : []).filter(f => FORM_LETTERS.includes(f));
+function hashStr(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+// 시드가 같으면 항상 같은 순서가 나오는 섞기(mulberry32 + Fisher–Yates).
+function seededOrder(n, seed) {
+  let a = hashStr(seed);
+  const rand = () => {
+    a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const p = [...Array(n).keys()];
+  for (let i = n - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [p[i], p[j]] = [p[j], p[i]]; }
+  return p;
+}
+// 학생의 유형: 한 번 정해지면(진행 기록) 그대로 → 배정이 반 전체 유형이면 그것 →
+// 선생님이 학생별로 정해 둔 것 → 없으면(나중에 추가된 학생 등) 학생 ID로 고정 배정.
+function pickForm(forms, asId, assignment, studentDocId, progress) {
+  if (!forms.length) return '';
+  if (forms.includes(progress?.form)) return progress.form;
+  if (forms.includes(assignment.formMode)) return assignment.formMode;
+  const manual = assignment.formByStudent?.[studentDocId];
+  if (forms.includes(manual)) return manual;
+  return forms[hashStr(`${asId}:${studentDocId}`) % forms.length];
+}
+// 학생이 받는 시험지 — [{ q, optOrder }]. optOrder는 보기를 섞었을 때만 있다.
+function paperFor(examId, exam, questions, form) {
+  const forms = examForms(exam);
+  let qs = forms.length ? questions.filter(q => !q.form || q.form === form) : questions;
+  const shuffle = !!exam?.shuffleForms && !!form && form !== forms[0];
+  const seed = `${examId}:${form}`;
+  if (shuffle) qs = seededOrder(qs.length, `${seed}:order`).map(i => qs[i]);
+  return qs.map(q => {
+    const n = q.type === 'mc' && Array.isArray(q.options) ? q.options.length : 0;
+    return { q, optOrder: shuffle && n > 1 ? seededOrder(n, `${seed}:${q.id}`) : null };
+  });
+}
+
+// ── 코드형 문항 채점 ──
+const normalizeOut = s => String(s ?? '').replace(/\r\n/g, '\n').trimEnd();
+
+// 실행 서버 — 기본은 Piston 공개 API(emkc.org)인데, 이 공개 API는 2026-02-15부터
+// 허가받은 곳만 쓸 수 있게 바뀌었다(토큰 필요). 토큰을 받았거나 직접 띄운
+// Piston이 있으면 Cloudflare 환경변수 PISTON_URL / PISTON_TOKEN으로 지정한다.
+// 견본에서는 파이썬 코드를 실행할 서버가 없다 — 코딩 문항은 선생님 채점으로 넘어간다.
+function pistonConfig() { return {}; }
+async function runPython() { throw new Error('견본에서는 코드를 실행할 수 없습니다.'); }
+
+// 반환값: 통과한 케이스 수, 또는 null(= 채점 불가 → 선생님이 직접 채점).
+// 예전엔 실행 서버 자체가 실패해도(권한 없음·타임아웃) 그 케이스를 "오답"으로
+// 세서, 맞게 짠 코드도 0점이 됐다. 이제 서버 쪽 실패가 하나라도 있으면
+// 점수를 매기지 않고 수동 채점으로 넘긴다. 학생 코드의 실행 오류(예외)는
+// 서버가 정상 응답하므로 여기에 해당하지 않고 그대로 오답이다.
+async function gradeCode(cfg, code, testCases) {
+  if (!code.trim() || !testCases?.length) return null;
+  // 테스트케이스를 순차로 돌리면 케이스 수만큼 지연이 쌓인다 — 병렬로 던진다.
+  const results = await Promise.all(testCases.map(async tc => {
+    try {
+      const stdout = await runPython(cfg, code, String(tc.input || ''));
+      return normalizeOut(stdout) === normalizeOut(tc.expected);
+    } catch (e) {
+      console.error('exam: 코드 실행 실패 —', e.message);
+      return null;
+    }
+  }));
+  if (results.some(r => r === null)) return null;
+  return results.filter(Boolean).length;
+}
+
+// 정답 공개 전에는 예전 방식으로 저장된 오답 피드백의 정답을 감춘다 —
+// "wrong:2" → "wrong". (지금은 객관식을 자동 채점하지 않아 새로 생기진 않는다.)
+const redactFeedback = (fb, reveal) => (!reveal && typeof fb === 'string' && fb.startsWith('wrong:')) ? 'wrong' : fb;
+const revealOf = a => a?.revealAnswers === true;
+
+// ── action: list ──
+async function actionList(db, studentDocId, student) {
+  const assignments = await db.queryAll('exam_assignments');
+  const targeted = assignments.filter(a => isTarget(a, student));
+  const progs = await db.getMany(targeted.map(a => `exam_progress/${a.id}_${studentDocId}`));
+  // 열린 시험 + 이미 낸 시험(닫힌 뒤에도 결과를 다시 볼 수 있게). 마스터는 전부.
+  const rows = targeted
+    .map((a, i) => ({ a, p: progs[i] }))
+    .filter(({ a, p }) => student.isMaster || isOpen(a) || p?.status === 'submitted');
+  const examIds = [...new Set(rows.map(r => r.a.examId).filter(isSafeId))];
+  const exams = await db.getMany(examIds.map(id => `exams/${id}`));
+  const titleOf = new Map(examIds.map((id, i) => [id, exams[i]?.title || '']));
+  // 최근 배정이 위로
+  rows.sort((x, y) => String(y.a.createdAt || '').localeCompare(String(x.a.createdAt || '')));
+  return json({
+    ok: true,
+    exams: rows.map(({ a, p }) => ({
+      asId: a.id,
+      title: titleOf.get(a.examId) || a.examId || '',
+      duration: Number(a.duration) || 0,
+      open: isOpen(a),
+      needsCode: !student.isMaster && !!normCode(a.code),
+      progress: p ? {
+        status: p.status || '',
+        totalScore: p.totalScore ?? null,
+        totalPoints: p.totalPoints ?? null,
+        needsManual: p.needsManual === true,
+      } : null,
+    })),
+  });
+}
+
+// ── action: start ──
+async function actionStart(db, studentDocId, student, asId, code) {
+  const progPath = `exam_progress/${asId}_${studentDocId}`;
+  const [assignment, progress] = await db.getMany([`exam_assignments/${asId}`, progPath]);
+  if (!assignment || !isTarget(assignment, student)) return json({ error: '응시할 수 있는 시험이 아닙니다.' }, 404);
+  if (!student.isMaster && !isOpen(assignment)) return json({ error: '현재 시험이 열려있지 않습니다.' }, 403);
+  if (progress?.status === 'submitted') return json({ error: '이미 제출한 시험입니다.' }, 409);
+  const want = normCode(assignment.code);
+  if (!student.isMaster && want && normCode(code) !== want) return json({ error: '코드가 맞지 않습니다.', code: 'bad-code' }, 403);
+
+  const now = new Date();
+  const firstEntry = !progress?.startTime;
+  // 입장 마감: 선생님이 배정에 "입장 허용 시간"을 넣었으면, ON으로 연 시각
+  // (openedAt)부터 그 시간이 지난 뒤에는 새로 들어오지 못한다. 이미 시작한
+  // 학생의 재입장(새로고침 등)은 막지 않는다.
+  const entryMin = Number(assignment.entryMinutes) || 0;
+  const openedMs = assignment.openedAt ? Date.parse(assignment.openedAt) : NaN;
+  if (!student.isMaster && firstEntry && entryMin > 0 && !Number.isNaN(openedMs)
+      && now.getTime() > openedMs + entryMin * 60000) {
+    return json({ error: '입장 시간이 지났습니다. 선생님께 문의해 주세요.' }, 403);
+  }
+
+  const [exam, questions] = await Promise.all([
+    isSafeId(assignment.examId) ? db.get(`exams/${assignment.examId}`) : null,
+    loadQuestions(db, assignment.examId),
+  ]);
+  const form = pickForm(examForms(exam), asId, assignment, studentDocId, progress);
+  const paper = paperFor(assignment.examId, exam, questions, form);
+  if (!paper.length) return json({ error: '시험 문제가 없습니다.' }, 404);
+
+  await db.commit([{
+    path: progPath,
+    data: {
+      examId: assignment.examId || '', asId, studentId: studentDocId,
+      name: student.name || '', grade: normGC(student.grade), class: normGC(student.class), num: String(student.number ?? ''),
+      status: 'started', lastEnterAt: now,
+      // 입장 횟수 — 새로고침·다른 기기에서 다시 들어온 것도 센다. 선생님이 결과
+      // 화면에서 "다른 기기로 들어와 풀었는지" 가늠하는 데 쓴다.
+      enterCount: (Number(progress?.enterCount) || 0) + 1,
+      form, // 시험지 유형 — 처음 정해진 뒤로는 바뀌지 않는다(pickForm)
+      ...(firstEntry ? { startTime: now } : {}),
+    },
+    merge: true,
+  }]);
+
+  return json({
+    ok: true,
+    asId,
+    title: exam?.title || '',
+    duration: Number(assignment.duration) || 0,
+    startTime: firstEntry ? now.toISOString() : progress.startTime,
+    serverNow: now.getTime(),
+    alertCount: Number(progress?.alertCount) || 0,
+    pasteBlockCount: Number(progress?.pasteBlockCount) || 0,
+    form,
+    questions: paper.map(publicQuestion),
+  });
+}
+
+// ── action: result ──
+async function actionResult(db, studentDocId, asId) {
+  const [assignment, progress] = await db.getMany([`exam_assignments/${asId}`, `exam_progress/${asId}_${studentDocId}`]);
+  if (progress?.status !== 'submitted') return json({ error: '결과를 찾을 수 없습니다.' }, 404);
+  // 선생님이 직접 채점할 문항이 남아 있으면 점수를 아직 보여주지 않는다.
+  if (progress.needsManual === true) return json({ ok: true, pending: true });
+  const reveal = revealOf(assignment);
+  const rows = (await db.queryEq('exam_results', { asId, studentId: studentDocId }))
+    .sort((a, b) => (a.qIdx || 0) - (b.qIdx || 0));
+  // 정답 공개가 켜져 있으면 객관식 정답을 같이 보낸다. 정답 문서가 없는 예전
+  // 시험은 문항 문서에, 그것도 없으면 예전 피드백("wrong:2")에 남은 값을 쓴다.
+  const correctOf = new Map();
+  if (reveal) {
+    const ids = [...new Set(rows.filter(r => r.type === 'mc' && isSafeId(r.questionId)).map(r => r.questionId))];
+    const keys = await db.getMany(ids.map(id => `exam_answers/${id}`));
+    const missing = ids.filter((id, i) => keys[i]?.answer == null);
+    const legacy = await db.getMany(missing.map(id => `exam_questions/${id}`));
+    ids.forEach((id, i) => { if (keys[i]?.answer != null) correctOf.set(id, String(keys[i].answer)); });
+    missing.forEach((id, i) => { if (legacy[i]?.answer != null) correctOf.set(id, String(legacy[i].answer)); });
+  }
+  // 보기를 섞은 시험지면 원래 번호를 학생이 본 화면 번호로 바꿔서 보낸다.
+  const shown = (r, v) => {
+    if (!Array.isArray(r.optOrder) || v === '' || v == null) return v;
+    const d = r.optOrder.indexOf(Number(v));
+    return d < 0 ? v : String(d);
+  };
+  const correctFor = r => {
+    if (!reveal || r.type !== 'mc') return undefined;
+    if (correctOf.has(r.questionId)) return shown(r, correctOf.get(r.questionId));
+    return typeof r.feedback === 'string' && r.feedback.startsWith('wrong:') ? shown(r, r.feedback.slice(6)) : undefined;
+  };
+  return json({
+    ok: true,
+    totalScore: progress.totalScore || 0,
+    totalPoints: progress.totalPoints || 0,
+    answersHidden: !reveal,
+    items: rows.map(r => ({
+      qIdx: r.qIdx || 0, type: r.type || '', title: r.title || '',
+      value: shown(r, r.value || ''), score: r.score || 0, maxScore: r.maxScore || 0,
+      feedback: redactFeedback(r.feedback, reveal),
+      correct: correctFor(r),
+    })),
+  });
+}
+
+// ── action: submit ──
+async function actionSubmit(db, env, studentDocId, student, asId, answers, lang) {
+  if (!Array.isArray(answers)) return json({ error: '답안 형식이 올바르지 않습니다.' }, 400);
+  const [assignment, progress] = await db.getMany([`exam_assignments/${asId}`, `exam_progress/${asId}_${studentDocId}`]);
+  if (!assignment || !isTarget(assignment, student)) return json({ error: '시험 정보를 찾을 수 없습니다.' }, 404);
+
+  // 이미 제출(채점)된 시험은 다시 받지 않는다 — 재제출을 받으면 결과 화면의
+  // 정답을 보고 다시 내서 점수를 덮어쓸 수 있었다.
+  // (선생님이 다시 보게 하려면 admin에서 진행 기록을 지우면 된다.)
+  if (progress?.status === 'submitted') {
+    return json({ error: '이미 제출한 시험입니다. 다시 보려면 선생님께 문의해 주세요.' }, 409);
+  }
+  // 입장(start)을 거친 학생만 받는다 — 입장이 열림·대상·코드를 확인하는 곳이다.
+  // 배정이 그 사이 OFF로 바뀌었어도, 이미 입장해 풀던 학생의 제출은 받는다
+  // (OFF는 "새로 못 들어옴"이지 "풀던 답안을 버림"이 아니다).
+  if (!progress?.startTime) return json({ error: '시험에 입장한 기록이 없습니다. 목록에서 다시 입장해 주세요.' }, 403);
+
+  const [exam, allQuestions] = await Promise.all([
+    isSafeId(assignment.examId) ? db.get(`exams/${assignment.examId}`) : null,
+    loadQuestions(db, assignment.examId),
+  ]);
+  // 입장 때 받은 것과 같은 시험지(유형·순서·보기 순서)로 채점한다.
+  const form = pickForm(examForms(exam), asId, assignment, studentDocId, progress);
+  const paper = paperFor(assignment.examId, exam, allQuestions, form);
+  const questions = paper.map(p => p.q);
+  if (!questions.length) return json({ error: '시험 문제가 없습니다.' }, 404);
+
+  // 정답은 문항과 같은 문서 ID로 exam_answers에 들어있다. 다만 admin의
+  // "정답 분리"를 아직 안 돌린 예전 시험은 정답이 문항 문서(exam_questions)에
+  // 그대로 남아있다 — 서버는 서비스 계정이라 그걸 읽을 수 있으니, 정답
+  // 문서가 없으면 문항 문서의 값으로 채점한다.
+  const answerDocs = (await db.getMany(questions.map(q => `exam_answers/${q.id}`)))
+    .map((key, i) => key || { answer: questions[i].answer, testCases: questions[i].testCases });
+
+  // 답안은 문항 ID로 맞춘다. 번호(qIdx)로만 맞추면 학생이 푸는 사이 선생님이
+  // 문항 순서를 바꾸거나 문항을 추가했을 때 답이 엉뚱한 문항에 채점된다.
+  // qId가 없는 답안(예전 화면에서 낸 것)만 번호로 맞춘다.
+  const byId = new Map(), byIdx = new Map();
+  for (const a of answers) {
+    if (a && typeof a.qId === 'string') byId.set(a.qId, a.value);
+    else if (a) byIdx.set(Number(a.qIdx), a.value);
+  }
+  const resultItems = [];
+  const writes = [];
+  let totalScore = 0, totalPoints = 0;
+  const pcfg = pistonConfig(env);
+
+  for (let i = 0; i < questions.length; i++) {
+    const q = questions[i];
+    const key = answerDocs[i] || {};
+    const points = q.points || 0;
+    totalPoints += points;
+
+    const raw = byId.has(q.id) ? byId.get(q.id) : byIdx.get(i);
+    let value = raw == null ? '' : String(raw);
+    // 보기를 섞은 시험지면 학생이 고른 화면 번호를 원래 보기 번호로 되돌린다 —
+    // 정답·admin 채점 화면은 원래 번호 기준이다.
+    const optOrder = paper[i].optOrder;
+    if (optOrder && value !== '' && optOrder[Number(value)] !== undefined) value = String(optOrder[Number(value)]);
+    let score = 0;
+    let feedback = '';
+    let check = null;
+
+    if (q.type === 'mc') {
+      // 객관식도 자동 채점하지 않는다 — 점수는 선생님이 admin 채점 화면에서
+      // 확정한다. 맞았는지는 check로만 남겨, 채점 화면이 점수를 미리 채워 주고
+      // 선생님은 확인 후 저장만 하면 되게 한다. check는 학생에게 보내지 않는다.
+      feedback = 'manual';
+      if (key.answer !== undefined && key.answer !== null) {
+        check = value !== '' && value === String(key.answer) ? 'correct' : 'wrong';
+      }
+
+    } else if (q.type === 'sa' || q.type === 'essay') {
+      // 서술형과 단답형은 자동 채점하지 않는다 — 선생님이 admin에서 직접
+      // 채점한다. 단답형은 예전엔 정답과 문자열을 그대로 비교했는데,
+      // "서울"과 "서울시"와 "서울 "을 전부 다른 답으로 처리해서 맞은
+      // 답이 오답으로 찍히는 일이 잦았다. 사람이 보는 편이 맞다.
+      value = value.trim();
+      feedback = 'manual';
+
+    } else if (q.type === 'code') {
+      const cases = key.testCases || [];
+      const passCount = await gradeCode(pcfg, value, cases);
+      if (passCount === null) { feedback = 'manual'; }
+      else {
+        score = Math.round(points * (passCount / cases.length));
+        feedback = `cases:${passCount}/${cases.length}`;
+      }
+    }
+
+    totalScore += score;
+    const title = pickTitle(q, lang || 'ko');
+    resultItems.push({ qIdx: i, type: q.type || '', title, value, score, maxScore: points, feedback });
+
+    // 결과 문서 ID를 고정해서, 재제출해도 중복 문서가 쌓이지 않게 한다.
+    // questionId: 나중에 문항 순서를 바꿔도 admin 채점 화면이 문항을 찾을 수 있게.
+    writes.push({
+      path: `exam_results/${asId}_${studentDocId}_${i}`,
+      data: {
+        asId, examId: assignment.examId || '', questionId: q.id,
+        studentId: studentDocId,
+        name: student.name || '', grade: student.grade || '', class: student.class || '', num: student.number ?? '',
+        lang: lang || 'ko', qIdx: i, type: q.type || '', title,
+        value, score, maxScore: points, feedback, check,
+        ...(optOrder ? { optOrder } : {}), // 결과 화면에서 학생이 본 번호로 되돌릴 때 쓴다
+        gradedAt: new Date().toISOString(),
+      },
+    });
+  }
+
+  // 제출 시각은 서버 시각으로 기록하고, 처음 시작한 시각과의 차이(소요 시간)와
+  // 제한시간 초과 여부도 남긴다 — 선생님이 결과 화면에서 확인한다. 초과해도
+  // 채점은 그대로 한다(네트워크 지연 등으로 몇 초 넘는 경우를 막지 않기 위해
+  // 90초 여유를 두고, 판단은 선생님 몫).
+  const submitIso = new Date().toISOString();
+  const timing = {};
+  const startedMs = Date.parse(progress.startTime);
+  if (!Number.isNaN(startedMs)) {
+    timing.elapsedSec = Math.max(0, Math.round((Date.parse(submitIso) - startedMs) / 1000));
+    const limitSec = (Number(assignment.duration) || 0) * 60;
+    timing.late = limitSec > 0 && timing.elapsedSec > limitSec + 90;
+  }
+  const needsManual = resultItems.some(r => r.feedback === 'manual');
+  writes.push({
+    path: `exam_progress/${asId}_${studentDocId}`,
+    // needsManual: 선생님이 직접 채점할 문항(서술형·단답형·실행 실패한 코드형)이 있음 —
+    // 학생 화면은 선생님이 채점을 저장할 때까지 점수를 보여주지 않는다.
+    data: { status: 'submitted', totalScore, totalPoints, submitTime: submitIso, needsManual, form, ...timing },
+    merge: true,
+  });
+
+  await db.commit(writes);
+
+  return json({ ok: true, totalScore, totalPoints, needsManual, answersHidden: !revealOf(assignment), items: resultItems });
+}
+
+export async function handle(request) {
+  if (request.method !== 'POST') return json({ error: 'Method Not Allowed' }, 405);
+  let body;
+  try { body = await request.json(); }
+  catch { return json({ error: 'invalid JSON body' }, 400); }
+
+  const { action, studentDocId, asId, answers, lang, code } = body || {};
+  if (!studentDocId) return json({ error: '요청 정보가 부족합니다.' }, 400);
+  if (!isSafeId(studentDocId)) return json({ error: '요청 정보가 올바르지 않습니다.' }, 400);
+  if (action !== 'list' && !isSafeId(asId)) return json({ error: '요청 정보가 올바르지 않습니다.' }, 400);
+  if (!['list', 'start', 'submit', 'result'].includes(action)) return json({ error: '알 수 없는 요청입니다.' }, 400);
+
+  // 본인 확인: 견본 로그인 상태의 학생과 요청한 학생이 같은지만 본다
+  let authUser = null;
+  try { authUser = JSON.parse(localStorage.getItem('vibe-auth:' + NS + '#student') || 'null'); } catch { authUser = null; }
+  if (!authUser || String(authUser.email || '').toLowerCase() !== `${studentDocId}${EMAIL_SUFFIX}`.toLowerCase()) {
+    return json({ error: '본인 확인에 실패했습니다.' }, 403);
+  }
+
+  try {
+    const db = makeDb();
+    const student = await db.get(`students/${studentDocId}`);
+    if (!student) return json({ error: '학생 정보를 찾을 수 없습니다.' }, 404);
+    if (action === 'list') return await actionList(db, studentDocId, student);
+    if (action === 'start') return await actionStart(db, studentDocId, student, asId, code);
+    if (action === 'result') return await actionResult(db, studentDocId, asId);
+    return await actionSubmit(db, {}, studentDocId, student, asId, answers, lang);
+  } catch (e) {
+    console.error('exam(견본):', action, e);
+    return json({ error: action === 'submit' ? '채점 중 오류가 발생했습니다.' : '시험 서버 오류가 발생했습니다.', detail: String(e.message || e).slice(0, 400) }, 200);
+  }
+}

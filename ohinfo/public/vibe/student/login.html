@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <script src="/vibe/shared/demo.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>로그인 — kakainfo</title>
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <!-- 학생 로그인 화면은 index.html 하나로 합쳤다. 예전엔 이 파일에 디자인과 로그인
+       코드가 따로 있어서(설문 링크로 들어오면 이 화면) 한쪽만 고쳐지는 일이 생겼다.
+       옛 링크·북마크를 위해 파일은 남겨두고 바로 넘긴다. 로그인 뒤 돌아갈 곳은
+       sessionStorage('ohinfo_redirect')에 그대로 남아 index.html이 처리한다. -->
+  <meta http-equiv="refresh" content="0; url=index.html">
+  <script>location.replace('index.html' + location.search);</script>
+</head>
+<body></body>
+</html>

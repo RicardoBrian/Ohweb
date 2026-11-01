@@ -1,0 +1,46 @@
+{
+  "updated": "2026-10-10",
+  "version": "20261010002617",
+  "materials": [
+    {
+      "item": "bilingual-education",
+      "type": "pdf",
+      "file": "assets/docs/sample/report.pdf",
+      "title": "이중언어 교육 운영 보고서",
+      "desc": "견본 자료입니다. 한 해 동안의 운영 계획과 결과를 정리한 보고서 형식입니다."
+    },
+    {
+      "item": "bilingual-education",
+      "type": "video",
+      "youtube": "aqz-KE-bpKQ",
+      "title": "수업 영상",
+      "desc": "견본 영상입니다."
+    },
+    {
+      "item": "bilingual-education",
+      "type": "pdf",
+      "file": "assets/docs/sample/slides.pdf",
+      "title": "발표자료",
+      "desc": "견본 자료입니다. 가로형 발표자료(PPT를 PDF로 저장)입니다."
+    },
+    {
+      "item": "kls-prerequisite",
+      "type": "pdf",
+      "file": "assets/docs/sample/slides.pdf",
+      "title": "KLS 기초 한국어 선이수제 발표자료",
+      "desc": "견본 자료입니다."
+    },
+    {
+      "item": "peer-mentoring",
+      "type": "video",
+      "youtube": "aqz-KE-bpKQ",
+      "title": "또래멘토링 활동 영상",
+      "desc": "견본 영상입니다."
+    }
+  ],
+  "intros": {
+    "stage-1": "assets/docs/sample/intro-cards.pdf",
+    "kls-prerequisite": "assets/docs/sample/intro-cards.pdf",
+    "life-adaptation": "assets/docs/sample/intro-cards.pdf"
+  }
+}

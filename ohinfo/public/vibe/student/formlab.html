@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <script src="/vibe/shared/demo.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>설문지 만들기</title>
+  <script>
+    // 예전 공유 링크(formlab?id=…)로 들어온 응답자는 화면이 그려지기 전에
+    // 응답 페이지로 바로 넘긴다 — 모듈 스크립트에서 넘기면 그 사이 formlab
+    // 화면이 잠깐 그려지며 로그인 없이 목록을 불러오다 난 에러 문구가 보였다.
+    (function () {
+      var id = new URLSearchParams(location.search).get('id');
+      if (id) { document.documentElement.style.display = 'none'; location.replace('/formfill?id=' + encodeURIComponent(id)); }
+    })();
+  </script>
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="theme.css">
+  <link rel="stylesheet" href="student-sky.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); line-height: 1.6; }
+    .hidden { display: none !important; }
+    /* NAV */
+    .nav { position: sticky; top: 0; z-index: 200; background: var(--glass-nav); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border-bottom: 1px solid var(--border); box-shadow: 0 1px 0 rgba(255,255,255,0.35),var(--shadow); padding: 0 20px; height: var(--nav-h); display: flex; align-items: center; gap: 10px; }
+    .nav-end { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+    .dark-toggle { width: 42px; height: 24px; border-radius: 50px; background: var(--glass); border: 1px solid var(--border); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--highlight); cursor: pointer; position: relative; transition: 0.3s; flex-shrink: 0; }
+    body.dark .dark-toggle { background: rgba(42,92,230,0.6); border-color: rgba(100,140,255,0.4); }
+    .dark-toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.2); transition: transform 0.3s; }
+    body.dark .dark-toggle::after { transform: translateX(18px); }
+    .lang-globe { position: relative; flex-shrink: 0; }
+    .lang-globe-btn { font-family: inherit; font-size: 1rem; cursor: pointer; border-radius: 50%; width: 32px; height: 32px; border: 1px solid var(--border-card); background: var(--glass); color: var(--sub); display: flex; align-items: center; justify-content: center; transition: 0.2s; box-shadow: var(--highlight); }
+    .lang-globe-btn:hover { background: var(--glass-strong); color: var(--text); }
+    .lang-globe-dd { position: absolute; top: calc(100% + 8px); right: 0; background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border-card); border-radius: var(--radius-sm); box-shadow: var(--shadow-md); overflow: hidden; min-width: 110px; z-index: 400; }
+    .lang-globe-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; font-size: 0.85rem; font-weight: 700; cursor: pointer; color: var(--text); transition: 0.15s; }
+    .lang-globe-item:hover { background: var(--accent-light); }
+    .lang-globe-item .check { color: var(--accent); font-size: 0.8rem; }
+    .nav-user { display:flex; align-items:center; gap:8px; background:var(--glass); border:1px solid var(--border-card); border-radius:50px; padding:5px 12px 5px 5px; cursor:pointer; position:relative; user-select:none; flex-shrink:0; transition:background 0.2s; }
+    .nav-user:hover { background:var(--glass-strong); }
+    .nav-avatar { width:28px; height:28px; border-radius:50%; background:linear-gradient(135deg,var(--accent),#7c4dff); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:0.78rem; flex-shrink:0; overflow:hidden; }
+    .nav-avatar img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
+    .nav-user-name { font-size:0.82rem; font-weight:700; }
+    @media(max-width:600px){ .nav-user-name { display:none; } .nav-user { padding:4px; } }
+    .user-dropdown { position:absolute; top:calc(100% + 8px); right:0; min-width:150px; background:var(--glass-strong); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur); border:1px solid var(--border-card); border-radius:var(--radius-sm); box-shadow:var(--shadow-md); overflow:hidden; z-index:400; }
+    .user-dropdown-item { padding:11px 16px; font-size:0.85rem; font-weight:600; cursor:pointer; color:var(--text); transition:0.15s; }
+    .user-dropdown-item:hover { background:var(--accent-light); }
+    .user-dropdown-item.danger { color:#ef4444; }
+    /* LAYOUT */
+    .wrap { max-width: 720px; margin: 0 auto; padding: 28px 20px 80px; }
+    @media(max-width:600px){ .wrap { padding: 16px 14px 80px; } }
+    /* CARD */
+    .card { background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border); border-radius: 22px; padding: 22px 26px; margin-bottom: 14px; box-shadow: var(--highlight),var(--shadow); }
+    @media(max-width:600px){ .card { padding: 16px; border-radius: 16px; } }
+    /* INP */
+    .inp { width: 100%; padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-card); background: var(--glass); color: var(--text); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--highlight); font-family: inherit; font-size: 0.93rem; outline: none; transition: border-color 0.2s; }
+    .inp::placeholder { color: var(--sub); }
+    .inp:focus { border-color: rgba(42,92,230,0.5); box-shadow: var(--highlight),0 0 0 3px rgba(42,92,230,0.13); }
+    textarea.inp { resize: vertical; min-height: 72px; line-height: 1.6; }
+    select.inp { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+    .field { margin-bottom: 10px; }
+    .field > label { display: block; font-size: 0.71rem; font-weight: 700; color: var(--sub); margin-bottom: 4px; letter-spacing: 0.05em; text-transform: uppercase; }
+    /* BTN */
+    .btn { font-family: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; border-radius: 50px; padding: 8px 20px; border: 1px solid var(--border); background: var(--glass); color: var(--text); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--highlight),var(--shadow); transition: background 0.2s,transform 0.15s; white-space: nowrap; }
+    .btn:hover { background: var(--glass-strong); }
+    .btn:active { transform: scale(0.96); }
+    .btn.accent { background: #1d1d1f; border-color: transparent; color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,0.08),var(--shadow-md); }
+    body.dark .btn.accent { background: #f5f5f7; color: #1d1d1f; }
+    .btn.accent:hover { opacity: 0.88; }
+    .btn.danger { color: #ef4444; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.08); box-shadow: none; }
+    .btn.ghost { border-color: transparent; background: transparent; box-shadow: none; }
+    .btn.ghost:hover { background: var(--glass); }
+    .btn.sm { padding: 5px 13px; font-size: 0.78rem; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    /* PAGES */
+    .page { display: none; }
+    .page.active { display: block; }
+    /* FORM LIST */
+    .form-item { display: flex; align-items: center; gap: 12px; padding: 14px 16px; margin-bottom: 8px; background: var(--glass); border: 1px solid var(--border-card); border-radius: var(--radius-sm); cursor: pointer; transition: background 0.15s; flex-wrap: wrap; }
+    .form-item:hover { background: var(--glass-strong); }
+    .fi-title { font-weight: 700; font-size: 0.95rem; flex: 1; min-width: 100px; }
+    .fi-meta { font-size: 0.75rem; color: var(--sub); }
+    .fi-resp { font-size: 0.78rem; font-weight: 700; color: var(--accent); flex-shrink: 0; }
+    /* BUILDER */
+    .q-card { background: var(--glass); border: 1px solid var(--border-card); border-radius: var(--radius-sm); padding: 14px 16px; margin-bottom: 10px; position: relative; }
+    .q-top { display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 10px; }
+    .q-text-inp { flex: 1; min-width: 160px; }
+    .q-type-sel { width: 140px; flex-shrink: 0; font-size: 0.82rem; padding: 7px 10px; }
+    @media(max-width:480px){ .q-type-sel { width: 100%; } }
+    .q-opts { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+    .q-opt-row { display: flex; align-items: center; gap: 6px; }
+    .q-opt-icon { font-size: 0.85rem; color: var(--sub); width: 16px; flex-shrink: 0; }
+    .add-opt { font-size: 0.78rem; color: var(--accent); background: none; border: none; cursor: pointer; font-family: inherit; font-weight: 600; padding: 3px 0; }
+    .add-opt:hover { text-decoration: underline; }
+    .q-del { position: absolute; top: 10px; right: 12px; }
+    .q-img-preview { max-width: 160px; max-height: 90px; border-radius: 8px; object-fit: cover; display: block; margin: 6px 0; }
+    .req-row { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--sub); margin-top: 8px; }
+    /* SHARE BOX */
+    .share-box { display: flex; gap: 8px; align-items: stretch; }
+    .share-link { flex: 1; font-size: 0.78rem; color: var(--sub); padding: 9px 12px; background: var(--glass); border: 1px solid var(--border-card); border-radius: var(--radius-sm); word-break: break-all; line-height: 1.4; }
+    /* RESULTS */
+    .res-tabs { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
+    .res-tab { font-family: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer; border-radius: 50px; padding: 6px 14px; border: 1px solid var(--border-card); background: var(--glass); color: var(--sub); }
+    .res-tab.active { background: var(--accent); color: #fff; border-color: transparent; }
+    .res-q-block { margin-bottom: 22px; }
+    .res-q-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; }
+    .res-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 0.82rem; }
+    .res-bar-label { min-width: 90px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .res-bar-track { flex: 1; height: 16px; background: var(--glass); border-radius: 50px; overflow: hidden; border: 1px solid var(--border-card); }
+    .res-bar-fill { height: 100%; border-radius: 50px; transition: width 0.5s; }
+    .res-bar-count { min-width: 28px; text-align: right; color: var(--sub); font-weight: 600; }
+    .res-texts { max-height: 240px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+    .res-text-item { background: var(--glass); border: 1px solid var(--border-card); border-radius: 8px; padding: 7px 12px; font-size: 0.84rem; word-break: break-all; }
+    .res-text-item a, .resp-detail a { color: var(--accent); text-decoration: underline; }
+    .res-stat-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    .res-stat { background: var(--glass); border: 1px solid var(--border-card); border-radius: var(--radius-sm); padding: 10px 18px; text-align: center; }
+    .res-stat-num { font-size: 1.6rem; font-weight: 900; color: var(--accent); line-height: 1; }
+    .res-stat-label { font-size: 0.7rem; color: var(--sub); font-weight: 600; margin-top: 2px; }
+    .chart-wrap { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 8px; }
+    .pie-svg { width: 84px; height: 84px; flex-shrink: 0; }
+    .chart-legend { display: flex; flex-direction: column; gap: 4px; font-size: 0.77rem; }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .resp-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 9px 14px; background: var(--glass); border: 1px solid var(--border-card); border-radius: 8px; margin-bottom: 6px; font-size: 0.82rem; cursor: pointer; }
+    .resp-row:hover { background: var(--glass-strong); }
+    .resp-detail { background: var(--glass); border: 1px solid var(--border-card); border-radius: 8px; padding: 12px 14px; margin-bottom: 8px; margin-top: -4px; }
+    .file-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; background: var(--glass); border: 1px solid var(--border-card); cursor: pointer; font-size: 0.8rem; color: var(--accent); font-weight: 600; transition: background 0.15s; margin: 2px; }
+    .file-chip:hover { background: var(--glass-strong); }
+    .file-chip img { width: 48px; height: 36px; object-fit: cover; border-radius: 5px; display: block; margin-bottom: 3px; }
+    .file-tiles { display: flex; flex-wrap: wrap; gap: 8px; }
+    .file-tile-sm { width: 90px; cursor: pointer; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-card); background: var(--glass); text-align: center; transition: transform 0.15s; }
+    .file-tile-sm:hover { transform: translateY(-2px); }
+    .file-tile-sm img { width: 100%; height: 70px; object-fit: cover; display: block; }
+    .file-tile-sm-cap { font-size: 0.65rem; padding: 4px 5px; word-break: break-all; color: var(--text-2); line-height: 1.2; }
+    .file-tile-sm-ico { font-size: 1.4rem; padding: 12px 0 4px; }
+    .lab-drive-modal { display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(20,22,40,0.6); align-items: center; justify-content: center; padding: 20px; }
+    .lab-drive-modal.open { display: flex; }
+    .lab-drive-box { background: var(--surface); border-radius: 18px; width: min(860px, 96vw); height: min(78vh, 740px); display: flex; flex-direction: column; box-shadow: var(--shadow-md); overflow: hidden; }
+    .lab-drive-head { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--border-card); }
+    .lab-drive-head span { font-size: 0.82rem; color: var(--sub); font-weight: 600; }
+    .lab-drive-head button { border: none; background: var(--surface-2); width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 0.95rem; }
+    .lab-drive-modal iframe, .lab-drive-modal img.preview-img { flex: 1; width: 100%; border: none; background: var(--surface-2); object-fit: contain; max-height: calc(78vh - 54px); }
+    /* STATUS TOGGLE */
+    .status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 50px; font-size: 0.75rem; font-weight: 700; cursor: pointer; border: none; font-family: inherit; }
+    .status-pill.open { background: rgba(34,197,94,0.15); color: #15803d; border: 1px solid rgba(34,197,94,0.3); }
+    .status-pill.closed { background: rgba(239,68,68,0.1); color: #b91c1c; border: 1px solid rgba(239,68,68,0.25); }
+    /* LOADING */
+    #loadingOverlay { position: fixed; inset: 0; background: rgba(0,0,0,0.22); z-index: 9999; display: none; align-items: center; justify-content: center; }
+    .qna-fab {
+      position: fixed; bottom: 22px; right: 22px; z-index: 400;
+      width: 54px; height: 54px; border-radius: 50%; border: none;
+      background: #1d1d1f; color: #fff; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-md);
+      text-decoration: none; transition: transform 0.15s;
+    }
+    body.dark .qna-fab { background: #f5f5f7; color: #1d1d1f; }
+    .qna-fab:hover { transform: translateY(-2px); }
+    .qna-fab .badge { position: absolute; top: -3px; right: -3px; width: 14px; height: 14px; border-radius: 50%; background: #ff3b30; border: 2px solid var(--bg-elevated); display: none; }
+    .qna-fab .badge.on { display: block; }
+    .qna-tip {
+      position: absolute; right: calc(100% + 12px); top: 50%; transform: translateY(-50%) translateX(8px);
+      background: #1a1d2e; color: #fff; font-size: 0.78rem; font-weight: 600; line-height: 1.4;
+      padding: 10px 14px; border-radius: 12px; width: 200px; white-space: normal; text-align: left;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.25); opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s;
+    }
+    .qna-tip::after {
+      content: ''; position: absolute; right: -5px; top: 50%; transform: translateY(-50%);
+      width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 5px solid #1a1d2e;
+    }
+    .qna-fab:hover .qna-tip { opacity: 1; transform: translateY(-50%) translateX(0); }
+    .spinner { width: 44px; height: 44px; border-radius: 50%; border: 4px solid rgba(255,255,255,0.25); border-top-color: #fff; animation: spin 0.75s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty-msg { text-align: center; padding: 36px 0; color: var(--sub); font-size: 0.9rem; }
+    .page-heading { font-size: 1.1rem; font-weight: 900; margin-bottom: 18px; }
+    .tag { display: inline-block; font-size: 0.7rem; font-weight: 700; padding: 2px 9px; border-radius: 50px; }
+    .tag.open { background: rgba(34,197,94,0.15); color: #15803d; }
+    .tag.closed { background: rgba(239,68,68,0.1); color: #b91c1c; }
+  .icon-action {
+    width: 32px; height: 32px; border-radius: 50%; border: none; background: none; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; color: var(--sub); flex-shrink: 0;
+    transition: background 0.15s, color 0.15s;
+  }
+  .icon-action:hover { background: var(--glass); color: var(--text); }
+  .icon-action.danger { color: #ef4444; }
+  .icon-action.danger:hover { background: rgba(239,68,68,0.1); color: #ef4444; }
+  </style>
+</head>
+<body class="ui-sky">
+
+<svg width="0" height="0" style="position:absolute;">
+  <defs>
+    <symbol id="ic-doc" viewBox="0 0 24 24"><path d="M7 3.5h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><line x1="8.5" y1="13" x2="15.5" y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="8.5" y1="16.5" x2="13" y2="16.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="ic-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7"/><ellipse cx="12" cy="12" rx="3.6" ry="8.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="3.5" y1="12" x2="20.5" y2="12" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="ic-exit" viewBox="0 0 24 24"><path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 8l4 4-4 4M19 12H9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-image" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="10" r="1.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 16.5 9.5 12l3 3 3.5-4 3.5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-close" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-check" viewBox="0 0 24 24"><polyline points="5,13 9.5,17.5 19,6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-checkbox" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="1.7"/><polyline points="8,12.5 11,15.5 16.5,9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-radio" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="3.6" fill="currentColor"/></symbol>
+    <symbol id="ic-paperclip" viewBox="0 0 24 24"><path d="M8 12.5 15 5.5a3.2 3.2 0 0 1 4.5 4.5l-8.3 8.3a2.1 2.1 0 0 1-3-3l7.3-7.3a1 1 0 0 1 1.4 1.4L10 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-dot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" fill="currentColor"/></symbol>
+    <symbol id="ic-download" viewBox="0 0 24 24"><line x1="12" y1="4" x2="12" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="7,10 12,15 17,10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><line x1="5" y1="19" x2="19" y2="19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M5.5 15.5h-1a1 1 0 0 1-1-1v-10a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+    <symbol id="ic-trash" viewBox="0 0 24 24"><line x1="5" y1="7" x2="19" y2="7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8 7V5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M7 7l1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><line x1="10" y1="11" x2="10" y2="17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="14" y1="11" x2="14" y2="17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="ic-edit" viewBox="0 0 24 24"><path d="M15.5 5.5 18.5 8.5 8 19 4.5 19.5 5 16Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><line x1="13.7" y1="7.3" x2="16.7" y2="10.3" stroke="currentColor" stroke-width="1.7"/></symbol>
+    <symbol id="ic-chat" viewBox="0 0 24 24"><path d="M4 5.5h16a1 1 0 0 1 1 1V16a1 1 0 0 1-1 1H9l-4.5 4V17H4a1 1 0 0 1-1-1V6.5a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<div id="loadingOverlay"><div class="spinner"></div></div>
+
+<nav class="nav" onclick="closeAllDD(event)">
+  <a class="nav-brand" href="home.html"><img src="logo.png" alt="kakainfo"><span class="nav-brand-title" id="navBrandTitle">설문지 만들기</span></a>
+  <div class="nav-end">
+    <button class="btn sm ghost" id="navBack" onclick="showPage('pageList')" style="display:none;">← 목록</button>
+    <div class="lang-globe" id="langGlobe">
+      <button class="lang-globe-btn" onclick="event.stopPropagation();toggleLangDD()" title="언어"><svg width="16" height="16"><use href="#ic-globe"/></svg></button>
+      <div class="lang-globe-dd hidden" id="langGlobeDD" onclick="event.stopPropagation()">
+        <div class="lang-globe-item" onclick="setLang('ko');closeLangDD()"><span>한국어</span><span class="check" id="lck-ko"></span></div>
+        <div class="lang-globe-item" onclick="setLang('zh');closeLangDD()"><span>中文</span><span class="check" id="lck-zh"></span></div>
+        <div class="lang-globe-item" onclick="setLang('ru');closeLangDD()"><span>Рус</span><span class="check" id="lck-ru"></span></div>
+        <div class="lang-globe-item" onclick="setLang('en');closeLangDD()"><span>English</span><span class="check" id="lck-en"></span></div>
+      </div>
+    </div>
+    <div class="nav-user" id="navUser" onclick="event.stopPropagation();toggleUserMenu()">
+      <div class="nav-avatar" id="navAvatar"></div>
+      <div class="nav-user-name" id="navUserName"></div>
+      <div class="user-dropdown hidden" id="userDropdown" onclick="event.stopPropagation()">
+        <div class="user-dropdown-item danger" onclick="doLogout()"><svg width="15" height="15"><use href="#ic-exit"/></svg> 로그아웃</div>
+      </div>
+    </div>
+    <button class="dark-toggle" onclick="toggleDark()"></button>
+  </div>
+</nav>
+
+<div class="wrap">
+  <!-- 목록 -->
+  <div class="page active" id="pageList">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:10px;">
+      <div class="page-heading" style="margin:0;">내 설문 목록</div>
+      <button class="btn accent" onclick="initBuilder()">+ 새 설문 만들기</button>
+    </div>
+    <div id="myFormList"><div class="empty-msg">아직 만든 설문이 없습니다.</div></div>
+  </div>
+
+  <!-- 빌더 -->
+  <div class="page" id="pageBuilder">
+    <!-- 폼 기본 정보 -->
+    <div class="card">
+      <div class="field"><label>설문 제목 *</label><input class="inp" id="bTitle" placeholder="설문지 제목을 입력하세요"></div>
+      <div class="field"><label>설명 (선택)</label><textarea class="inp" id="bDesc" rows="2" placeholder="설문 목적이나 안내사항"></textarea>
+        <div id="descImgWrap" style="margin-top:6px;"></div>
+        <input type="file" accept="image/*" id="descImgFile" style="display:none" onchange="onDescImg(this)">
+        <button type="button" class="btn sm ghost" onclick="document.getElementById('descImgFile').click()"><svg width="13" height="13" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-image"/></svg>설명 이미지 첨부</button>
+      </div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:4px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:0.83rem;cursor:pointer;">
+          <input type="checkbox" id="bAnon" checked>
+          <span style="font-weight:600;">비로그인도 응답 가능</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:0.83rem;cursor:pointer;">
+          <input type="checkbox" id="bShowResult">
+          <span style="font-weight:600;">응답자에게 결과 공개</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- 질문 목록 -->
+    <div id="bQuestions"></div>
+
+    <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+      <button class="btn ghost" onclick="addQuestion()">+ 질문 추가</button>
+      <button class="btn ghost" onclick="addSection()">+ 섹션 추가</button>
+    </div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <button class="btn accent" onclick="saveForm()" id="bSaveBtn">저장</button>
+      <button class="btn ghost" onclick="showPage('pageList')">취소</button>
+      <span id="bSaveMsg" style="font-size:0.8rem;color:var(--sub);"></span>
+    </div>
+  </div>
+
+  <!-- 결과 -->
+  <div class="page" id="pageResults">
+    <div style="margin-bottom:18px;">
+      <div class="page-heading" style="margin-bottom:4px;" id="resTitle"></div>
+      <div style="font-size:0.8rem;color:var(--sub);" id="resMeta"></div>
+    </div>
+
+    <!-- 공유 링크 -->
+    <div class="card" style="padding:16px 20px;">
+      <div style="font-size:0.8rem;font-weight:700;color:var(--sub);margin-bottom:8px;">공유 링크</div>
+      <div class="share-box">
+        <div class="share-link" id="shareLink"></div>
+        <button class="icon-action" title="복사" onclick="copyLink()"><svg width="16" height="16"><use href="#ic-copy"/></svg></button>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        <button class="status-pill" id="statusToggleBtn" onclick="toggleStatus()"></button>
+        <button class="icon-action" title="수정" onclick="editForm()"><svg width="16" height="16"><use href="#ic-edit"/></svg></button>
+        <button class="icon-action" title="CSV 내보내기" onclick="exportCsv()"><svg width="16" height="16"><use href="#ic-download"/></svg></button>
+        <button class="icon-action danger" title="삭제" onclick="deleteForm()"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
+      </div>
+    </div>
+
+    <!-- 통계 -->
+    <div class="res-stat-row" id="resStats"></div>
+
+    <!-- 탭 -->
+    <div class="res-tabs">
+      <button class="res-tab active" onclick="showResTab('summary',this)">요약</button>
+      <button class="res-tab" onclick="showResTab('individual',this)">개별 응답</button>
+    </div>
+    <div id="resContent"></div>
+  </div>
+</div>
+
+<a class="qna-fab" href="qna.html"><svg width="24" height="24"><use href="#ic-chat"/></svg><span class="badge" id="qnaBadge"></span><span class="qna-tip">정보 관련 질문이나 웹사이트 버그가 있으면 알려주세요.</span></a>
+
+<script type="module">
+import { db } from './firebase-config.js';
+import { escHtml, jsArg, safeHttpsUrl, safeImgUrl, safePhotoUrl, SAFE_ID } from './escape.js';
+import { setPageTitle } from './page-title.js';
+import {
+  collection, query, where, getDocs, getDoc, addDoc, setDoc, updateDoc, deleteDoc, doc, serverTimestamp, onSnapshot, increment
+} from '/vibe/shared/fake-firebase/firebase-firestore.js';
+import { loadSession, clearSession, verifyStudentAuth, authReady } from './session.js';
+
+// ── 유틸 ──
+// 예전 공유 링크는 formfill이 아니라 formlab?id=… 로 잘못 만들어졌었다
+// (아래 shareLink 주석 참고). 이미 나간 링크도 살리려고, formlab은 ?id를
+// 쓰지 않으므로 id가 붙어 들어오면 응답 페이지로 바로 넘긴다 — 로그인
+// 체크보다 먼저 해야 비로그인 응답자가 로그인 화면으로 튕기지 않는다.
+const _fwdFormId = new URLSearchParams(location.search).get('id');
+if (_fwdFormId) location.replace('/formfill?id=' + encodeURIComponent(_fwdFormId));
+const SESSION = _fwdFormId ? null : loadSession();
+if (!SESSION && !_fwdFormId) { window.location.href = 'index.html'; }
+// localStorage 세션은 브라우저에서 고칠 수 있다 — 실제 로그인 계정과
+// 맞는지 뒤이어 확인하고, 안 맞으면 로그인 화면으로 돌려보낸다.
+if (!_fwdFormId) verifyStudentAuth(SESSION);
+function toggleDark() { document.body.classList.toggle('dark'); localStorage.setItem('dark', document.body.classList.contains('dark')?'1':'0'); }
+if (localStorage.getItem('dark')==='1') document.body.classList.add('dark');
+window.toggleDark = toggleDark;
+function showLoading(v) { document.getElementById('loadingOverlay').style.display = v ? 'flex' : 'none'; }
+// URL을 클릭 가능한 링크로 변환 (이스케이프 후 처리)
+function linkify(s) {
+  const esc = escHtml(s);
+  return esc.replace(/(https?:\/\/[^\s<]+)/g, url => `<a href="${url}" target="_blank" rel="noopener">${url}</a>`);
+}
+function uid() { return Math.random().toString(36).slice(2,10); }
+
+// ── 글로브/프로필 nav ──
+const _lang = localStorage.getItem('ohinfo_lang') || 'ko';
+function updateLangCheck(l) { ['ko','zh','ru','en'].forEach(k => { const el = document.getElementById('lck-'+k); if(el) el.innerHTML = k===l?'<svg width="13" height="13"><use href="#ic-check"/></svg>':''; }); setPageTitle('formlab', null, l); }
+updateLangCheck(_lang);
+window.setLang = (l) => { localStorage.setItem('ohinfo_lang', l); updateLangCheck(l); };
+window.toggleLangDD = () => document.getElementById('langGlobeDD').classList.toggle('hidden');
+window.closeLangDD  = () => document.getElementById('langGlobeDD').classList.add('hidden');
+window.toggleUserMenu = () => document.getElementById('userDropdown').classList.toggle('hidden');
+window.closeAllDD = (e) => { document.getElementById('langGlobeDD')?.classList.add('hidden'); document.getElementById('userDropdown')?.classList.add('hidden'); };
+window.doLogout = () => { clearSession(); location.href = 'ohdlet.html'; };
+
+if (SESSION) {
+  document.getElementById('navUserName').textContent = SESSION.name || '';
+  const av = document.getElementById('navAvatar');
+  if (safePhotoUrl(SESSION.photoUrl)) { av.innerHTML = `<img src="${escHtml(safePhotoUrl(SESSION.photoUrl))}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`; }
+  else { av.textContent = (SESSION.name||'?')[0].toUpperCase(); }
+}
+
+const COLORS = ['#4f8df7','#7c4dff','#22c55e','#f59e0b','#ef4444','#06b6d4','#ec4899','#84cc16','#a78bfa','#fb923c'];
+const TYPE_LABELS = { mc:'객관식', checkbox:'체크박스', short:'주관식', long:'장문', dropdown:'드롭다운', file:'파일 첨부' };
+
+// ── 상태 ──
+let questions = []; // [{id,type,text,options,required,imageUrl}]
+let currentFormId = null;
+let currentFormData = null;
+let responses = [];
+let resTabMode = 'summary';
+
+// ── 페이지 전환 ──
+window.showPage = (id) => {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.getElementById('navBack').style.display = id === 'pageList' ? 'none' : '';
+  if (id === 'pageList') loadMyForms();
+};
+
+// ── 목록 로드 ──
+async function loadMyForms() {
+  showLoading(true);
+  // 응답은 설문 만든 사람(ownerId)만 읽을 수 있다 — 로그인 복원 뒤에, ownerId 조건을 붙여 조회한다.
+  await authReady();
+  try {
+    const snap = await getDocs(query(
+      collection(db, 'student_forms'),
+      where('ownerId', '==', SESSION.id)
+    ));
+    // 설문 문서는 누구나 만들 수 있다(ownerId도 남의 것으로 지정 가능) — 우리 코드가
+    // 만들지 않는 모양의 ID는 onclick 자리에서 스크립트가 될 수 있으니 뺀다.
+    const forms = snap.docs.filter(d => SAFE_ID.test(d.id)).map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+    const el = document.getElementById('myFormList');
+    if (!forms.length) { el.innerHTML = '<div class="empty-msg">아직 만든 설문이 없습니다.<br>새 설문을 만들어보세요!</div>'; showLoading(false); return; }
+    // 응답 수 실시간 조회
+    const respCounts = await Promise.all(forms.map(f =>
+      getDocs(query(collection(db,'student_form_responses'), where('formId','==',f.id), where('ownerId','==',SESSION.id)))
+        .then(s => s.size).catch(() => f.responseCount || 0)
+    ));
+    el.innerHTML = forms.map((f, i) => {
+      const resCount = respCounts[i];
+      const status = f.status === 'open' ? '<span class="tag open">응답 중</span>' : '<span class="tag closed">마감</span>';
+      const date = f.createdAt ? new Date(f.createdAt.toDate ? f.createdAt.toDate() : f.createdAt).toLocaleDateString() : '';
+      return `<div class="form-item" onclick="openResults('${f.id}')">
+        <div style="flex:1;min-width:0;">
+          <div class="fi-title">${escHtml(f.title||'(제목 없음)')}</div>
+          <div class="fi-meta">${date}</div>
+        </div>
+        ${status}
+        <div class="fi-resp">응답 ${resCount}개</div>
+        <div style="display:flex;gap:6px;" onclick="event.stopPropagation()">
+          <button class="icon-action" title="수정" onclick="editFormId('${f.id}')"><svg width="16" height="16"><use href="#ic-edit"/></svg></button>
+          <button class="icon-action danger" title="삭제" onclick="deleteFormId('${f.id}')"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) { document.getElementById('myFormList').innerHTML = `<div class="empty-msg" style="color:#ef4444;">${e.message}</div>`; }
+  showLoading(false);
+}
+
+// ── 빌더 초기화 ──
+window.initBuilder = (formId) => {
+  currentFormId = formId || null;
+  questions = [];
+  formDescImage = '';
+  document.getElementById('bTitle').value = '';
+  document.getElementById('bDesc').value = '';
+  document.getElementById('bAnon').checked = true;
+  document.getElementById('bShowResult').checked = false;
+  document.getElementById('bSaveMsg').innerText = '';
+  renderDescImg();
+  if (formId) {
+    showLoading(true);
+    getDoc(doc(db,'student_forms',formId)).then(snap => {
+      showLoading(false);
+      if (!snap.exists()) return;
+      const d = snap.data();
+      document.getElementById('bTitle').value = d.title || '';
+      document.getElementById('bDesc').value = d.description || '';
+      document.getElementById('bAnon').checked = !!d.allowAnon;
+      document.getElementById('bShowResult').checked = !!d.showResultToRespondent;
+      formDescImage = d.descImage || '';
+      renderDescImg();
+      questions = d.questions ? JSON.parse(JSON.stringify(d.questions)) : [];
+      // 문항 ID·이미지 주소는 편집 화면의 onclick/src에 그대로 들어간다 — 이상한 값은 교체.
+      questions.forEach(q => { if (!SAFE_ID.test(String(q.id))) q.id = uid(); if (q.imageUrl) q.imageUrl = safeImgUrl(q.imageUrl); });
+      renderQuestions();
+    }).catch(e => { showLoading(false); alert(e.message); });
+  } else {
+    questions = [{ id: uid(), type: 'mc', text: '', options: ['', ''], required: false, imageUrl: '' }];
+    renderQuestions();
+  }
+  showPage('pageBuilder');
+};
+window.editFormId = (id) => initBuilder(id);
+
+// ── 질문 렌더 ──
+function renderQuestions() {
+  document.getElementById('bQuestions').innerHTML = questions.map((q, i) => renderQCard(q, i)).join('');
+}
+
+function renderQCard(q, i) {
+  if (q.type === 'section') {
+    return `<div class="q-card" id="qc_${q.id}" style="background:var(--accent-light);border-color:rgba(42,92,230,0.3);">
+      <button class="btn sm ghost danger q-del" onclick="deleteQ('${q.id}')"><svg width="12" height="12"><use href="#ic-close"/></svg></button>
+      <div style="font-size:0.7rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">— 섹션 구분 (여기부터 새 페이지) —</div>
+      <input class="inp" value="${escHtml(q.text||'')}" placeholder="섹션 제목" oninput="updateQText('${q.id}',this.value)" style="font-weight:700;margin-bottom:8px;">
+      <textarea class="inp" rows="2" placeholder="섹션 설명 (선택)" oninput="updateQField('${q.id}','desc',this.value)">${escHtml(q.desc||'')}</textarea>
+    </div>`;
+  }
+  const hasOpts = ['mc','checkbox','dropdown'].includes(q.type);
+  const optsHtml = hasOpts ? `
+    <div class="q-opts" id="opts_${q.id}">
+      ${(q.options||[]).map((o, oi) => `
+        <div class="q-opt-row">
+          <span class="q-opt-icon">${q.type==='mc'?'<svg width="13" height="13"><use href="#ic-radio"/></svg>':q.type==='checkbox'?'<svg width="13" height="13"><use href="#ic-checkbox"/></svg>':(oi+1)+'.'}</span>
+          <input class="inp" style="flex:1;" value="${escHtml(o)}" placeholder="옵션 ${oi+1}" oninput="updateOpt('${q.id}',${oi},this.value)">
+          ${q.options.length>1?`<button class="btn sm ghost danger" onclick="removeOpt('${q.id}',${oi})" style="flex-shrink:0;"><svg width="11" height="11"><use href="#ic-close"/></svg></button>`:''}
+        </div>`).join('')}
+    </div>
+    <button class="add-opt" onclick="addOpt('${q.id}')">+ 옵션 추가</button>
+  ` : '';
+  const imgHtml = q.imageUrl
+    ? `<img class="q-img-preview" src="${escHtml(safeImgUrl(q.imageUrl))}"><button class="icon-action danger" title="이미지 삭제" onclick="removeQImg('${q.id}')" style="margin-bottom:8px;"><svg width="15" height="15"><use href="#ic-trash"/></svg></button>`
+    : `<input type="file" accept="image/*" id="imgf_${q.id}" style="display:none" onchange="onQImg(this,'${q.id}')"><button class="btn sm ghost" onclick="document.getElementById('imgf_${q.id}').click()" style="margin-bottom:8px;"><svg width="13" height="13" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-image"/></svg>이미지 첨부</button>`;
+
+  return `<div class="q-card" id="qc_${q.id}">
+    <button class="btn sm ghost danger q-del" onclick="deleteQ('${q.id}')"><svg width="12" height="12"><use href="#ic-close"/></svg></button>
+    <div class="q-top">
+      <input class="inp q-text-inp" value="${escHtml(q.text||'')}" placeholder="질문 ${i+1}" oninput="updateQText('${q.id}',this.value)">
+      <select class="inp q-type-sel" onchange="changeQType('${q.id}',this.value)">
+        ${Object.entries(TYPE_LABELS).map(([v,l])=>`<option value="${v}" ${q.type===v?'selected':''}>${l}</option>`).join('')}
+      </select>
+    </div>
+    ${imgHtml}
+    ${optsHtml}
+    <div class="req-row">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+        <input type="checkbox" ${q.required?'checked':''} onchange="updateQField('${q.id}','required',this.checked)">
+        <span>필수 항목</span>
+      </label>
+    </div>
+  </div>`;
+}
+
+window.addQuestion = () => {
+  questions.push({ id: uid(), type: 'mc', text: '', options: ['',''], required: false, imageUrl: '' });
+  renderQuestions();
+  setTimeout(() => document.getElementById('bQuestions').lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+};
+window.addSection = () => {
+  questions.push({ id: uid(), type: 'section', text: '', desc: '' });
+  renderQuestions();
+  setTimeout(() => document.getElementById('bQuestions').lastElementChild?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+};
+window.deleteQ = (qId) => { questions = questions.filter(q=>q.id!==qId); renderQuestions(); };
+window.updateQText = (qId, val) => { const q = questions.find(q=>q.id===qId); if(q) q.text = val; };
+window.updateQField = (qId, field, val) => { const q = questions.find(q=>q.id===qId); if(q) q[field] = val; };
+window.changeQType = (qId, type) => {
+  const q = questions.find(q=>q.id===qId);
+  if (!q) return;
+  q.type = type;
+  if (['mc','checkbox','dropdown'].includes(type) && (!q.options||!q.options.length)) q.options = ['',''];
+  renderQuestions();
+};
+window.addOpt = (qId) => { const q = questions.find(q=>q.id===qId); if(q) { q.options.push(''); renderQuestions(); } };
+window.removeOpt = (qId, idx) => { const q = questions.find(q=>q.id===qId); if(q) { q.options.splice(idx,1); renderQuestions(); } };
+window.updateOpt = (qId, idx, val) => { const q = questions.find(q=>q.id===qId); if(q&&q.options) q.options[idx] = val; };
+window.onQImg = (input, qId) => {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX = 600; let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) { if (w > h) { h *= MAX/w; w = MAX; } else { w *= MAX/h; h = MAX; } }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const q = questions.find(q=>q.id===qId); if (q) { q.imageUrl = canvas.toDataURL('image/jpeg', 0.75); renderQuestions(); }
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+};
+window.removeQImg = (qId) => { const q = questions.find(q=>q.id===qId); if(q) { q.imageUrl = ''; renderQuestions(); } };
+
+// ── 설명 이미지 ──
+let formDescImage = '';
+function renderDescImg() {
+  const wrap = document.getElementById('descImgWrap'); if (!wrap) return;
+  wrap.innerHTML = formDescImage
+    ? `<img class="q-img-preview" src="${formDescImage}"><button class="icon-action danger" title="이미지 삭제" onclick="removeDescImg()" style="margin-top:4px;"><svg width="15" height="15"><use href="#ic-trash"/></svg></button>`
+    : '';
+}
+window.onDescImg = (input) => {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX = 800; let w = img.width, h = img.height;
+      if (w > MAX || h > MAX) { if (w > h) { h *= MAX/w; w = MAX; } else { w *= MAX/h; h = MAX; } }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      formDescImage = canvas.toDataURL('image/jpeg', 0.78);
+      renderDescImg();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+  input.value = '';
+};
+window.removeDescImg = () => { formDescImage = ''; renderDescImg(); };
+
+// 저장 전 현재 input 값 동기화
+function syncInputs() {
+  questions.forEach(q => {
+    const ti = document.querySelector(`#qc_${q.id} .q-text-inp`); if (ti) q.text = ti.value;
+    if (q.options) {
+      q.options = q.options.map((_, i) => {
+        const el = document.querySelector(`#opts_${q.id} .q-opt-row:nth-child(${i+1}) input`);
+        return el ? el.value : _;
+      });
+    }
+  });
+}
+
+// ── 저장 ──
+// ── 설문 자동 번역 (ko → zh/ru/en) ──
+async function _deepl(texts, targetLang, sourceLang='ko') {
+  const res = await fetch('/api/translate', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ texts, targetLang, sourceLang })
+  });
+  const data = await res.json();
+  if (!res.ok || data.error || !data.translations) throw new Error(data.error || data.message || ('HTTP '+res.status));
+  return data.translations.map(t => t.text);
+}
+// 제목/설명/질문/보기를 zh·ru·en 으로 번역해 { zh:{title,description,questions:[{id,text,options}]}, ru:..., en:... } 반환
+async function buildFormI18n(title, description, qs) {
+  const flat = [title || '', description || ''];
+  qs.forEach(q => { flat.push(q.text || ''); (q.options || []).forEach(o => flat.push(o || '')); });
+  const targets = [['zh','zh-cn'], ['ru','ru'], ['en','en']];
+  const i18n = {};
+  await Promise.all(targets.map(async ([key, tl]) => {
+    let tr;
+    try { tr = await _deepl(flat, tl, 'ko'); } catch(e) { tr = flat.slice(); } // 실패 시 원문 유지
+    let i = 0;
+    const out = { title: tr[i++] || title, description: tr[i++] || description, questions: [] };
+    qs.forEach(q => {
+      const text = tr[i++] || q.text || '';
+      const options = (q.options || []).map(o => tr[i++] || o);
+      out.questions.push({ id: q.id, text, options });
+    });
+    i18n[key] = out;
+  }));
+  return i18n;
+}
+
+window.saveForm = async () => {
+  syncInputs();
+  const title = document.getElementById('bTitle').value.trim();
+  if (!title) { alert('설문 제목을 입력하세요.'); return; }
+  if (!questions.length) { alert('질문을 하나 이상 추가하세요.'); return; }
+  const data = {
+    title,
+    description: document.getElementById('bDesc').value.trim(),
+    descImage: formDescImage || '',
+    allowAnon: document.getElementById('bAnon').checked,
+    showResultToRespondent: document.getElementById('bShowResult').checked,
+    questions,
+    ownerId: SESSION.id,
+    ownerName: SESSION.name,
+    status: 'open',
+    updatedAt: serverTimestamp(),
+  };
+  showLoading(true);
+  try {
+    // 자동 번역(zh/ru/en) 생성해 함께 저장
+    try { data.i18n = await buildFormI18n(title, data.description, questions); } catch(e) { console.error('translate:', e); }
+    if (currentFormId) {
+      await updateDoc(doc(db,'student_forms',currentFormId), data);
+    } else {
+      data.createdAt = serverTimestamp();
+      data.responseCount = 0;
+      const ref = await addDoc(collection(db,'student_forms'), data);
+      currentFormId = ref.id;
+    }
+    document.getElementById('bSaveMsg').innerHTML = '<svg width="13" height="13" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-check"/></svg>저장되었습니다.';
+    setTimeout(() => { openResults(currentFormId); }, 700);
+  } catch(e) { alert(e.message); }
+  showLoading(false);
+};
+
+// ── 결과 ──
+window.openResults = async (formId) => {
+  showLoading(true);
+  try {
+    const fSnap = await getDoc(doc(db,'student_forms',formId));
+    if (!fSnap.exists()) { showLoading(false); return; }
+    currentFormId = formId;
+    currentFormData = { id: formId, ...fSnap.data() };
+    const rSnap = await getDocs(query(collection(db,'student_form_responses'), where('formId','==',formId), where('ownerId','==',SESSION.id)));
+    responses = rSnap.docs.filter(d => SAFE_ID.test(d.id)).map(d => ({ id: d.id, ...d.data() }))
+      .sort((a, b) => (b.submittedAt?.seconds || 0) - (a.submittedAt?.seconds || 0));
+
+    document.getElementById('resTitle').innerText = currentFormData.title || '(제목 없음)';
+    document.getElementById('resMeta').innerText = `응답 ${responses.length}개 · ${currentFormData.allowAnon?'비로그인 허용':'로그인 필요'} · ${currentFormData.showResultToRespondent?'결과 공개':'결과 비공개'}`;
+
+    // Cloudflare Pages는 .html을 떼고 서빙해서(/formlab) pathname에
+    // 'formlab.html'이 없다 — 문자열 치환이 안 먹혀 공유 링크가 로그인이
+    // 필요한 formlab으로 나가고 있었다. 경로를 직접 지정한다.
+    const baseUrl = location.origin + '/formfill';
+    document.getElementById('shareLink').innerText = `${baseUrl}?id=${encodeURIComponent(formId)}`;
+    const btn = document.getElementById('statusToggleBtn');
+    const isOpen = currentFormData.status === 'open';
+    btn.className = 'status-pill ' + (isOpen ? 'open' : 'closed');
+    btn.innerHTML = isOpen ? '<svg width="9" height="9" style="color:#22c55e;vertical-align:1px;margin-right:5px;"><use href="#ic-dot"/></svg>응답 중 (클릭해서 마감)' : '<svg width="9" height="9" style="color:#ef4444;vertical-align:1px;margin-right:5px;"><use href="#ic-dot"/></svg>마감됨 (클릭해서 재개)';
+
+    renderResStats();
+    showResTabContent('summary');
+    showPage('pageResults');
+  } catch(e) { alert(e.message); }
+  showLoading(false);
+};
+
+function renderResStats() {
+  document.getElementById('resStats').innerHTML = `
+    <div class="res-stat"><div class="res-stat-num">${responses.length}</div><div class="res-stat-label">총 응답</div></div>
+    <div class="res-stat"><div class="res-stat-num">${currentFormData.questions?.length||0}</div><div class="res-stat-label">질문 수</div></div>
+  `;
+}
+
+window.showResTab = (tab, btn) => {
+  resTabMode = tab;
+  document.querySelectorAll('.res-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  showResTabContent(tab);
+};
+
+function showResTabContent(tab) {
+  const el = document.getElementById('resContent');
+  if (tab === 'summary') renderSummary(el);
+  else renderIndividual(el);
+}
+
+// 응답 호환: answers 가 배열([{question,type,answer}]) 또는 객체(질문id 키) 모두 지원
+function _ansOf(r, q, qi) {
+  const ans = r.answers;
+  if (!ans) return undefined;
+  if (Array.isArray(ans)) {
+    let el = ans[qi];
+    if (el === undefined || (el && typeof el === 'object' && el.question && q.text && el.question !== q.text)) {
+      const byText = ans.find(a => a && typeof a === 'object' && a.question === (q.text||''));
+      if (byText) el = byText;
+    }
+    return (el && typeof el === 'object' && 'answer' in el) ? el.answer : el;
+  }
+  return ans[q.id];
+}
+// 보기 라벨: 답이 인덱스면 옵션으로, 텍스트면 그대로 (formfill은 텍스트로 저장)
+function _optLabel(q, a) {
+  if (q.options && q.options[a] !== undefined) return q.options[a];
+  return a;
+}
+function renderSummary(el) {
+  if (!responses.length) { el.innerHTML = '<div class="empty-msg">아직 응답이 없습니다.</div>'; return; }
+  const qs = currentFormData.questions || [];
+  el.innerHTML = qs.map((q, qi) => {
+    if (q.type === 'section') return q.text ? `<div style="font-weight:800;color:var(--accent);margin:18px 0 6px;">${escHtml(q.text)}</div>` : '';
+    const answers = responses.map(r => _ansOf(r, q, qi)).filter(a => a !== undefined && a !== null && a !== '');
+    const header = `<div class="res-q-title">Q${qi+1}. ${escHtml(q.text||'(질문)')} <span style="font-size:0.72rem;color:var(--sub);">(${answers.length}/${responses.length})</span></div>`;
+    if (!answers.length) return `<div class="card res-q-block">${header}<div style="color:var(--sub);font-size:0.82rem;">응답 없음</div></div>`;
+
+    if (['mc','dropdown'].includes(q.type)) {
+      const counts = {}; (q.options||[]).forEach(o => counts[o] = 0);
+      answers.forEach(a => { const o = _optLabel(q, a); counts[o] = (counts[o]||0) + 1; });
+      const entries = Object.entries(counts); const total = answers.length;
+      return `<div class="card res-q-block">
+        ${header}
+        <div class="chart-wrap">${buildPie(entries.map(([,c])=>c), COLORS)}
+          <div class="chart-legend">${entries.map(([l,c],i)=>`<div class="legend-item"><span class="legend-dot" style="background:${COLORS[i%COLORS.length]}"></span><span>${escHtml(l)}: ${c}개 (${total?Math.round(c/total*100):0}%)</span></div>`).join('')}</div>
+        </div>
+        ${entries.map(([l,c],i)=>`<div class="res-bar-row"><div class="res-bar-label">${escHtml(l)}</div><div class="res-bar-track"><div class="res-bar-fill" style="width:${total?Math.round(c/total*100):0}%;background:${COLORS[i%COLORS.length]};"></div></div><div class="res-bar-count">${c}</div></div>`).join('')}
+      </div>`;
+    }
+    if (q.type === 'checkbox') {
+      const counts = {}; (q.options||[]).forEach(o => counts[o] = 0);
+      answers.forEach(arr => { (Array.isArray(arr)?arr:[arr]).forEach(v => { const o = _optLabel(q, v); counts[o] = (counts[o]||0) + 1; }); });
+      const entries = Object.entries(counts); const total = answers.length;
+      return `<div class="card res-q-block">
+        ${header}
+        ${entries.map(([l,c],i)=>`<div class="res-bar-row"><div class="res-bar-label">${escHtml(l)}</div><div class="res-bar-track"><div class="res-bar-fill" style="width:${total?Math.round(c/total*100):0}%;background:${COLORS[i%COLORS.length]};"></div></div><div class="res-bar-count">${c}</div></div>`).join('')}
+      </div>`;
+    }
+    if (q.type === 'file') {
+      return `<div class="card res-q-block">${header}
+        <div class="file-tiles">${answers.flatMap(a=>Array.isArray(a)?a:[]).map(f=>fileTileSmall(f)).join('')||'<div class="res-text-item">(없음)</div>'}</div></div>`;
+    }
+    return `<div class="card res-q-block">
+      ${header}
+      <div class="res-texts">${answers.map(a=>`<div class="res-text-item">${linkify(String(a))}</div>`).join('')}</div>
+    </div>`;
+  }).join('');
+}
+
+function buildPie(counts, colors) {
+  const total = counts.reduce((a,b)=>a+b,0); if (!total) return '';
+  let acc = 0;
+  const slices = counts.map((c, i) => {
+    const pct = c/total; const s = acc*2*Math.PI-Math.PI/2; acc += pct; const e = acc*2*Math.PI-Math.PI/2;
+    const x1=45+40*Math.cos(s),y1=45+40*Math.sin(s),x2=45+40*Math.cos(e),y2=45+40*Math.sin(e);
+    if (counts.length === 1) return `<circle cx="45" cy="45" r="40" fill="${colors[i%colors.length]}"/>`;
+    return `<path d="M45,45 L${x1},${y1} A40,40 0 ${pct>0.5?1:0},1 ${x2},${y2} Z" fill="${colors[i%colors.length]}"/>`;
+  });
+  return `<svg class="pie-svg" viewBox="0 0 90 90">${slices.join('')}</svg>`;
+}
+
+function renderIndividual(el) {
+  if (!responses.length) { el.innerHTML = '<div class="empty-msg">아직 응답이 없습니다.</div>'; return; }
+  const qs = currentFormData.questions || [];
+  el.innerHTML = responses.map((r, i) => {
+    const name = r.respondentName || (r.respondentId ? `학생 #${r.respondentId.slice(-4)}` : '익명');
+    const time = r.submittedAt ? new Date(r.submittedAt.toDate?r.submittedAt.toDate():r.submittedAt).toLocaleString() : '';
+    return `<div class="resp-row" onclick="toggleDetail('rd_${i}')">
+      <div><b>${escHtml(name)}</b> <span style="color:var(--sub);font-size:0.75rem;">${time}</span></div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <button class="icon-action danger" title="이 응답 삭제" onclick="event.stopPropagation();deleteResponse(${jsArg(r.id)})"><svg width="15" height="15"><use href="#ic-trash"/></svg></button>
+        <span style="color:var(--sub);">▾</span>
+      </div>
+    </div>
+    <div class="resp-detail hidden" id="rd_${i}">
+      ${qs.map((q, qi) => {
+        if (q.type === 'section') return '';
+        const a = _ansOf(r, q, qi);
+        let disp = '';
+        if (q.type==='file') disp = Array.isArray(a)&&a.length ? `<div class="file-tiles">${a.map(f=>fileTileSmall(f)).join('')}</div>` : '(미응답)';
+        else if (['mc','dropdown'].includes(q.type)) disp = a !== undefined ? escHtml(q.options?.[a]||a) : '(미응답)';
+        else if (q.type==='checkbox') disp = Array.isArray(a) ? a.map(i=>escHtml(q.options?.[i]||i)).join(', ') : '(미응답)';
+        else disp = a ? linkify(String(a)) : '(미응답)';
+        return `<div style="margin-bottom:8px;"><div style="font-size:0.75rem;color:var(--sub);font-weight:600;">${escHtml(q.text||'(질문)')}</div><div style="font-size:0.87rem;">${disp}</div></div>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+}
+
+window.toggleDetail = (id) => { document.getElementById(id)?.classList.toggle('hidden'); };
+
+// ── 응답 1건 삭제 ──
+window.deleteResponse = async (respId) => {
+  const r = responses.find(x => x.id === respId);
+  if (!r) return;
+  const name = r.respondentName || (r.respondentId ? `학생 #${r.respondentId.slice(-4)}` : '익명');
+  if (!confirm(`"${name}"의 응답을 삭제하시겠습니까?\n삭제한 응답은 되돌릴 수 없습니다.`)) return;
+  showLoading(true);
+  try {
+    await deleteDoc(doc(db, 'student_form_responses', respId));
+    // 목록 카드의 응답 수는 실제 응답 문서 개수로 다시 세지만, 혹시 저장된
+    // 카운터(responseCount)를 쓰는 곳이 있으니 같이 맞춰둔다.
+    updateDoc(doc(db, 'student_forms', currentFormId), { responseCount: increment(-1) }).catch(() => {});
+    responses = responses.filter(x => x.id !== respId);
+    document.getElementById('resMeta').innerText = `응답 ${responses.length}개 · ${currentFormData.allowAnon?'비로그인 허용':'로그인 필요'} · ${currentFormData.showResultToRespondent?'결과 공개':'결과 비공개'}`;
+    renderResStats();
+    showResTabContent(resTabMode);
+  } catch(e) { alert('삭제 오류: ' + e.message); }
+  showLoading(false);
+};
+
+// ── 상태 토글 ──
+window.toggleStatus = async () => {
+  if (!currentFormId) return;
+  const newStatus = currentFormData.status === 'open' ? 'closed' : 'open';
+  showLoading(true);
+  try {
+    await updateDoc(doc(db,'student_forms',currentFormId), { status: newStatus });
+    currentFormData.status = newStatus;
+    const btn = document.getElementById('statusToggleBtn');
+    btn.className = 'status-pill ' + (newStatus==='open'?'open':'closed');
+    btn.innerHTML = newStatus==='open' ? '<svg width="9" height="9" style="color:#22c55e;vertical-align:1px;margin-right:5px;"><use href="#ic-dot"/></svg>응답 중 (클릭해서 마감)' : '<svg width="9" height="9" style="color:#ef4444;vertical-align:1px;margin-right:5px;"><use href="#ic-dot"/></svg>마감됨 (클릭해서 재개)';
+  } catch(e) { alert(e.message); }
+  showLoading(false);
+};
+
+// ── 수정 ──
+window.editForm = () => { if (currentFormId) initBuilder(currentFormId); };
+
+// ── 삭제 ──
+window.deleteFormId = async (id) => {
+  if (!confirm('삭제하시겠습니까? 응답도 모두 삭제됩니다.')) return;
+  showLoading(true);
+  try {
+    const rSnap = await getDocs(query(collection(db,'student_form_responses'), where('formId','==',id), where('ownerId','==',SESSION.id)));
+    await Promise.all(rSnap.docs.map(d=>deleteDoc(doc(db,'student_form_responses',d.id))));
+    await deleteDoc(doc(db,'student_forms',id));
+    await loadMyForms();
+  } catch(e) { alert(e.message); }
+  showLoading(false);
+};
+window.deleteForm = () => { if (currentFormId) deleteFormId(currentFormId).then(() => showPage('pageList')); };
+
+// ── 링크 복사 ──
+window.copyLink = () => {
+  const text = document.getElementById('shareLink').innerText;
+  navigator.clipboard.writeText(text).then(() => alert('링크가 복사되었습니다!')).catch(() => {
+    const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta); alert('링크가 복사되었습니다!');
+  });
+};
+
+// ── CSV ──
+window.exportCsv = () => {
+  if (!responses.length) { alert('응답이 없습니다.'); return; }
+  const qs = (currentFormData.questions || []).filter(q => q.type !== 'section');
+  const headers = ['응답자', '제출시각', ...qs.map(q => q.text||'(질문)')];
+  const rows = responses.map(r => {
+    const name = r.respondentName || (r.respondentId ? `#${r.respondentId.slice(-4)}` : '익명');
+    const time = r.submittedAt ? new Date(r.submittedAt.toDate?r.submittedAt.toDate():r.submittedAt).toLocaleString() : '';
+    return [name, time, ...qs.map((q, qi) => {
+      const a = _ansOf(r, q, qi);
+      if (q.type==='file') return Array.isArray(a) ? a.map(f=>f.url||f.name).join(' ') : '';
+      if (['mc','dropdown'].includes(q.type)) return q.options?.[a] || a || '';
+      if (q.type==='checkbox') return Array.isArray(a) ? a.map(i=>q.options?.[i]||i).join('/') : '';
+      return String(a||'');
+    })];
+  });
+  const csv = [headers,...rows].map(row=>row.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=`${currentFormData.title||'survey'}_responses.csv`; a.click(); URL.revokeObjectURL(url);
+};
+
+// ── 초기 로드 ── (세션 없으면 곧 다른 페이지로 넘어가는 중이라 안 부른다)
+if (SESSION) loadMyForms();
+
+// ── 파일 미리보기 모달 ──
+function _labDriveId(url) { const m = String(url||'').match(/\/d\/([^/]+)|[?&]id=([^&]+)/); return m?(m[1]||m[2]):''; }
+function _labIsImg(name) { return /\.(jpe?g|png|gif|webp|bmp|svg)$/i.test(String(name||'')); }
+window.openFilePreview = (url, name) => {
+  // 응답 첨부는 응답자(비로그인 포함)가 넣은 값이다 — https만 연다. javascript:
+  // 주소를 iframe/img에 넣으면 이 페이지 권한으로 실행될 수 있다.
+  url = safeHttpsUrl(url);
+  if (!url) return;
+  const modal = document.getElementById('labDriveModal');
+  const head = document.getElementById('labDriveHead');
+  const body = document.getElementById('labDriveBody');
+  head.textContent = name || '파일 미리보기';
+  body.innerHTML = '';
+  if (_labIsImg(name)) {
+    const img = document.createElement('img');
+    img.className = 'preview-img';
+    img.src = /^[A-Za-z0-9_-]+$/.test(_labDriveId(url)) ? `https://drive.google.com/thumbnail?id=${_labDriveId(url)}&sz=w800` : url;
+    img.style.cssText = 'flex:1;width:100%;object-fit:contain;max-height:calc(78vh - 54px);';
+    body.appendChild(img);
+  } else {
+    const id = _labDriveId(url);
+    const ifr = document.createElement('iframe');
+    ifr.style.cssText = 'flex:1;width:100%;height:100%;border:none;';
+    ifr.src = /^[A-Za-z0-9_-]+$/.test(id) ? `https://drive.google.com/file/d/${id}/preview` : url;
+    body.appendChild(ifr);
+  }
+  modal.classList.add('open');
+};
+window.closeFilePreview = () => document.getElementById('labDriveModal').classList.remove('open');
+
+function fileTileSmall(f) {
+  const url = safeHttpsUrl(f?.url);
+  const name = f?.name || '파일';
+  const isImg = _labIsImg(name);
+  const id = _labDriveId(url);
+  const thumb = isImg && /^[A-Za-z0-9_-]+$/.test(id) ? `https://drive.google.com/thumbnail?id=${id}&sz=w200` : '';
+  const inner = thumb
+    ? `<img src="${thumb}" onerror="this.style.display='none'"><div class="file-tile-sm-cap">${escHtml(name)}</div>`
+    : `<div class="file-tile-sm-ico">${isImg ? '<svg width="16" height="16"><use href="#ic-image"/></svg>' : '<svg width="16" height="16"><use href="#ic-paperclip"/></svg>'}</div><div class="file-tile-sm-cap">${escHtml(name)}</div>`;
+  return url
+    ? `<div class="file-tile-sm" data-url="${escHtml(url)}" data-name="${escHtml(name)}" onclick="openFilePreview(this.dataset.url,this.dataset.name)"><div>${inner}</div></div>`
+    : `<div class="file-tile-sm"><div class="file-tile-sm-ico"><svg width="16" height="16"><use href="#ic-paperclip"/></svg></div><div class="file-tile-sm-cap">${escHtml(name)}</div></div>`;
+}
+
+if (SESSION && SESSION.id) {
+  authReady().then(() => onSnapshot(doc(db, 'qna_threads', SESSION.id), snap => {
+    const badge = document.getElementById('qnaBadge');
+    if (badge) badge.classList.toggle('on', !!(snap.exists() && snap.data().unreadByStudent));
+  }, () => {}));
+}
+</script>
+<div class="lab-drive-modal" id="labDriveModal" onclick="if(event.target===this)closeFilePreview()">
+  <div class="lab-drive-box">
+    <div class="lab-drive-head">
+      <span id="labDriveHead"></span>
+      <button onclick="closeFilePreview()"><svg width="14" height="14"><use href="#ic-close"/></svg></button>
+    </div>
+    <div id="labDriveBody" style="flex:1;display:flex;"></div>
+  </div>
+</div>
+</body>
+</html>

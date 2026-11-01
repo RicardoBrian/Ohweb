@@ -1,0 +1,539 @@
+/* =========================================================
+   학생 성장 지원 로드맵 — 메인
+   - 1024px 이상: 1920×1080 시안 구도 그대로 (좌표는 시안 px 값, --u 로 비례 축소)
+   - 1023px 이하: 세로 타임라인
+   ========================================================= */
+
+/* 제목용 고산자체: 제목 글자만 남긴 subset (tools/subset_font.py 로 생성) */
+@font-face {
+  font-family: "Gosanja";
+  src: url("../assets/fonts/gosanja-subset.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --navy: #2d3c85;
+  --green: #456d2a;
+  --green-dark: #2f4c1b;
+  --green-soft: #e9f1e0;
+  --maroon: #74162b;
+  --dash: #855700;
+  --dash-hot: #f08c1a;
+  --road: #d5e1ca;
+  --ink: #111;
+  --bg: #fff;
+
+  --font-title: "Gosanja", "Pretendard Variable", Pretendard, sans-serif;
+
+  --ease: cubic-bezier(.22, .8, .3, 1);
+  --arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 12h13M12 5l7 7-7 7' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  word-break: keep-all;
+}
+
+img { display: block; max-width: 100%; }
+ol, ul { margin: 0; padding: 0; list-style: none; }
+h1, h2, p { margin: 0; }
+a { color: inherit; text-decoration: none; -webkit-tap-highlight-color: transparent; }
+
+/* 제목류는 고산자체 (굵기가 하나뿐이라 가짜 볼드 방지) */
+.school__name,
+.map__title,
+.stage__link,
+.badge {
+  font-family: var(--font-title);
+  font-weight: normal;
+  font-synthesis: none;
+}
+
+:focus-visible {
+  outline: 3px solid var(--dash-hot);
+  outline-offset: 3px;
+  border-radius: 8px;
+}
+
+/* ---------- 공통 컴포넌트 ---------- */
+
+.badge {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  border-radius: 50%;
+  background: var(--green);
+  color: #fff;
+  transition: transform .35s var(--ease), box-shadow .35s var(--ease);
+}
+
+.stage__link {
+  display: inline-flex;
+  align-items: center;
+  color: var(--green);
+  letter-spacing: -0.03em;
+}
+
+.stage__name {
+  position: relative;
+  transition: color .25s;
+}
+
+/* 제목 밑줄: hover 시 왼쪽에서 그어짐 */
+.stage__name::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -0.12em;
+  height: 0.1em;
+  border-radius: 1em;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform .35s var(--ease);
+}
+
+.item {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  transition: background-color .25s, color .25s;
+}
+
+/* 글머리 점 */
+.item::before {
+  content: "";
+  flex: none;
+  border-radius: 50%;
+  background: currentColor;
+  transition: transform .3s var(--ease), background-color .25s;
+}
+
+/* 오른쪽 화살표 (hover 시 미끄러져 나옴) */
+.item::after {
+  content: "";
+  flex: none;
+  background: currentColor;
+  -webkit-mask: var(--arrow) center / contain no-repeat;
+  mask: var(--arrow) center / contain no-repeat;
+  opacity: 0;
+  transform: translateX(-40%);
+  transition: opacity .25s, transform .35s var(--ease);
+}
+
+.item:hover,
+.item:focus-visible {
+  background: var(--green-soft);
+  color: var(--green-dark);
+}
+
+.item:hover::before,
+.item:focus-visible::before {
+  background: var(--green);
+  transform: scale(1.35);
+}
+
+.item:hover::after,
+.item:focus-visible::after {
+  opacity: 1;
+  transform: none;
+}
+
+.item:active { background: #dbe8cd; }
+
+.stage__art img {
+  transition: transform .45s var(--ease), filter .45s var(--ease);
+  transform-origin: 50% 100%;
+}
+
+/* 누를 수 있는 곳임을 알리는 커서 */
+.stage__art,
+.stage__link,
+.item { cursor: pointer; }
+
+/* =========================================================
+   데스크톱: 시안 구도
+   ========================================================= */
+@media (min-width: 1024px) {
+  body {
+    min-height: 100vh;
+    min-height: 100svh;
+    display: grid;
+    place-items: center;
+  }
+
+  .map {
+    /* 화면 너비·높이 모두에 맞추되 1024px 아래로는 줄이지 않음 */
+    width: min(100%, 1920px, max(1024px, 100svh * 16 / 9));
+    aspect-ratio: 16 / 9;
+    position: relative;
+    container-type: inline-size;
+    overflow: hidden;
+  }
+
+  .map > *,
+  .stage__art,
+  .stage__info {
+    --u: calc(100cqw / 1920);
+  }
+
+  .map__layer,
+  .map__dashes {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+
+  /* ---- 머리글 ---- */
+  .school {
+    position: absolute;
+    left: calc(248.9 * var(--u));
+    top: calc(80.9 * var(--u));
+    display: flex;
+    align-items: center;
+    gap: calc(7 * var(--u));
+  }
+
+  .school__logo {
+    width: calc(87.1 * var(--u));
+    height: auto;
+  }
+
+  .school__name {
+    color: var(--maroon);
+    font-size: calc(35.3 * var(--u));
+    letter-spacing: -0.035em;
+    margin-top: calc(5 * var(--u));
+  }
+
+  .map__title {
+    position: absolute;
+    left: calc(261 * var(--u));
+    top: calc(158.5 * var(--u));
+    color: var(--navy);
+    font-size: calc(58.8 * var(--u));
+    line-height: calc(81 * var(--u));
+  }
+
+  /* ---- 단계 배치: 시안 좌표(--x, --y, --w) 그대로 ---- */
+  .stage__art {
+    position: absolute;
+    left: calc(var(--x) * var(--u));
+    top: calc(var(--y) * var(--u));
+    width: calc(var(--w) * var(--u));
+    transition: opacity .35s, filter .35s;
+  }
+
+  .stage__art img { width: 100%; height: auto; }
+
+  .stage__info {
+    position: absolute;
+    left: calc(var(--x) * var(--u));
+    top: calc(var(--y) * var(--u));
+    transition: opacity .35s, filter .35s;
+  }
+
+  .badge {
+    width: calc(60.3 * var(--u));
+    height: calc(60.3 * var(--u));
+    font-size: calc(33 * var(--u));
+  }
+
+  .stage__link {
+    gap: calc(16 * var(--u));
+    font-size: calc(32 * var(--u));
+    white-space: nowrap;
+  }
+
+  .items {
+    margin-top: calc(14 * var(--u));
+    margin-left: calc(22.5 * var(--u));
+  }
+
+  .item {
+    /* 글자 위치는 시안과 같게, 누르는 영역만 좌우로 넓힘 */
+    margin-left: calc(-12 * var(--u));
+    padding: calc(2 * var(--u)) calc(14 * var(--u)) calc(2 * var(--u)) calc(12 * var(--u));
+    gap: calc(14 * var(--u));
+    font-size: calc(24 * var(--u));
+    line-height: calc(29.5 * var(--u));
+    letter-spacing: -0.035em;
+    white-space: nowrap;
+  }
+
+  .item::before {
+    width: calc(9.6 * var(--u));
+    height: calc(9.6 * var(--u));
+  }
+
+  .item::after {
+    width: calc(18 * var(--u));
+    height: calc(18 * var(--u));
+    margin-left: calc(-6 * var(--u));
+  }
+
+  /* 점선 */
+  .dash {
+    fill: var(--dash);
+    stroke: var(--dash-hot);
+    stroke-width: 0;
+    transition: fill .3s, stroke-width .3s;
+  }
+
+  /* ---- 단계 hover / focus: JS 가 .map[data-active] 설정 ---- */
+
+  /* 다른 단계는 살짝 흐리게 */
+  /* 그림은 반투명하게 하면 뒤의 길이 비치므로, 투명도 대신 색을 옅게 */
+  .map[data-active]:not([data-active=""]) .stage:not(.is-active) .stage__art {
+    filter: saturate(.25) contrast(.55) brightness(1.3);
+  }
+
+  .map[data-active]:not([data-active=""]) .stage:not(.is-active) .stage__info {
+    opacity: .4;
+  }
+
+  /* 해당 단계로 들어오는 길의 점선 강조 */
+  .map[data-active="1"] .dash-1,
+  .map[data-active="2"] .dash-2,
+  .map[data-active="3"] .dash-3,
+  .map[data-active="4"] .dash-4,
+  .map[data-active="5"] .dash-5 {
+    fill: var(--dash-hot);
+    stroke-width: 1.6;
+  }
+
+  /* 위로 띄우면 그림 밑에 가려져 있던 길 끊김이 보여서, 제자리(바닥 기준)에서 살짝 커지게 */
+  .stage.is-active .stage__art img {
+    transform: scale(1.05);
+    filter: drop-shadow(0 calc(14 * var(--u)) calc(12 * var(--u)) rgba(40, 60, 20, .18));
+  }
+
+  .stage.is-active .badge {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 calc(7 * var(--u)) rgba(69, 109, 42, .18);
+  }
+
+  .stage__link:hover .stage__name,
+  .stage__link:focus-visible .stage__name,
+  .stage.is-art-hover .stage__name {
+    color: var(--green-dark);
+  }
+
+  .stage__link:hover .stage__name::after,
+  .stage__link:focus-visible .stage__name::after,
+  .stage.is-art-hover .stage__name::after {
+    transform: scaleX(1);
+  }
+}
+
+/* 터치 기기(마우스 없음): hover 로 알려줄 수 없으니 화살표를 항상 표시 */
+/* 오른쪽 아래 작은 표시 */
+/* 항목은 한 덩어리로 줄바꿈 (주소 중간에서 끊기지 않게) */
+.copy {
+  margin: 0;
+  color: #8a8f86;
+  font-size: 13px;
+  line-height: 1.5;
+  text-align: right;
+}
+
+.copy span { white-space: nowrap; }
+.copy span + span::before { content: " · "; }
+.copy a { color: inherit; text-decoration: none; }
+.copy a:hover { text-decoration: underline; }
+
+@media (min-width: 1024px) {
+  /* 오른쪽 아래는 5단계 목록과 겹쳐서, 비어 있는 왼쪽 아래에 한 줄로 */
+  .copy {
+    position: absolute;
+    left: calc(40 * var(--u));
+    bottom: calc(28 * var(--u));
+    font-size: max(12px, calc(16 * var(--u)));
+    text-align: left;
+  }
+}
+
+@media (max-width: 1023.98px) {
+  .copy { padding: 8px 16px 24px; }
+  /* 휴대폰: 주소·전화 / © 두 줄 */
+  .copy span:last-child { display: block; }
+  .copy span:last-child::before { content: none; }
+}
+
+@media (hover: none) {
+  .item::after {
+    opacity: .45;
+    transform: none;
+  }
+}
+
+/* =========================================================
+   태블릿·모바일: 세로 타임라인
+   ========================================================= */
+@media (max-width: 1023.98px) {
+  .map {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 40px 16px 72px;
+  }
+
+  .map__layer,
+  .map__dashes { display: none; }
+
+  .map__header { margin-bottom: 36px; }
+
+  .school {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+
+  .school__logo { width: 46px; height: auto; }
+
+  .school__name {
+    color: var(--maroon);
+    font-size: 19px;
+    letter-spacing: -0.03em;
+  }
+
+  .map__title {
+    color: var(--navy);
+    font-size: clamp(32px, 7.5vw, 48px);
+    line-height: 1.3;
+  }
+
+  .stages {
+    position: relative;
+    display: grid;
+    gap: 20px;
+  }
+
+  /* 로드맵의 길을 세로 점선으로 */
+  .stages::before {
+    content: "";
+    position: absolute;
+    top: 24px;
+    bottom: 24px;
+    left: 23px;
+    width: 14px;
+    border-radius: 14px;
+    background: var(--road);
+  }
+
+  .stages::after {
+    content: "";
+    position: absolute;
+    top: 24px;
+    bottom: 24px;
+    left: 29px;
+    border-left: 2px dashed var(--dash);
+  }
+
+  .stage {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    grid-template-areas: "info info" ". art";
+    padding: 4px 0 8px;
+  }
+
+  .stage__art {
+    grid-area: art;
+    justify-self: center;
+    width: min(62%, 260px);
+    margin-top: 8px;
+    order: 2;
+  }
+
+  .stage__art img { width: 100%; height: auto; }
+
+  .stage__info { grid-area: info; }
+
+  .badge {
+    width: 48px;
+    height: 48px;
+    font-size: 24px;
+    border: 5px solid var(--bg);
+    box-sizing: content-box;
+    margin-left: -1px;
+  }
+
+  .stage__title { margin-left: 0; }
+
+  .stage__link {
+    gap: 12px;
+    font-size: 22px;
+    padding-right: 8px;
+  }
+
+  .items {
+    display: grid;
+    gap: 2px;
+    margin: 6px 0 0 60px;
+  }
+
+  .item {
+    display: flex;
+    min-height: 44px;
+    margin-left: -12px;
+    padding: 8px 14px 8px 12px;
+    gap: 12px;
+    font-size: 17px;
+    line-height: 1.4;
+  }
+
+  .item::before { width: 7px; height: 7px; }
+
+  .item::after {
+    width: 16px;
+    height: 16px;
+    margin-left: auto;
+    opacity: .45;
+    transform: none;
+  }
+
+  .item:hover::after,
+  .item:focus-visible::after { opacity: 1; transform: translateX(3px); }
+
+  .stage__art:active img { transform: scale(.97); }
+}
+
+@media (min-width: 640px) and (max-width: 1023.98px) {
+  /* 태블릿: 그림을 오른쪽에 두는 2단 */
+  .stage {
+    grid-template-columns: 60px 1fr 220px;
+    grid-template-areas: "info info art";
+    align-items: center;
+  }
+
+  .stage__art { width: 100%; margin-top: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: .01ms !important;
+  }
+}

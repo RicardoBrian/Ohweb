@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <script src="/vibe/shared/demo.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>공지 메모 — kakainfo 관리자</title>
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="theme.css">
+  <script src="admin-auth.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); min-height: 100vh; display: flex; flex-direction: column; font-family: var(--font); color: var(--text); overflow: hidden; }
+
+    /* ── 툴바 ── */
+    .toolbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      padding: 8px 18px;
+      background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border-bottom: 1px solid var(--border);
+      transition: opacity 0.35s, transform 0.35s;
+      min-height: 50px;
+    }
+    .toolbar.hidden { opacity: 0; pointer-events: none; transform: translateY(-10px); }
+    .toolbar-brand { display: flex; align-items: center; gap: 8px; text-decoration: none; margin-right: 4px; flex-shrink: 0; }
+    .toolbar-brand img { height: 22px; }
+    .toolbar-brand span { font-size: 0.95rem; font-weight: 800; color: var(--text); letter-spacing: -0.02em; }
+    .tb-sep { width: 1px; height: 20px; background: var(--border-card); flex-shrink: 0; }
+    .tb-group { display: flex; align-items: center; gap: 6px; }
+    .tb-label { font-size: 0.68rem; font-weight: 700; color: var(--sub); white-space: nowrap; }
+    .tb-btn {
+      padding: 5px 13px; border-radius: 20px; border: 1px solid var(--border-card);
+      background: var(--glass); color: var(--text); font-family: var(--font);
+      font-size: 0.8rem; font-weight: 600; cursor: pointer;
+      transition: background 0.15s, transform 0.1s; white-space: nowrap;
+    }
+    .tb-btn:hover { background: var(--glass-strong); }
+    .tb-btn:active { transform: scale(0.95); }
+    .tb-btn.icon-only { padding: 5px 9px; display: inline-flex; align-items: center; }
+    .size-slider { width: 76px; accent-color: var(--accent); cursor: pointer; }
+    .size-val { font-size: 0.72rem; font-weight: 700; color: var(--sub); min-width: 24px; text-align: right; }
+    .trans-status { font-size: 0.7rem; color: var(--sub); white-space: nowrap; }
+    .dark-toggle { width: 36px; height: 20px; border-radius: 50px; background: var(--glass); border: 1px solid var(--border); cursor: pointer; position: relative; transition: 0.3s; margin-left: auto; flex-shrink: 0; }
+    body.dark .dark-toggle { background: rgba(42,92,230,0.6); border-color: rgba(100,140,255,0.4); }
+    .dark-toggle::after { content:''; position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.2); transition:transform 0.3s; }
+    body.dark .dark-toggle::after { transform: translateX(16px); }
+
+    /* ── 편집 모드 ── */
+    #editMode { position: fixed; inset: 0; padding-top: 50px; display: flex; flex-direction: column; }
+    /* 좁은 화면: 툴바가 여러 줄로 접히고(높이는 아래 스크립트가 맞춤) 세 칸은 위아래로 쌓는다 */
+    @media (max-width: 700px) { .edit-cols { flex-direction: column; } .edit-col { min-height: 160px; } }
+    #viewMode { position: fixed; inset: 0; display: none; background: var(--bg); }
+    #viewMode.active { display: block; }
+
+    /* ── 편집 패널 ── */
+    .edit-pane { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 12px; gap: 10px; }
+    .edit-cols { display: flex; gap: 10px; flex: 1; overflow: hidden; }
+    .edit-col { display: flex; flex-direction: column; flex: 1; gap: 6px; min-width: 0; }
+    .edit-col-label { font-size: 0.66rem; font-weight: 700; color: var(--sub); letter-spacing: 0.07em; text-transform: uppercase; padding-left: 2px; }
+    .edit-textarea {
+      flex: 1; resize: none; border-radius: 12px; border: 1px solid var(--border-card);
+      background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      color: var(--text); font-family: var(--font); font-size: 0.95rem; font-weight: 500;
+      padding: 14px; line-height: 1.65; outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .edit-textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+    .edit-textarea[readonly] { cursor: default; color: var(--text-2); background: var(--glass); }
+    .img-strip { display: flex; gap: 8px; flex-wrap: wrap; }
+    .img-thumb { position: relative; width: 72px; height: 56px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-card); flex-shrink: 0; }
+    .img-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .img-thumb-del { position: absolute; top: 2px; right: 2px; width: 16px; height: 16px; border-radius: 50%; background: rgba(0,0,0,0.6); color: #fff; border: none; font-size: 0.6rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+    /* ══════════════════════════════════
+       공지 뷰 — 자유 레이아웃
+    ══════════════════════════════════ */
+    #viewMode { overflow: hidden; }
+
+    /* 패널 컨테이너: 상단(한국어) + 하단(중·러) */
+    .notice-layout {
+      width: 100%; height: 100%;
+      display: flex; flex-direction: column;
+    }
+
+    /* 상단 패널 */
+    .panel-top {
+      width: 100%;
+      overflow: hidden;
+      position: relative;
+    }
+    /* 하단 행 */
+    .panel-bottom-row {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      position: relative;
+    }
+    /* 하단 패널 (중·러) */
+    .panel-bottom {
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* 드래그 핸들 — 가로 (상/하 분리) */
+    .h-handle {
+      width: 100%; height: 6px; cursor: row-resize; flex-shrink: 0;
+      background: var(--border-card);
+      position: relative; z-index: 10;
+      transition: background 0.15s;
+    }
+    .h-handle:hover, .h-handle.dragging { background: var(--accent); }
+    .h-handle::after { content:''; position:absolute; inset:-6px 0; }
+
+    /* 드래그 핸들 — 세로 (좌/우 분리) */
+    .v-handle {
+      width: 6px; height: 100%; cursor: col-resize; flex-shrink: 0;
+      background: var(--border-card);
+      position: relative; z-index: 10;
+      transition: background 0.15s;
+    }
+    .v-handle:hover, .v-handle.dragging { background: var(--accent); }
+    .v-handle::after { content:''; position:absolute; 0 -6px; inset:-6px; }
+
+    /* 패널 내부 텍스트 */
+    .panel-inner {
+      width: 100%; height: 100%;
+      padding: 28px 36px;
+      overflow-y: auto;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+    .panel-tag {
+      font-size: 0.6rem; font-weight: 800; color: var(--sub);
+      letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.6; flex-shrink: 0;
+    }
+    .notice-text {
+      line-height: 1.75; font-weight: 600; white-space: pre-wrap; word-break: break-word; flex: 1;
+    }
+    .notice-text.ko { color: var(--text); }
+    .notice-text.zh { color: var(--text-2); }
+    .notice-text.ru { color: var(--text-2); }
+
+    /* 이미지 행 */
+    .notice-img-row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .notice-img { max-height: 200px; border-radius: 12px; object-fit: contain; box-shadow: var(--shadow-md); }
+
+    /* 전체화면 */
+    :fullscreen .toolbar, :-webkit-full-screen .toolbar { position: fixed; }
+    :fullscreen #editMode, :-webkit-full-screen #editMode { padding-top: 50px; }
+    /* ── 하늘(ui-sky) 디자인 — 이미 화면 전체를 쓰는 도구라 배치는 그대로, 색·판만 ── */
+    body.ui-sky .toolbar { background: var(--glass-nav); border-bottom: 1px solid var(--border); }
+    body.ui-sky .tb-btn { background: var(--sky-chip); border-color: var(--sky-chip-line); border-radius: 10px; }
+    body.ui-sky .tb-btn:hover { background: var(--accent-light); }
+    body.ui-sky #previewBtn { background: var(--sky-cta); color: var(--sky-cta-text); border-color: transparent; }
+    body.ui-sky .edit-col-label, body.ui-sky .panel-tag { text-transform: none; letter-spacing: 0; }
+    body.ui-sky .edit-textarea { background: var(--surface); border-color: var(--border); border-radius: 16px; box-shadow: var(--shadow); }
+    body.ui-sky .edit-textarea[readonly] { background: var(--sky-chip); box-shadow: none; }
+    body.ui-sky .h-handle, body.ui-sky .v-handle { background: var(--hairline); }
+    body.ui-sky .h-handle:hover, body.ui-sky .v-handle:hover { background: var(--accent); }
+  </style>
+</head>
+<body class="ui-sky">
+
+<svg width="0" height="0" style="position:absolute;">
+  <defs>
+    <symbol id="ic-image" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="9" cy="10" r="1.6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4.5 16.5 9.5 12l3 3 3.5-4 3.5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7"/><ellipse cx="12" cy="12" rx="3.6" ry="8.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="3.5" y1="12" x2="20.5" y2="12" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="ic-play" viewBox="0 0 24 24"><path d="M7 5.5 19 12 7 18.5Z" fill="currentColor" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-edit" viewBox="0 0 24 24"><path d="M15.5 5.5 18.5 8.5 8 19 4.5 19.5 5 16Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><line x1="13.7" y1="7.3" x2="16.7" y2="10.3" stroke="currentColor" stroke-width="1.7"/></symbol>
+    <symbol id="ic-refresh" viewBox="0 0 24 24"><path d="M5 12a7 7 0 0 1 12-4.9M19 12a7 7 0 0 1-12 4.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="17,3 17,7.5 12.5,7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><polyline points="7,21 7,16.5 11.5,16.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-expand" viewBox="0 0 24 24"><path d="M8 4H4v4M16 4h4v4M8 20H4v-4M16 20h4v-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-close" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  </defs>
+</svg>
+
+  <!-- ── 툴바 ── -->
+  <div class="toolbar" id="toolbar">
+    <a href="admin.html" class="toolbar-brand">
+      <img src="logo.png" alt="kakainfo">
+      <span>공지 메모</span>
+    </a>
+    <div class="tb-sep"></div>
+
+    <div class="tb-group">
+      <span class="tb-label">한</span>
+      <input class="size-slider" id="szKo" type="range" min="14" max="72" value="32" oninput="applySize('ko',this.value)">
+      <span class="size-val" id="szKoVal">32</span>
+    </div>
+    <div class="tb-sep"></div>
+    <div class="tb-group">
+      <span class="tb-label">中</span>
+      <input class="size-slider" id="szZh" type="range" min="14" max="72" value="26" oninput="applySize('zh',this.value)">
+      <span class="size-val" id="szZhVal">26</span>
+    </div>
+    <div class="tb-sep"></div>
+    <div class="tb-group">
+      <span class="tb-label">Ру</span>
+      <input class="size-slider" id="szRu" type="range" min="14" max="72" value="26" oninput="applySize('ru',this.value)">
+      <span class="size-val" id="szRuVal">26</span>
+    </div>
+    <div class="tb-sep"></div>
+
+    <button class="tb-btn" onclick="document.getElementById('imgFile').click()"><svg width="14" height="14" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-image"/></svg>이미지</button>
+    <input type="file" id="imgFile" accept="image/*" multiple style="display:none" onchange="addImages(this)">
+    <div class="tb-sep"></div>
+
+    <button class="tb-btn" id="transBtn" onclick="doTranslate()"><svg width="14" height="14" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-globe"/></svg>번역</button>
+    <span class="trans-status" id="tbTransStatus"></span>
+    <div class="tb-sep"></div>
+
+    <button class="tb-btn" id="previewBtn" onclick="showView()"><svg width="13" height="13" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-play"/></svg>공지 보기</button>
+    <button class="tb-btn" id="editBtn" onclick="showEdit()" style="display:none"><svg width="13" height="13" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-edit"/></svg>편집</button>
+    <button class="tb-btn" onclick="resetLayout()" id="resetBtn" style="display:none"><svg width="13" height="13" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-refresh"/></svg>레이아웃 초기화</button>
+    <button class="tb-btn icon-only" title="전체화면" onclick="toggleFs()"><svg width="15" height="15"><use href="#ic-expand"/></svg></button>
+    <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
+  </div>
+
+  <!-- ── 편집 모드 ── -->
+  <div id="editMode">
+    <div class="edit-pane">
+      <div class="edit-cols">
+        <div class="edit-col">
+          <div class="edit-col-label">한국어</div>
+          <textarea class="edit-textarea" id="koText" placeholder="학생들에게 전달할 내용을 입력하세요…" oninput="onKoInput()"></textarea>
+        </div>
+        <div class="edit-col">
+          <div class="edit-col-label">中文 (자동 번역)</div>
+          <textarea class="edit-textarea" id="zhText" readonly placeholder="번역 버튼을 누르세요"></textarea>
+        </div>
+        <div class="edit-col">
+          <div class="edit-col-label">Русский (자동 번역)</div>
+          <textarea class="edit-textarea" id="ruText" readonly placeholder="번역 버튼을 누르세요"></textarea>
+        </div>
+      </div>
+      <div class="img-strip" id="imgStrip"></div>
+    </div>
+  </div>
+
+  <!-- ── 공지 뷰 ── -->
+  <div id="viewMode">
+    <!-- JS로 렌더링 -->
+  </div>
+
+  <script>
+    (async () => { await window.AdminAuth.ready; if (!window.AdminAuth.isValid()) location.href = 'index.html'; })();
+
+    function toggleDark() { document.body.classList.toggle('dark'); localStorage.setItem('dark', document.body.classList.contains('dark')?'1':'0'); }
+    if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
+    function toggleFs() { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen().catch(()=>{}); }
+
+    // ── 툴바 자동 숨김 ──
+    let hideTimer = null, isViewMode = false;
+    function showToolbar() {
+      document.getElementById('toolbar').classList.remove('hidden');
+      clearTimeout(hideTimer);
+      if (isViewMode) hideTimer = setTimeout(() => document.getElementById('toolbar').classList.add('hidden'), 3000);
+    }
+    document.addEventListener('mousemove', showToolbar);
+    document.addEventListener('touchstart', showToolbar);
+    document.addEventListener('keydown', showToolbar);
+
+    // ── 글자 크기 ──
+    function applySize(lang, v) {
+      document.getElementById('sz' + lang.charAt(0).toUpperCase() + lang.slice(1) + 'Val').textContent = v;
+      document.querySelectorAll('.notice-text.' + lang).forEach(el => el.style.fontSize = v + 'px');
+    }
+
+    // ── 이미지 ──
+    let images = [];
+    function addImages(input) {
+      Array.from(input.files).forEach(file => {
+        const r = new FileReader();
+        r.onload = e => { images.push({ dataUrl: e.target.result }); renderImgStrip(); };
+        r.readAsDataURL(file);
+      });
+      input.value = '';
+    }
+    function renderImgStrip() {
+      document.getElementById('imgStrip').innerHTML = images.map((img, i) =>
+        `<div class="img-thumb"><img src="${img.dataUrl}"><button class="img-thumb-del" onclick="removeImg(${i})"><svg width="9" height="9"><use href="#ic-close"/></svg></button></div>`
+      ).join('');
+    }
+    function removeImg(i) { images.splice(i, 1); renderImgStrip(); }
+
+    // ── 번역 ──
+    let zhVal = '', ruVal = '';
+    function onKoInput() {
+      const v = document.getElementById('koText').value.trim();
+      if (!v) { zhVal=''; ruVal=''; document.getElementById('zhText').value=''; document.getElementById('ruText').value=''; }
+    }
+    async function doTranslate() {
+      const txt = document.getElementById('koText').value.trim();
+      if (!txt) return;
+      const btn = document.getElementById('transBtn');
+      btn.disabled = true; setStatus('번역 중…');
+      try {
+        const [zh, ru] = await Promise.all([translate(txt,'zh-cn'), translate(txt,'ru')]);
+        zhVal = zh||''; ruVal = ru||'';
+        document.getElementById('zhText').value = zhVal;
+        document.getElementById('ruText').value = ruVal;
+        setStatus('완료'); setTimeout(()=>setStatus(''), 2000);
+      } catch(e) { setStatus('번역 실패'); }
+      btn.disabled = false;
+    }
+    function setStatus(s) { document.getElementById('tbTransStatus').textContent = s; }
+    async function translate(text, lang) {
+      const res = await fetch('/api/translate', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({texts:[text], targetLang:lang, sourceLang:'ko'}) });
+      const data = await res.json();
+      if (!res.ok||data.error||!data.translations) throw new Error(data.error||`HTTP ${res.status}`);
+      return data.translations[0]?.text||'';
+    }
+
+    // ══════════════════════════════════════
+    // 공지 뷰 & 레이아웃
+    // ══════════════════════════════════════
+    // topH: 상단(한국어) 높이 px, botSplit: 하단 좌측(중문) 너비 %
+    let topH = null, botSplit = 50; // null = 기본(40vh)
+
+    function getTopH() { return topH !== null ? topH : Math.round(window.innerHeight * 0.42); }
+
+    function showView() {
+      renderView();
+      document.getElementById('editMode').style.display = 'none';
+      document.getElementById('viewMode').classList.add('active');
+      document.getElementById('previewBtn').style.display = 'none';
+      document.getElementById('editBtn').style.display = '';
+      document.getElementById('resetBtn').style.display = '';
+      isViewMode = true;
+      showToolbar();
+    }
+    function showEdit() {
+      document.getElementById('viewMode').classList.remove('active');
+      document.getElementById('editMode').style.display = '';
+      document.getElementById('previewBtn').style.display = '';
+      document.getElementById('editBtn').style.display = 'none';
+      document.getElementById('resetBtn').style.display = 'none';
+      isViewMode = false;
+      clearTimeout(hideTimer);
+      document.getElementById('toolbar').classList.remove('hidden');
+    }
+    function resetLayout() { topH = null; botSplit = 50; renderView(); }
+
+    function renderView() {
+      const ko  = document.getElementById('koText').value.trim();
+      const zh  = document.getElementById('zhText').value.trim();
+      const ru  = document.getElementById('ruText').value.trim();
+      const szKo = document.getElementById('szKo').value + 'px';
+      const szZh = document.getElementById('szZh').value + 'px';
+      const szRu = document.getElementById('szRu').value + 'px';
+      const h = getTopH();
+
+      let imgHtml = images.length
+        ? `<div class="notice-img-row">${images.map(img=>`<img class="notice-img" src="${img.dataUrl}">`).join('')}</div>`
+        : '';
+
+      const vm = document.getElementById('viewMode');
+      vm.innerHTML = `
+        <div class="notice-layout" id="noticeLayout">
+          <!-- 상단: 한국어 -->
+          <div class="panel-top" id="panelTop" style="height:${h}px">
+            <div class="panel-inner">
+              ${imgHtml ? imgHtml + '<div style="height:8px"></div>' : ''}
+              <div class="panel-tag">한국어</div>
+              <div class="notice-text ko" style="font-size:${szKo}">${escHtmlNl(ko)}</div>
+            </div>
+          </div>
+          <!-- 가로 핸들 -->
+          <div class="h-handle" id="hHandle"></div>
+          <!-- 하단 행: 중문 + 러시아어 -->
+          <div class="panel-bottom-row" id="panelBottomRow">
+            <div class="panel-bottom" id="panelZh" style="width:${botSplit}%">
+              <div class="panel-inner">
+                <div class="panel-tag">中文</div>
+                <div class="notice-text zh" style="font-size:${szZh}">${escHtmlNl(zh)}</div>
+              </div>
+            </div>
+            <div class="v-handle" id="vHandle"></div>
+            <div class="panel-bottom" id="panelRu" style="flex:1">
+              <div class="panel-inner">
+                <div class="panel-tag">Русский</div>
+                <div class="notice-text ru" style="font-size:${szRu}">${escHtmlNl(ru)}</div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+
+      attachHandles();
+    }
+
+    // ── 드래그 핸들 연결 ──
+    function attachHandles() {
+      // 가로 핸들 (상단 높이 조정)
+      const hH = document.getElementById('hHandle');
+      const pTop = document.getElementById('panelTop');
+      const layout = document.getElementById('noticeLayout');
+
+      hH.addEventListener('mousedown', e => {
+        e.preventDefault();
+        hH.classList.add('dragging');
+        const startY = e.clientY, startH = pTop.offsetHeight;
+        function onMove(e) {
+          const newH = Math.max(80, Math.min(window.innerHeight - 120, startH + e.clientY - startY));
+          pTop.style.height = newH + 'px';
+          topH = newH;
+        }
+        function onUp() { hH.classList.remove('dragging'); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); }
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+      });
+
+      // 터치
+      hH.addEventListener('touchstart', e => {
+        const t0 = e.touches[0];
+        const startY = t0.clientY, startH = pTop.offsetHeight;
+        function onMove(e) {
+          const newH = Math.max(80, Math.min(window.innerHeight - 120, startH + e.touches[0].clientY - startY));
+          pTop.style.height = newH + 'px'; topH = newH;
+        }
+        function onEnd() { hH.classList.remove('dragging'); window.removeEventListener('touchmove', onMove); window.removeEventListener('touchend', onEnd); }
+        hH.classList.add('dragging');
+        window.addEventListener('touchmove', onMove, {passive:true});
+        window.addEventListener('touchend', onEnd);
+      });
+
+      // 세로 핸들 (좌/우 너비 조정)
+      const vH = document.getElementById('vHandle');
+      const pZh = document.getElementById('panelZh');
+      const row = document.getElementById('panelBottomRow');
+
+      vH.addEventListener('mousedown', e => {
+        e.preventDefault();
+        vH.classList.add('dragging');
+        const startX = e.clientX, startW = pZh.offsetWidth, rowW = row.offsetWidth;
+        function onMove(e) {
+          const newW = Math.max(80, Math.min(rowW - 80, startW + e.clientX - startX));
+          const pct = Math.round(newW / rowW * 1000) / 10;
+          pZh.style.width = pct + '%'; botSplit = pct;
+        }
+        function onUp() { vH.classList.remove('dragging'); window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); }
+        window.addEventListener('mousemove', onMove);
+        window.addEventListener('mouseup', onUp);
+      });
+
+      vH.addEventListener('touchstart', e => {
+        const startX = e.touches[0].clientX, startW = pZh.offsetWidth, rowW = row.offsetWidth;
+        function onMove(e) {
+          const newW = Math.max(80, Math.min(rowW - 80, startW + e.touches[0].clientX - startX));
+          pZh.style.width = Math.round(newW/rowW*1000)/10 + '%'; botSplit = Math.round(newW/rowW*1000)/10;
+        }
+        function onEnd() { vH.classList.remove('dragging'); window.removeEventListener('touchmove', onMove); window.removeEventListener('touchend', onEnd); }
+        vH.classList.add('dragging');
+        window.addEventListener('touchmove', onMove, {passive:true});
+        window.addEventListener('touchend', onEnd);
+      });
+    }
+
+    function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function escHtmlNl(s) { return escHtml(s).replace(/\n/g,'<br>'); }
+  
+// 툴바는 화면이 좁으면 여러 줄로 접힌다 — 편집 영역 윗여백을 실제 툴바 높이에 맞춘다
+// (예전엔 50px 고정이라 모바일에서 툴바가 입력칸을 덮었다).
+(() => {
+  const tb = document.getElementById('toolbar'), em = document.getElementById('editMode');
+  if (!tb || !em) return;
+  const fit = () => { em.style.paddingTop = tb.offsetHeight + 'px'; };
+  fit();
+  if ('ResizeObserver' in window) new ResizeObserver(fit).observe(tb); else window.addEventListener('resize', fit);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,2263 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <script src="/vibe/shared/demo.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>관산중학교 정보 게시판</title>
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="theme.css">
+  <link rel="stylesheet" href="student-sky.css">
+  <!-- 마스터 계정의 "엑셀로 내보내기" 버튼에서만 쓴다(SheetJS). defer라
+       일반 학생 페이지 로드/렌더링엔 영향 없다. -->
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    :root { --sidebar-w: 300px; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); line-height: 1.6; }
+    .hidden { display: none !important; }
+
+    /* ── 네비 ── */
+    .nav {
+      position: sticky; top: 0; z-index: 200;
+      background: var(--glass-nav);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 1px 0 rgba(255,255,255,0.35), var(--shadow);
+      padding: 0 20px; height: var(--nav-h);
+      display: flex; align-items: center; gap: 8px;
+    }
+    .nav-end { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-shrink: 0; }
+    .nav-admin { flex-shrink: 0; }
+    @media (max-width: 520px) { .nav-admin { display: none; } }
+
+    /* 글로브 언어 선택 */
+    .lang-globe { position: relative; flex-shrink: 0; }
+    .lang-globe-btn {
+      font-family: inherit; font-size: 1rem; cursor: pointer;
+      border-radius: 50%; width: 32px; height: 32px;
+      border: 1px solid var(--border-card); background: var(--glass); color: var(--sub);
+      display: flex; align-items: center; justify-content: center;
+      transition: 0.2s; box-shadow: var(--highlight);
+    }
+    .lang-globe-btn:hover { background: var(--glass-strong); color: var(--text); }
+    .lang-globe-dd {
+      position: absolute; top: calc(100% + 8px); right: 0;
+      background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-card); border-radius: var(--radius-sm);
+      box-shadow: var(--shadow-md); overflow: hidden; min-width: 110px; z-index: 400;
+    }
+    .lang-globe-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; font-size: 0.85rem; font-weight: 700;
+      cursor: pointer; color: var(--text); transition: 0.15s;
+    }
+    .lang-globe-item:hover { background: var(--accent-light); }
+    .lang-globe-item .check { color: var(--accent); font-size: 0.8rem; }
+
+    .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 4px; background: none; border: none; flex-shrink: 0; }
+    .hamburger span { display: block; width: 22px; height: 2px; background: var(--text); border-radius: 2px; }
+    .mobile-menu {
+      display: none; position: fixed; inset: var(--nav-h) 0 0 0; z-index: 190;
+      background: var(--glass-nav); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border-top: 1px solid var(--border);
+      flex-direction: column; padding: 20px 24px; gap: 14px;
+    }
+    .mobile-menu.open { display: flex; }
+
+    /* ── 버튼 ── */
+    .btn {
+      font-family: inherit; font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; border-radius: 50px;
+      padding: 7px 18px; border: 1px solid var(--border);
+      background: var(--glass); color: var(--text);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight), var(--shadow);
+      transition: background 0.2s, box-shadow 0.2s, transform 0.15s;
+      white-space: nowrap;
+    }
+    .btn:hover { background: var(--glass-strong); box-shadow: var(--highlight), var(--shadow-md); }
+    .btn:active { transform: scale(0.96); }
+    .btn.accent {
+      background: #1d1d1f; border-color: transparent; color: #fff;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), var(--shadow-md);
+    }
+    body.dark .btn.accent { background: #f5f5f7; color: #1d1d1f; }
+    .btn.accent:hover { opacity: 0.88; }
+    .btn.ghost { border-color: transparent; background: transparent; box-shadow: none; }
+    .btn.ghost:hover { background: var(--glass); box-shadow: var(--highlight); }
+    .btn.full { width: 100%; padding: 14px; font-size: 1rem; border-radius: var(--radius); }
+    .btn.danger { color: #ef4444; border-color: rgba(239,68,68,0.3); background: rgba(239,68,68,0.08); box-shadow: none; }
+
+    .icon-action {
+      width: 34px; height: 34px; border-radius: 50%; border: none; background: none; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center; color: var(--sub); flex-shrink: 0;
+      transition: background 0.15s, color 0.15s;
+    }
+    .icon-action:hover { background: var(--glass); color: var(--text); }
+
+    /* ── 언어 버튼 ── */
+    .lang-btn { padding: 5px 13px; font-size: 0.8rem; }
+    .lang-btn.active { background: rgba(42,92,230,0.82); border-color: rgba(100,140,255,0.5); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,0.25), 0 2px 10px rgba(42,92,230,0.3); }
+
+    /* ── 네비 유저 칩 ── */
+    .nav-user { display:flex; align-items:center; gap:8px; background:var(--glass); border:1px solid var(--border-card); border-radius:50px; padding:5px 12px 5px 5px; cursor:pointer; position:relative; user-select:none; flex-shrink:0; transition:background 0.2s; }
+    .nav-user:hover { background:var(--glass-strong); }
+    .nav-avatar { width:28px; height:28px; border-radius:50%; background:linear-gradient(135deg,var(--accent),#7c4dff); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:0.78rem; flex-shrink:0; overflow:hidden; }
+    .nav-user-name { font-size:0.82rem; font-weight:700; }
+    @media (max-width:600px) { .nav-user-name { display:none; } .nav-user { padding:4px; } }
+
+    /* ── 유저 드롭다운 ── */
+    .user-dropdown { position:absolute; top:calc(100% + 8px); right:0; min-width:160px; background:var(--glass-strong); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur); border:1px solid var(--border-card); border-radius:var(--radius-sm); box-shadow:var(--shadow-md); z-index:300; overflow:hidden; }
+    .user-dropdown-item { display:flex; align-items:center; gap:10px; padding:12px 16px; font-size:0.88rem; font-weight:700; cursor:pointer; color:var(--text); transition:0.15s; }
+    .user-dropdown-item:hover { background:var(--accent-light); }
+    .user-dropdown-item.danger { color:#ef4444; }
+    .user-dropdown-sep { height:1px; background:var(--border-card); margin:0 10px; }
+
+    /* ── 마이페이지 모달 ── */
+    .modal-overlay { position:fixed; inset:0; z-index:600; background:rgba(0,0,0,0.35); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center; padding:20px; }
+    .modal-card { background:var(--glass-strong); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur); border:1px solid var(--border-card); border-radius:var(--radius); box-shadow:var(--shadow-md); width:100%; max-width:360px; padding:28px 26px 22px; position:relative; }
+    .modal-title { font-size:1.1rem; font-weight:900; letter-spacing:-0.02em; margin-bottom:20px; }
+    .modal-close { position:absolute; top:14px; right:14px; width:28px; height:28px; border-radius:50%; background:var(--glass); border:1px solid var(--border-card); cursor:pointer; font-size:1rem; display:flex; align-items:center; justify-content:center; color:var(--sub); transition:0.15s; font-family:inherit; }
+    .modal-close:hover { background:var(--glass-strong); }
+    .photo-section { text-align:center; margin-bottom:22px; }
+    .photo-preview { width:80px; height:80px; border-radius:50%; margin:0 auto 10px; background:linear-gradient(135deg,var(--accent),#7c4dff); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:800; font-size:1.6rem; overflow:hidden; border:2px solid var(--border-card); }
+    .photo-preview img { width:100%; height:100%; object-fit:cover; }
+    .btn-photo-change { font-family:inherit; font-size:0.8rem; font-weight:700; cursor:pointer; border-radius:50px; padding:6px 16px; border:1px solid var(--border-card); background:var(--glass); color:var(--sub); transition:0.2s; }
+    .btn-photo-change:hover { background:var(--glass-strong); color:var(--text); }
+    .modal-section { margin-bottom:14px; }
+    .modal-section-label { font-size:0.7rem; font-weight:700; color:var(--sub); letter-spacing:0.06em; text-transform:uppercase; margin-bottom:8px; }
+    .modal-inp { width:100%; padding:10px 13px; border-radius:var(--radius-sm); border:1px solid var(--border-card); background:var(--glass); color:var(--text); backdrop-filter:var(--blur); -webkit-backdrop-filter:var(--blur); font-family:inherit; font-size:0.92rem; outline:none; margin-bottom:7px; transition:border-color 0.2s; }
+    .modal-inp:last-of-type { margin-bottom:0; }
+    .modal-inp:focus { border-color:rgba(42,92,230,0.55); }
+    .modal-inp::placeholder { color:var(--sub); }
+    .btn-modal-save { width:100%; padding:12px; border-radius:var(--radius); border:none; background:#1d1d1f; color:#fff; font-family:inherit; font-size:0.95rem; font-weight:700; cursor:pointer; box-shadow:inset 0 1px 0 rgba(255,255,255,0.08),var(--shadow-md); transition:opacity 0.2s; margin-top:14px; }
+    body.dark .btn-modal-save { background:#f5f5f7; color:#1d1d1f; }
+    .btn-modal-save:hover { opacity:0.88; }
+    .btn-modal-save:disabled { opacity:0.6; cursor:not-allowed; }
+    .modal-msg { font-size:0.82rem; font-weight:600; margin-top:10px; text-align:center; min-height:18px; }
+    .modal-msg.ok { color:#22c55e; }
+    .modal-msg.err { color:#ef4444; }
+
+    /* ── 다크 토글 ── */
+    .dark-toggle {
+      width: 42px; height: 24px; border-radius: 50px;
+      background: var(--glass); border: 1px solid var(--border);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight); cursor: pointer; position: relative; transition: 0.3s; flex-shrink: 0;
+    }
+    body.dark .dark-toggle { background: rgba(42,92,230,0.6); border-color: rgba(100,140,255,0.4); }
+    .dark-toggle::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.2); transition: transform 0.3s;
+    }
+    body.dark .dark-toggle::after { transform: translateX(18px); }
+
+    /* ── 인풋 ── */
+    .inp {
+      width: 100%; padding: 11px 14px; border-radius: var(--radius-sm);
+      border: 1px solid var(--border-card);
+      background: var(--glass); color: var(--text);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight);
+      font-family: inherit; font-size: 0.95rem; outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .inp::placeholder { color: var(--sub); }
+    .inp:focus { border-color: rgba(42,92,230,0.55); box-shadow: var(--highlight), 0 0 0 3px rgba(42,92,230,0.15); }
+    textarea.inp { resize: vertical; min-height: 90px; line-height: 1.65; }
+    select.inp { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23999' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+
+    .field { margin-bottom: 11px; }
+    .field label { display: block; font-size: 0.72rem; font-weight: 700; color: var(--sub); margin-bottom: 5px; letter-spacing: 0.05em; text-transform: uppercase; }
+
+    /* ── 스텝 1 ── */
+    .step1-wrap { display: flex; align-items: center; justify-content: center; min-height: calc(100vh - var(--nav-h)); padding: 24px 16px; }
+    .step1-inner { width: 100%; max-width: 360px; display: flex; flex-direction: column; gap: 14px; }
+    .s1-profile-card {
+      background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-card); border-radius: var(--radius);
+      padding: 22px 24px; box-shadow: var(--highlight), var(--shadow);
+      display: flex; align-items: center; gap: 16px;
+    }
+    .s1-photo { width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), #7c4dff); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 1.4rem; flex-shrink: 0; overflow: hidden; border: 2px solid var(--border-card); }
+    .s1-photo img { width: 100%; height: 100%; object-fit: cover; }
+    .s1-name { font-size: 1.05rem; font-weight: 800; }
+    .s1-meta { font-size: 0.8rem; color: var(--sub); margin-top: 3px; font-weight: 600; line-height: 1.5; white-space: pre-line; }
+    .s1-class-card {
+      background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-card); border-radius: var(--radius);
+      padding: 18px 20px; box-shadow: var(--highlight), var(--shadow);
+    }
+    .s1-class-label { font-size: 0.7rem; font-weight: 700; color: var(--sub); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px; }
+
+    /* ── PC 레이아웃 (사이드바 + 메인) ── */
+    .board-layout {
+      display: block;
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+    /* 칼럼형 게시판일 때만: 화면 끝까지 채워서 선생님 안내 사이드바가
+       진짜 화면 왼쪽 끝에 붙게 한다(가운데 정렬 max-width 해제). */
+    .board-layout.col-mode { max-width: none; margin: 0; }
+
+    @media (min-width: 1024px) {
+      .board-layout {
+        display: grid;
+        grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+        gap: 0;
+        padding: 0 32px 60px;
+        align-items: start;
+      }
+      .board-sidebar {
+        position: sticky;
+        top: var(--nav-h);
+        max-height: calc(100vh - var(--nav-h));
+        overflow-y: auto;
+        padding: 28px 24px 28px 0;
+        scrollbar-width: none;
+      }
+      .board-sidebar::-webkit-scrollbar { display: none; }
+      .board-main {
+        min-width: 0;
+        padding: 28px 0 60px 32px;
+        border-left: 1px solid var(--border-card);
+        min-height: calc(100vh - var(--nav-h));
+      }
+      /* 칼럼형일 땐 페이지 자체는 스크롤 안 되게 화면 안에 딱 가두고
+         (칼럼 하나하나가 이미 자기 안에서 스크롤되니 바깥까지 스크롤할
+         필요가 없다), 가로 스크롤바가 항상 화면 맨 아래에 붙어있게
+         board-main을 세로 flex로 만들어 칼럼 영역이 남은 공간을 정확히
+         다 채우게 한다. */
+      .board-layout.col-mode { padding-bottom: 0; }
+      .board-layout.col-mode .board-main {
+        display: flex; flex-direction: column;
+        height: calc(100vh - var(--nav-h));
+        min-height: 0;
+        padding-bottom: 0;
+        overflow: hidden;
+      }
+      .board-layout.col-mode .toolbar,
+      .board-layout.col-mode #teacherNotice { flex-shrink: 0; }
+      .board-layout.col-mode .grid-board.col-board {
+        flex: 1 1 auto; height: auto; min-height: 0;
+      }
+      .sidebar-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 4px; }
+      .sidebar-desc-wrap { margin-bottom: 14px; }
+      .sidebar-desc-toggle { display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; padding: 2px 0; }
+      .sidebar-desc-toggle:hover .sidebar-desc-arrow { color: var(--text); }
+      .sidebar-desc-arrow { font-size: 0.7rem; color: var(--sub); transition: transform 0.2s; flex-shrink: 0; margin-left: 6px; }
+      .sidebar-desc-arrow.open { transform: rotate(180deg); }
+      /* 안 그래도 사이드바 자체가 sticky+overflow-y:auto라, 설명에 또 자체
+         스크롤(고정 120px)을 걸면 "작은 상자 안에서 또 스크롤"하게 돼서 한
+         눈에 안 들어온다. 높이를 내용에 맞게 늘어나게 두고, 정말 길 때는
+         사이드바 자체 스크롤에 맡긴다. */
+      .sidebar-desc { font-size: 0.85rem; color: var(--sub); line-height: 1.6; margin-top: 6px; white-space: pre-line; }
+      .sidebar-desc.collapsed { display: none; }
+      .board-desc { font-size: 0.88rem; color: var(--sub); margin-top: 4px; line-height: 1.5; white-space: pre-line; }
+      .sidebar-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+      .board-header-mobile { display: none; }
+    }
+    /* JS 메이슨리: 가장 짧은 열에 카드 배치 → 이빨 빠짐 없이 상단 정렬 */
+    .grid-board { display: flex; gap: 16px; align-items: flex-start; }
+    .m-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+
+    /* 패들릿식 칼럼형 게시판 — 실제 패들릿처럼 칼럼마다 자기 안에서만
+       세로로 스크롤되고(모든 칼럼 높이는 화면 기준으로 고정), 칼럼을
+       넘나드는 가로 스크롤바는 이 영역 자체의 높이를 화면에 딱 맞춰서
+       (max-height 아니라 height로 고정) 화면 하단 가까이에 항상 같은
+       위치로 붙어 있게 한다 — 글이 적어도 그 자리 그대로 있어서 "화면을
+       해치지" 않는다. */
+    .grid-board.col-board {
+      overflow-x: auto;
+      height: calc(100vh - 220px); min-height: 320px;
+      padding-bottom: 10px; align-items: stretch;
+      scrollbar-width: thin; scrollbar-color: var(--border-card) transparent;
+    }
+    .grid-board.col-board::-webkit-scrollbar { height: 8px; }
+    .grid-board.col-board::-webkit-scrollbar-thumb { background: var(--border-card); border-radius: 10px; }
+    .grid-board.col-board::-webkit-scrollbar-track { background: transparent; }
+    .col-board-col {
+      /* 칼럼이 몇 개 안 될 때 화면 오른쪽에 빈 공간이 크게 남지 않도록,
+         칼럼 수가 화면에 다 들어올 땐 넓게 채우고(flex-grow), 칼럼이
+         많아져 260px 밑으로 내려가야 할 상황이면 그 밑으로는 안 줄고
+         가로 스크롤로 넘어간다(min-width가 바닥을 잡아줌). */
+      flex: 1 1 260px; min-width: 260px;
+      background: var(--glass); border: 1px solid var(--border-card); border-radius: var(--radius);
+      padding: 8px; display: flex; flex-direction: column;
+    }
+    .col-board-header { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 800; font-size: 1.15rem; padding: 2px 2px 10px; }
+    .col-board-count { font-size: 0.7rem; font-weight: 700; color: var(--sub); background: var(--glass-strong); border-radius: 50px; padding: 2px 9px; flex-shrink: 0; }
+    /* 스크롤은 필요하지만(칼럼별 유지), 평소엔 완전히 안 보이다가 그
+       칼럼에 커서를 올렸을 때만 글 위에 반투명하게 "겹쳐서" 뜨게 한다 —
+       네이티브 스크롤바는 폭을 항상 차지해서(얇게 줄여도 최소 몇 px는
+       고정 예약됨) 이 느낌을 낼 수 없어서, 네이티브 스크롤바는 아예
+       숨기고(scrollbar-width:none, ::-webkit-scrollbar 숨김) 그 자리에
+       JS(updateColScrollbars)로 위치·크기를 계산하는 가짜 스크롤바
+       (.col-scrollbar-thumb, position:absolute)를 얹었다. 글 너비를
+       전혀 뺏지 않고, hover 전엔 opacity:0이라 자리 차지 자체가 없다. */
+    .col-board-body {
+      display: flex; flex-direction: column; gap: 12px; min-width: 0;
+      flex: 1 1 auto; min-height: 0; overflow-y: auto;
+      scrollbar-width: none;
+    }
+    .col-board-body::-webkit-scrollbar { display: none; }
+    .col-scroll-wrap { position: relative; flex: 1 1 auto; min-height: 0; display: flex; }
+    .col-scrollbar {
+      position: absolute; top: 0; right: 1px; bottom: 0; width: 5px;
+      pointer-events: none; opacity: 0; transition: opacity 0.15s var(--ease);
+    }
+    .col-scroll-wrap:hover .col-scrollbar { opacity: 1; }
+    .col-scrollbar-thumb {
+      position: absolute; left: 0; right: 0; border-radius: 3px;
+      background: rgba(120, 128, 145, 0.5);
+    }
+    .col-board-empty { font-size: 0.78rem; color: var(--sub); text-align: center; padding: 18px 0; }
+    .col-board-add {
+      width: 22px; height: 22px; border-radius: 50%; border: none; cursor: pointer;
+      background: #1d1d1f; color: #fff; font-size: 0.95rem; line-height: 1;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      transition: opacity 0.15s;
+    }
+    body.dark .col-board-add { background: #f5f5f7; color: #1d1d1f; }
+    .col-board-add:hover { opacity: 0.8; }
+    .col-compose-anchor:empty { display: none; }
+    .col-compose-anchor .form-card { margin-bottom: 12px; }
+    @media (max-width: 600px) { .col-board-col { flex-basis: 220px; min-width: 220px; } }
+
+    @media (max-width: 1023px) {
+      .board-sidebar { padding: 20px 0 0; }
+      .board-main { padding: 0; }
+      .sidebar-title { display: none; }
+      .sidebar-desc { display: none; }
+      .sidebar-meta { display: none; }
+      .board-header-mobile { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding: 20px 0 14px; flex-wrap: wrap; }
+      .board-title { font-size: 1.5rem; font-weight: 800; line-height: 1.2; }
+      .board-desc { font-size: 0.88rem; color: var(--sub); margin-top: 4px; white-space: pre-line; }
+    }
+
+    @media (max-width: 600px) {
+      .board-layout { padding: 0 16px 80px; }
+    }
+
+    /* ── 폼 카드 ── */
+    .form-card { background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border); border-radius: 20px; padding: 20px; margin-bottom: 16px; box-shadow: var(--highlight), var(--shadow); }
+    .form-row { display: grid; grid-template-columns: 70px 1fr 96px; gap: 7px; margin-bottom: 8px; }
+    @media (max-width: 500px) { .form-row { grid-template-columns: 1fr 1fr; } .form-row > *:last-child { grid-column: span 2; } }
+
+    /* ── 툴바 ── */
+    .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+    .search-wrap { position: relative; flex: 1; }
+    .search-wrap .inp { padding-left: 38px; border-radius: 50px; }
+    .search-icon { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); color: var(--sub); font-size: 0.9rem; pointer-events: none; }
+    .sort-group { display: flex; border: 1px solid var(--border); border-radius: 50px; overflow: hidden; backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); background: var(--glass); box-shadow: var(--highlight); }
+    .sort-group button { border: none; padding: 7px 16px; font-size: 0.82rem; background: transparent; color: var(--sub); font-weight: 600; cursor: pointer; font-family: inherit; transition: 0.2s; }
+    .sort-group button.active { background: rgba(42,92,230,0.8); color: #fff; border-radius: 50px; }
+
+    /* ── 업로드 ── */
+    .upload-box { border: 1.5px dashed var(--border-card); border-radius: var(--radius-sm); padding: 12px; text-align: center; cursor: pointer; color: var(--sub); font-size: 0.82rem; transition: 0.2s; margin-bottom: 10px; background: var(--glass); }
+    .upload-box:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+    .preview-container { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+    .preview-item { position: relative; width: 48px; height: 48px; }
+    .preview-item img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; border: 1px solid var(--border-card); }
+    .preview-item .del-btn { position: absolute; top: -5px; right: -5px; background: #ef4444; color: #fff; border: none; border-radius: 50%; width: 16px; height: 16px; font-size: 9px; cursor: pointer; line-height: 16px; }
+
+    /* ── 포스트 카드 ── */
+    .post-card {
+      display: block; width: 100%;
+      background: var(--glass);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border: 1px solid var(--border-card); border-radius: var(--radius); padding: 20px;
+      margin-bottom: 0; box-shadow: var(--highlight), var(--shadow);
+      transition: box-shadow 0.25s, transform 0.25s;
+      opacity: 0; transform: translateY(14px);
+      position: relative;
+    }
+    .post-card.visible { opacity: 1; transform: translateY(0); transition: opacity 0.35s ease, transform 0.35s ease, box-shadow 0.25s; }
+    .post-card:hover { box-shadow: var(--highlight), var(--shadow-md); transform: translateY(-3px); }
+    .post-card.pinned-card { border-color: rgba(42,92,230,0.45); }
+
+    .pin-badge { font-size: 0.68rem; font-weight: 700; color: var(--accent); margin-bottom: 6px; display: inline-flex; align-items: center; gap: 3px; letter-spacing: 0.03em; }
+
+    .teacher-card {
+      border-left: 3px solid var(--accent) !important;
+      margin-bottom: 0;
+    }
+    #teacherNotice:empty { display: none; }
+    .teacher-card .post-sub { font-size: 0.82rem; font-weight: 700; color: var(--accent); letter-spacing: 0.04em; text-transform: uppercase; margin-bottom: 6px; }
+
+    .post-sub { font-size: 0.97rem; font-weight: 700; margin-bottom: 5px; white-space: pre-wrap; word-break: break-all; line-height: 1.45; }
+    .post-msg { font-size: 0.87rem; color: var(--sub); white-space: pre-wrap; word-break: break-all; line-height: 1.7; }
+    .post-msg a, #boardDesc a, #sidebarDesc a, #sidebarNoticeText a { color: var(--accent); text-decoration: underline; }
+
+    /* ── 슬라이더 ── */
+    .img-slider { position: relative; margin-top: 12px; border-radius: var(--radius-sm); overflow: hidden; background: var(--glass); }
+    .slides-track { display: flex; transition: transform 0.32s cubic-bezier(0.4,0,0.2,1); will-change: transform; }
+    .slides-track img { width: 100%; flex-shrink: 0; aspect-ratio: 4/3; object-fit: cover; cursor: zoom-in; display: block; }
+    .slider-btn { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(0,0,0,0.35); border: none; color: #fff; width: 26px; height: 26px; border-radius: 50%; cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; transition: 0.15s; }
+    .slider-btn:hover { background: rgba(0,0,0,0.6); }
+    .slider-prev { left: 7px; } .slider-next { right: 7px; }
+    .slider-dots { display: flex; justify-content: center; gap: 4px; padding: 6px 0 2px; }
+    .s-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--sub); opacity: 0.35; cursor: pointer; transition: 0.2s; }
+    .s-dot.active { opacity: 1; background: var(--accent); width: 14px; border-radius: 3px; }
+
+    /* ── 메타 ── */
+    .post-meta { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-card); margin-top: 12px; padding-top: 9px; flex-wrap: wrap; gap: 6px; }
+    .like-area { display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 3px 8px; border-radius: 50px; font-size: 0.8rem; transition: background 0.15s; user-select: none; color: var(--sub); }
+    .like-area:hover { background: var(--glass-strong); }
+    .like-area.voted { color: #ef4444; }
+    @keyframes heartBeat { 0%,100% { transform: scale(1); } 30% { transform: scale(1.4); } 60% { transform: scale(1.1); } }
+    .like-area.animate { animation: heartBeat 0.35s ease; }
+    .action-links { display: flex; gap: 12px; font-size: 0.78rem; opacity: 0; transition: opacity 0.2s; }
+    .post-card:hover .action-links { opacity: 1; }
+    .action-links a { cursor: pointer; color: var(--sub); font-weight: 600; transition: color 0.15s; }
+    .action-links a:hover { color: var(--text); }
+    .action-links .del-link:hover { color: #ef4444; }
+    .action-links .pin-link.is-pinned { color: var(--accent); }
+    .post-meta-left { display: flex; align-items: center; gap: 2px; }
+    .comment-btn { display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 3px 8px; border-radius: 50px; font-size: 0.8rem; color: var(--sub); transition: background 0.15s; user-select: none; }
+    .comment-btn:hover { background: var(--glass-strong); }
+    .comment-btn.open { color: var(--accent); }
+    .comment-panel { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-card); }
+    .comment-panel.open { display: block; }
+    .comment-list { margin-bottom: 8px; }
+    .comment-item { display: flex; gap: 8px; margin-bottom: 10px; }
+    .comment-avatar { width: 26px; height: 26px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), #7c4dff); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 0.66rem; flex-shrink: 0; overflow: hidden; }
+    .comment-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .comment-body { flex: 1; min-width: 0; }
+    .comment-byline { font-size: 0.78rem; font-weight: 700; display: flex; align-items: baseline; gap: 4px; }
+    .comment-byline .num { color: var(--sub); font-weight: 600; }
+    .comment-del { margin-left: auto; flex-shrink: 0; font-size: 0.72rem; font-weight: 600; color: var(--sub); cursor: pointer; opacity: 0.7; }
+    .comment-del:hover { color: #ef4444; opacity: 1; }
+    .comment-text { font-size: 0.85rem; line-height: 1.5; white-space: pre-wrap; word-break: break-all; margin-top: 1px; }
+    .comment-time { font-size: 0.68rem; color: var(--sub); margin-top: 2px; }
+    .comment-empty { font-size: 0.8rem; color: var(--sub); padding: 4px 0 8px; }
+    .comment-form { display: flex; gap: 8px; min-width: 0; }
+    .comment-input { flex: 1; min-width: 0; padding: 8px 14px; border-radius: 50px; border: 1px solid var(--border-card); background: var(--glass); color: var(--text); font-family: inherit; font-size: 0.85rem; outline: none; }
+    .comment-input:focus { border-color: rgba(42,92,230,0.5); }
+    .comment-send { flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; border: none; background: #1d1d1f; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    body.dark .comment-send { background: #f5f5f7; color: #1d1d1f; }
+    .post-byline { font-size: 0.7rem; color: var(--sub); opacity: 0.7; text-align: right; margin-top: 7px; }
+
+    /* ── 스켈레톤 ── */
+    .skeleton { background: linear-gradient(90deg, var(--border-card) 25%, rgba(255,255,255,0.4) 50%, var(--border-card) 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; border-radius: 6px; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .skel-card { break-inside: avoid; display: inline-block; width: 100%; background: var(--glass); backdrop-filter: var(--blur); border: 1px solid var(--border-card); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+    .skel-line { height: 12px; margin-bottom: 8px; }
+    .skel-img { height: 110px; margin: 10px 0; border-radius: var(--radius-sm); }
+
+    /* ── 사이드바 새로고침 버튼 ── */
+    .sidebar-refresh { font-size: 0.78rem; color: var(--sub); cursor: pointer; background: none; border: none; font-family: inherit; padding: 0; transition: color 0.15s; }
+    .sidebar-refresh:hover { color: var(--text); }
+
+    /* ── 로딩 ── */
+    #loadingOverlay { position: fixed; inset: 0; z-index: 9000; display: none; justify-content: center; align-items: center; background: rgba(190,205,255,0.3); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+    body.dark #loadingOverlay { background: rgba(0,0,0,0.5); }
+    .qna-fab {
+      position: fixed; bottom: 22px; right: 22px; z-index: 400;
+      width: 54px; height: 54px; border-radius: 50%; border: none;
+      background: #1d1d1f; color: #fff; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-md);
+      text-decoration: none; transition: transform 0.15s;
+    }
+    body.dark .qna-fab { background: #f5f5f7; color: #1d1d1f; }
+    .qna-fab:hover { transform: translateY(-2px); }
+    .qna-fab .badge { position: absolute; top: -3px; right: -3px; width: 14px; height: 14px; border-radius: 50%; background: #ff3b30; border: 2px solid var(--bg-elevated); display: none; }
+    .qna-fab .badge.on { display: block; }
+    .qna-tip {
+      position: absolute; right: calc(100% + 12px); top: 50%; transform: translateY(-50%) translateX(8px);
+      background: #1a1d2e; color: #fff; font-size: 0.78rem; font-weight: 600; line-height: 1.4;
+      padding: 10px 14px; border-radius: 12px; width: 200px; white-space: normal; text-align: left;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.25); opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s;
+    }
+    .qna-tip::after {
+      content: ''; position: absolute; right: -5px; top: 50%; transform: translateY(-50%);
+      width: 0; height: 0; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 5px solid #1a1d2e;
+    }
+    .qna-fab:hover .qna-tip { opacity: 1; transform: translateY(-50%) translateX(0); }
+    .spinner { width: 36px; height: 36px; border-radius: 50%; border: 3px solid var(--border); border-top-color: var(--accent); animation: spin 0.75s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── 이미지 모달 ── */
+    .img-modal { position: fixed; inset: 0; z-index: 9500; display: none; justify-content: center; align-items: center; background: rgba(0,0,0,0.88); cursor: zoom-out; }
+    .img-modal-inner { position: relative; display: flex; align-items: center; gap: 14px; }
+    .img-modal img { max-width: 88vw; max-height: 88vh; border-radius: var(--radius); display: block; cursor: default; }
+    .modal-nav { background: rgba(255,255,255,0.12); border: none; color: #fff; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; transition: background 0.15s; flex-shrink: 0; }
+    .modal-nav:hover { background: rgba(255,255,255,0.25); }
+
+    /* ── 비번 모달 ── */
+    .pw-overlay { position: fixed; inset: 0; z-index: 9000; display: none; justify-content: center; align-items: center; background: rgba(0,0,0,0.45); backdrop-filter: blur(8px); }
+    .pw-overlay.show { display: flex; }
+    .pw-box { background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border); border-radius: 20px; padding: 28px; width: 100%; max-width: 340px; box-shadow: var(--highlight), var(--shadow-md); }
+    .pw-box p { font-weight: 700; margin-bottom: 14px; }
+    .pw-box .inp { margin-bottom: 14px; }
+    .pw-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+    /* ── 공지 팝업 ── */
+    .popup-overlay { position: fixed; inset: 0; z-index: 8000; display: none; justify-content: center; align-items: center; background: rgba(0,0,0,0.45); backdrop-filter: blur(8px); }
+    .popup-overlay.show { display: flex; }
+    .popup-box { background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border); border-radius: 22px; padding: 32px; max-width: 420px; width: 90%; box-shadow: var(--highlight), var(--shadow-md); text-align: center; }
+    .popup-box h2 { font-size: 1.05rem; font-weight: 800; margin-bottom: 12px; }
+    .popup-msg { font-size: 0.92rem; color: var(--sub); line-height: 1.75; white-space: pre-wrap; word-break: break-all; margin-bottom: 22px; }
+
+    /* ── 관리자 ── */
+    .admin-wrap { max-width: 1440px; margin: 0 auto; padding: 0 32px 60px; }
+    @media (max-width: 600px) { .admin-wrap { padding: 0 16px 60px; } }
+    .admin-panel { background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border); border-radius: 22px; padding: 28px; margin-top: 20px; box-shadow: var(--highlight), var(--shadow); max-width: 680px; }
+    .admin-panel h2 { font-size: 1rem; font-weight: 800; margin-bottom: 20px; }
+    .edit-banner { background: var(--accent-light); border: 1px solid rgba(42,92,230,0.2); border-radius: var(--radius-sm); padding: 12px 16px; font-size: 0.88rem; font-weight: 700; color: var(--accent); margin-bottom: 14px; }
+    .checkbox-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: var(--glass); padding: 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-card); margin-bottom: 12px; }
+    .checkbox-grid hr { grid-column: span 3; border: none; border-top: 1px solid var(--border-card); }
+    .checkbox-grid label { display: flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 600; cursor: pointer; }
+    .status-pill { border-radius: 50px; padding: 4px 12px; font-weight: 700; font-size: 0.78rem; cursor: pointer; border: 1px solid; font-family: inherit; transition: 0.15s; }
+    .status-pill.on { color: var(--accent); background: var(--accent-light); border-color: rgba(42,92,230,0.3); }
+    .status-pill.off { color: #ef4444; background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.25); }
+    .admin-item { display: flex; justify-content: space-between; align-items: center; padding: 11px 14px; background: var(--glass); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border-card); border-radius: var(--radius-sm); margin-bottom: 8px; flex-wrap: wrap; gap: 8px; }
+    .divider { border: none; border-top: 1px solid var(--border-card); margin: 18px 0; }
+
+    /* ── 러시아어 가상키보드 ── */
+    #ruKeyboard {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 500;
+      background: var(--glass-nav); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border-top: 1px solid var(--border);
+      box-shadow: 0 -4px 24px rgba(60,80,160,0.15), inset 0 1px 0 rgba(255,255,255,0.4);
+      padding: 14px 16px 20px; display: none;
+    }
+    #ruKeyboard.show { display: block; }
+    .kb-close { position: absolute; top: 10px; right: 14px; background: none; border: none; font-size: 1.1rem; cursor: pointer; color: var(--sub); line-height: 1; }
+    .kb-row { display: flex; justify-content: center; gap: 5px; margin-bottom: 5px; }
+    .kb-key {
+      font-family: 'Pretendard', sans-serif; font-size: 0.95rem; font-weight: 600;
+      min-width: 38px; height: 42px; border-radius: 9px;
+      border: 1px solid var(--border-card);
+      background: var(--glass-strong); color: var(--text);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight), 0 2px 6px rgba(60,80,160,0.08);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, transform 0.1s;
+      user-select: none; -webkit-user-select: none;
+    }
+    .kb-key:active { transform: scale(0.93); background: var(--glass); }
+    .kb-key.wide { min-width: 72px; font-size: 0.75rem; }
+    .kb-key.space { min-width: 200px; }
+    .kb-key.shift-active { background: rgba(42,92,230,0.25); border-color: rgba(42,92,230,0.45); }
+  </style>
+</head>
+<body class="ui-sky">
+
+<svg width="0" height="0" style="position:absolute;">
+  <defs>
+    <symbol id="ic-close" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7"/><ellipse cx="12" cy="12" rx="3.6" ry="8.5" fill="none" stroke="currentColor" stroke-width="1.5"/><line x1="3.5" y1="12" x2="20.5" y2="12" stroke="currentColor" stroke-width="1.5"/></symbol>
+    <symbol id="ic-user" viewBox="0 0 24 24"><circle cx="12" cy="8.5" r="3.6" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M4.5 20c0-3.6 3.4-6 7.5-6s7.5 2.4 7.5 6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="ic-exit" viewBox="0 0 24 24"><path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 8l4 4-4 4M19 12H9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-board" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><line x1="7" y1="12.5" x2="12" y2="12.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="9" y1="16" x2="6" y2="20.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><line x1="15" y1="16" x2="18" y2="20.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="ic-refresh" viewBox="0 0 24 24"><path d="M5 12a7 7 0 0 1 12-4.9M19 12a7 7 0 0 1-12 4.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="17,3 17,7.5 12.5,7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><polyline points="7,21 7,16.5 11.5,16.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-search" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><line x1="15.2" y1="15.2" x2="20.5" y2="20.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-chat" viewBox="0 0 24 24"><path d="M4 5.5h16a1 1 0 0 1 1 1V16a1 1 0 0 1-1 1H9l-4.5 4V17H4a1 1 0 0 1-1-1V6.5a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-check" viewBox="0 0 24 24"><polyline points="5,13 9.5,17.5 19,6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-heart" viewBox="0 0 24 24"><path d="M12 20.5s-7.5-4.6-9.6-9.3C.9 7.4 3 4 6.6 4c2 0 3.6 1.1 4.4 2.7C11.8 5.1 13.4 4 15.4 4 19 4 21.1 7.4 19.6 11.2 17.5 15.9 12 20.5 12 20.5Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-pin" viewBox="0 0 24 24"><path d="M12 2.5a5.5 5.5 0 0 1 5.5 5.5c0 3.8-5.5 13.5-5.5 13.5S6.5 11.8 6.5 8A5.5 5.5 0 0 1 12 2.5Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="8" r="2" fill="currentColor"/></symbol>
+    <symbol id="ic-send" viewBox="0 0 24 24"><path d="M4 12h15M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-download" viewBox="0 0 24 24"><line x1="12" y1="4" x2="12" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="7,10 12,15 17,10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><line x1="5" y1="19" x2="19" y2="19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+  </defs>
+</svg>
+
+<div id="loadingOverlay"><div class="spinner"></div></div>
+
+<div id="imageModal" class="img-modal" onclick="handleModalClick(event)">
+  <div class="img-modal-inner" onclick="event.stopPropagation()">
+    <button class="modal-nav" id="modalPrev" onclick="modalNav(-1)">‹</button>
+    <img id="modalImg" src="" alt="">
+    <button class="modal-nav" id="modalNext" onclick="modalNav(1)">›</button>
+  </div>
+</div>
+
+<div id="pwOverlay" class="pw-overlay">
+  <div class="pw-box">
+    <p id="pwLabel">비밀번호</p>
+    <input class="inp" id="pwInput" type="password" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')pwConfirm()">
+    <div class="pw-actions">
+      <button class="btn ghost" onclick="pwCancel()">취소</button>
+      <button class="btn accent" onclick="pwConfirm()">확인</button>
+    </div>
+  </div>
+</div>
+
+<div id="popupOverlay" class="popup-overlay">
+  <div class="popup-box">
+    <h2>공지사항</h2>
+    <div id="popupMsg" class="popup-msg"></div>
+    <button class="btn accent" onclick="closePopup()">확인</button>
+  </div>
+</div>
+
+<!-- 러시아어 가상키보드 -->
+<div id="ruKeyboard">
+  <button class="kb-close" onmousedown="event.preventDefault()" onclick="closeKeyboard()"><svg width="12" height="12"><use href="#ic-close"/></svg></button>
+  <div id="kbRows"></div>
+</div>
+
+<nav class="nav">
+  <a class="nav-brand" onclick="navLogoClick()"><img src="logo.png" alt="kakainfo"><span class="nav-brand-title" id="navBrandTitle">정보 게시판</span></a>
+  <div class="nav-end">
+    <div class="lang-globe" id="langGlobe">
+      <button class="lang-globe-btn" onclick="toggleLangDD()" title="언어"><svg width="16" height="16"><use href="#ic-globe"/></svg></button>
+      <div class="lang-globe-dd hidden" id="langGlobeDD" onclick="event.stopPropagation()">
+        <div class="lang-globe-item" onclick="setLanguage('ko');closeLangDD()"><span>한국어</span><span class="check" id="lck-ko"></span></div>
+        <div class="lang-globe-item" onclick="setLanguage('zh');closeLangDD()"><span>中文</span><span class="check" id="lck-zh"></span></div>
+        <div class="lang-globe-item" onclick="setLanguage('ru');closeLangDD()"><span>Рус</span><span class="check" id="lck-ru"></span></div>
+        <div class="lang-globe-item" onclick="setLanguage('en');closeLangDD()"><span>English</span><span class="check" id="lck-en"></span></div>
+      </div>
+    </div>
+    <div class="nav-user" id="navUser" onclick="toggleUserMenu()">
+      <div class="nav-avatar" id="navAvatar"></div>
+      <div class="nav-user-name" id="navUserName"></div>
+      <div class="user-dropdown hidden" id="userDropdown" onclick="event.stopPropagation()">
+        <div class="user-dropdown-item" onclick="openMyPage()"><svg width="15" height="15"><use href="#ic-user"/></svg> 마이페이지</div>
+        <div class="user-dropdown-sep"></div>
+        <div class="user-dropdown-item danger" onclick="logout()"><svg width="15" height="15"><use href="#ic-exit"/></svg> 로그아웃</div>
+      </div>
+    </div>
+    <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
+  </div>
+</nav>
+
+<div id="mobileMenu" class="mobile-menu">
+  <button class="btn ghost" onclick="navLogoClick();closeMobileMenu()">← 뒤로</button>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <button class="btn lang-btn" id="m-btn-ko" onclick="setLanguage('ko');closeMobileMenu()">한국어</button>
+    <button class="btn lang-btn" id="m-btn-zh" onclick="setLanguage('zh');closeMobileMenu()">中文</button>
+    <button class="btn lang-btn" id="m-btn-ru" onclick="setLanguage('ru');closeMobileMenu()">Рус</button>
+    <button class="btn lang-btn" id="m-btn-en" onclick="setLanguage('en');closeMobileMenu()">English</button>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <span style="font-size:0.85rem;font-weight:600;color:var(--sub);">다크모드</span>
+    <button class="dark-toggle" onclick="toggleDark()"></button>
+  </div>
+</div>
+
+<div id="app">
+  <!-- 스텝 1: 학급 선택 (일반) / 수업 카드 그리드 (마스터) -->
+  <div id="step1">
+    <!-- 일반 학생용 -->
+    <div class="step1-wrap" id="step1Normal">
+      <div class="step1-inner">
+        <div class="s1-profile-card">
+          <div class="s1-photo" id="s1Photo"></div>
+          <div>
+            <div class="s1-name" id="s1Name"></div>
+            <div class="s1-meta" id="s1Meta"></div>
+          </div>
+        </div>
+        <div class="s1-class-label" id="ui-class-label" style="margin:18px 0 10px;">수업 선택</div>
+        <div id="classGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;"></div>
+      </div>
+    </div>
+    <!-- 마스터용 수업 카드 그리드 -->
+    <div id="step1Master" class="hidden" style="padding:24px 20px;max-width:960px;margin:0 auto;">
+      <div style="font-size:1.1rem;font-weight:800;margin-bottom:16px;display:flex;align-items:center;gap:6px;"><svg width="17" height="17" style="color:var(--sub);"><use href="#ic-board"/></svg>전체 수업 목록</div>
+      <div id="masterClassGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;"></div>
+    </div>
+  </div>
+
+  <!-- 스텝 2: 게시판 (PC: 사이드바 + 메인, 모바일: 스택) -->
+  <div id="step2" class="hidden">
+    <div class="board-layout">
+
+      <!-- 사이드바 (PC: 좌측 sticky, 모바일: 상단) -->
+      <aside class="board-sidebar">
+        <!-- PC 전용: 수업 제목 + 설명 -->
+        <div class="sidebar-title" id="sidebarTitle"></div>
+        <div class="sidebar-desc-wrap" id="sidebarDescWrap" style="display:none">
+          <div class="sidebar-desc-toggle" onclick="toggleSidebarDesc()">
+            <span id="ui-teacher-notice-label" style="font-size:0.72rem;font-weight:700;color:var(--sub);letter-spacing:0.04em;text-transform:uppercase;">수업 설명</span>
+            <span class="sidebar-desc-arrow open" id="sidebarDescArrow">▼</span>
+          </div>
+          <div class="sidebar-desc" id="sidebarDesc"></div>
+        </div>
+        <div class="sidebar-meta">
+          <button class="sidebar-refresh" onclick="manualRefresh()">↻ 새로고침</button>
+        </div>
+
+        <!-- 모바일 전용: 수업 제목 헤더 -->
+        <div class="board-header-mobile">
+          <div>
+            <div id="boardTitle" class="board-title"></div>
+            <div id="boardDesc" class="board-desc"></div>
+          </div>
+          <button class="icon-action" title="새로고침" onclick="manualRefresh()"><svg width="17" height="17"><use href="#ic-refresh"/></svg></button>
+        </div>
+
+        <!-- 자유형(메이슨리)일 때만 여기 보임 — 칼럼형은 각 칼럼 안 + 버튼으로 작성 -->
+        <div id="sidebarFormSlot">
+          <div class="form-card">
+            <form id="postForm" onsubmit="submitPost(event)">
+              <div class="form-row hidden">
+                <input class="inp ru-target" id="p_num" placeholder="번호">
+                <input class="inp ru-target" id="p_name" placeholder="이름">
+                <input class="inp" id="p_pw_display" type="password" placeholder="비번">
+              </div>
+              <input type="hidden" id="p_column">
+              <input class="inp ru-target" id="p_sub" placeholder="제목" required style="margin-bottom:7px;">
+              <textarea class="inp ru-target" id="p_msg" rows="4" placeholder="내용" required style="margin-bottom:9px;"></textarea>
+              <div class="upload-box" id="ui-upload-label" onclick="document.getElementById('fileInput').click()">
+                이미지 첨부 (클릭 또는 Ctrl+V, 최대 4장)
+                <div id="previewArea" class="preview-container"></div>
+              </div>
+              <input type="file" id="fileInput" class="hidden" accept="image/*" multiple onchange="handleFiles(this.files)">
+              <button id="subBtn" type="submit" class="btn accent full">게시물 등록</button>
+              <button id="cancelEditBtn" type="button" class="btn full hidden" style="margin-top:7px;" onclick="cancelEdit()">취소</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- 칼럼형일 때만 여기 보임 — 원래 작성 폼 자리에 선생님 안내를 대신 표시 -->
+        <div id="sidebarNoticeCard" class="form-card hidden">
+          <div style="font-size:0.72rem;font-weight:700;color:var(--sub);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:8px;">선생님 안내</div>
+          <div id="sidebarNoticeText" style="font-size:0.9rem;line-height:1.6;white-space:pre-line;"></div>
+        </div>
+
+        <!-- 칼럼형 작성 폼의 대기 장소(어느 칼럼도 안 열려 있을 때) -->
+        <div id="composeHolder" class="hidden"></div>
+
+        <div style="text-align:center;padding:4px 0 8px;">
+          <button class="btn ghost" style="font-size:0.8rem;" onclick="goHome()">← 처음으로</button>
+        </div>
+      </aside>
+
+      <!-- 메인 콘텐츠 -->
+      <main class="board-main">
+        <div class="toolbar">
+          <div class="search-wrap">
+            <span class="search-icon"><svg width="15" height="15"><use href="#ic-search"/></svg></span>
+            <input class="inp" id="searchInput" type="text" placeholder="검색..." oninput="filterPosts()">
+          </div>
+          <div class="sort-group">
+            <button id="sortNew" class="active" onclick="setSort('new')">최신순</button>
+            <button id="sortLike" onclick="setSort('like')">인기순</button>
+          </div>
+          <button id="exportBtn" class="btn ghost sm hidden" onclick="exportToExcel()" style="white-space:nowrap;"><svg width="14" height="14" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-download"/></svg>엑셀로 내보내기</button>
+        </div>
+        <div id="teacherNotice"></div>
+        <div id="display" class="grid-board"></div>
+      </main>
+
+    </div>
+  </div>
+
+  <!-- 관리자 패널 -->
+  <div id="adminPanel" class="hidden">
+    <div class="admin-wrap">
+      <div class="admin-panel">
+        <h2>수업 관리</h2>
+        <div id="adm_edit_info" class="edit-banner hidden"></div>
+        <input type="hidden" id="adm_row">
+        <input type="hidden" id="adm_grade_hidden">
+        <input type="hidden" id="adm_group_hidden">
+        <div class="checkbox-grid" id="adm_target_area">
+          <label><input type="checkbox" class="adm-g" value="1학년"> 1학년</label>
+          <label><input type="checkbox" class="adm-g" value="2학년"> 2학년</label>
+          <label><input type="checkbox" class="adm-g" value="3학년"> 3학년</label>
+          <hr>
+          <label><input type="checkbox" class="adm-b" value="1반"> 1반</label>
+          <label><input type="checkbox" class="adm-b" value="2반"> 2반</label>
+          <label><input type="checkbox" class="adm-b" value="3반"> 3반</label>
+          <label><input type="checkbox" class="adm-b" value="4반"> 4반</label>
+          <label><input type="checkbox" class="adm-b" value="5반"> 5반</label>
+        </div>
+        <div class="field"><label>수업명</label><input class="inp" id="adm_name" placeholder="수업명"></div>
+        <div class="field"><label>설명</label><textarea class="inp" id="adm_desc" rows="2" placeholder="수업 상세 설명"></textarea></div>
+        <div class="field"><label>선생님 안내</label><textarea class="inp" id="adm_ex" rows="2" placeholder="게시판 최상단 고정 안내"></textarea></div>
+        <div class="field" style="margin-bottom:18px;"><label>공지 팝업</label><textarea class="inp" id="adm_popup" rows="2" placeholder="입장 시 팝업 (비워두면 미표시)"></textarea></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;">
+          <button class="btn accent" onclick="saveAdminClass()">저장</button>
+          <button id="adm_cancel_btn" class="btn hidden" onclick="resetAdminForm()">취소</button>
+        </div>
+        <hr class="divider">
+        <div id="adminList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 마이페이지 모달 -->
+<div class="modal-overlay hidden" id="myPageOverlay" onclick="closeMyPage()">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeMyPage()"><svg width="13" height="13"><use href="#ic-close"/></svg></button>
+    <div class="modal-title">마이페이지</div>
+    <div class="photo-section">
+      <div class="photo-preview" id="mpPhotoPreview"></div>
+      <input type="file" id="mpPhotoInput" accept="image/*" style="display:none" onchange="onPhotoChange(this)">
+      <button class="btn-photo-change" onclick="document.getElementById('mpPhotoInput').click()">사진 변경</button>
+    </div>
+    <div class="modal-section">
+      <div class="modal-section-label">비밀번호 변경</div>
+      <input class="modal-inp" id="mpCurPw" type="password" placeholder="현재 비밀번호">
+      <input class="modal-inp" id="mpNewPw" type="password" placeholder="새 비밀번호 (4자 이상)">
+      <input class="modal-inp" id="mpNewPw2" type="password" placeholder="새 비밀번호 확인" onkeydown="if(event.key==='Enter')saveMyPage()">
+    </div>
+    <button class="btn-modal-save" onclick="saveMyPage()" id="mpSaveBtn">저장</button>
+    <div class="modal-msg" id="mpMsg"></div>
+  </div>
+</div>
+
+<a class="qna-fab" href="qna.html"><svg width="24" height="24"><use href="#ic-chat"/></svg><span class="badge" id="qnaBadge"></span><span class="qna-tip">정보 관련 질문이나 웹사이트 버그가 있으면 알려주세요.</span></a>
+
+<script type="module">
+  import { db } from './firebase-config.js';
+  import {
+    collection, query, where, orderBy, getDocs, documentId,
+    addDoc, updateDoc, deleteDoc, doc, serverTimestamp, increment, onSnapshot
+  } from '/vibe/shared/fake-firebase/firebase-firestore.js';
+  import { saveSession, loadSession, clearSession, verifyStudentAuth, authReady } from './session.js';
+  import { changeStudentPassword, AuthError } from './student-auth.js';
+  import { escHtml, fmtMsg, safePhotoUrl, safeImgUrl, SAFE_ID } from './escape.js';
+  import { setPageTitle } from './page-title.js';
+
+  // ── 세션 체크 ──
+  const _st = loadSession();
+  if (!_st) { window.location.href = 'index.html'; }
+  // localStorage 세션은 브라우저에서 고칠 수 있다 — 실제 로그인 계정과
+  // 맞는지 뒤이어 확인하고, 안 맞으면 로그인 화면으로 돌려보낸다.
+  verifyStudentAuth(_st);
+  const _nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
+  const SESSION = {
+    id: _st?.id || '',
+    schoolName: (_st?.schoolName || '').trim(),
+    grade: _nv(_st?.grade || ''),
+    group: _nv(_st?.class || ''),
+    name: _st?.name || '',
+    num: String(_st?.number || '')
+  };
+  const IS_MASTER = !!_st?.isMaster;
+  document.getElementById('exportBtn')?.classList.toggle('hidden', !IS_MASTER);
+  // 수업의 학교 매칭: 학교 정보 없는 기존 수업은 '관산중학교' 소속으로 간주
+  const _classSchoolOk = c => IS_MASTER || (c.schoolName || '관산중학교') === SESSION.schoolName;
+  // 배정 범위: group까지 지정하면 그 반만, grade만 지정하면 그 학년 전체, 둘 다 없으면 학교 전체
+  function _classAudienceOk(c) {
+    if (IS_MASTER) return true;
+    if (!_classSchoolOk(c)) return false;
+    if (!c.grade) return true;
+    if (c.grade !== SESSION.grade) return false;
+    if (!c.group) return true;
+    return c.group === SESSION.group;
+  }
+  // 게시글 작성자들의 프로필 사진을 한 번에 조회 (studentId → photoUrl).
+  // 사진은 거의 안 바뀌므로 localStorage에 캐싱해서, 새로고침할 때마다
+  // 같은 학생 사진을 또 읽지 않게 한다 — 캐시에 없거나 만료된(하루 지난)
+  // ID만 10명씩 묶어서(문서ID 'in' 쿼리 한도) Firestore에서 조회한다.
+  const PHOTO_CACHE_KEY = 'ohdlet_photo_cache_v1';
+  const PHOTO_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+  function loadPhotoCache() {
+    try { return JSON.parse(localStorage.getItem(PHOTO_CACHE_KEY) || '{}'); } catch { return {}; }
+  }
+  function savePhotoCache(cache) {
+    try { localStorage.setItem(PHOTO_CACHE_KEY, JSON.stringify(cache)); } catch { /* 저장 공간 부족 등은 무시 — 캐싱 없이도 정상 동작 */ }
+  }
+  async function fetchPhotoMap(studentIds) {
+    const cache = loadPhotoCache();
+    const now = Date.now();
+    const ids = [...new Set(studentIds.filter(Boolean).map(String))];
+    const map = {};
+    const toFetch = [];
+    ids.forEach(id => {
+      const entry = cache[id];
+      if (entry && (now - entry.t) < PHOTO_CACHE_TTL_MS) {
+        if (entry.u) map[id] = entry.u;
+      } else {
+        toFetch.push(id);
+      }
+    });
+    let dirty = false;
+    for (let i = 0; i < toFetch.length; i += 10) {
+      const batch = toFetch.slice(i, i + 10);
+      // students는 본인·관리자만 읽을 수 있게 잠갔다(학생 명단·사진 보호) — 다른
+      // 학생 사진 조회가 거부되면 이니셜로 대신 보여주고, 게시판 로딩은 계속한다.
+      // (게시글 작성자 사진은 글에 저장된 photoUrl로 따로 보인다.)
+      let snap;
+      try { snap = await getDocs(query(collection(db, 'students'), where(documentId(), 'in', batch))); }
+      catch (e) { batch.forEach(id => { cache[id] = { u: null, t: now }; }); dirty = true; continue; }
+      const found = new Set();
+      snap.docs.forEach(d => {
+        const u = d.data().photoUrl || null;
+        found.add(d.id);
+        cache[d.id] = { u, t: now };
+        if (u) map[d.id] = u;
+      });
+      batch.forEach(id => { if (!found.has(id)) cache[id] = { u: null, t: now }; });
+      dirty = true;
+    }
+    if (dirty) savePhotoCache(cache);
+    return map;
+  }
+
+  // 게시글 목록 캐시 — 액션(글쓰기/삭제/댓글/좋아요/새로고침버튼/언어전환/
+  // 수업입장) 하나마다 그 반 게시글 전체를 매번 다시 읽던 걸(활발한 수업
+  // 시간대에 읽기가 크게 증폭되는 원인으로 확인됨) localStorage 캐시 +
+  // 증분 조회로 바꾼다. 이 반을 이 브라우저에서 처음 보면(캐시 없음)
+  // 지금처럼 전체를 한 번 읽고, 그 다음부턴 "마지막으로 본 시점 이후
+  // updatedAt이 바뀐 글"만 읽어서 캐시에 합친다 — 새 글/수정/삭제표시/
+  // 좋아요/댓글수 변경 전부 posts 문서 쓰기마다 updatedAt을 같이 찍어서
+  // 이 증분 조회에 걸리게 해뒀다.
+  //
+  // classTitle == 이랑 updatedAt > 를 같이 쓰는 쿼리라 Firestore 복합
+  // 인덱스(posts: classTitle Asc + updatedAt Asc)가 필요하다. 인덱스가
+  // 아직 없거나 어떤 이유로든 증분 조회가 실패하면 예외 없이 전체
+  // 재조회로 대체한다 — 이 캐싱은 어디까지나 최적화일 뿐, 실패해도
+  // 게시판은 그대로 떠야 한다.
+  function postsCacheKey(boardKey) { return 'ohdlet_posts_v1__' + encodeURIComponent(boardKey || ''); }
+  function loadPostsCache(boardKey) {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(postsCacheKey(boardKey)) || 'null');
+      if (!parsed || typeof parsed.lastSync !== 'number' || !parsed.posts) return null;
+      return parsed;
+    } catch { return null; }
+  }
+  function savePostsCache(boardKey, cache) {
+    try { localStorage.setItem(postsCacheKey(boardKey), JSON.stringify(cache)); }
+    catch { /* 이미지 포함 글이 많아 저장 공간이 부족한 경우 등은 무시 — 캐싱 없이도 정상 동작 */ }
+  }
+  function mapPostDoc(d) {
+    const raw = d.data();
+    return {
+      ...raw,
+      id: d.id,
+      imgs: Array.isArray(raw.imgs) ? raw.imgs : [],
+      likes: Number(raw.likes) || 0,
+      commentCount: Number(raw.commentCount) || 0,
+      createdAt: raw.createdAt?.toDate?.()?.toISOString() || '',
+      updatedAt: raw.updatedAt?.toDate?.()?.toISOString() || '',
+    };
+  }
+  function docWatermark(d) {
+    const raw = d.data();
+    return raw.updatedAt?.toMillis?.() ?? raw.createdAt?.toMillis?.() ?? 0;
+  }
+  async function loadClassPosts(classTitle, boardKey) {
+    // 게시글은 로그인한 학생만 읽을 수 있다 — 로그인 복원을 기다린 뒤 읽는다.
+    await authReady();
+    const cacheKey = boardKey || ('classTitle:' + classTitle);
+    const cache = loadPostsCache(cacheKey);
+    if (cache) {
+      try {
+        const incSnap = await getDocs(query(
+          collection(db, 'posts'),
+          where('classTitle', '==', classTitle),
+          where('updatedAt', '>', new Date(cache.lastSync))
+        ));
+        let watermark = cache.lastSync;
+        incSnap.docs.forEach(d => {
+          cache.posts[d.id] = mapPostDoc(d);
+          const ts = docWatermark(d);
+          if (ts > watermark) watermark = ts;
+        });
+        cache.lastSync = watermark;
+        savePostsCache(cacheKey, cache);
+        return Object.values(cache.posts);
+      } catch (e) {
+        // 인덱스 없음 등 — 아래에서 전체 재조회로 대체
+      }
+    }
+    const fullSnap = await getDocs(query(collection(db, 'posts'), where('classTitle', '==', classTitle)));
+    const postsMap = {};
+    let watermark = 0;
+    fullSnap.docs.forEach(d => {
+      postsMap[d.id] = mapPostDoc(d);
+      const ts = docWatermark(d);
+      if (ts > watermark) watermark = ts;
+    });
+    savePostsCache(cacheKey, { lastSync: watermark || Date.now(), posts: postsMap });
+    return Object.values(postsMap);
+  }
+
+  function classBoardKey(c) {
+    const g = c.grade || '', grp = c.group || '';
+    return `${c.name||''}__${c.schoolName||''}${g?('__g'+g):''}${grp?('__c'+grp):''}`;
+  }
+  // classBoardKey()의 "이름__학교" 부분만 — 선생님이 나중에 그 수업의
+  // 대상(학년/반)을 바꾸면 새 글의 boardKey가 달라지는데, 예전 글은 옛
+  // boardKey 그대로라서 정확히 일치 비교만 하면 대상을 바꾸는 순간 기존
+  // 글이 전부 안 보이게 된다. 학교까지만 같으면 같은 게시판으로 본다
+  // (마스터 계정이 같은 이름의 다른 학교 수업을 볼 때 글이 섞이는 것만
+  // 막으면 되고, 학년/반 변경까지 엄격히 구분할 필요는 없다).
+  function classBoardKeyBase(c) { return `${c.name||''}__${c.schoolName||''}`; }
+  let currentBoardKey = '';
+  let _mpStudent = { ..._st };
+
+  // ── 네비 아바타 ──
+  function renderAvatar(el, s) {
+    if (safePhotoUrl(s.photoUrl)) { el.innerHTML = `<img src="${escHtml(safePhotoUrl(s.photoUrl))}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`; }
+    else { el.innerText = (s.name||'?')[0]; }
+  }
+  renderAvatar(document.getElementById('navAvatar'), _mpStudent);
+  document.getElementById('navUserName').innerText = _mpStudent.name || '';
+
+  // ── 드롭다운 ──
+  window.toggleUserMenu = () => { document.getElementById('userDropdown').classList.toggle('hidden'); };
+  document.addEventListener('click', e => {
+    const nu = document.getElementById('navUser');
+    if (nu && !nu.contains(e.target)) document.getElementById('userDropdown').classList.add('hidden');
+  });
+  window.logout = () => { clearSession(); window.location.href = 'index.html'; };
+
+  // ── 마이페이지 ──
+  let _mpPhotoB64 = null;
+  window.openMyPage = () => {
+    document.getElementById('userDropdown').classList.add('hidden');
+    _mpPhotoB64 = null;
+    const prev = document.getElementById('mpPhotoPreview');
+    if (safePhotoUrl(_mpStudent.photoUrl)) { prev.innerHTML = `<img src="${escHtml(safePhotoUrl(_mpStudent.photoUrl))}">`; }
+    else { prev.innerText = (_mpStudent.name||'?')[0]; }
+    ['mpCurPw','mpNewPw','mpNewPw2'].forEach(id => document.getElementById(id).value = '');
+    const msg = document.getElementById('mpMsg'); msg.innerText = ''; msg.className = 'modal-msg';
+    document.getElementById('myPageOverlay').classList.remove('hidden');
+  };
+  window.closeMyPage = () => { document.getElementById('myPageOverlay').classList.add('hidden'); };
+  window.onPhotoChange = (input) => {
+    if (!input.files || !input.files[0]) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX = 200; let w = img.width, h = img.height;
+        if (w > h) { if (w > MAX) { h = Math.round(h*MAX/w); w = MAX; } }
+        else { if (h > MAX) { w = Math.round(w*MAX/h); h = MAX; } }
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        _mpPhotoB64 = canvas.toDataURL('image/jpeg', 0.8);
+        document.getElementById('mpPhotoPreview').innerHTML = `<img src="${_mpPhotoB64}">`;
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(input.files[0]);
+  };
+  window.saveMyPage = async () => {
+    const msgEl = document.getElementById('mpMsg');
+    msgEl.className = 'modal-msg'; msgEl.innerText = '';
+    const curPw = document.getElementById('mpCurPw').value;
+    const newPw = document.getElementById('mpNewPw').value;
+    const newPw2 = document.getElementById('mpNewPw2').value;
+    const updates = {};
+    if (_mpPhotoB64) updates.photoUrl = _mpPhotoB64;
+    const _t = uiText[currentLang] || uiText.ko;
+    let pwChange = false;
+    if (newPw || curPw) {
+      if (!curPw) { msgEl.className='modal-msg err'; msgEl.innerText=_t.mpErrCur; return; }
+      if (newPw.length < 4) { msgEl.className='modal-msg err'; msgEl.innerText=_t.mpErrShort; return; }
+      if (newPw !== newPw2) { msgEl.className='modal-msg err'; msgEl.innerText=_t.mpErrMatch; return; }
+      pwChange = true;
+    }
+    if (!Object.keys(updates).length && !pwChange) { msgEl.className='modal-msg err'; msgEl.innerText=_t.mpErrCur; return; }
+    const saveBtn = document.getElementById('mpSaveBtn'); saveBtn.disabled = true;
+    try {
+      if (pwChange) {
+        try { await changeStudentPassword(_mpStudent.id, curPw, newPw); }
+        catch (ae) {
+          if (ae instanceof AuthError && ae.code === 'wrong-password') { msgEl.className='modal-msg err'; msgEl.innerText=_t.mpErrCur; saveBtn.disabled=false; return; }
+          throw ae;
+        }
+      }
+      if (Object.keys(updates).length) await updateDoc(doc(db, 'students', _mpStudent.id), updates);
+      Object.assign(_mpStudent, updates);
+      saveSession(_mpStudent);
+      renderAvatar(document.getElementById('navAvatar'), _mpStudent);
+      // 방금 바꾼 내 사진은 캐시 만료(24시간)를 기다리지 않고 바로 반영 —
+      // 안 그러면 내가 쓴 글에서 내 사진이 옛날 캐시로 하루 동안 안 바뀐 것처럼 보인다.
+      if (updates.photoUrl) {
+        const cache = loadPhotoCache();
+        cache[String(_mpStudent.id)] = { u: updates.photoUrl, t: Date.now() };
+        savePhotoCache(cache);
+      }
+      msgEl.className='modal-msg ok'; msgEl.innerText=_t.mpOk;
+      setTimeout(() => closeMyPage(), 1300);
+    } catch(e) { msgEl.className='modal-msg err'; msgEl.innerText=e.message; }
+    saveBtn.disabled = false;
+  };
+
+  // ── 상태 ──
+  let currentLang = localStorage.getItem('ohinfo_lang') || 'ko';
+  let imgList = [];
+  let currentPosts = [];
+  let currentExample = '';
+  let currentClassMeta = { boardLayout: 'grid', columns: [] }; // 패들릿식 칼럼형 게시판 지원용
+  let currentSort = 'new';
+  // 글 작성창에서 Enter로 텍스트를 줄바꿈하려다 실수로 폼 자체가 다시
+  // 제출되는 경우(브라우저는 disabled 안 된 다른 필드에서의 Enter도
+  // form submit으로 취급할 수 있음), submitPost()가 동시에 두 번 겹쳐
+  // 돌면서 그 사이 manualRefresh()가 서로 꼬여 #postForm이 일시적으로
+  // 못 찾아지는 크래시(Cannot read properties of null (reading 'closest'))
+  // 로 이어질 수 있었다. 이 플래그로 중복 실행 자체를 막는다.
+  let postSubmitting = false;
+  let pwResolveCallback = null;
+  let modalImgList = [];
+  let modalImgIndex = 0;
+
+  const uiText = {
+    ko: {
+      opt:"수업을 선택하세요", classLabel:"수업 선택", enter:"입장하기", submit:"게시물 등록", edit_finish:"수정 완료", teacher_notice:"선생님 안내",
+      refresh:"↻ 새로고침", refreshMob:"새로고침", backHome:"← 처음으로", search:"검색...", sortNew:"최신순", sortLike:"인기순",
+      uploadLabel:"이미지 첨부 (클릭 또는 Ctrl+V, 최대 4장)", cancelEdit:"수정 취소", adminBtn:"관리",
+      noPost:"게시물이 없습니다.", pin:"핀", edit:"수정", del:"삭제",
+      adminTitle:"수업 관리", admName:"수업명", admDesc:"설명", admEx:"선생님 안내", admPopup:"공지 팝업",
+      admNamePh:"수업명", admDescPh:"수업 상세 설명", admExPh:"게시판 최상단 고정 안내", admPopupPh:"입장 시 팝업 (비워두면 미표시)",
+      admSave:"저장", admCancel:"취소", admPw:"관리자 비밀번호", admSaved:"저장되었습니다.", admDelConfirm:"삭제하시겠습니까?",
+      noticePw:"비밀번호", noticePwPh:"비밀번호 입력", noticeOk:"확인", noticeCancel:"취소", noticeTitle:"공지사항",
+      mypage:"마이페이지", logout:"로그아웃",
+      mpTitle:"마이페이지", mpPhotoBtn:"사진 변경", mpPwLabel:"비밀번호 변경", mpCurPw:"현재 비밀번호", mpNewPw:"새 비밀번호 (4자 이상)", mpNewPw2:"새 비밀번호 확인", mpSave:"저장",
+      mpErrCur:"현재 비밀번호가 맞지 않습니다.", mpErrShort:"새 비밀번호는 4자 이상이어야 합니다.", mpErrMatch:"새 비밀번호가 일치하지 않습니다.", mpOk:"저장되었습니다.",
+    },
+    zh: {
+      opt:"请选择课程", classLabel:"选择课程", enter:"进入", submit:"发布", edit_finish:"完成修改", teacher_notice:"老师须知",
+      refresh:"↻ 刷新", refreshMob:"刷新", backHome:"← 返回", search:"搜索...", sortNew:"最新", sortLike:"热门",
+      uploadLabel:"附加图片 (点击或 Ctrl+V，最多4张)", cancelEdit:"取消修改", adminBtn:"管理",
+      noPost:"没有帖子。", pin:"置顶", edit:"修改", del:"删除",
+      adminTitle:"课程管理", admName:"课程名", admDesc:"描述", admEx:"老师须知", admPopup:"公告弹窗",
+      admNamePh:"课程名称", admDescPh:"课程详细描述", admExPh:"固定在顶部的提示", admPopupPh:"进入时弹窗（空则不显示）",
+      admSave:"保存", admCancel:"取消", admPw:"管理员密码", admSaved:"已保存。", admDelConfirm:"确定删除吗？",
+      noticePw:"密码", noticePwPh:"输入密码", noticeOk:"确认", noticeCancel:"取消", noticeTitle:"公告",
+      mypage:"我的页面", logout:"退出",
+      mpTitle:"我的页面", mpPhotoBtn:"更换照片", mpPwLabel:"修改密码", mpCurPw:"当前密码", mpNewPw:"新密码 (至少4位)", mpNewPw2:"确认新密码", mpSave:"保存",
+      mpErrCur:"当前密码不正确。", mpErrShort:"新密码至少需要4位。", mpErrMatch:"两次输入的新密码不一致。", mpOk:"已保存。",
+    },
+    ru: {
+      opt:"Выберите урок", classLabel:"Выбор урока", enter:"Войти", submit:"Опубликовать", edit_finish:"Изм.завершено", teacher_notice:"Заметка учителя",
+      refresh:"↻ Обновить", refreshMob:"Обновить", backHome:"← Назад", search:"Поиск...", sortNew:"Новые", sortLike:"Популярные",
+      uploadLabel:"Прикрепить фото (клик или Ctrl+V, макс. 4)", cancelEdit:"Отмена", adminBtn:"Управление",
+      noPost:"Нет записей.", pin:"Закреп", edit:"Ред.", del:"Удал.",
+      adminTitle:"Управление уроком", admName:"Название", admDesc:"Описание", admEx:"Заметка учителя", admPopup:"Всплывающее окно",
+      admNamePh:"Название урока", admDescPh:"Описание урока", admExPh:"Закреплённое объявление", admPopupPh:"Всплывающее окно при входе",
+      admSave:"Сохранить", admCancel:"Отмена", admPw:"Пароль администратора", admSaved:"Сохранено.", admDelConfirm:"Удалить?",
+      noticePw:"Пароль", noticePwPh:"Введите пароль", noticeOk:"OK", noticeCancel:"Отмена", noticeTitle:"Объявление",
+      mypage:"Профиль", logout:"Выйти",
+      mpTitle:"Профиль", mpPhotoBtn:"Сменить фото", mpPwLabel:"Сменить пароль", mpCurPw:"Текущий пароль", mpNewPw:"Новый пароль (мин. 4)", mpNewPw2:"Подтвердить пароль", mpSave:"Сохранить",
+      mpErrCur:"Неверный текущий пароль.", mpErrShort:"Новый пароль должен быть не менее 4 символов.", mpErrMatch:"Пароли не совпадают.", mpOk:"Сохранено.",
+    },
+    en: {
+      opt:"Select class", classLabel:"Select Class", enter:"Enter", submit:"Post", edit_finish:"Save edit", teacher_notice:"Teacher's Note",
+      refresh:"↻ Refresh", refreshMob:"Refresh", backHome:"← Back", search:"Search...", sortNew:"Newest", sortLike:"Popular",
+      uploadLabel:"Attach image (click or Ctrl+V, max 4)", cancelEdit:"Cancel edit", adminBtn:"Admin",
+      noPost:"No posts.", pin:"Pin", edit:"Edit", del:"Del",
+      adminTitle:"Class Management", admName:"Class name", admDesc:"Description", admEx:"Teacher's Note", admPopup:"Notice popup",
+      admNamePh:"Class name", admDescPh:"Class description", admExPh:"Fixed notice at top", admPopupPh:"Popup on entry (empty = hidden)",
+      admSave:"Save", admCancel:"Cancel", admPw:"Admin password", admSaved:"Saved.", admDelConfirm:"Delete this?",
+      noticePw:"Password", noticePwPh:"Enter password", noticeOk:"OK", noticeCancel:"Cancel", noticeTitle:"Notice",
+      mypage:"My Page", logout:"Logout",
+      mpTitle:"My Page", mpPhotoBtn:"Change Photo", mpPwLabel:"Change Password", mpCurPw:"Current password", mpNewPw:"New password (min. 4)", mpNewPw2:"Confirm new password", mpSave:"Save",
+      mpErrCur:"Current password is incorrect.", mpErrShort:"New password must be at least 4 characters.", mpErrMatch:"Passwords do not match.", mpOk:"Saved.",
+    }
+  };
+
+  // ── 번역 ──
+  async function deepl(texts, targetLang, sourceLang = 'ko') {
+    const res = await fetch('/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ texts, targetLang, sourceLang })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error || !data.translations) throw new Error(data.error || data.message || `HTTP ${res.status}`);
+    return data.translations.map(t => t.text);
+  }
+
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  // 학생 여러 명이 동시에 글을 올리면 DeepL 무료 플랜에 순간적으로 요청이
+  // 몰려 429/타임아웃이 날 수 있다. 실패한 언어만 한두 번 짧게 재시도한다.
+  async function deeplWithRetry(texts, targetLang, sourceLang, retries = 2) {
+    for (let attempt = 0; ; attempt++) {
+      try { return await deepl(texts, targetLang, sourceLang); }
+      catch (e) {
+        if (attempt >= retries) throw e;
+        await sleep(300 * (attempt + 1) + Math.random() * 200);
+      }
+    }
+  }
+
+  // srcLang: 원문 언어 ('ko'|'zh'|'ru'|'en'), sub/msg: 원문
+  // 반환: { subKo, msgKo, subZh, msgZh, subRu, msgRu, subEn, msgEn }
+  async function translatePostAll(sub, msg, srcLang) {
+    const sl = srcLang === 'zh' ? 'zh-cn' : srcLang;
+    const targets = ['ko','zh-cn','ru','en'].filter(t => t !== sl);
+    // 동시에 3개를 한꺼번에 쏘지 않고 살짝 시간차를 둬서 순간 동시요청 수를 낮춘다.
+    // Promise.all이 아니라 allSettled를 써서, 한 언어가 실패해도 나머지 성공한
+    // 번역까지 같이 버려지지 않게 한다.
+    const settled = await Promise.allSettled(
+      targets.map((tl, i) => sleep(i * 150).then(() => deeplWithRetry([sub, msg], tl, sl)))
+    );
+    const map = {};
+    targets.forEach((tl, i) => { if (settled[i].status === 'fulfilled') map[tl] = settled[i].value; });
+    const g = (tl) => map[tl] || (sl === tl ? [sub, msg] : ['', '']);
+    return {
+      subKo: srcLang === 'ko' ? sub : (g('ko')[0] || ''),
+      msgKo: srcLang === 'ko' ? msg : (g('ko')[1] || ''),
+      subZh: srcLang === 'zh' ? sub : (g('zh-cn')[0] || ''),
+      msgZh: srcLang === 'zh' ? msg : (g('zh-cn')[1] || ''),
+      subRu: srcLang === 'ru' ? sub : (g('ru')[0] || ''),
+      msgRu: srcLang === 'ru' ? msg : (g('ru')[1] || ''),
+      subEn: srcLang === 'en' ? sub : (g('en')[0] || ''),
+      msgEn: srcLang === 'en' ? msg : (g('en')[1] || ''),
+    };
+  }
+
+  function langSfx(l) { return ({ko:'Ko',zh:'Zh',ru:'Ru',en:'En'})[l] || 'Ko'; }
+
+  // ── 러시아어 가상키보드 ──
+  const RU_ROWS = [
+    ['й','ц','у','к','е','н','г','ш','щ','з','х','ъ'],
+    ['ф','ы','в','а','п','р','о','л','д','ж','э'],
+    ['shift','я','ч','с','м','и','т','ь','б','ю','⌫'],
+    ['space','enter'],
+  ];
+  let kbShift = false;
+  let kbTarget = null;
+
+  function buildKeyboard() {
+    const wrap = document.getElementById('kbRows');
+    wrap.innerHTML = RU_ROWS.map(row => {
+      const keys = row.map(k => {
+        if (k === 'shift') return `<button class="kb-key wide" id="kb-shift" onmousedown="event.preventDefault()" onclick="toggleShift()">⇧ Shift</button>`;
+        if (k === '⌫')    return `<button class="kb-key wide" onmousedown="event.preventDefault()" onclick="kbBackspace()">⌫</button>`;
+        if (k === 'space') return `<button class="kb-key space" onmousedown="event.preventDefault()" onclick="kbInsert(' ')">Space</button>`;
+        if (k === 'enter') return `<button class="kb-key wide" onmousedown="event.preventDefault()" onclick="kbInsert('\\n')">↵</button>`;
+        return `<button class="kb-key" onmousedown="event.preventDefault()" onclick="kbInsert('${k}')">${k}</button>`;
+      }).join('');
+      return `<div class="kb-row">${keys}</div>`;
+    }).join('');
+  }
+
+  function toggleShift() {
+    kbShift = !kbShift;
+    document.getElementById('kb-shift')?.classList.toggle('shift-active', kbShift);
+    document.querySelectorAll('.kb-key:not(.wide)').forEach(btn => {
+      const ch = btn.innerText;
+      if (ch.length === 1) btn.innerText = kbShift ? ch.toUpperCase() : ch.toLowerCase();
+    });
+  }
+
+  function kbInsert(ch) {
+    if (!kbTarget) return;
+    const val = kbShift && ch.length === 1 ? ch.toUpperCase() : ch;
+    const start = kbTarget.selectionStart;
+    const end = kbTarget.selectionEnd;
+    kbTarget.value = kbTarget.value.slice(0, start) + val + kbTarget.value.slice(end);
+    kbTarget.selectionStart = kbTarget.selectionEnd = start + val.length;
+    kbTarget.dispatchEvent(new Event('input'));
+    if (kbShift && ch.length === 1) toggleShift();
+  }
+
+  function kbBackspace() {
+    if (!kbTarget) return;
+    const start = kbTarget.selectionStart;
+    const end = kbTarget.selectionEnd;
+    if (start === end && start > 0) {
+      kbTarget.value = kbTarget.value.slice(0, start - 1) + kbTarget.value.slice(start);
+      kbTarget.selectionStart = kbTarget.selectionEnd = start - 1;
+    } else if (start !== end) {
+      kbTarget.value = kbTarget.value.slice(0, start) + kbTarget.value.slice(end);
+      kbTarget.selectionStart = kbTarget.selectionEnd = start;
+    }
+    kbTarget.dispatchEvent(new Event('input'));
+  }
+
+  function openKeyboard(el) {
+    if (window.innerWidth < 768) return;
+    kbTarget = el;
+    document.getElementById('ruKeyboard').classList.add('show');
+  }
+
+  function closeKeyboard() {
+    document.getElementById('ruKeyboard').classList.remove('show');
+    kbTarget = null;
+  }
+
+  function bindKeyboardTargets() {
+    document.querySelectorAll('.ru-target').forEach(el => {
+      el.addEventListener('focus', () => { if (currentLang === 'ru') openKeyboard(el); });
+    });
+  }
+
+  // ── 비번 모달 ──
+  function askPassword(label) {
+    return new Promise(resolve => {
+      pwResolveCallback = resolve;
+      document.getElementById('pwLabel').innerText = label || '비밀번호';
+      document.getElementById('pwInput').value = '';
+      document.getElementById('pwOverlay').classList.add('show');
+      setTimeout(() => document.getElementById('pwInput').focus(), 100);
+    });
+  }
+  function pwConfirm() { const v = document.getElementById('pwInput').value; document.getElementById('pwOverlay').classList.remove('show'); if (pwResolveCallback) { pwResolveCallback(v); pwResolveCallback = null; } }
+  function pwCancel() { document.getElementById('pwOverlay').classList.remove('show'); if (pwResolveCallback) { pwResolveCallback(null); pwResolveCallback = null; } }
+
+  // ── 다크모드 ──
+  function toggleDark() { document.body.classList.toggle('dark'); localStorage.setItem('dark', document.body.classList.contains('dark') ? '1' : '0'); }
+  if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
+
+  // ── 모바일 메뉴 ──
+  function toggleMobileMenu() { document.getElementById('mobileMenu').classList.toggle('open'); }
+  function closeMobileMenu() { document.getElementById('mobileMenu').classList.remove('open'); }
+
+  // ── 로딩 ──
+  function toggleLoading(show) { document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none'; }
+
+  // ── 이미지 모달 ──
+  function openModal(imgs, idx) { modalImgList = imgs; modalImgIndex = idx; document.getElementById('modalImg').src = imgs[idx]; document.getElementById('modalPrev').style.display = imgs.length > 1 ? 'flex' : 'none'; document.getElementById('modalNext').style.display = imgs.length > 1 ? 'flex' : 'none'; document.getElementById('imageModal').style.display = 'flex'; }
+  function handleModalClick(e) { if (e.target === document.getElementById('imageModal')) closeModal(); }
+  function closeModal() { document.getElementById('imageModal').style.display = 'none'; }
+  function modalNav(dir) { modalImgIndex = (modalImgIndex + dir + modalImgList.length) % modalImgList.length; document.getElementById('modalImg').src = modalImgList[modalImgIndex]; }
+  document.addEventListener('keydown', e => {
+    if (document.getElementById('imageModal').style.display === 'flex') { if (e.key === 'ArrowLeft') modalNav(-1); if (e.key === 'ArrowRight') modalNav(1); if (e.key === 'Escape') closeModal(); }
+    if (document.getElementById('pwOverlay').classList.contains('show') && e.key === 'Escape') pwCancel();
+  });
+
+  // ── 공지 팝업 ──
+  function showPopup(msg) { if (!msg) return; const key = 'popup_' + getHidden('f_class'); if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, '1'); document.getElementById('popupMsg').innerText = msg; document.getElementById('popupOverlay').classList.add('show'); }
+  function closePopup() { document.getElementById('popupOverlay').classList.remove('show'); }
+
+  // ── 포맷 ──
+
+  // ── 언어 ──
+  window.toggleLangDD = () => { document.getElementById('langGlobeDD').classList.toggle('hidden'); };
+  window.closeLangDD = () => { document.getElementById('langGlobeDD').classList.add('hidden'); };
+  document.addEventListener('click', e => {
+    const lg = document.getElementById('langGlobe');
+    if (lg && !lg.contains(e.target)) closeLangDD();
+  });
+  function updateLangCheck(lang) {
+    ['ko','zh','ru','en'].forEach(l => {
+      const el = document.getElementById('lck-'+l);
+      if (el) el.innerHTML = l === lang ? '<svg width="13" height="13"><use href="#ic-check"/></svg>' : '';
+      document.getElementById('m-btn-'+l)?.classList.toggle('active', l===lang);
+    });
+    setPageTitle('ohdlet', null, lang);
+  }
+  updateLangCheck(currentLang);
+
+  function setLanguage(lang) {
+    const refreshing = !document.getElementById('step2').classList.contains('hidden');
+    currentLang = lang;
+    localStorage.setItem('ohinfo_lang', lang);
+    updateLangCheck(lang);
+    const t = uiText[lang] || uiText.ko;
+    // step1
+    const clLabel = document.getElementById('ui-class-label'); if (clLabel) clLabel.innerText = t.classLabel;
+    const entBtn = document.getElementById('ui-enter-btn'); if (entBtn) entBtn.innerText = t.enter;
+    // step2 board
+    const subBtn = document.getElementById('subBtn'); if (subBtn) subBtn.innerText = getHidden('f_mode') === 'edit' ? t.edit_finish : t.submit;
+    const cancelEditBtn = document.getElementById('cancelEditBtn'); if (cancelEditBtn) cancelEditBtn.innerText = t.cancelEdit;
+    const sideRefresh = document.querySelector('.sidebar-refresh'); if (sideRefresh) sideRefresh.innerText = t.refresh;
+    const mobRefresh = document.querySelector('.board-header-mobile .btn'); if (mobRefresh) mobRefresh.innerText = t.refreshMob;
+    const backHomeBtn = document.querySelector('.board-sidebar > div > .btn.ghost'); if (backHomeBtn) backHomeBtn.innerText = t.backHome;
+    const searchInp = document.getElementById('searchInput'); if (searchInp) searchInp.placeholder = t.search;
+    const sortNewBtn = document.getElementById('sortNew'); if (sortNewBtn) sortNewBtn.innerText = t.sortNew;
+    const sortLikeBtn = document.getElementById('sortLike'); if (sortLikeBtn) sortLikeBtn.innerText = t.sortLike;
+    const uploadLabel = document.getElementById('ui-upload-label'); if (uploadLabel) { const prev = document.getElementById('previewArea'); uploadLabel.innerHTML = t.uploadLabel; if (prev) uploadLabel.appendChild(prev); }
+    // admin panel
+    const admTitle = document.querySelector('#adminPanel h2'); if (admTitle) admTitle.innerText = t.adminTitle;
+    const admSaveBtn = document.querySelector('#adminPanel .btn.accent[onclick="saveAdminClass()"]'); if (admSaveBtn) admSaveBtn.innerText = t.admSave;
+    const admCancelBtn = document.getElementById('adm_cancel_btn'); if (admCancelBtn) admCancelBtn.innerText = t.admCancel;
+    const admNameEl = document.querySelector('[for="adm_name"], #adminPanel .field label:nth-of-type(1)');
+    document.querySelectorAll('#adminPanel .field').forEach(f => {
+      const lbl = f.querySelector('label'); const inp = f.querySelector('input,textarea');
+      if (!lbl || !inp) return;
+      if (inp.id === 'adm_name') { lbl.innerText = t.admName; inp.placeholder = t.admNamePh; }
+      else if (inp.id === 'adm_desc') { lbl.innerText = t.admDesc; inp.placeholder = t.admDescPh; }
+      else if (inp.id === 'adm_ex') { lbl.innerText = t.admEx; inp.placeholder = t.admExPh; }
+      else if (inp.id === 'adm_popup') { lbl.innerText = t.admPopup; inp.placeholder = t.admPopupPh; }
+    });
+    // nav user dropdown
+    const ddMy = document.querySelector('#userDropdown .user-dropdown-item:first-child'); if (ddMy) ddMy.innerHTML = `<svg width="15" height="15"><use href="#ic-user"/></svg> ${t.mypage}`;
+    const ddOut = document.querySelector('#userDropdown .user-dropdown-item.danger'); if (ddOut) ddOut.innerHTML = `<svg width="15" height="15"><use href="#ic-exit"/></svg> ${t.logout}`;
+    // notice popup
+    const popTitle = document.querySelector('#popupOverlay h2'); if (popTitle) popTitle.innerText = t.noticeTitle;
+    const popOk = document.querySelector('#popupOverlay .btn.accent[onclick="closePopup()"]'); if (popOk) popOk.innerText = t.noticeOk;
+    // password overlay
+    const pwOk = document.querySelector('.pw-actions .btn.accent[onclick="pwConfirm()"]'); if (pwOk) pwOk.innerText = t.noticeOk;
+    const pwCan = document.querySelector('.pw-actions .btn.ghost[onclick="pwCancel()"]'); if (pwCan) pwCan.innerText = t.noticeCancel;
+    const pwInp = document.getElementById('pwInput'); if (pwInp) pwInp.placeholder = t.noticePwPh;
+    // mypage modal
+    const mpT = document.querySelector('#myPageOverlay .modal-title'); if (mpT) mpT.innerText = t.mpTitle;
+    const mpPb = document.querySelector('.btn-photo-change'); if (mpPb) mpPb.innerText = t.mpPhotoBtn;
+    const mpPwL = document.querySelector('#myPageOverlay .modal-section-label'); if (mpPwL) mpPwL.innerText = t.mpPwLabel;
+    const mpC = document.getElementById('mpCurPw'); if (mpC) mpC.placeholder = t.mpCurPw;
+    const mpN = document.getElementById('mpNewPw'); if (mpN) mpN.placeholder = t.mpNewPw;
+    const mpN2 = document.getElementById('mpNewPw2'); if (mpN2) mpN2.placeholder = t.mpNewPw2;
+    const mpSv = document.getElementById('mpSaveBtn'); if (mpSv) mpSv.innerText = t.mpSave;
+    // nav admin button
+    const navAdminBtn = document.querySelector('.nav-admin'); if (navAdminBtn) navAdminBtn.innerText = t.adminBtn;
+    if (lang !== 'ru') closeKeyboard();
+    updateClassList();
+    if (refreshing) manualRefresh();
+  }
+
+  function getHidden(id) { const el = document.getElementById(id); return el ? el.value : ''; }
+  function setHidden(id, val) { let el = document.getElementById(id); if (!el) { el = document.createElement('input'); el.type='hidden'; el.id=id; document.body.appendChild(el); } el.value = val; }
+
+  // 마스터의 "전체 수업 목록" 카드 그리드와 같은 방식 — 학생은 자기 학교/
+  // 학년/반에 맞는 수업만(_classAudienceOk) 카드로 보고 바로 들어간다.
+  async function updateClassList() {
+    const grid = document.getElementById('classGrid');
+    if (!grid) return;
+    try {
+      const snap = await getDocs(collection(db, 'classes'));
+      const classes = snap.docs.map(d => d.data())
+        .filter(c => c.status === 'ON' && _classAudienceOk(c))
+        .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'));
+      if (!classes.length) { grid.innerHTML = '<div style="color:var(--sub);font-size:0.85rem;">입장 가능한 수업이 없습니다.</div>'; return; }
+      const nsfx = langSfx(currentLang);
+      // enterClass에 넘기는 이름/학교는 게시글 조회 키라 원문 그대로, 화면 텍스트만 번역.
+      grid.innerHTML = classes.map(c => `
+        <button onclick="enterClass('${(c.name||'').replace(/'/g,"\\'")}','${(c.grade||'').replace(/'/g,"\\'")}','${(c.group||'').replace(/'/g,"\\'")}','${(c.schoolName||'').replace(/'/g,"\\'")}')"
+          style="background:var(--glass-strong);border:1px solid var(--border-card);border-radius:16px;padding:16px 14px;text-align:left;cursor:pointer;transition:all 0.2s;font-family:inherit;"
+          onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border-card)'">
+          <div style="font-weight:800;font-size:0.95rem;display:flex;align-items:center;gap:5px;"><svg width="14" height="14" style="color:var(--sub);flex-shrink:0;"><use href="#ic-board"/></svg>${(c['name'+nsfx] || c.name || '(이름없음)')}</div>
+        </button>`).join('');
+    } catch(e) { grid.innerHTML = `<div style="color:#ef4444;font-size:0.82rem;">오류: ${e.message}</div>`; }
+  }
+
+  // 학생용 카드 그리드(updateClassList)와 마스터용 카드 그리드(loadMasterClassGrid)
+  // 둘 다 여기로 들어온다 — 어느 쪽이든 클릭한 카드의 학교/학년/반으로 정확히
+  // 그 수업을 여는 게 전부라 로직을 나눌 이유가 없다.
+  window.enterClass = (cls, grade, group, schoolName) => {
+    setHidden('f_mode','add'); setHidden('f_postId','');
+    setHidden('f_grade', grade); setHidden('f_group', group); setHidden('f_class', cls);
+    setHidden('f_school', schoolName);
+    document.getElementById('step1').classList.add('hidden');
+    document.getElementById('step2').classList.remove('hidden');
+    manualRefresh();
+  };
+
+  function goHome() { document.getElementById('step2').classList.add('hidden'); document.getElementById('step1').classList.remove('hidden'); document.getElementById('adminPanel').classList.add('hidden'); cancelEdit(); closeKeyboard(); window.scrollTo(0,0); }
+
+  function navLogoClick() {
+    const inBoard = !document.getElementById('step2').classList.contains('hidden');
+    if (inBoard) { goHome(); } else { window.location.href = 'home.html'; }
+  }
+
+  // 예전엔 비밀번호("9600")를 이 페이지 소스에 그대로 넣어두고 비교했다 — 소스 보기로
+  // 누구나 알 수 있었다. 이제 마스터 계정(isMaster)만 쓸 수 있고, 실제 권한은
+  // Firestore 규칙이 확인한다.
+  function toggleAdmin() { Promise.resolve().then(() => { if (!IS_MASTER) return; document.getElementById('adminPanel').classList.toggle('hidden'); if (!document.getElementById('adminPanel').classList.contains('hidden')) { loadAdminList(); window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); } }); }
+
+  async function loadMasterClassGrid() {
+    const grid = document.getElementById('masterClassGrid');
+    grid.innerHTML = '<div style="color:var(--sub);font-size:0.85rem;">불러오는 중...</div>';
+    try {
+      const snap = await getDocs(collection(db, 'classes'));
+      const classes = snap.docs.map(d => d.data()).filter(c => c.status === 'ON').sort((a,b)=>(a.name||'').localeCompare(b.name||'','ko'));
+      if (!classes.length) { grid.innerHTML = '<div style="color:var(--sub);font-size:0.85rem;">등록된 수업이 없습니다.</div>'; return; }
+      const nsfx = langSfx(currentLang);
+      // 카드 클릭 시 넘기는 이름(enterClass 인자)은 게시글 조회 키라 원문 그대로, 화면 텍스트만 번역.
+      grid.innerHTML = classes.map(c => `
+        <button onclick="enterClass('${(c.name||'').replace(/'/g,"\\'")}','${(c.grade||'').replace(/'/g,"\\'")}','${(c.group||'').replace(/'/g,"\\'")}','${(c.schoolName||'').replace(/'/g,"\\'")}')"
+          style="background:var(--glass-strong);border:1px solid var(--border-card);border-radius:16px;padding:18px 16px;text-align:left;cursor:pointer;transition:all 0.2s;font-family:inherit;"
+          onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border-card)'">
+          <div style="font-weight:800;font-size:0.97rem;margin-bottom:4px;display:flex;align-items:center;gap:5px;"><svg width="14" height="14" style="color:var(--sub);flex-shrink:0;"><use href="#ic-board"/></svg>${(c['name'+nsfx] || c.name || '(이름없음)')}</div>
+          <div style="font-size:0.78rem;color:var(--sub);">${c.schoolName||''} ${c.grade||''}학년 ${c.group||''}반</div>
+        </button>`).join('');
+    } catch(e) { grid.innerHTML = `<div style="color:#ef4444;font-size:0.82rem;">오류: ${e.message}</div>`; }
+  }
+
+  function showSkeleton() {
+    document.getElementById('display').innerHTML = Array(6).fill(`<div class="skel-card"><div class="skeleton skel-line" style="width:55%;"></div><div class="skeleton skel-line" style="width:85%;"></div><div class="skeleton skel-line" style="width:70%;"></div><div class="skeleton skel-img"></div></div>`).join('');
+  }
+
+  async function manualRefresh() {
+    showSkeleton();
+    try {
+      const classTitle = getHidden('f_class');
+
+      // 수업 정보 조회
+      // 이름이 같은 수업이 학교/학년/반 다르게 여러 개 있을 수 있어서(마스터
+      // 계정은 전체를 다 보므로 특히 흔함), SESSION이 아니라 이 게시판에
+      // 진입할 때(enterClass) 남겨둔 학교/학년/반으로
+      // 정확히 하나만 골라야 한다 — 예전엔 마스터일 때 _classAudienceOk가
+      // 무조건 true라서 후보가 여러 개 남았고, 그중 하나가 임의로 뽑히면서
+      // 같은 이름의 다른 학교 게시글이 통째로 안 보이는 문제가 있었다.
+      const audSchool = getHidden('f_school');
+      const audGrade = getHidden('f_grade');
+      const audGroup = getHidden('f_group');
+      let cls = {};
+      const clsSnap = await getDocs(query(collection(db, 'classes'), where('name', '==', classTitle)));
+      if (!clsSnap.empty) {
+        const candidates = clsSnap.docs.map(d => d.data()).filter(c => {
+          if ((c.schoolName || '관산중학교') !== audSchool) return false;
+          if (c.grade && c.grade !== audGrade) return false;
+          if (c.group && c.group !== audGroup) return false;
+          return true;
+        });
+        // 매칭 범위 우선순위: 반 지정 > 학년 지정 > 학교 전체
+        candidates.sort((a, b) => (b.group ? 2 : b.grade ? 1 : 0) - (a.group ? 2 : a.grade ? 1 : 0));
+        cls = candidates[0] || clsSnap.docs[0].data();
+      }
+      currentBoardKey = cls.name ? classBoardKey(cls) : '';
+      currentClassMeta = {
+        boardLayout: cls.boardLayout === 'columns' ? 'columns' : 'grid',
+        columns: Array.isArray(cls.columns) ? cls.columns : [],
+      };
+      setHidden('p_column', '');
+
+      // 게시물 조회 (boardKey 없는 옛 게시글은 이름만으로 계속 노출 — 하위호환.
+      // 대상(학년/반)이 바뀌어 boardKey 뒷부분만 달라진 글도 이름+학교가
+      // 같으면 그대로 노출한다 — classBoardKeyBase 주석 참고)
+      const boardKeyBase = cls.name ? classBoardKeyBase(cls) : '';
+      const allPosts = await loadClassPosts(classTitle, currentBoardKey);
+      const rawPosts = allPosts
+        .filter(p => !p.deleted && (!p.boardKey || p.boardKey === currentBoardKey || (boardKeyBase && p.boardKey.startsWith(boardKeyBase))))
+        // AI 실험실 글 중 "반별로 나누기"로 올린 글은 같은 반 학생에게만(마스터는 전부).
+        .filter(p => p.aiScope !== 'class' || IS_MASTER || (_nv(p.aiGrade) === SESSION.grade && _nv(p.aiClass) === SESSION.group));
+      // 클라이언트 정렬: pinned desc, createdAt desc
+      rawPosts.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || (b.createdAt > a.createdAt ? 1 : -1));
+
+      const sfx = langSfx(currentLang);
+      const example = cls['ex'+sfx] || cls.ex || '';
+      const desc = cls['desc'+sfx] || cls.desc || '';
+      const title = cls['name'+sfx] || cls.name || classTitle;
+      document.getElementById('boardTitle').innerText = title;
+      document.getElementById('boardDesc').innerHTML = fmtMsg(desc);
+      document.getElementById('sidebarTitle').innerText = title;
+      document.getElementById('sidebarDesc').innerHTML = fmtMsg(desc);
+      const wrap = document.getElementById('sidebarDescWrap');
+      wrap.style.display = desc.trim() ? '' : 'none';
+
+      // 칼럼형: 사이드바 작성 폼 자리에는 선생님 안내를 대신 보여주고(칼럼
+      // 안에 안내가 끼어 방해되던 문제 해결), 실제 글쓰기 폼은 각 칼럼의 +
+      // 버튼을 눌렀을 때만 그 칼럼 안으로 옮겨 붙는다(openColumnCompose).
+      const isColumns = currentClassMeta.boardLayout === 'columns';
+      // 칼럼형일 땐 board-layout 전체를 화면 끝까지 채워서(가운데 정렬
+      // max-width 해제) 선생님 안내가 들어있는 사이드바가 화면 진짜
+      // 왼쪽 끝에 붙게 한다 — 자유형(메이슨리)일 땐 카드가 너무 넓어지지
+      // 않도록 기존 1440px 가운데 정렬을 그대로 유지한다.
+      document.querySelector('.board-layout')?.classList.toggle('col-mode', isColumns);
+      document.getElementById('sidebarFormSlot').classList.toggle('hidden', isColumns);
+      document.getElementById('sidebarNoticeCard').classList.toggle('hidden', !isColumns || !example.trim());
+      document.getElementById('sidebarNoticeText').innerHTML = fmtMsg(example);
+      // 폼은 appendChild로 위치만 옮겨다니므로(복제 아님) 현재 어디 붙어있든
+      // (사이드바/대기 장소/특정 칼럼 안) 실제 노드를 그대로 찾아 옮기면 된다.
+      const formCard = document.getElementById('postForm')?.closest('.form-card');
+      if (formCard) {
+        if (isColumns) {
+          document.getElementById('composeHolder').appendChild(formCard); // 새로고침 시 열려있던 인라인 폼은 일단 접어 정리
+        } else {
+          document.getElementById('sidebarFormSlot').appendChild(formCard);
+        }
+      }
+      if (isColumns) cancelEdit();
+      const photoMap = await fetchPhotoMap(rawPosts.map(p => p.studentId));
+      currentPosts = rawPosts.map(p => ({
+        ...p,
+        subject: p['sub'+sfx] || p.subKo || '',
+        message: p['msg'+sfx] || p.msgKo || '',
+        time: p.createdAt ? new Date(p.createdAt).toLocaleDateString() : '',
+        photoUrl: photoMap[String(p.studentId)] || ''
+      }));
+      currentExample = example;
+      render(example, sortedPosts());
+      if (cls.popup) showPopup(cls.popup);
+    } catch(e) { console.error('manualRefresh error:', e); document.getElementById('display').innerHTML = `<div style="padding:20px;color:#ef4444;">오류: ${e.message}</div>`; }
+  }
+
+  function setSort(type) { currentSort = type; document.getElementById('sortNew').classList.toggle('active', type==='new'); document.getElementById('sortLike').classList.toggle('active', type==='like'); render(currentExample, sortedPosts()); }
+  function sortedPosts() { const p = [...currentPosts]; if (currentSort === 'like') p.sort((a,b) => (b.pinned?1:0)-(a.pinned?1:0) || b.likes-a.likes); return p; }
+
+  // ── 마스터 전용: 현재 보고 있는 반 게시글(+댓글)을 엑셀로 내보내기 ──
+  window.exportToExcel = async () => {
+    if (typeof XLSX === 'undefined') { alert('엑셀 내보내기 기능을 불러오지 못했습니다. 인터넷 연결을 확인하고 새로고침 후 다시 시도해주세요.'); return; }
+    if (!currentPosts.length) { alert('내보낼 게시글이 없습니다.'); return; }
+    toggleLoading(true);
+    try {
+      const isColumns = currentClassMeta.boardLayout === 'columns';
+      const postRows = currentPosts.map(p => ({
+        번호: p.num || '',
+        이름: p.name || '',
+        ...(isColumns ? { 칼럼: p.column || '' } : {}),
+        제목: p.subject || '',
+        내용: p.message || '',
+        좋아요: p.likes || 0,
+        댓글수: p.commentCount || 0,
+        작성일시: p.createdAt ? new Date(p.createdAt).toLocaleString('ko-KR') : '',
+      }));
+
+      // 댓글이 달린 게시글만 서브컬렉션을 조회해 댓글 시트에 같이 담는다.
+      const withComments = currentPosts.filter(p => (p.commentCount || 0) > 0);
+      const commentGroups = await Promise.all(withComments.map(async p => {
+        try {
+          const snap = await getDocs(query(collection(db, 'posts', p.id, 'comments'), orderBy('createdAt', 'asc')));
+          return snap.docs.map(d => {
+            const c = d.data();
+            return {
+              게시글번호: p.num || '', 게시글작성자: p.name || '', 게시글제목: p.subject || '',
+              댓글작성자: c.name ? `${c.name}(${c.num || ''})` : '',
+              댓글내용: c.text || '',
+              작성일시: c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString('ko-KR') : '',
+            };
+          });
+        } catch (e) { return []; } // 이 게시글 댓글만 건너뛰고 나머지는 계속 진행
+      }));
+      const commentRows = commentGroups.flat();
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(postRows), '게시글');
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(commentRows.length ? commentRows : [{ 안내: '댓글 없음' }]), '댓글');
+      const title = (document.getElementById('boardTitle')?.innerText || '게시판').trim() || '게시판';
+      const safeTitle = title.replace(/[\\/:*?"<>|]/g, '_');
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      XLSX.writeFile(wb, `${safeTitle}_게시글_${dateStr}.xlsx`);
+    } catch (e) {
+      alert('엑셀 내보내기 중 오류: ' + e.message);
+    }
+    toggleLoading(false);
+  };
+  function filterPosts() {
+    const q = document.getElementById('searchInput').value.trim().toLowerCase();
+    document.querySelectorAll('#display .post-card:not(.teacher-card)').forEach(card => {
+      const text = (card.dataset.search || '').toLowerCase();
+      card.style.display = (!q || text.includes(q)) ? '' : 'none';
+    });
+    layoutMasonry();
+  }
+
+  // ── 메이슨리: 가장 짧은 열에 카드 배치 (이빨 빠짐 없이 상단 정렬) ──
+  function colCountFor(w) { return w >= 1500 ? 4 : w >= 1024 ? 3 : w >= 600 ? 2 : 1; }
+  function layoutMasonry() {
+    const display = document.getElementById('display');
+    if (!display) return;
+    // 칼럼형 게시판일 땐 손대면 안 된다 — 여기서 그냥 진행하면 display를
+    // 통째로 비우고 카드를 메이슨리 열(.m-col)로 재배치해버려서, 창 크기를
+    // 조절할 때마다(리사이즈 → scheduleRelayout) 칼럼 헤더/구조가 통째로
+    // 사라지고 자유형처럼 뒤섞이는 문제가 있었다.
+    if (currentClassMeta.boardLayout === 'columns') { updateAllColScrollbars(); return; }
+    const cards = [...display.querySelectorAll('.post-card')];
+    if (!cards.length) return;
+    const cols = colCountFor(display.clientWidth || window.innerWidth);
+    display.innerHTML = '';
+    const colEls = [];
+    for (let i = 0; i < cols; i++) { const d = document.createElement('div'); d.className = 'm-col'; display.appendChild(d); colEls.push(d); }
+    cards.forEach(card => {
+      let m = 0;
+      for (let i = 1; i < cols; i++) { if (colEls[i].offsetHeight < colEls[m].offsetHeight) m = i; }
+      colEls[m].appendChild(card);
+    });
+  }
+  let _relayoutT = null;
+  function scheduleRelayout() { clearTimeout(_relayoutT); _relayoutT = setTimeout(layoutMasonry, 120); }
+  window.addEventListener('resize', scheduleRelayout);
+
+  // 게시글은 누구나 쓸 수 있는 컬렉션이라, 화면에 넣기 전에 여기서 한 번 걸러낸다:
+  // 문서 ID에 따옴표 등이 들어 있으면(우리 코드는 그런 ID를 만들지 않는다)
+  // onclick="…('${id}')" 자리에서 스크립트가 돌 수 있으니 아예 안 그리고,
+  // 이미지는 base64 이미지/https 주소만, 숫자는 숫자로 강제한다.
+  // (localStorage 캐시에서 온 옛 데이터도 여기를 지나므로 같이 걸러진다.)
+  const _postImgs = {};
+  function postCardHtml(p) {
+    if (!SAFE_ID.test(String(p.id))) return '';
+    p = { ...p, imgs: (Array.isArray(p.imgs) ? p.imgs : []).map(safeImgUrl).filter(Boolean), likes: Number(p.likes) || 0, commentCount: Number(p.commentCount) || 0 };
+    const hasLiked = localStorage.getItem('voted_'+p.id);
+    const _srch = escHtml([p.subject,p.subKo,p.message,p.msgKo,p.name].filter(Boolean).join(' '));
+    return `<div class="post-card ${p.pinned?'pinned-card':''}" data-id="${escHtml(p.id)}" data-search="${_srch}">
+        ${p.pinned ? '<div class="pin-badge"><svg width="11" height="11"><use href="#ic-pin"/></svg> 고정</div>' : ''}
+        ${p.subject ? `<div class="post-sub">${escHtml(p.subject)}</div>` : ''}
+        ${p.message ? `<div class="post-msg">${fmtMsg(p.message)}</div>` : (!p.subject ? `<div class="post-msg" style="color:var(--sub);font-style:italic;">(내용 없음)</div>` : '')}
+        ${buildSlider(p.imgs, p.id)}
+        <div class="post-meta">
+          <div class="post-meta-left">
+            <div class="like-area ${hasLiked?'voted':''}" onclick="toggleLikeUI('${p.id}',this)">
+              <span><svg width="14" height="14"><use href="#ic-heart"/></svg></span><span class="like-count" style="font-weight:700;">${p.likes}</span>
+            </div>
+            <div class="comment-btn" id="cbtn_${p.id}" onclick="toggleComments('${p.id}')">
+              <svg width="14" height="14"><use href="#ic-chat"/></svg><span class="comment-count" id="ccount_${p.id}">${p.commentCount||0}</span>
+            </div>
+          </div>
+          <div class="action-links">
+            ${IS_MASTER ? `<a class="pin-link ${p.pinned?'is-pinned':''}" onclick="handlePinClick('${p.id}')">${uiText[currentLang]?.pin||uiText.ko.pin}</a>` : ''}
+            ${!p._readonly && String(p.studentId)===String(SESSION.id) ? `<a onclick="handleEditClick('${p.id}')">${uiText[currentLang]?.edit||uiText.ko.edit}</a><a class="del-link" onclick="openDelete('${p.id}')">${uiText[currentLang]?.del||uiText.ko.del}</a>` : ''}
+          </div>
+        </div>
+        <div class="comment-panel" id="cpanel_${p.id}"></div>
+        <div class="post-byline">${safePhotoUrl(p.photoUrl) ? `<img src="${escHtml(safePhotoUrl(p.photoUrl))}" style="width:18px;height:18px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:5px;">` : ''}${escHtml(p.name)}(${escHtml(p.num)}) · ${escHtml(p.time)}</div>
+      </div>`;
+  }
+
+  // render()/renderColumnBoard()는 항상 #display.innerHTML을 통째로 다시
+  // 쓰는데, 칼럼형에서 학생이 "+"로 작성 폼을 어느 칼럼 안에 열어둔
+  // 상태라면 그 폼(#postForm)이 지금 #display의 후손이 된다 — 이 상태로
+  // innerHTML을 갈아치우면 폼 DOM 자체가 통째로 사라져 버려서, 그 뒤로는
+  // cancelEdit()/submitPost() 등 #postForm을 찾는 모든 코드가
+  // "Cannot read properties of null (reading 'reset')"로 죽는다.
+  // manualRefresh()는 render() 호출 전에 폼을 안전한 곳으로 옮겨두지만,
+  // setSort()/setLanguage()처럼 render()를 직접 부르는 경로는 그 안전장치를
+  //안 거치므로, render() 진입점 자체에서 매번 대피시킨다.
+  function evacuateComposeForm() {
+    const display = document.getElementById('display');
+    const formCard = document.getElementById('postForm')?.closest('.form-card');
+    if (display && formCard && display.contains(formCard)) {
+      document.getElementById('composeHolder').appendChild(formCard);
+    }
+  }
+
+  function render(ex, posts, isFiltered) {
+    evacuateComposeForm();
+    if (currentClassMeta.boardLayout === 'columns') return renderColumnBoard(ex, posts, isFiltered);
+    const display = document.getElementById('display');
+    display.classList.remove('col-board');
+    document.getElementById('teacherNotice').innerHTML = '';   // 별도 배너 미사용
+    const noticeLabel = uiText[currentLang]?.teacher_notice || '선생님 안내';
+    let html = '';
+    // 선생님 안내를 그리드 카드 1개로 편입 (다른 게시물과 동일 취급)
+    if (ex && !isFiltered) {
+      html += `<div class="post-card teacher-card"><div class="post-sub">${noticeLabel}</div><div class="post-msg">${fmtMsg(ex)}</div></div>`;
+    }
+    if (!posts.length && !(ex && !isFiltered)) {
+      display.innerHTML = `<div style="text-align:center;padding:48px 0;color:var(--sub);font-size:0.92rem;">${uiText[currentLang]?.noPost||uiText.ko.noPost}</div>`;
+      return;
+    }
+    posts.forEach((p) => { html += postCardHtml(p); });
+    display.innerHTML = html;
+    layoutMasonry();
+    // 이미지 로드되며 높이가 바뀌면 다시 배치
+    display.querySelectorAll('img').forEach(img => { if (!img.complete) img.addEventListener('load', scheduleRelayout, { once: true }); });
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      display.querySelectorAll('.post-card').forEach(c => c.classList.add('visible'));
+    }));
+  }
+
+  // 패들릿식 칼럼형 게시판 — 수업이 admin에서 "칼럼형"으로 설정돼 있으면
+  // 자유 배치 메이슨리 대신 관리자가 정의한 칼럼(예: 과학/사회/영어)별로
+  // 게시글을 나눠 보여준다. 칼럼에 안 맞는(옛 자유형 시절 글이나 삭제된
+  // 칼럼을 참조하는) 글은 "기타" 칼럼으로 몰아서 유실 없이 보여준다.
+  function renderColumnBoard(ex, posts, isFiltered) {
+    const display = document.getElementById('display');
+    display.classList.add('col-board');
+    document.getElementById('teacherNotice').innerHTML = '';
+    const cols = currentClassMeta.columns.length ? currentClassMeta.columns : ['전체'];
+    const buckets = new Map(cols.map(c => [c, []]));
+    const others = [];
+    posts.forEach(p => {
+      if (p.column && buckets.has(p.column)) buckets.get(p.column).push(p);
+      else others.push(p);
+    });
+    // colId는 DOM id/onclick 인자용 — 칼럼명에 따옴표·특수문자가 있어도 안전하게
+    const colHtml = (name, list, colId) => `
+      <div class="col-board-col">
+        <div class="col-board-header">
+          <span>${escHtml(name)}</span>
+          <span style="display:flex;align-items:center;gap:6px;">
+            <span class="col-board-count">${list.length}</span>
+            ${colId !== null ? `<button class="col-board-add" title="이 칼럼에 글쓰기" onclick="openColumnCompose('${colId}')">+</button>` : ''}
+          </span>
+        </div>
+        <div class="col-scroll-wrap">
+          <div class="col-board-body">
+            <div class="col-compose-anchor" id="composeAnchor_${colId}"></div>
+            ${list.length ? list.map(postCardHtml).join('') : `<div class="col-board-empty">${uiText[currentLang]?.noPost||uiText.ko.noPost}</div>`}
+          </div>
+          <div class="col-scrollbar"><div class="col-scrollbar-thumb"></div></div>
+        </div>
+      </div>`;
+    let html = cols.map((name, i) => colHtml(name, buckets.get(name), String(i))).join('');
+    if (others.length) html += colHtml('기타', others, null);
+    display.innerHTML = html;
+    display.querySelectorAll('img').forEach(img => { if (!img.complete) img.addEventListener('load', () => {}, { once: true }); });
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      display.querySelectorAll('.post-card').forEach(c => c.classList.add('visible'));
+    }));
+    updateAllColScrollbars();
+  }
+
+  // 칼럼형 게시판의 "가짜" 스크롤바(.col-scrollbar-thumb) 위치·크기 계산.
+  // 네이티브 스크롤바를 숨기고(CSS) 이 thumb로 대신 그려서, 평소엔 완전히
+  // 안 보이다가 그 칼럼에 커서를 올렸을 때만(CSS :hover) 반투명하게 글
+  // 위에 겹쳐 뜨게 한다.
+  function updateColScrollbar(bodyEl) {
+    const wrap = bodyEl.closest('.col-scroll-wrap');
+    const thumb = wrap?.querySelector('.col-scrollbar-thumb');
+    if (!thumb) return;
+    const { scrollTop, scrollHeight, clientHeight } = bodyEl;
+    if (scrollHeight <= clientHeight + 1) { thumb.style.display = 'none'; return; }
+    thumb.style.display = '';
+    const thumbHeight = Math.max(24, (clientHeight / scrollHeight) * clientHeight);
+    const maxTop = clientHeight - thumbHeight;
+    const top = maxTop <= 0 ? 0 : (scrollTop / (scrollHeight - clientHeight)) * maxTop;
+    thumb.style.height = thumbHeight + 'px';
+    thumb.style.top = top + 'px';
+  }
+  function updateAllColScrollbars() {
+    document.querySelectorAll('.col-board-body').forEach(updateColScrollbar);
+  }
+  // scroll 이벤트는 버블링되지 않으므로, 매 렌더마다 각 칼럼에 리스너를
+  // 새로 다는 대신 캡처 단계에서 #display 하나로 위임해 잡는다.
+  document.getElementById('display')?.addEventListener('scroll', e => {
+    if (e.target.classList?.contains('col-board-body')) updateColScrollbar(e.target);
+  }, true);
+
+  // 칼럼 안 + 버튼 → 그 칼럼의 앵커 자리로 실제 작성 폼(#postForm)을 그대로
+  // 옮겨 붙인다(복제가 아니라 DOM 이동이라 이미지 업로드·번역 등 기존 로직을
+  // 그대로 재사용). colId는 currentClassMeta.columns의 인덱스(문자열).
+  window.openColumnCompose = (colId) => {
+    cancelEdit();
+    const colName = currentClassMeta.columns[Number(colId)];
+    if (colName === undefined) return;
+    const anchor = document.getElementById('composeAnchor_' + colId);
+    const formCard = document.getElementById('postForm').closest('.form-card');
+    if (!anchor || !formCard) return;
+    anchor.appendChild(formCard);
+    setHidden('p_column', colName);
+    document.getElementById('cancelEditBtn').classList.remove('hidden'); // 인라인 작성 취소(접기)용
+    document.getElementById('p_sub').focus();
+  };
+
+  function buildSlider(imgs, pid) {
+    if (!imgs||!imgs.length) return '';
+    _postImgs[pid] = imgs;
+    if (imgs.length===1) return `<div class="img-slider"><div class="slides-track"><img src="${escHtml(imgs[0])}" onclick="openModal(window._postImgs['${pid}'],0)" loading="lazy"></div></div>`;
+    const slides = imgs.map((s,i)=>`<img src="${escHtml(s)}" onclick="openModal(window._postImgs['${pid}'],${i})" loading="lazy">`).join('');
+    const dots = imgs.map((_,i)=>`<span class="s-dot ${i===0?'active':''}" onclick="slideTo('${pid}',${i})"></span>`).join('');
+    return `<div class="img-slider" id="slider_${pid}"><div class="slides-track" id="track_${pid}">${slides}</div><button class="slider-btn slider-prev" onclick="slidePrev('${pid}',${imgs.length})">‹</button><button class="slider-btn slider-next" onclick="slideNext('${pid}',${imgs.length})">›</button><div class="slider-dots">${dots}</div></div>`;
+  }
+  window._postImgs = _postImgs;
+
+  const sliderIdx = {};
+  function slideTo(id,idx) { sliderIdx[id]=idx; const t=document.getElementById('track_'+id); if(!t)return; t.style.transform=`translateX(-${idx*100}%)`; document.querySelectorAll(`#slider_${id} .s-dot`).forEach((d,i)=>d.classList.toggle('active',i===idx)); }
+  function slideNext(id,len){slideTo(id,((sliderIdx[id]||0)+1)%len);}
+  function slidePrev(id,len){slideTo(id,((sliderIdx[id]||0)-1+len)%len);}
+
+  let touchX = null;
+  document.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; }, {passive:true});
+  document.addEventListener('touchend', e => { if (touchX===null)return; const dx=e.changedTouches[0].clientX-touchX; if(Math.abs(dx)<40){touchX=null;return;} const slider=e.target.closest('.img-slider'); if(!slider){touchX=null;return;} const id=slider.id.replace('slider_',''); const track=document.getElementById('track_'+id); if(!track){touchX=null;return;} const len=track.children.length; dx<0?slideNext(id,len):slidePrev(id,len); touchX=null; }, {passive:true});
+
+  function toggleLikeUI(id, el) {
+    const hasLiked = localStorage.getItem('voted_'+id);
+    const cnt = el.querySelector('.like-count');
+    let cur = parseInt(cnt.innerText);
+    el.classList.add('animate');
+    setTimeout(() => el.classList.remove('animate'), 350);
+    if (hasLiked) {
+      cnt.innerText = Math.max(0, cur - 1);
+      el.classList.remove('voted');
+      localStorage.removeItem('voted_'+id);
+      updateDoc(doc(db, 'posts', id), { likes: increment(-1), updatedAt: serverTimestamp() }).catch(e => console.error('like-:', e));
+    } else {
+      cnt.innerText = cur + 1;
+      el.classList.add('voted');
+      localStorage.setItem('voted_'+id, '1');
+      updateDoc(doc(db, 'posts', id), { likes: increment(1), updatedAt: serverTimestamp() }).catch(e => console.error('like+:', e));
+    }
+  }
+
+  // ── 댓글 ──
+  const _commentsCache = {}; // postId → 댓글 배열(펼친 적 있으면 캐시, 새로고침 없이 다시 펼칠 때 재사용)
+
+  function renderCommentList(postId, comments, photoMap) {
+    const listHtml = comments.length ? comments.map(c => {
+      const photo = safePhotoUrl(photoMap[String(c.studentId)]);
+      const isMine = String(c.studentId) === String(SESSION.id);
+      return `<div class="comment-item">
+        <div class="comment-avatar">${photo ? `<img src="${escHtml(photo)}">` : escHtml((c.name||'?')[0])}</div>
+        <div class="comment-body">
+          <div class="comment-byline">${escHtml(c.name||'')}<span class="num"> (${escHtml(c.num||'')})</span>${isMine ? `<span class="comment-del" onclick="deleteComment('${postId}','${c.id}')">삭제</span>` : ''}</div>
+          <div class="comment-text">${escHtml(c.text)}</div>
+          <div class="comment-time">${c.createdAt?.toDate ? c.createdAt.toDate().toLocaleString() : ''}</div>
+        </div>
+      </div>`;
+    }).join('') : `<div class="comment-empty">아직 댓글이 없습니다.</div>`;
+    return `
+      <div class="comment-list" id="clist_${postId}">${listHtml}</div>
+      <div class="comment-form">
+        <input class="comment-input" id="cinput_${postId}" placeholder="댓글을 입력하세요..." maxlength="500" onkeydown="if(event.key==='Enter')submitComment('${postId}')">
+        <button class="comment-send" onclick="submitComment('${postId}')"><svg width="15" height="15"><use href="#ic-send"/></svg></button>
+      </div>`;
+  }
+
+  window.toggleComments = async (postId) => {
+    const panel = document.getElementById('cpanel_' + postId);
+    const btn = document.getElementById('cbtn_' + postId);
+    if (!panel) return;
+    const opening = !panel.classList.contains('open');
+    panel.classList.toggle('open', opening);
+    btn?.classList.toggle('open', opening);
+    if (!opening) return;
+    if (_commentsCache[postId]) { panel.innerHTML = renderCommentList(postId, _commentsCache[postId].comments, _commentsCache[postId].photoMap); return; }
+    panel.innerHTML = `<div class="comment-empty">불러오는 중...</div>`;
+    try {
+      const snap = await getDocs(query(collection(db, 'posts', postId, 'comments'), orderBy('createdAt', 'asc')));
+      const comments = snap.docs.filter(d => SAFE_ID.test(d.id)).map(d => ({ id: d.id, ...d.data() }));
+      const photoMap = await fetchPhotoMap(comments.map(c => c.studentId));
+      _commentsCache[postId] = { comments, photoMap };
+      panel.innerHTML = renderCommentList(postId, comments, photoMap);
+    } catch (e) {
+      panel.innerHTML = `<div class="comment-empty" style="color:#ef4444;">오류: ${escHtml(e.message)}</div>`;
+    }
+  };
+
+  window.submitComment = async (postId) => {
+    const input = document.getElementById('cinput_' + postId);
+    const text = (input?.value || '').trim();
+    if (!text) return;
+    input.disabled = true;
+    try {
+      const comment = { studentId: SESSION.id, name: SESSION.name, num: SESSION.num, text, createdAt: serverTimestamp() };
+      const ref = await addDoc(collection(db, 'posts', postId, 'comments'), comment);
+      await updateDoc(doc(db, 'posts', postId), { commentCount: increment(1), updatedAt: serverTimestamp() });
+      // 서버 타임스탬프가 아직 반영 안 된 값이지만(클라 로컬 시간으로 즉시 표시),
+      // 다음에 패널을 다시 열면 실제 저장된 값으로 다시 불러온다.
+      const local = { ...comment, id: ref.id, createdAt: { toDate: () => new Date() } };
+      const cache = _commentsCache[postId] || { comments: [], photoMap: {} };
+      cache.comments.push(local);
+      cache.photoMap[String(SESSION.id)] = _mpStudent.photoUrl || '';
+      _commentsCache[postId] = cache;
+      const panel = document.getElementById('cpanel_' + postId);
+      if (panel) panel.innerHTML = renderCommentList(postId, cache.comments, cache.photoMap);
+      const countEl = document.getElementById('ccount_' + postId);
+      if (countEl) countEl.innerText = String((parseInt(countEl.innerText) || 0) + 1);
+      document.getElementById('cinput_' + postId)?.focus(); // renderCommentList가 새 input을 그려서 빈 채로 이미 활성화돼 있다
+    } catch (e) {
+      alert('댓글 등록 오류: ' + e.message);
+      input.disabled = false;
+    }
+  };
+
+  window.deleteComment = async (postId, commentId) => {
+    if (!confirm('댓글을 삭제할까요?')) return;
+    try {
+      await deleteDoc(doc(db, 'posts', postId, 'comments', commentId));
+      await updateDoc(doc(db, 'posts', postId), { commentCount: increment(-1), updatedAt: serverTimestamp() });
+      const cache = _commentsCache[postId];
+      if (cache) cache.comments = cache.comments.filter(c => c.id !== commentId);
+      const panel = document.getElementById('cpanel_' + postId);
+      if (panel) panel.innerHTML = renderCommentList(postId, cache?.comments || [], cache?.photoMap || {});
+      const countEl = document.getElementById('ccount_' + postId);
+      if (countEl) countEl.innerText = String(Math.max(0, (parseInt(countEl.innerText) || 1) - 1));
+    } catch (e) {
+      alert('댓글 삭제 오류: ' + e.message);
+    }
+  };
+
+  async function handlePinClick(postId) {
+    if (!IS_MASTER) return;
+    const post = currentPosts.find(p => p.id === postId);
+    if (!post) return;
+    const isPinned = !post.pinned;
+    try {
+      // pinnedBy: 규칙이 이 학생 문서의 isMaster를 확인한다.
+      await updateDoc(doc(db, 'posts', postId), { pinned: isPinned, pinnedBy: SESSION.id, updatedAt: serverTimestamp() });
+      post.pinned = isPinned;
+      render(currentExample, sortedPosts());
+    } catch(err) { alert(err.message); }
+  }
+
+  function handleFiles(files) { Array.from(files).forEach(file=>{if(imgList.length>=4)return;const r=new FileReader();r.onload=e=>{const img=new Image();img.onload=()=>{const c=document.createElement('canvas');const max=500;let w=img.width,h=img.height;if(w>max||h>max){if(w>h){h*=max/w;w=max;}else{w*=max/h;h=max;}}c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);imgList.push(c.toDataURL('image/jpeg',0.6));updatePreview();};img.src=e.target.result;};r.readAsDataURL(file);}); }
+  function updatePreview(){document.getElementById('previewArea').innerHTML=imgList.map((s,i)=>`<div class="preview-item"><img src="${s}"><button type="button" class="del-btn" onclick="removeImg(${i})">×</button></div>`).join('');}
+  function removeImg(i){imgList.splice(i,1);updatePreview();}
+  window.addEventListener('paste',e=>{if(document.getElementById('step2').classList.contains('hidden'))return;const items=(e.clipboardData||e.originalEvent.clipboardData).items;for(let item of items){if(item.type.startsWith('image/'))handleFiles([item.getAsFile()]);}});
+
+  async function submitPost(event) {
+    event.preventDefault();
+    if (postSubmitting) return;
+    postSubmitting = true;
+    toggleLoading(true);
+    document.getElementById('subBtn').disabled = true;
+    const mode = getHidden('f_mode');
+    const sub = document.getElementById('p_sub').value;
+    const msg = document.getElementById('p_msg').value;
+    const srcLang = currentLang;
+    const column = document.getElementById('p_column')?.value || '';
+    if (currentClassMeta.boardLayout === 'columns' && !column) {
+      alert('칼럼을 선택하세요.');
+      toggleLoading(false); document.getElementById('subBtn').disabled = false;
+      postSubmitting = false;
+      return;
+    }
+
+    try {
+      // 모든 언어로 번역 (실패해도 저장은 계속)
+      let tr = { subKo:'', msgKo:'', subZh:'', msgZh:'', subRu:'', msgRu:'', subEn:'', msgEn:'' };
+      if (sub || msg) {
+        try { tr = await translatePostAll(sub, msg, srcLang); } catch(te) {
+          console.error('translatePostAll:', te);
+          // 번역 실패 시 원문만 해당 언어 필드에 저장
+          const sfx = langSfx(srcLang);
+          tr[`sub${sfx}`] = sub; tr[`msg${sfx}`] = msg;
+        }
+      }
+      const { subKoFinal, msgKoFinal, subZhFinal, msgZhFinal, subRuFinal, msgRuFinal, subEnFinal, msgEnFinal } = {
+        subKoFinal: tr.subKo, msgKoFinal: tr.msgKo,
+        subZhFinal: tr.subZh, msgZhFinal: tr.msgZh,
+        subRuFinal: tr.subRu, msgRuFinal: tr.msgRu,
+        subEnFinal: tr.subEn, msgEnFinal: tr.msgEn,
+      };
+
+      if (mode === 'edit') {
+        const postId = getHidden('f_postId');
+        await updateDoc(doc(db, 'posts', postId), {
+          srcLang,
+          subKo: subKoFinal, msgKo: msgKoFinal,
+          subZh: subZhFinal, msgZh: msgZhFinal,
+          subRu: subRuFinal, msgRu: msgRuFinal,
+          subEn: subEnFinal, msgEn: msgEnFinal,
+          imgs: imgList,
+          updatedAt: serverTimestamp(),
+          ...(currentClassMeta.boardLayout === 'columns' ? { column } : {})
+        });
+      } else {
+        await addDoc(collection(db, 'posts'), {
+          classTitle: getHidden('f_class'),
+          boardKey: currentBoardKey,
+          grade: getHidden('f_grade'),
+          group: getHidden('f_group'),
+          num: document.getElementById('p_num').value,
+          name: document.getElementById('p_name').value,
+          studentId: SESSION.id,
+          srcLang,
+          subKo: subKoFinal, msgKo: msgKoFinal,
+          subZh: subZhFinal, msgZh: msgZhFinal,
+          subRu: subRuFinal, msgRu: msgRuFinal,
+          subEn: subEnFinal, msgEn: msgEnFinal,
+          imgs: imgList,
+          column: currentClassMeta.boardLayout === 'columns' ? column : '',
+          likes: 0,
+          pinned: false,
+          deleted: false,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+      }
+      await manualRefresh();
+      cancelEdit(); // 폼 reset·필드 정리 전부 여기서 처리 (아래 fillSession도 포함)
+      setTimeout(() => { const first = document.querySelector('.grid-board .post-card:not(.teacher-card)'); if (first) first.scrollIntoView({behavior:'smooth',block:'center'}); }, 150);
+    } catch(err) { alert(err.message); document.getElementById('subBtn').disabled = false; }
+    postSubmitting = false;
+    toggleLoading(false);
+  }
+
+  async function handleEditClick(postId) {
+    const post = currentPosts.find(p=>p.id===postId); if(!post) return;
+    if (String(post.studentId) !== String(SESSION.id)) { alert('본인 게시물만 수정할 수 있습니다.'); return; }
+    const sfx = langSfx(post.srcLang || currentLang);
+    setHidden('f_mode','edit'); setHidden('f_postId',post.id);
+    document.getElementById('p_name').value = post.name;
+    document.getElementById('p_num').value = post.num;
+    document.getElementById('p_sub').value = post['sub'+sfx] || '';
+    document.getElementById('p_msg').value = post['msg'+sfx] || '';
+    imgList = Array.isArray(post.imgs) ? [...post.imgs] : [];
+    updatePreview();
+    document.getElementById('subBtn').innerText = uiText[currentLang]?.edit_finish||uiText.ko.edit_finish;
+    document.getElementById('cancelEditBtn').classList.remove('hidden');
+    if (currentClassMeta.boardLayout === 'columns') {
+      // 칼럼형: 사이드바엔 폼이 없으니(선생님 안내가 대신 있음) 그 글이
+      // 속한 칼럼(삭제된 칼럼이면 "기타") 안으로 폼을 옮겨 붙인다.
+      setHidden('p_column', post.column || '');
+      const idx = currentClassMeta.columns.indexOf(post.column);
+      const anchor = document.getElementById('composeAnchor_' + (idx >= 0 ? idx : 'null'));
+      const formCard = document.getElementById('postForm')?.closest('.form-card');
+      if (anchor && formCard) anchor.appendChild(formCard);
+      anchor?.scrollIntoView({behavior:'smooth',block:'center'});
+    } else {
+      document.querySelector('.board-sidebar').scrollIntoView({behavior:'smooth',block:'start'});
+    }
+  }
+  function cancelEdit(){const pf=document.getElementById('postForm');if(!pf)return;pf.reset();fillSession();setHidden('f_mode','add');setHidden('f_postId','');imgList=[];updatePreview();document.getElementById('subBtn').innerText=uiText[currentLang]?.submit||uiText.ko.submit;document.getElementById('subBtn').disabled=false;document.getElementById('cancelEditBtn').classList.add('hidden');if(currentClassMeta.boardLayout==='columns'){const holder=document.getElementById('composeHolder');const card=pf.closest('.form-card');if(holder&&card)holder.appendChild(card);}}
+
+  async function openDelete(id) {
+    if (!confirm(uiText[currentLang]?.admDelConfirm||uiText.ko.admDelConfirm)) return;
+    toggleLoading(true);
+    try {
+      await updateDoc(doc(db, 'posts', id), { deleted: true, updatedAt: serverTimestamp() });
+      await manualRefresh();
+    } catch(e) { alert(e.message); }
+    toggleLoading(false);
+  }
+
+  async function loadAdminList() {
+    try {
+      const q = query(collection(db, 'classes'), orderBy('createdAt'));
+      const snap = await getDocs(q);
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      document.getElementById('adminList').innerHTML = list.map(c => `<div class="admin-item"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;"><label class="ios-switch"><input type="checkbox" ${c.status==='ON'?'checked':''} onchange="toggleClassStatus('${c.id}',this.checked?'ON':'OFF')"><span></span></label><span style="font-size:0.88rem;">${c.grade}학년 ${c.group}반 — <b>${c.name}</b></span></div><div style="display:flex;gap:12px;"><a onclick='editAdminUI(${JSON.stringify(c)})' style="font-size:0.82rem;font-weight:700;color:var(--accent);cursor:pointer;">수정</a><a onclick="delAdminClass('${c.id}')" style="font-size:0.82rem;font-weight:700;color:#ef4444;cursor:pointer;">삭제</a></div></div>`).join('');
+    } catch(e) {}
+  }
+
+  async function toggleClassStatus(id, status) {
+    toggleLoading(true);
+    try {
+      await updateDoc(doc(db, 'classes', id), { status });
+      await loadAdminList();
+      await updateClassList();
+    } catch(e) {}
+    toggleLoading(false);
+  }
+
+  function editAdminUI(c) {
+    document.getElementById('adm_row').value = c.id;
+    document.getElementById('adm_grade_hidden').value = c.grade || '';
+    document.getElementById('adm_group_hidden').value = c.group || '';
+    document.getElementById('adm_name').value = c.name;
+    document.getElementById('adm_desc').value = c.desc || '';
+    document.getElementById('adm_ex').value = c.ex || '';
+    document.getElementById('adm_popup').value = c.popup || '';
+    document.getElementById('adm_target_area').classList.add('hidden');
+    const info = document.getElementById('adm_edit_info');
+    info.classList.remove('hidden');
+    info.innerText = `수정 중: [${c.grade}학년 ${c.group}반] ${c.name}`;
+    document.getElementById('adm_cancel_btn').classList.remove('hidden');
+    window.scrollTo({top: document.body.scrollHeight, behavior:'smooth'});
+  }
+
+  async function saveAdminClass() {
+    const classId = document.getElementById('adm_row').value;
+    const name = document.getElementById('adm_name').value;
+    const desc = document.getElementById('adm_desc').value;
+    const ex = document.getElementById('adm_ex').value;
+    const popup = document.getElementById('adm_popup').value;
+    if (classId) {
+      const grade = document.getElementById('adm_grade_hidden').value;
+      const group = document.getElementById('adm_group_hidden').value;
+      toggleLoading(true);
+      try {
+        await updateDoc(doc(db, 'classes', classId), { grade, group, name, desc, ex, popup });
+        alert(uiText[currentLang]?.admSaved||uiText.ko.admSaved);
+        resetAdminForm();
+        await loadAdminList();
+        await updateClassList();
+      } catch(err) { alert(err.message); }
+      toggleLoading(false);
+    } else {
+      const gL = [...document.querySelectorAll('.adm-g:checked')].map(i => i.value.replace('학년', ''));
+      const bL = [...document.querySelectorAll('.adm-b:checked')].map(i => i.value.replace('반', ''));
+      if (!gL.length || !bL.length) { alert(uiText[currentLang]?.admSave||uiText.ko.admSave); return; }
+      toggleLoading(true);
+      try {
+        const promises = [];
+        for (const grade of gL) {
+          for (const group of bL) {
+            promises.push(addDoc(collection(db, 'classes'), { grade, group, name, desc, ex, popup, status: 'ON', createdAt: serverTimestamp() }));
+          }
+        }
+        await Promise.all(promises);
+        alert(uiText[currentLang]?.admSaved||uiText.ko.admSaved);
+        resetAdminForm();
+        await loadAdminList();
+        await updateClassList();
+      } catch(err) { alert(err.message); }
+      toggleLoading(false);
+    }
+  }
+
+  async function delAdminClass(id) {
+    if (!confirm(uiText[currentLang]?.admDelConfirm||uiText.ko.admDelConfirm)) return;
+    toggleLoading(true);
+    try {
+      await deleteDoc(doc(db, 'classes', id));
+      await loadAdminList();
+    } catch(e) {}
+    toggleLoading(false);
+  }
+
+  function resetAdminForm(){['adm_row','adm_grade_hidden','adm_group_hidden','adm_name','adm_desc','adm_ex','adm_popup'].forEach(id=>document.getElementById(id).value='');document.querySelectorAll('#adm_target_area input').forEach(i=>i.checked=false);document.getElementById('adm_target_area').classList.remove('hidden');document.getElementById('adm_edit_info').classList.add('hidden');document.getElementById('adm_cancel_btn').classList.add('hidden');}
+
+  function fillSession() {
+    document.getElementById('p_name').value = SESSION.name;
+    document.getElementById('p_num').value = SESSION.num;
+  }
+
+  window.onload = () => {
+    // 설문 등 다른 페이지에서 로그인 요구로 넘어왔던 학생 — 여기 들를 필요 없이
+    // 원래 가려던 곳으로 바로 보낸다(이전엔 카드/드롭다운 클릭 시점에야 확인했는데,
+    // 카드 그리드로 바뀌면서 클릭 이벤트에 얹을 이유가 없어져 로드 시점으로 옮김).
+    const redirect = sessionStorage.getItem('ohinfo_redirect');
+    if (redirect) { sessionStorage.removeItem('ohinfo_redirect'); location.href = redirect; return; }
+
+    // profile card in step1
+    const s1Photo = document.getElementById('s1Photo');
+    if (s1Photo) {
+      if (safePhotoUrl(_mpStudent.photoUrl)) { s1Photo.innerHTML = `<img src="${escHtml(safePhotoUrl(_mpStudent.photoUrl))}">`; }
+      else { s1Photo.innerText = (SESSION.name||'?')[0]; }
+    }
+    const s1Name = document.getElementById('s1Name'); if (s1Name) s1Name.innerText = SESSION.name;
+    const s1Meta = document.getElementById('s1Meta'); if (s1Meta) s1Meta.innerText = `${_mpStudent.schoolName||''}\n${SESSION.grade}학년 ${SESSION.group}반 · ${SESSION.num}번`;
+    buildKeyboard(); bindKeyboardTargets(); updateClassList(); setLanguage(currentLang);
+    fillSession();
+    // 마스터 계정: 수업 카드 그리드 표시
+    if (IS_MASTER) {
+      document.getElementById('step1Normal').classList.add('hidden');
+      document.getElementById('step1Master').classList.remove('hidden');
+      loadMasterClassGrid();
+    }
+    openBoardFromUrl();
+  };
+
+  // 다른 화면(AI 실험실 등)에서 "ohdlet에서 보기"로 들어오면 그 게시판을 바로 연다.
+  // ohdlet.html?board=게시판이름&school=학교&grade=학년&group=반 — 들어갈 수 있는 게시판일 때만.
+  async function openBoardFromUrl() {
+    const q = new URLSearchParams(location.search);
+    const name = q.get('board');
+    if (!name) return;
+    try {
+      const snap = await getDocs(query(collection(db, 'classes'), where('name', '==', name)));
+      const c = snap.docs.map(d => d.data()).find(x => x.status === 'ON'
+        && (x.schoolName || '') === (q.get('school') || '') && (x.grade || '') === (q.get('grade') || '') && (x.group || '') === (q.get('group') || '')
+        && (IS_MASTER || _classAudienceOk(x)));
+      if (c) enterClass(c.name, c.grade || '', c.group || '', c.schoolName || '');
+    } catch (e) { console.warn('openBoardFromUrl', e); }
+    history.replaceState(null, '', location.pathname);
+  }
+
+  // ── window 노출 (onclick 속성 호환) ──
+  window.toggleDark = toggleDark;
+  window.toggleMobileMenu = toggleMobileMenu;
+  window.closeMobileMenu = closeMobileMenu;
+  window.setLanguage = setLanguage;
+  window.goHome = goHome;
+  window.navLogoClick = navLogoClick;
+  window.toggleAdmin = toggleAdmin;
+  window.manualRefresh = manualRefresh;
+  window.setSort = setSort;
+  window.filterPosts = filterPosts;
+  window.submitPost = submitPost;
+  window.cancelEdit = cancelEdit;
+  window.handleEditClick = handleEditClick;
+  window.openDelete = openDelete;
+  window.toggleLikeUI = toggleLikeUI;
+  window.handlePinClick = handlePinClick;
+  window.openModal = openModal;
+  window.closeModal = closeModal;
+  window.toggleSidebarDesc = function() {
+    const desc = document.getElementById('sidebarDesc');
+    const arrow = document.getElementById('sidebarDescArrow');
+    desc.classList.toggle('collapsed');
+    arrow.classList.toggle('open');
+  };
+  window.handleModalClick = handleModalClick;
+  window.modalNav = modalNav;
+  window.closePopup = closePopup;
+  window.pwConfirm = pwConfirm;
+  window.pwCancel = pwCancel;
+  window.handleFiles = handleFiles;
+  window.saveAdminClass = saveAdminClass;
+  window.resetAdminForm = resetAdminForm;
+  window.toggleClassStatus = toggleClassStatus;
+  window.editAdminUI = editAdminUI;
+  window.delAdminClass = delAdminClass;
+  window.kbInsert = kbInsert;
+  window.toggleShift = toggleShift;
+  window.kbBackspace = kbBackspace;
+  window.closeKeyboard = closeKeyboard;
+  window.slidePrev = slidePrev;
+  window.slideNext = slideNext;
+  window.slideTo = slideTo;
+
+  if (SESSION.id) {
+    authReady().then(() => onSnapshot(doc(db, 'qna_threads', SESSION.id), snap => {
+      const badge = document.getElementById('qnaBadge');
+      if (badge) badge.classList.toggle('on', !!(snap.exists() && snap.data().unreadByStudent));
+    }, () => {}));
+  }
+</script>
+</body>
+</html>
+ 

@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>바이브 코딩 견본 — kakainfo</title>
+  <meta name="description" content="바이브 코딩으로 만들어 학교에서 쓰고 있는 웹앱들을 개인정보 없이 직접 체험해 보는 견본 모음">
+  <link rel="icon" type="image/svg+xml" href="../icon.svg">
+  <link rel="apple-touch-icon" href="../apple-touch-icon.png">
+  <script src="shared/demo.js" data-bar="off"></script>
+  <link rel="stylesheet" href="../theme.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html { background: #ece8f4; }
+    html:has(body.dark) { background: #2a2b58; }
+    body { margin: 0; min-height: 100vh; line-height: 1.55; font-family: var(--font); word-break: keep-all; overflow-wrap: break-word; }
+    a { color: inherit; }
+    :root { --side-w: 264px; --content-max: 1020px; }
+
+    /* ── 공통 조각 ── */
+    .brand { display: flex; align-items: center; gap: 8px; text-decoration: none; font-weight: 700; }
+    .brand img { height: 26px; }
+    .brand .sub { font-size: .82rem; font-weight: 600; color: var(--sub); }
+    body.dark .brand img { filter: brightness(0) invert(1); opacity: .94; }
+    .cat-link { display: flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 600; }
+    .cat-link .n { margin-left: auto; font-size: .76rem; font-weight: 700; color: var(--text-3); }
+    .cat-link .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .d-work { background: #5a67d8; } .d-class { background: #1e90ff; } .d-personal { background: #28b45a; }
+
+    /* ── 본문 ── */
+    main { padding: 40px 24px 80px; }
+    .inner { max-width: var(--content-max); margin: 0 auto; }
+    .hero h1 { margin: 0 0 8px; font-size: clamp(1.5rem, 3.2vw, 2.1rem); letter-spacing: -0.02em; }
+    .hero p { margin: 0; max-width: 640px; color: var(--text-2); font-size: 1rem; }
+    .notice { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    .notice span { font-size: .8rem; padding: 6px 12px; border-radius: 999px; background: var(--sky-chip); border: 1px solid var(--sky-chip-line); color: var(--text-2); }
+
+    .section { margin-top: 40px; scroll-margin-top: 24px; }
+    .section-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 0 0 14px 2px; }
+    .section-head h2 { margin: 0; font-size: 1.22rem; letter-spacing: -0.01em; }
+    .section-head p { margin: 0; color: var(--sub); font-size: .9rem; }
+
+    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .card { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 18px 18px 16px; border-radius: 18px; text-decoration: none;
+      background: var(--surface); border: 1px solid var(--border); box-shadow: 0 1px 2px rgba(30,40,100,0.06), 0 8px 24px rgba(30,40,100,0.08);
+      transition: transform .18s, box-shadow .18s; }
+    .card:hover { transform: translateY(-3px); box-shadow: 0 2px 4px rgba(30,40,100,0.06), 0 14px 32px rgba(30,40,100,0.14); }
+    .card:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+    .card-top { display: flex; align-items: center; gap: 12px; }
+    .icon { width: 44px; height: 44px; flex-shrink: 0; border-radius: 12px; display: grid; place-items: center; font-size: 1.4rem;
+      box-shadow: 0 2px 6px rgba(30,40,100,0.18), inset 0 0 0 0.5px rgba(255,255,255,0.35); }
+    .c1 { background: linear-gradient(180deg, #7d8cf5, #5a67d8); }
+    .c2 { background: linear-gradient(180deg, #5ac8fa, #1e90ff); }
+    .c3 { background: linear-gradient(180deg, #5fdc82, #28b45a); }
+    .c4 { background: linear-gradient(180deg, #b58cf0, #8a5ad8); }
+    .c5 { background: linear-gradient(180deg, #ffb36b, #f0803c); }
+    .c6 { background: linear-gradient(180deg, #ff8fa3, #e0566f); }
+    .card h3 { margin: 0; font-size: 1.02rem; letter-spacing: -0.01em; }
+    .card p { margin: 0; flex: 1; color: var(--text-2); font-size: .88rem; }
+    .meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    .tag { font-size: .75rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+    .tag.try { background: var(--accent); color: var(--accent-text); }
+    .tag.real { background: var(--sky-cta); color: var(--sky-cta-text); }
+    .tag.look { background: var(--sky-chip); color: var(--text-2); border: 1px solid var(--sky-chip-line); }
+    .chip { font-size: .73rem; font-weight: 600; padding: 3px 9px; border-radius: 999px; color: var(--text-2); border: 1px dashed var(--sky-chip-line); }
+
+    .legend { padding: 14px 16px; border-radius: 14px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-2); font-size: .84rem; }
+    .legend b { color: var(--text); }
+    .legend ul { margin: 6px 0 0; padding-left: 18px; }
+    .legend li + li { margin-top: 4px; }
+
+    /* ── PC: 왼쪽 사이드바 + 3열 ── */
+    .side { position: fixed; inset: 14px auto 14px 14px; width: var(--side-w); z-index: 40; display: flex; flex-direction: column; gap: 14px;
+      padding: 18px 14px; border-radius: 22px; background: var(--glass-nav); border: 1px solid var(--border);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--shadow); overflow-y: auto; }
+    .side .brand { padding: 0 6px; }
+    .side-head { font-size: .72rem; font-weight: 600; color: var(--text-3); padding: 6px 8px 0; }
+    .side nav { display: flex; flex-direction: column; gap: 2px; }
+    .side .cat-link { height: 40px; padding: 0 10px; border-radius: 10px; color: var(--sub); border: 1px solid transparent; position: relative; }
+    .side .cat-link:hover { background: var(--sky-chip); color: var(--text); }
+    .side .cat-link.on { background: var(--sky-chip); border-color: var(--sky-chip-line); color: var(--text); font-weight: 700; }
+    .side .cat-link.on::before { content: ''; position: absolute; left: -9px; top: 10px; bottom: 10px; width: 3px; border-radius: 3px; background: var(--accent); }
+    .side .legend { margin-top: auto; }
+    .side-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 4px 0; border-top: 1px solid var(--hairline); }
+    .side-foot .btn { font-size: .8rem; padding: 6px 12px; }
+    body.has-side main { margin-left: calc(var(--side-w) + 14px); }
+    .top, .catbar, .cat-tabs, .bottom-extra { display: none; }
+
+    /* 아주 넓은 화면: 4열로 넓히고 사이드바 쪽에 붙인다 (가운데 빈 공간 없이) */
+    @media (min-width: 1500px) {
+      :root { --content-max: 1380px; }
+      .inner { margin: 0; }
+      main { padding-left: 40px; padding-right: 40px; }
+      .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+
+    /* ── 태블릿: 상단 바 + 분류 줄, 2열 ── */
+    @media (max-width: 1099px) {
+      .side { display: none; }
+      body.has-side main { margin-left: 0; }
+      .top { position: sticky; top: 0; z-index: 50; display: flex; align-items: center; gap: 10px; height: var(--nav-h); padding: 0 20px;
+        background: var(--glass-nav); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border-bottom: 1px solid var(--border); }
+      .top .dark-toggle { margin-left: auto; }
+      .catbar { position: sticky; top: var(--nav-h); z-index: 45; display: flex; gap: 8px; justify-content: center; padding: 10px 16px;
+        background: var(--glass-nav); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border-bottom: 1px solid var(--hairline); }
+      .catbar .cat-link { padding: 7px 14px; border-radius: 999px; font-size: .88rem; color: var(--sub); background: var(--sky-chip); border: 1px solid var(--sky-chip-line); }
+      .catbar .cat-link .n { margin-left: 2px; }
+      .catbar .cat-link.on { background: var(--sky-cta); color: var(--sky-cta-text); border-color: transparent; }
+      .catbar .cat-link.on .n { color: inherit; opacity: .7; }
+      main { padding: 28px 24px 60px; }
+      .inner { max-width: 760px; }
+      .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .section { scroll-margin-top: calc(var(--nav-h) + 70px); }
+      .bottom-extra { display: flex; flex-direction: column; gap: 14px; align-items: center; margin-top: 40px; }
+    }
+
+    /* ── 폰: 1열 가로형 카드 + 하단 탭바 ── */
+    @media (max-width: 699px) {
+      .top { padding: 0 14px; }
+      .top .brand .sub { display: none; }
+      .catbar { display: none; }
+      main { padding: 20px 14px calc(96px + env(safe-area-inset-bottom)); }
+      .hero h1 { font-size: 1.42rem; }
+      .hero p { font-size: .92rem; }
+      .notice span { font-size: .74rem; padding: 5px 10px; }
+      .section { margin-top: 30px; scroll-margin-top: calc(var(--nav-h) + 12px); }
+      .section-head h2 { font-size: 1.1rem; }
+      .section-head p { font-size: .82rem; }
+      .grid { grid-template-columns: 1fr; gap: 10px; }
+      .card { display: grid; grid-template-columns: 44px 1fr; column-gap: 12px; row-gap: 6px; padding: 14px; border-radius: 16px; }
+      .card:hover { transform: none; }
+      .card-top { display: contents; }
+      .card-top .icon { grid-row: 1 / span 3; align-self: start; width: 44px; height: 44px; font-size: 1.3rem; }
+      .card h3 { grid-column: 2; font-size: .98rem; }
+      .card p { grid-column: 2; font-size: .84rem; }
+      .card .meta { grid-column: 2; }
+      .cat-tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 60; display: flex; padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+        background: rgba(255,255,255,0.94); box-shadow: 0 -4px 18px rgba(30,40,100,0.08); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border-top: 1px solid var(--border); }
+      body.dark .cat-tabs { background: rgba(29,31,64,0.95); }
+      .cat-tabs .cat-link { flex: 1; flex-direction: column; gap: 4px; padding: 6px 0; font-size: .74rem; color: var(--text-3); justify-content: center; }
+      .cat-tabs .cat-link .n { display: none; }
+      .cat-tabs .cat-link .dot { width: 22px; height: 6px; border-radius: 3px; opacity: .35; }
+      .cat-tabs .cat-link.on { color: var(--text); font-weight: 700; }
+      .cat-tabs .cat-link.on .dot { opacity: 1; }
+    }
+  </style>
+</head>
+<body class="ui-sky has-side">
+  <aside class="side" aria-label="분류">
+    <a class="brand" href="./"><img src="../logo.png" alt="kakainfo"><span class="sub">바이브 코딩 견본</span></a>
+    <div class="side-head">분류</div>
+    <nav>
+        <a class="cat-link" href="#work" data-cat="work"><span class="dot d-work"></span>업무 효율화<span class="n">5</span></a>
+        <a class="cat-link" href="#class" data-cat="class"><span class="dot d-class"></span>수업·평가·기록<span class="n">11</span></a>
+        <a class="cat-link" href="#personal" data-cat="personal"><span class="dot d-personal"></span>개인적 사용<span class="n">5</span></a>
+    </nav>
+    <div class="legend">
+        <b>카드 아래 표시</b>
+        <ul>
+        <li><b>체험하기</b>: 실제 앱에서 개인정보를 뺀 사본입니다. 마음껏 눌러보세요.</li>
+        <li><b>화면 보기</b>: AI처럼 견본에서 돌릴 수 없는 기능은 화면 구성만 보여줍니다.</li>
+        <li><b>Firebase</b>: 실제 앱은 Firebase에 데이터를 저장해 여러 기기·사람이 함께 씁니다. 견본에서는 이 브라우저에만 저장됩니다.</li>
+      </ul>
+      </div>
+    <div class="side-foot">
+      <button type="button" class="btn ghost" data-reset>처음으로</button>
+      <div class="dark-toggle" data-dark role="button" tabindex="0" aria-label="다크 모드"></div>
+    </div>
+  </aside>
+
+  <header class="top">
+    <a class="brand" href="./"><img src="../logo.png" alt="kakainfo"><span class="sub">바이브 코딩 견본</span></a>
+    <div class="dark-toggle" data-dark role="button" tabindex="0" aria-label="다크 모드"></div>
+  </header>
+  <nav class="catbar" aria-label="분류 바로가기">
+        <a class="cat-link" href="#work" data-cat="work"><span class="dot d-work"></span>업무 효율화<span class="n">5</span></a>
+        <a class="cat-link" href="#class" data-cat="class"><span class="dot d-class"></span>수업·평가·기록<span class="n">11</span></a>
+        <a class="cat-link" href="#personal" data-cat="personal"><span class="dot d-personal"></span>개인적 사용<span class="n">5</span></a>
+  </nav>
+
+  <main>
+    <div class="inner">
+    <header class="hero">
+      <h1>바이브 코딩으로 이런 걸 만들 수 있어요</h1>
+      <p>바이브 코딩으로 만들어 학교에서 실제로 쓰고 있는 웹앱들입니다. 카드를 눌러 직접 써보세요.</p>
+      <div class="notice">
+        <span>개인정보를 빼고 견본 데이터를 넣은 체험용 사본</span>
+        <span>로그인 없이 바로 체험</span>
+        <span>입력한 내용은 이 브라우저에만 저장</span>
+      </div>
+    </header>
+
+    <section class="section" id="work">
+      <div class="section-head"><h2>업무 효율화</h2><p>학교 업무를 자동화하고 효율적으로 해결하는 도구</p></div>
+      <div class="grid">
+        <a class="card" href="attend/">
+          <div class="card-top"><div class="icon c1">📋</div><h3>출결 관리</h3></div>
+          <p>담임이 출결 기록을 남기고, 그 기록으로 결석·지각·조퇴·결과 신고서를 원본 한글 양식과 같은 모양으로 출력합니다.</p>
+          <div class="meta"><span class="tag try">체험하기</span><span class="chip">Firebase</span></div>
+        </a>
+        <a class="card" href="broadcast/">
+          <div class="card-top"><div class="icon c6">📻</div><h3>방송부 관리</h3></div>
+          <p>방송 일정, 출석, 신청곡, 업무 매뉴얼을 관리하고 송출을 요청합니다. 교사가 직접 영상을 업로드하면, 방송부 학생들이 확인하면서 직접 방송을 송출하는 방식입니다.</p>
+          <div class="meta"><span class="tag try">체험하기</span><span class="chip">Firebase</span></div>
+        </a>
+        <a class="card" href="volunteer/">
+          <div class="card-top"><div class="icon c3">🤝</div><h3>봉사활동 관리</h3></div>
+          <p>봉사활동 담당교사와 담임교사가 학생 봉사시간을 등록·수정하고, 학기말에 담임이 생활기록부에 기록할 때 직접 확인할 수 있습니다.</p>
+          <div class="meta"><span class="tag try">체험하기</span><span class="chip">Firebase</span></div>
+        </a>
+        <a class="card" href="seatchange/">
+          <div class="card-top"><div class="icon c5">💺</div><h3>자리 바꾸기</h3></div>
+          <p>교실 모양대로 책상을 배치하고, 짝 금지·직전 자리 회피 같은 규칙에 맞게 자동으로 자리를 바꿔주는 도구.</p>
+          <div class="meta"><span class="tag try">체험하기</span></div>
+        </a>
+        <a class="card" href="shortener/">
+          <div class="card-top"><div class="icon c2">🔗</div><h3>단축 URL</h3></div>
+          <p>긴 주소를 짧은 링크로 바꿔주는 도구. 학생 배포용 링크 관리에 유용.</p>
+          <div class="meta"><span class="tag try">체험하기</span><span class="chip">Firebase</span></div>
+        </a>
+      </div>
+    </section>
+
+    <section class="section" id="class">
+      <div class="section-head"><h2>수업·평가·기록</h2><p>교육 현장에서 실제로 사용할 도구</p></div>
+      <div class="grid">
+        <a class="card" href="classlog/">
+          <div class="card-top"><div class="icon c4">📒</div><h3>수업일지</h3></div>
+          <p>컴시간 시간표 위에 반별 수업 기록과 진도를 남깁니다. 견본은 가상의 시간표로 보여줍니다.</p>
+          <div class="meta"><span class="tag try">체험하기</span><span class="chip">Firebase</span></div>
+        </a>
+        <a class="card" href="student/formlab.html">
+          <div class="card-top"><div class="icon c3">📝</div><h3>설문지 만들기</h3></div>
+          <p>학생이 직접 설문지를 만들어 링크로 나눠주고, 모인 응답을 확인하는 실습 도구.</p>
+          <div class="meta"><span class="tag try">체험하기</span><span class="chip">Firebase</span></div>
+        </a>
+        <a class="card" href="teacher/timer.html">
+          <div class="card-top"><div class="icon c5">⏱️</div><h3>수업 타이머</h3></div>
+          <p>수업 활동 시간을 재고, 종료 시 알림음을 울려주는 타이머. 전체화면·다크모드 지원.</p>
+          <div class="meta"><span class="tag try">체험하기</span></div>
+        </a>
+        <a class="card" href="teacher/admin.html">
+          <div class="card-top"><div class="icon c1">🗂️</div><h3>관리자 대시보드</h3></div>
+          <p>학교·학생·학급을 등록하고 시험을 출제·채점하는 관리자 화면. 실제 운영 도구를 견본 데이터로 그대로 눌러볼 수 있습니다.</p>
+          <div class="meta"><span class="tag try">체험하기</span><span class="chip">Firebase</span></div>
+        </a>
+        <a class="card" href="student/exam.html">
+          <div class="card-top"><div class="icon c2">✍️</div><h3>시험</h3></div>
+          <p>관리자 대시보드에서 낸 시험을 학생이 풀고 결과를 확인하는 학생 화면.</p>
+          <div class="meta"><span class="tag try">체험하기</span><span class="chip">Firebase</span></div>
+        </a>
+        <a class="card" href="student/qna.html">
+          <div class="card-top"><div class="icon c4">💬</div><h3>질문하기</h3></div>
+          <p>학생이 정보 관련 질문이나 웹사이트 버그를 선생님께 남기고 답변을 받습니다.</p>
+          <div class="meta"><span class="tag try">체험하기</span><span class="chip">Firebase</span></div>
+        </a>
+        <a class="card" href="student/ailab.html">
+          <div class="card-top"><div class="icon c4">🤖</div><h3>AI 실험실</h3></div>
+          <p>모둠이 이미지·문장·표 데이터로 AI를 학습시키고, 만든 AI를 블록 코딩과 웹앱으로 써보는 실험실. 견본은 화면 구성만 볼 수 있습니다.</p>
+          <div class="meta"><span class="tag look">화면 보기</span></div>
+        </a>
+        <a class="card" href="activation/">
+          <div class="card-top"><div class="icon c2">📈</div><h3>활성화 함수 시각화</h3></div>
+          <p>활성화 함수를 고르고 기울기와 입력값을 바꿔 가며 함수값과 도함수를 그래프로 확인하는 수업 자료.</p>
+          <div class="meta"><span class="tag try">체험하기</span><span class="chip">저장 없음</span></div>
+        </a>
+        <a class="card" href="aia/">
+          <div class="card-top"><div class="icon c3">🧩</div><h3>앱 인벤터 점검기</h3></div>
+          <p>MIT App Inventor 프로젝트 파일(.aia)을 브라우저에서 열어 블록 코드를 보고 앱을 실행해 봅니다. 왼쪽 "예제"의 견본 앱 5개로 바로 해볼 수 있습니다. (PC 화면용)</p>
+          <div class="meta"><span class="tag try">체험하기</span><span class="chip">저장 없음</span></div>
+        </a>
+        <a class="card" href="roadmap/">
+          <div class="card-top"><div class="icon c6">🗺️</div><h3>학생 성장 지원 로드맵</h3></div>
+          <p>학생 성장 지원 로드맵을 웹 페이지로 옮긴 화면. 단계와 항목을 눌러 관련 자료를 바로 봅니다.</p>
+          <div class="meta"><span class="tag try">체험하기</span></div>
+        </a>
+        <a class="card" href="../index.html">
+          <div class="card-top"><div class="icon c1">🏫</div><h3>학교 정보 사이트</h3></div>
+          <p>공지·설문/신청서·Q&amp;A·시험 안내 등을 모아둔 학생용 학교 홈페이지. 이건 견본이 아니라 실제 운영 중인 사이트입니다 — 연수용 계정으로 로그인해서 둘러보세요.</p>
+          <div class="meta"><span class="tag real">실제 사이트</span></div>
+        </a>
+      </div>
+    </section>
+
+    <section class="section" id="personal">
+      <div class="section-head"><h2>개인적 사용</h2><p>내 취향대로 자유롭게</p></div>
+      <div class="grid">
+        <a class="card" href="settle/">
+          <div class="card-top"><div class="icon c3">🧾</div><h3>모임 정산</h3></div>
+          <p>지출과 송금을 기록하고, 최소 송금 경로로 자동 정산해주는 계산기. 봉사·모둠활동 회비 관리에도 유용.</p>
+          <div class="meta"><span class="tag try">체험하기</span><span class="chip">Firebase</span></div>
+        </a>
+        <a class="card" href="travel/">
+          <div class="card-top"><div class="icon c2">✈️</div><h3>여행 플래너</h3></div>
+          <p>장기 여행 일정·교통편·숙소·경비를 한 곳에서 관리하는 도구. 입장 코드와 관리자 비밀번호는 모두 "demo"입니다.</p>
+          <div class="meta"><span class="tag try">체험하기</span><span class="chip">Firebase</span></div>
+        </a>
+        <a class="card" href="https://game.kakainfo.com/snake" target="_blank" rel="noopener">
+          <div class="card-top"><div class="icon c3">🐍</div><h3>지렁이 게임</h3></div>
+          <p>컴퓨터실에서 여러 명이 동시에 접속해 겨루는 멀티플레이 게임. 여럿이 함께 해야 해서 원본 사이트로 연결됩니다.</p>
+          <div class="meta"><span class="tag real">원본 사이트 ↗</span><span class="chip">Firebase</span></div>
+        </a>
+        <a class="card" href="https://game.kakainfo.com/omok" target="_blank" rel="noopener">
+          <div class="card-top"><div class="icon c1">⚫</div><h3>오목</h3></div>
+          <p>오목 게임. 원본 사이트로 연결됩니다.</p>
+          <div class="meta"><span class="tag real">원본 사이트 ↗</span></div>
+        </a>
+        <a class="card" href="https://game.kakainfo.com/tetris" target="_blank" rel="noopener">
+          <div class="card-top"><div class="icon c4">🟦</div><h3>테트리스</h3></div>
+          <p>테트리스 게임. 원본 사이트로 연결됩니다.</p>
+          <div class="meta"><span class="tag real">원본 사이트 ↗</span></div>
+        </a>
+      </div>
+    </section>
+
+    <div class="bottom-extra">
+      <div class="legend">
+        <b>카드 아래 표시</b>
+        <ul>
+        <li><b>체험하기</b>: 실제 앱에서 개인정보를 뺀 사본입니다. 마음껏 눌러보세요.</li>
+        <li><b>화면 보기</b>: AI처럼 견본에서 돌릴 수 없는 기능은 화면 구성만 보여줍니다.</li>
+        <li><b>Firebase</b>: 실제 앱은 Firebase에 데이터를 저장해 여러 기기·사람이 함께 씁니다. 견본에서는 이 브라우저에만 저장됩니다.</li>
+      </ul>
+      </div>
+      <button type="button" class="btn" data-reset>견본 데이터 전부 처음으로</button>
+    </div>
+    </div>
+  </main>
+
+  <nav class="cat-tabs" aria-label="분류">
+        <a class="cat-link" href="#work" data-cat="work"><span class="dot d-work"></span>업무 효율화<span class="n">5</span></a>
+        <a class="cat-link" href="#class" data-cat="class"><span class="dot d-class"></span>수업·평가·기록<span class="n">11</span></a>
+        <a class="cat-link" href="#personal" data-cat="personal"><span class="dot d-personal"></span>개인적 사용<span class="n">5</span></a>
+  </nav>
+
+  <script>
+    (function () {
+      const apply = (on) => document.body.classList.toggle('dark', on);
+      apply(localStorage.getItem('dark') === '1');
+      const flip = () => { const on = !document.body.classList.contains('dark'); apply(on); localStorage.setItem('dark', on ? '1' : '0'); };
+      document.querySelectorAll('[data-dark]').forEach((t) => {
+        t.addEventListener('click', flip);
+        t.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); } });
+      });
+      document.querySelectorAll('[data-reset]').forEach((b) => b.addEventListener('click', () => window.VibeDemo.resetAll()));
+
+      // 지금 보고 있는 분류를 메뉴에 표시
+      const links = [...document.querySelectorAll('.cat-link')];
+      const mark = (id) => links.forEach((a) => a.classList.toggle('on', a.dataset.cat === id));
+      mark('work');
+      const secs = [...document.querySelectorAll('.section')];
+      const pick = () => {
+        const y = innerHeight * 0.35;
+        let cur = secs[0].id;
+        for (const s of secs) if (s.getBoundingClientRect().top <= y) cur = s.id;
+        if (innerHeight + scrollY >= document.documentElement.scrollHeight - 4) cur = secs[secs.length - 1].id;
+        mark(cur);
+      };
+      addEventListener('scroll', pick, { passive: true });
+      addEventListener('resize', pick);
+      pick();
+    })();
+  </script>
+</body>
+</html>

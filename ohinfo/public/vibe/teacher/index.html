@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <script src="/vibe/shared/demo.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>로그인 — kakainfo 관리자</title>
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="theme.css">
+  <script src="admin-auth.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .field { margin-bottom: 14px; }
+    .field label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--sub);
+      margin-bottom: 6px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .inp {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border-card);
+      background: var(--glass);
+      color: var(--text);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight);
+      font-family: inherit;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .inp::placeholder { color: var(--text-3); }
+    .inp:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px var(--accent-light);
+    }
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: var(--radius-pill);
+      border: none;
+      background: var(--accent-grad);
+      color: #fff;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: var(--highlight), 0 6px 18px rgba(0,113,227,0.35);
+      transition: filter 0.2s, transform 0.15s;
+      margin-top: 8px;
+    }
+    .btn:hover { filter: brightness(1.05); }
+    .btn:active { transform: scale(0.98); }
+    .error-msg {
+      color: #ef4444;
+      font-size: 0.82rem;
+      font-weight: 600;
+      text-align: center;
+      margin-top: 12px;
+      min-height: 20px;
+    }
+    .dark-toggle {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      width: 42px;
+      height: 24px;
+      border-radius: 50px;
+      background: var(--glass);
+      border: 1px solid var(--border);
+      backdrop-filter: var(--blur);
+      -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight);
+      cursor: pointer;
+      position: fixed;
+      transition: 0.3s;
+    }
+    body.dark .dark-toggle { background: rgba(42,92,230,0.6); border-color: rgba(100,140,255,0.4); }
+    .dark-toggle::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+      transition: transform 0.3s;
+    }
+    body.dark .dark-toggle::after { transform: translateX(18px); }
+  </style>
+</head>
+<body class="ui-sky">
+  <button class="dark-toggle" onclick="toggleDark()" style="position:fixed;top:20px;right:20px;" title="다크모드"></button>
+
+  <div class="auth-card">
+    <div class="auth-head">
+      <img class="auth-logo" src="logo.png" alt="kakainfo">
+      <div class="auth-word">kakainfo</div>
+      <div class="auth-sub">관리자 로그인</div>
+    </div>
+    <button class="auth-btn" onclick="login()">Google로 로그인</button>
+    <div class="error-msg" id="errMsg"></div>
+  </div>
+
+  <script>
+    async function login() {
+      const err = document.getElementById('errMsg');
+      err.innerText = '';
+      try {
+        await AdminAuth.login();
+        if (AdminAuth.isValid()) {
+          window.location.href = 'admin.html';
+        } else {
+          err.innerText = '관리자 계정이 아닙니다.';
+          await AdminAuth.logout();
+        }
+      } catch (e) {
+        err.innerText = '로그인 실패: ' + e.message;
+      }
+    }
+
+    function toggleDark() {
+      document.body.classList.toggle('dark');
+      localStorage.setItem('dark', document.body.classList.contains('dark') ? '1' : '0');
+    }
+    if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
+
+    // 이미 로그인 상태면 바로 이동
+    AdminAuth.ready.then(() => { if (AdminAuth.isValid()) window.location.href = 'admin.html'; });
+  </script>
+</body>
+</html>

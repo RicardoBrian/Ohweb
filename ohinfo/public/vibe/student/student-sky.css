@@ -1,0 +1,44 @@
+/* 학생 사이트(kakainfo) 공통 다듬기 — 관리자 화면과 같은 Apple 스타일.
+   각 페이지 안쪽 스타일이 테두리·유리 효과를 다시 덮어쓰는 부분을 여기서 한 번에 정리한다.
+   모양만 바꾸고 기능(id·onclick·JS)은 건드리지 않는다. */
+
+/* 카드·판: 테두리 없이 반투명 면 + 부드러운 그림자 (유리 효과는 내비게이션만) */
+html body.ui-sky .app-card,
+html body.ui-sky .q-card,
+html body.ui-sky .form-item,
+html body.ui-sky .share-link,
+html body.ui-sky .ai-card,
+html body.ui-sky .exam-card,
+html body.ui-sky .qna-card {
+  background: var(--surface); border: 0;
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  box-shadow: 0 1px 2px rgba(30,40,100,0.06), 0 8px 24px rgba(30,40,100,0.08);
+}
+html body.ui-sky.dark .app-card, body.ui-sky.dark .q-card, body.ui-sky.dark .form-item,
+html body.ui-sky.dark .share-link { box-shadow: 0 8px 24px rgba(0,0,0,0.35); }
+
+/* 홈 앱 타일: iOS 앱 아이콘처럼 — 한 가지 톤의 부드러운 그라데이션 */
+html body.ui-sky .app-card { border-radius: 22px; padding: 28px 18px 22px; gap: 14px; }
+html body.ui-sky .app-card:hover { transform: translateY(-3px); box-shadow: 0 2px 4px rgba(30,40,100,0.06), 0 14px 32px rgba(30,40,100,0.14); }
+html body.ui-sky .app-icon { width: 64px; height: 64px; border-radius: 15px; box-shadow: 0 2px 6px rgba(30,40,100,0.18), inset 0 0 0 0.5px rgba(255,255,255,0.35); }
+html body.ui-sky .app-name { font-size: 0.95rem; font-weight: 600; }
+html body.ui-sky .icon-ohdlet { background: linear-gradient(180deg, #7d8cf5, #5a67d8); }
+html body.ui-sky .icon-exam   { background: linear-gradient(180deg, #5ac8fa, #1e90ff); }
+html body.ui-sky .icon-form   { background: linear-gradient(180deg, #5fdc82, #28b45a); }
+html body.ui-sky .icon-ai     { background: linear-gradient(180deg, #b58cf0, #8a5ad8); }
+
+/* 설문 만들기: 질문 카드 안의 삭제 버튼이 종류 선택칸과 겹치지 않게 자리를 비운다 */
+html body.ui-sky .q-card { border-radius: 16px; padding: 16px 16px 14px; }
+html body.ui-sky .q-top { padding-right: 40px; }
+html body.ui-sky .q-del { top: 14px; right: 12px; width: 28px; height: 28px; padding: 0; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center; background: var(--fill); color: var(--danger); }
+html body.ui-sky .q-del:hover { background: var(--danger-light); }
+html body.ui-sky .q-opt-row .btn.danger, body.ui-sky .q-opt-row .btn.ghost.danger {
+  width: 28px; height: 28px; padding: 0; border-radius: 50%; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center; background: var(--fill); }
+html body.ui-sky .q-type-sel { background: var(--fill); border: 0; border-radius: 10px; padding: 12px 10px; }
+html body.ui-sky .add-opt { color: var(--accent); }
+
+/* 목록 줄 (설문 목록 등): 눌림 표시 */
+html body.ui-sky .form-item { border-radius: 14px; transition: background 0.12s; }
+html body.ui-sky .form-item:hover { background: var(--glass-strong); }

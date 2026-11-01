@@ -1,0 +1,29 @@
+/*
+ * 결석신고서 A4 한 장 — form.js가 만드는 SVG 전용.
+ * 화면 테마(theme.css)의 색·글꼴을 절대 물려받지 않게 모든 값을 여기서 고정한다.
+ * 다크 모드에서도 종이는 흰 바탕에 검은 글씨다.
+ *
+ * 글꼴은 출력하는 컴퓨터에 설치된 것을 쓴다. 굴림은 Windows 기본 글꼴,
+ * 함초롬돋움·함초롬바탕·한컴돋움은 한글(HWP)을 설치하면 같이 깔린다. 없으면 나눔고딕·나눔명조로 대신한다.
+ */
+.sheet {
+  width: 210mm; height: 297mm; background: #fff; color: #000;
+  position: relative; overflow: hidden;
+}
+.sheet-in { position: absolute; inset: 0; width: 595.32pt; height: 841.92pt; }
+.sheet svg.page { position: absolute; left: 0; top: 0; overflow: visible; }
+/* 한글(HWP)은 글자 사이를 좁히거나(커닝) 합자하지 않는다 */
+.sheet text {
+  fill: #000; stroke: none; font-weight: 400;
+  font-kerning: none; font-variant-ligatures: none; letter-spacing: 0; word-spacing: 0;
+  text-rendering: geometricPrecision;
+  font-variant-emoji: text; /* ☑를 컬러 이모지가 아닌 글자로 */
+}
+/* 굴림·한컴돋움: 한글(HWP)은 이 두 글꼴을 "채우기 + 윤곽선"으로 찍는다. 윤곽선 굵기는 form.js가 글자마다 */
+.sheet text.g  { font-family: "굴림", Gulim, "Nanum Gothic", "NanumGothic", sans-serif; stroke: #000; }
+.sheet text.hd { font-family: "한컴돋움", "Haansoft Dotum", "굴림", Gulim, sans-serif; stroke: #000; }
+/* 함초롬돋움 Bold — 굵은 글꼴 파일을 그대로(합성 굵기 아님). form.js의 HB_FAMILY와 같아야 한다 */
+.sheet text.hb { font-family: "함초롬돋움", "HCR Dotum", "HCRDotum", "Nanum Gothic", "NanumGothic", sans-serif; font-weight: 700; }
+/* 함초롬바탕 Bold — ※ 사유명 안내 줄 */
+.sheet text.hmb { font-family: "함초롬바탕", "HCR Batang", "HCRBatang", "Nanum Myeongjo", "NanumMyeongjo", serif; font-weight: 700; }
+.sheet text.red { fill: #f00; }
