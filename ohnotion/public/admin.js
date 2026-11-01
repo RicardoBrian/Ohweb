@@ -67,7 +67,10 @@ let checks = {};           // slug → /api/check 결과
 let statsEnabled = true;
 let notionEnabled = true;
 let editing = null;
-let catFilter = '';         // '' = 전체, '\u0000' = 미분류, 그 밖 = 카테고리 이름
+// '' = 전체, NONE = 미분류, 그 밖 = 카테고리 이름. NONE을 보이지 않는 문자(\u0000)로 했더니
+// HTML 속성(data-cat)에 들어가며 브라우저가 다른 글자로 바꿔 버려, 미분류를 누르면 전체로 돌아갔다.
+const NONE = '__none__';
+let catFilter = '';
 let searchText = '';        // 수정 중인 주소
 let refreshTimer = null;
 
@@ -392,10 +395,10 @@ function renderChips() {
   const chips = document.getElementById('catChips');
   if (!chips) return;
   const cats = categories();
-  const count = (c) => pages.filter((p) => (c === '\u0000' ? !(p.category || '').trim() : (p.category || '').trim() === c)).length;
+  const count = (c) => pages.filter((p) => (c === NONE ? !(p.category || '').trim() : (p.category || '').trim() === c)).length;
   const items = [['', `전체 ${pages.length}`], ...cats.map((c) => [c, `${c} ${count(c)}`])];
-  const uncategorized = count('\u0000');
-  if (uncategorized && cats.length) items.push(['\u0000', `미분류 ${uncategorized}`]);
+  const uncategorized = count(NONE);
+  if (uncategorized && cats.length) items.push([NONE, `미분류 ${uncategorized}`]);
   if (catFilter && !items.some(([k]) => k === catFilter)) catFilter = '';
   chips.innerHTML = items.map(([k, label]) => `<button type="button" class="chip${k === catFilter ? ' on' : ''}" data-cat="${escapeHtml(k)}">${escapeHtml(label)}</button>`).join('');
   chips.querySelectorAll('.chip').forEach((b) => b.addEventListener('click', () => { catFilter = b.dataset.cat; renderList(); }));
@@ -411,7 +414,7 @@ function visiblePages() {
   const q = searchText.trim().toLowerCase();
   return pages.filter((p) => {
     const cat = (p.category || '').trim();
-    if (catFilter === '\u0000' ? cat : catFilter && cat !== catFilter) return false;
+    if (catFilter === NONE ? cat : catFilter && cat !== catFilter) return false;
     if (!q) return true;
     return [p.title, p.slug, cat].some((v) => String(v || '').toLowerCase().includes(q));
   });
