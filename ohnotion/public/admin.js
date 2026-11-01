@@ -1,7 +1,8 @@
-// note.kakainfo.com (첫 화면 = 이 관리 페이지) — 정보 학습지(노션 페이지) 등록 + 모니터링.
+// note.kakainfo.com (첫 화면 = 이 관리 페이지) — kakanotion: 정보 학습지(노션 페이지) 등록 + 모니터링.
 // 학생용 목록 화면은 없다. 학생은 여기서 복사한 /{주소} 링크로만 들어온다.
 //
-// 등록: notion_pages/{주소} 문서 = { title, url, pageId, order, createdAt, updatedAt }.
+// 등록: notion_pages/{주소} 문서 = { title, url, pageId, category, createdAt, updatedAt }.
+//       목록은 최신 등록순(createdAt 내림차순) + 카테고리 필터·검색. (order는 예전 수동 순서 — 지금은 안 씀)
 //       (hidden은 학생 목록이 있던 시절의 필드 — 예전 문서엔 남아 있을 수 있고 규칙도 허용한다.)
 //       학생 화면은 서버가 Notion API로 pageId의 내용을 읽어 그린다(lib/notion.js).
 //       등록 정보는 최대 2분, 노션 내용은 2분마다 새로 반영된다.
@@ -12,7 +13,7 @@
 //     대신 보여준 횟수, 못 불러온 횟수의 일별 카운터.
 import { db } from './firebase-config.js';
 import {
-  collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, where, writeBatch, serverTimestamp,
+  collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, where, serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const app = document.getElementById('app');
@@ -65,7 +66,9 @@ let stats = {};            // slug → { today: {...}, week: {...}, lastAt }
 let checks = {};           // slug → /api/check 결과
 let statsEnabled = true;
 let notionEnabled = true;
-let editing = null;        // 수정 중인 주소
+let editing = null;
+let catFilter = '';         // '' = 전체, '\u0000' = 미분류, 그 밖 = 카테고리 이름
+let searchText = '';        // 수정 중인 주소
 let refreshTimer = null;
 
 // ── 유틸 ──
@@ -107,7 +110,7 @@ function renderLogin(errorMessage = '') {
         <div class="auth-head">
           <img class="auth-logo" src="/logo.png" alt="kakainfo">
           <div class="auth-word">kakainfo</div>
-          <div class="auth-sub">정보 학습지 · 관리자 로그인</div>
+          <div class="auth-sub">kakanotion · 관리자 로그인</div>
         </div>
         <button class="auth-btn" id="loginBtn">Google로 로그인</button>
         <p class="error-msg" id="loginError">${escapeHtml(errorMessage)}</p>
@@ -130,7 +133,7 @@ function renderLogin(errorMessage = '') {
 async function renderDashboard() {
   app.innerHTML = `
     <div class="topbar">
-      <a class="nav-brand" href="/"><img src="/logo.png" alt="kakainfo"><span class="nav-brand-title">정보 학습지 관리</span></a>
+      <a class="nav-brand" href="/"><img src="/logo.png" alt="kakainfo"><span class="nav-brand-title">kakanotion</span></a>
       <div class="topbar-actions">
         <div class="dark-toggle" id="darkToggle" title="다크모드"></div>
         <button class="btn ghost sm" id="logoutBtn">로그아웃</button>
@@ -164,6 +167,20 @@ async function renderDashboard() {
             </div>
           </div>
           <div class="field">
+            <label for="category">카테고리</label>
+            <div class="cat-input">
+              <input id="category" class="inp" placeholder="예: 1학년 AI, 수행평가 (비우면 미분류)" maxlength="40" list="categoryList">
+              <select id="categoryPick" class="inp" title="기존 카테고리에서 고르기"><option value="">기존 카테고리 ▾</option></select>
+            </div>
+            <datalist id="categoryList"></datalist>
+          </div>
+          <div class="field">
+            <label for="pagePassword">비밀번호 (선택)</label>
+            <input id="pagePassword" class="inp" type="text" placeholder="비우면 누구나 열 수 있어요" maxlength="100" autocomplete="off">
+            <p class="hint">정하면 학생이 이 주소를 열 때 비밀번호를 물어요(맞히면 그 PC에서 12시간 동안 다시 안 물어요). 지우고 저장하면 잠금이 풀려요.
+            비밀번호를 바꾸면 이미 들어온 학생도 다시 입력해야 해요. 바뀐 잠금은 학생 화면에 최대 2분 뒤 반영돼요.</p>
+          </div>
+          <div class="field">
             <label for="url">노션 페이지 링크</label>
             <input id="url" class="inp" type="text" placeholder="https://www.notion.so/…  또는  https://xxx.notion.site/…" required>
             <p class="hint">노션에서 그 페이지를 열고 <b>공유 → 링크 복사</b>한 주소면 돼요(<code>notion.so</code>, <code>notion.site</code>, 임베드 iframe 코드 모두 OK). 사이트 첫 화면 주소(<code>xxx.notion.site/</code>)에는 페이지 ID가 없어서 안 돼요.
@@ -185,6 +202,10 @@ async function renderDashboard() {
             <button class="btn sm" id="recheckBtn">전체 다시 점검</button>
           </div>
         </div>
+        <div class="list-tools">
+          <div class="cat-chips" id="catChips"></div>
+          <input id="search" class="inp search" type="search" placeholder="제목·주소 검색">
+        </div>
         <div class="link-list" id="pageList"><div class="empty-state">불러오는 중...</div></div>
         <p class="legend">학생 화면은 학생 PC가 노션에 직접 접속하지 않고, 서버가 노션 API로 읽어 둔 내용을 보여줘요(2분마다 새로 반영).
           <b>⟳</b>를 누르면 지금 바로 새로 불러와요. 학생 기록(오늘 / 최근 7일):
@@ -199,6 +220,11 @@ async function renderDashboard() {
     try { localStorage.setItem('dark', document.body.classList.contains('dark') ? '1' : '0'); } catch { /* 무시 */ }
   });
   document.getElementById('pageForm').addEventListener('submit', onSave);
+  document.getElementById('categoryPick').addEventListener('change', (e) => {
+    if (e.target.value) document.getElementById('category').value = e.target.value;
+    e.target.value = '';
+  });
+  document.getElementById('search').addEventListener('input', (e) => { searchText = e.target.value; renderList(); });
   document.getElementById('cancelEdit').addEventListener('click', resetForm);
   document.getElementById('recheckBtn').addEventListener('click', () => runChecks(true));
 
@@ -214,10 +240,14 @@ function startRefresh() {
 function stopRefresh() { clearInterval(refreshTimer); refreshTimer = null; }
 
 // ── 데이터 ──
+const tsMillis = (t) => t?.toMillis?.() ?? (t ? Date.parse(t) || 0 : 0);
+const categories = () => [...new Set(pages.map((p) => (p.category || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ko'));
+
 async function loadPages() {
   const snap = await getDocs(collection(db, 'notion_pages'));
   pages = snap.docs.map((d) => ({ slug: d.id, ...d.data() }))
-    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || String(a.title).localeCompare(String(b.title), 'ko'));
+    // 최신 등록이 맨 위(만든 시각 → 없으면 수정 시각).
+    .sort((a, b) => tsMillis(b.createdAt ?? b.updatedAt) - tsMillis(a.createdAt ?? a.updatedAt));
 }
 
 async function loadStats() {
@@ -358,22 +388,66 @@ function countsHtml(o) {
   return parts.length ? parts.join('') : '<span class="cnt muted">기록 없음</span>';
 }
 
+function renderChips() {
+  const chips = document.getElementById('catChips');
+  if (!chips) return;
+  const cats = categories();
+  const count = (c) => pages.filter((p) => (c === '\u0000' ? !(p.category || '').trim() : (p.category || '').trim() === c)).length;
+  const items = [['', `전체 ${pages.length}`], ...cats.map((c) => [c, `${c} ${count(c)}`])];
+  const uncategorized = count('\u0000');
+  if (uncategorized && cats.length) items.push(['\u0000', `미분류 ${uncategorized}`]);
+  if (catFilter && !items.some(([k]) => k === catFilter)) catFilter = '';
+  chips.innerHTML = items.map(([k, label]) => `<button type="button" class="chip${k === catFilter ? ' on' : ''}" data-cat="${escapeHtml(k)}">${escapeHtml(label)}</button>`).join('');
+  chips.querySelectorAll('.chip').forEach((b) => b.addEventListener('click', () => { catFilter = b.dataset.cat; renderList(); }));
+
+  // 등록 폼의 카테고리 고르기(드롭다운 + 입력 자동완성)
+  const pick = document.getElementById('categoryPick');
+  const dl = document.getElementById('categoryList');
+  if (pick) pick.innerHTML = '<option value="">기존 카테고리 ▾</option>' + cats.map((c) => `<option>${escapeHtml(c)}</option>`).join('');
+  if (dl) dl.innerHTML = cats.map((c) => `<option value="${escapeHtml(c)}">`).join('');
+}
+
+function visiblePages() {
+  const q = searchText.trim().toLowerCase();
+  return pages.filter((p) => {
+    const cat = (p.category || '').trim();
+    if (catFilter === '\u0000' ? cat : catFilter && cat !== catFilter) return false;
+    if (!q) return true;
+    return [p.title, p.slug, cat].some((v) => String(v || '').toLowerCase().includes(q));
+  });
+}
+
+function fmtDate(t) {
+  const ms = tsMillis(t);
+  return ms ? new Date(ms).toLocaleDateString('ko-KR', { year: 'numeric', month: 'numeric', day: 'numeric' }) : '';
+}
+
 function renderList() {
   const listEl = document.getElementById('pageList');
   if (!listEl) return;
+  renderChips();
   if (!pages.length) {
     listEl.innerHTML = '<div class="empty-state">아직 등록된 페이지가 없어요. 위에서 첫 페이지를 등록해 보세요.</div>';
     return;
   }
-  listEl.innerHTML = pages.map((p, i) => {
+  const shown = visiblePages();
+  if (!shown.length) {
+    listEl.innerHTML = '<div class="empty-state">조건에 맞는 페이지가 없어요.</div>';
+    return;
+  }
+  listEl.innerHTML = shown.map((p) => {
     const st = statusOf(p);
     const s = stats[p.slug];
     const publicUrl = `${PUBLIC_BASE}/${p.slug}`;
+    const cat = (p.category || '').trim();
+    const slugAttr = escapeHtml(p.slug);
     return `
       <div class="page-card">
         <div class="page-main">
           <div class="page-top">
             <span class="pill ${st.cls}">${escapeHtml(st.label)}</span>
+            ${cat ? `<span class="pill cat">${escapeHtml(cat)}</span>` : ''}
+            ${p.locked ? '<span class="pill muted" title="비밀번호가 걸려 있어요">🔒 비밀번호</span>' : ''}
             <span class="page-title">${escapeHtml(p.title || p.slug)}</span>
           </div>
           <a class="page-public" href="${escapeHtml(publicUrl)}" target="_blank" rel="noopener">${PUBLIC_HOST}/${escapeHtml(p.slug)}</a>
@@ -382,28 +456,26 @@ function renderList() {
           <div class="page-stats">
             <div><span class="stat-k">오늘</span>${countsHtml(s?.today)}</div>
             <div><span class="stat-k">7일</span>${countsHtml(s?.week)}</div>
-            ${s?.lastAt ? `<div class="muted small">마지막 기록 ${timeAgo(s.lastAt)} · ${escapeHtml(RESULT_LABELS[s.lastResult] || '')}</div>` : ''}
+            <div class="muted small">등록 ${fmtDate(p.createdAt ?? p.updatedAt)}${s?.lastAt ? ` · 마지막 기록 ${timeAgo(s.lastAt)} · ${escapeHtml(RESULT_LABELS[s.lastResult] || '')}` : ''}</div>
           </div>
         </div>
         <div class="page-actions">
-          <button class="icon-btn" data-act="up" data-i="${i}" title="위로" ${i === 0 ? 'disabled' : ''}>↑</button>
-          <button class="icon-btn" data-act="down" data-i="${i}" title="아래로" ${i === pages.length - 1 ? 'disabled' : ''}>↓</button>
-          <button class="icon-btn" data-act="present" data-i="${i}" title="발표 모드로 열기">▶</button>
-          <button class="icon-btn" data-act="copy" data-i="${i}" title="주소 복사">⧉</button>
-          <button class="icon-btn" data-act="check" data-i="${i}" title="지금 새로 불러오기">⟳</button>
-          <button class="icon-btn" data-act="edit" data-i="${i}" title="수정">✎</button>
-          <button class="icon-btn danger" data-act="delete" data-i="${i}" title="삭제">✕</button>
+          <button class="icon-btn" data-act="present" data-slug="${slugAttr}" title="발표 모드로 열기">▶</button>
+          <button class="icon-btn" data-act="copy" data-slug="${slugAttr}" title="주소 복사">⧉</button>
+          <button class="icon-btn" data-act="check" data-slug="${slugAttr}" title="지금 새로 불러오기">⟳</button>
+          <button class="icon-btn" data-act="edit" data-slug="${slugAttr}" title="수정">✎</button>
+          <button class="icon-btn danger" data-act="delete" data-slug="${slugAttr}" title="삭제">✕</button>
         </div>
       </div>`;
   }).join('');
 
   listEl.querySelectorAll('[data-act]').forEach((btn) => {
-    btn.addEventListener('click', () => onAction(btn.dataset.act, pages[Number(btn.dataset.i)], Number(btn.dataset.i)));
+    btn.addEventListener('click', () => onAction(btn.dataset.act, pages.find((p) => p.slug === btn.dataset.slug)));
   });
 }
 
 // ── 동작 ──
-async function onAction(act, p, i) {
+async function onAction(act, p) {
   if (!p) return;
   try {
     if (act === 'present') {
@@ -420,22 +492,10 @@ async function onAction(act, p, i) {
     } else if (act === 'delete') {
       if (!confirm(`"${p.title || p.slug}" 페이지를 삭제할까요?\n노션 원본은 그대로 남고, ${PUBLIC_HOST}/${p.slug} 주소만 사라져요.`)) return;
       await deleteDoc(doc(db, 'notion_pages', p.slug));
+      if (p.locked) await deleteDoc(doc(db, 'notion_secrets', p.slug)).catch(() => {});
       delete checks[p.slug];
       showToast('삭제했어요');
       if (editing === p.slug) resetForm();
-      await refresh({ withChecks: false });
-    } else if (act === 'up' || act === 'down') {
-      const j = act === 'up' ? i - 1 : i + 1;
-      const other = pages[j];
-      if (!other) return;
-      // 순서 값을 목록 위치로 다시 매기고 두 개만 바꾼다(예전 값이 겹쳐 있어도 정리됨).
-      const order = pages.map((_, k) => k);
-      [order[i], order[j]] = [order[j], order[i]];
-      const batch = writeBatch(db);
-      pages.forEach((pg, k) => {
-        if ((pg.order ?? null) !== order[k]) batch.update(doc(db, 'notion_pages', pg.slug), { order: order[k], updatedAt: serverTimestamp() });
-      });
-      await batch.commit();
       await refresh({ withChecks: false });
     }
   } catch (e) {
@@ -450,6 +510,20 @@ function startEdit(p) {
   slugEl.disabled = true;
   document.getElementById('title').value = p.title || '';
   document.getElementById('url').value = p.url || '';
+  document.getElementById('category').value = p.category || '';
+  const pw = document.getElementById('pagePassword');
+  pw.value = '';
+  pw.dataset.original = '';
+  if (p.locked) {
+    pw.placeholder = '불러오는 중…';
+    getDoc(doc(db, 'notion_secrets', p.slug)).then((d) => {
+      if (editing !== p.slug) return;
+      const v = d.exists() ? d.data().password || '' : '';
+      pw.value = v;
+      pw.dataset.original = v;
+      pw.placeholder = '비우면 누구나 열 수 있어요';
+    }).catch(() => { pw.placeholder = '비밀번호를 불러오지 못했어요(규칙 확인)'; });
+  }
   document.getElementById('formTitle').textContent = `수정: ${p.slug}`;
   document.getElementById('saveBtn').textContent = '저장';
   document.getElementById('cancelEdit').hidden = false;
@@ -460,6 +534,7 @@ function startEdit(p) {
 function resetForm() {
   editing = null;
   document.getElementById('pageForm').reset();
+  document.getElementById('pagePassword').placeholder = '비우면 누구나 열 수 있어요';
   document.getElementById('slug').disabled = false;
   document.getElementById('formTitle').textContent = '새 페이지 등록';
   document.getElementById('saveBtn').textContent = '등록';
@@ -487,6 +562,8 @@ async function onSave(e) {
   errEl.textContent = '';
   const slug = document.getElementById('slug').value.trim().replace(/\s+/g, '-').normalize('NFC');
   let title = document.getElementById('title').value.trim();
+  const category = document.getElementById('category').value.trim().replace(/\s+/g, ' ').slice(0, 40);
+  const password = document.getElementById('pagePassword').value.trim();
   const url = linkFromInput(document.getElementById('url').value);
   const pageId = extractPageId(url);
 
@@ -528,12 +605,18 @@ async function onSave(e) {
     const existing = editing ? pages.find((p) => p.slug === editing) : null;
     const data = {
       title, url, pageId,
+      ...(category ? { category } : {}),
+      ...(password ? { locked: true } : {}),
       ...(existing && 'hidden' in existing ? { hidden: existing.hidden } : {}),
       order: existing?.order ?? (pages.length ? Math.max(...pages.map((p) => p.order ?? 0)) + 1 : 0),
       createdAt: existing?.createdAt ?? serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
+    // 비밀번호는 공개 읽기인 notion_pages가 아니라 관리자 전용 notion_secrets에.
+    // 잠그는 경우엔 비밀번호를 먼저 저장해야 잠긴 순간 비밀번호가 없는 틈이 안 생긴다.
+    if (password) await setDoc(doc(db, 'notion_secrets', slug), { password, updatedAt: serverTimestamp() });
     await setDoc(doc(db, 'notion_pages', slug), data);
+    if (!password && existing?.locked) await deleteDoc(doc(db, 'notion_secrets', slug)).catch(() => {});
     showToast(editing ? '저장했어요 (학생 화면엔 최대 2분 뒤 반영)' : '등록했어요');
     resetForm();
     await refresh({ withChecks: false });

@@ -168,7 +168,8 @@ HTML로 보여 주는 앱. 설정은 1번 섹션과 같다:
      없어도 사이트는 동작한다.
 4. Firebase 콘솔 → Authentication → Settings → Authorized domains에
    `note.kakainfo.com` 추가 (관리 페이지 Google 로그인).
-5. **`ohweb-firestore.rules`의 notion 블록을 Firebase 콘솔에 반영** (`notion_pages`,
+5. **`ohweb-firestore.rules`의 notion 블록을 Firebase 콘솔에 반영** — `validNotionPage`(category·locked 추가)와
+   `notion_secrets`(페이지 비밀번호, 관리자 전용)가 추가됐다. (`notion_pages`,
    `notion_stats`). `pageId` 필드가 추가됐으니 예전에 붙여넣었다면 다시 붙여넣는다.
 
 자세한 내용은 `ohnotion/README.md`.

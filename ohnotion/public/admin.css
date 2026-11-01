@@ -203,7 +203,7 @@ body.dark .pill.warn { color: #fbbf24; }
 @media (max-width: 640px) {
   .tiles { grid-template-columns: repeat(2, 1fr); }
   .page-card { flex-direction: column; }
-  .page-actions { grid-template-columns: repeat(7, 36px); }
+  .page-actions { grid-template-columns: repeat(5, 36px); }
   .slug-input { flex-direction: column; align-items: stretch; }
   .slug-prefix { padding: 0 0 4px; }
 }
@@ -223,3 +223,16 @@ body.ui-sky .links-section h2, body.ui-sky .section-head h2 { font-weight: 700; 
   body.ui-sky .dashboard > .create-card { grid-column: 2; position: sticky; top: 80px; }
   body.ui-sky .dashboard > .create-card .form-row { grid-template-columns: 1fr; }
 }
+
+/* 카테고리 입력 · 목록 필터 */
+.cat-input { display: flex; gap: 8px; }
+.cat-input #category { flex: 1; min-width: 0; }
+.cat-input #categoryPick { flex: 0 0 170px; }
+.list-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.cat-chips { display: flex; gap: 6px; flex-wrap: wrap; flex: 1; }
+.chip { border: 1px solid var(--border-card); background: var(--glass); color: var(--text); border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+.chip:hover { background: var(--glass-strong); }
+.chip.on { background: var(--accent); border-color: transparent; color: #fff; }
+.list-tools .search { flex: 0 1 220px; padding: 8px 12px; font-size: 14px; }
+.pill.cat { background: var(--accent-light); color: var(--accent); }
+@media (max-width: 640px) { .cat-input { flex-direction: column; } .cat-input #categoryPick { flex: none; } .list-tools .search { flex: 1 1 100%; } }

@@ -191,7 +191,7 @@ export async function getAccessToken(sa) {
 
 // 서비스 계정 토큰은 1시간짜리라 isolate가 살아 있는 동안 재사용한다.
 let tokenCache = { token: null, exp: 0 };
-async function statsToken(env) {
+export async function statsToken(env) {
   if (tokenCache.token && Date.now() < tokenCache.exp) return tokenCache.token;
   const t = await getAccessToken(JSON.parse(env.FIREBASE_SERVICE_ACCOUNT_KEY));
   tokenCache = { token: t, exp: Date.now() + 50 * 60 * 1000 };

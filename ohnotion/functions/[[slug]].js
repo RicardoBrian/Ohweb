@@ -22,12 +22,13 @@
 import { escapeHtml, getPage, parsePath, recordStat } from '../lib/shared.js';
 import { getRendered } from '../lib/render.js';
 import { explainError } from '../lib/notion.js';
+import { getPassword, isUnlocked, passwordMatches, unlockCookie } from '../lib/lock.js';
 
 const BRAND = '정보 학습지';
 // 학생 화면의 CSS/JS 주소 뒤에 붙는 버전. view.css나 view.js를 고치면 이 값을 바꾼다 —
 // 그래야 브라우저·Cloudflare에 남은 예전 파일 대신 새 파일을 받는다(첫 iframe 버전의
 // view.css가 남아 여백·HTML 창 크기가 다 깨져 보였던 일이 있었다).
-const ASSET_V = '2026110101';
+const ASSET_V = '2026110201';
 
 function html(body, status = 200) {
   return new Response(body, {
@@ -77,6 +78,21 @@ function renderMessage(title, message, status) {
 </main>`), status);
 }
 
+// 비밀번호를 걸어 둔 페이지(lib/lock.js)의 입력 화면
+function renderLock(page, { wrong = false } = {}) {
+  return html(shell(`${page.title || page.slug} — ${BRAND}`, `${topbar()}
+<main class="list lock">
+  <form method="post" class="lock-card" autocomplete="off">
+    <div class="lock-icon">🔒</div>
+    <h1>${escapeHtml(page.title || page.slug)}</h1>
+    <p class="empty">선생님이 알려 준 비밀번호를 입력하세요.</p>
+    <input type="password" name="password" class="lock-input" placeholder="비밀번호" required autofocus maxlength="100">
+    ${wrong ? '<p class="lock-error">비밀번호가 맞지 않아요.</p>' : ''}
+    <button type="submit" class="lock-btn">열기</button>
+  </form>
+</main>`), wrong ? 401 : 200);
+}
+
 const KATEX = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist';
 const PRISM = 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0';
 function renderDoc(page, sub, { data, source }) {
@@ -121,7 +137,8 @@ ${data.coverUrl ? `<div class="cover" style="background-image:url('${escapeHtml(
 export async function onRequest(context) {
   const { request, next, env } = context;
   try {
-    if (request.method !== 'GET' && request.method !== 'HEAD') return next();
+    const isPost = request.method === 'POST';
+    if (request.method !== 'GET' && request.method !== 'HEAD' && !isPost) return next();
     const { pathname } = new URL(request.url);
 
     // 첫 화면은 관리 페이지. Pages의 정적 파일(admin.html)을 그대로 내려 준다.
@@ -137,6 +154,30 @@ export async function onRequest(context) {
       return renderMessage('페이지를 찾을 수 없어요',
         `<b>${escapeHtml(route.slug)}</b> 주소로 등록된 노션 페이지가 없어요.<br>주소를 다시 확인하거나 선생님께 받은 링크로 다시 들어와 주세요.`, 404);
     }
+    // 비밀번호가 걸린 페이지: 맞는 쿠키가 없으면 입력 화면. POST는 비밀번호 확인.
+    if (page.locked) {
+      if (!env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+        return renderMessage('잠긴 페이지예요', '비밀번호 확인 설정이 아직 안 됐어요(FIREBASE_SERVICE_ACCOUNT_KEY). 선생님께 알려 주세요.', 503);
+      }
+      let password;
+      try { password = await getPassword(env, page.slug); } catch (e) {
+        console.error('비밀번호 읽기 실패:', e?.message || e);
+        return renderMessage('잠긴 페이지예요', '지금은 비밀번호를 확인할 수 없어요. 잠시 후 다시 시도해 주세요.', 503);
+      }
+      if (!password) return renderMessage('잠긴 페이지예요', '이 페이지의 비밀번호가 아직 정해지지 않았어요. 선생님께 알려 주세요.', 403);
+      if (isPost) {
+        const form = await request.formData().catch(() => null);
+        if (passwordMatches(form?.get('password'), password)) {
+          return new Response(null, { status: 303, headers: { Location: pathname, 'Set-Cookie': await unlockCookie(env, page.slug, password), 'Cache-Control': 'no-store' } });
+        }
+        await new Promise((r) => setTimeout(r, 600));   // 마구 대입하기 어렵게 조금 늦춘다
+        return renderLock(page, { wrong: true });
+      }
+      if (!(await isUnlocked(request, env, page.slug, password))) return renderLock(page);
+    } else if (isPost) {
+      return new Response(null, { status: 303, headers: { Location: pathname } });
+    }
+
     if (!env.NOTION_TOKEN) {
       return renderMessage('준비 중이에요', '관리자가 노션 연결 설정을 마치면 열려요. (NOTION_TOKEN 없음)', 503);
     }

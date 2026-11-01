@@ -535,3 +535,14 @@ html.lb-open, html.lb-open body { overflow: hidden; }
   .lb-stage { inset: 52px 8px 48px; }
   .lb-nav { width: 36px; height: 52px; font-size: 28px; background: rgba(0, 0, 0, 0.3); }
 }
+
+/* ---------- 비밀번호 걸린 페이지 ---------- */
+.list.lock { display: flex; justify-content: center; padding-top: 12vh; }
+.lock-card { width: 100%; max-width: 380px; text-align: center; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 32px 28px; }
+.lock-icon { font-size: 40px; }
+.lock-card h1 { font-size: 20px; margin: 10px 0 4px; word-break: keep-all; }
+.lock-card .empty { margin: 0 0 18px; font-size: 14px; }
+.lock-input { width: 100%; height: 44px; border: 1px solid var(--line); border-radius: 10px; padding: 0 14px; font: inherit; font-size: 16px; background: var(--bg); color: var(--text); }
+.lock-input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.lock-error { color: #d44c47; font-size: 14px; margin: 10px 0 0; }
+.lock-btn { width: 100%; height: 44px; margin-top: 14px; border: 0; border-radius: 10px; background: var(--accent); color: #fff; font: inherit; font-size: 16px; font-weight: 600; cursor: pointer; }
