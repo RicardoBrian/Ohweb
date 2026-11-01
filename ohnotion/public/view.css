@@ -202,6 +202,7 @@ body.doc-page .brand:hover { background: var(--n-hover); }
 body.doc-page .brand img { width: 20px; height: 20px; }
 body.doc-page .bar-title { font-size: 14px; font-weight: 400; color: var(--n-text); }
 body.doc-page .bar-title::before { content: "/"; color: var(--n-sub); margin-right: 8px; }
+body.doc-page .bar-title.no-sep::before { content: none; }
 body.doc-page .btn { height: 28px; border: 0; background: transparent; color: var(--n-sub); font-weight: 500; font-size: 14px; border-radius: 4px; padding: 0 8px; }
 body.doc-page .btn:hover { background: var(--n-hover); color: var(--n-text); }
 body.doc-page .btn.warn { color: var(--n-sub); background: transparent; }
