@@ -140,7 +140,7 @@
     });
     // 화면 왼쪽 1/3 클릭 = 이전, 나머지 = 다음(링크·버튼·영상·코드는 제외).
     deck.querySelector('.deck-stage').addEventListener('click', (e) => {
-      if (e.target.closest('a, button, iframe, video, audio, summary, pre, input, .htmlfile')) return;
+      if (e.target.closest('a, button, iframe, video, audio, summary, pre, input, .htmlfile, figure.image img')) return;
       if (window.getSelection()?.toString()) return;
       go(e.clientX < window.innerWidth / 3 ? index - 1 : index + 1);
     });
