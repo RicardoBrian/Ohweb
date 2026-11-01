@@ -1,5 +1,5 @@
 /**
- * Cloudflare Pages Function — note.kakainfo.com ("정보 학습지")의 화면.
+ * Cloudflare Pages Function — note.kakainfo.com 학생 화면(상단 바: 카테고리 / 페이지 제목).
  *
  *   /                 관리 페이지(admin.html). 학생용 목록은 따로 없다 —
  *                     학생은 선생님이 준 /{주소} 링크로만 들어온다.
@@ -24,11 +24,10 @@ import { getRendered } from '../lib/render.js';
 import { explainError } from '../lib/notion.js';
 import { getPassword, isUnlocked, passwordMatches, unlockCookie } from '../lib/lock.js';
 
-const BRAND = '정보 학습지';
 // 학생 화면의 CSS/JS 주소 뒤에 붙는 버전. view.css나 view.js를 고치면 이 값을 바꾼다 —
 // 그래야 브라우저·Cloudflare에 남은 예전 파일 대신 새 파일을 받는다(첫 iframe 버전의
 // view.css가 남아 여백·HTML 창 크기가 다 깨져 보였던 일이 있었다).
-const ASSET_V = '2026110201';
+const ASSET_V = '2026110202';
 
 function html(body, status = 200) {
   return new Response(body, {
@@ -62,16 +61,17 @@ ${body}
 </html>`;
 }
 
-function topbar(inner = '') {
-  // 학생용 목록 화면이 없으므로 브랜드는 링크가 아니다(누르면 관리 로그인으로 가지 않게).
+// 상단 바: [로고] 카테고리 / 페이지 제목. 사이트 이름은 따로 넣지 않는다(학생에겐 필요 없는 말).
+// 학생용 목록 화면이 없으므로 로고·카테고리는 링크가 아니다.
+function topbar(inner = '', category = '') {
   return `<header class="bar">
-  <span class="brand"><img src="/logo.png" alt="" width="26" height="26"><span>${BRAND}</span></span>
+  <span class="brand"><img src="/logo.png" alt="" width="26" height="26">${category ? `<span>${escapeHtml(category)}</span>` : ''}</span>
   ${inner}
 </header>`;
 }
 
 function renderMessage(title, message, status) {
-  return html(shell(`${title} — ${BRAND}`, `${topbar()}
+  return html(shell(title, `${topbar()}
 <main class="list">
   <h1>${escapeHtml(title)}</h1>
   <p class="empty">${message}</p>
@@ -80,7 +80,7 @@ function renderMessage(title, message, status) {
 
 // 비밀번호를 걸어 둔 페이지(lib/lock.js)의 입력 화면
 function renderLock(page, { wrong = false } = {}) {
-  return html(shell(`${page.title || page.slug} — ${BRAND}`, `${topbar()}
+  return html(shell(page.title || page.slug, `${topbar('', page.category)}
 <main class="list lock">
   <form method="post" class="lock-card" autocomplete="off">
     <div class="lock-icon">🔒</div>
@@ -113,12 +113,13 @@ function renderDoc(page, sub, { data, source }) {
   if (data.hasCode) head += `<script defer src="${PRISM}/components/prism-core.min.js"></script>
 <script defer src="${PRISM}/plugins/autoloader/prism-autoloader.min.js"></script>`;
   const icon = data.icon ? escapeHtml(data.icon) : (data.iconImg || '');
-  return shell(`${pageTitle} — ${BRAND}`, `${topbar(`
-  <span class="bar-title">${escapeHtml(page.title || page.slug)}</span>
+  const category = (page.category || '').trim();
+  return shell(category ? `${pageTitle} — ${category}` : pageTitle, `${topbar(`
+  <span class="bar-title${category ? '' : ' no-sep'}">${escapeHtml(page.title || page.slug)}</span>
   <div class="bar-actions">
     <button type="button" class="btn" id="presentBtn" title="슬라이드로 발표하기 (구분선/제목 1마다 한 장)">▶ 발표</button>
     <button type="button" class="btn warn" id="reportBtn">이상해요</button>
-  </div>`)}
+  </div>`, category)}
 ${staleNote}
 ${data.coverUrl ? `<div class="cover" style="background-image:url('${escapeHtml(data.coverUrl)}')"></div>` : ''}
 <main class="doc">
