@@ -44,6 +44,83 @@ const DESIGN_PRESETS = [
     swatchClass: 'swatch-neon',
     text: '어두운 배경 위에 네온 컬러(형광 그린, 시안, 마젠타, 퍼플 등)로 포인트를 주는 사이버펑크/네온 스타일로 디자인해주세요. 글로우(glow) 효과와 그라데이션 테두리를 적극 활용해주세요.',
   },
+  {
+    id: 'sky',
+    name: 'OHinfo 하늘',
+    summary: '연하늘→연보라 배경 + 반투명 흰 카드 + 보라 포인트',
+    swatchClass: 'swatch-sky',
+    text: '차분한 \'하늘\' 스타일로 디자인해주세요. 배경은 연한 하늘색에서 연보라로 넘어가는 부드러운 세로 그라데이션 하나만 쓰고, 카드는 반투명한 흰색에 1px 얇은 테두리와 은은한 그림자를 주세요. 글자는 짙은 남색, 포인트 색은 보라(#5a48d6 계열)로 통일하고, 주요 버튼은 짙은 남색 알약(둥근 pill) 모양으로 해주세요. 글꼴은 IBM Plex Sans KR을 Google Fonts로 불러와 사용해주세요.',
+  },
+  {
+    id: 'pastel',
+    name: '파스텔',
+    summary: '민트·라벤더·핑크 파스텔 + 큼직한 둥근 카드',
+    swatchClass: 'swatch-pastel',
+    text: '파스텔 톤으로 귀엽고 산뜻하게 디자인해주세요. 민트, 라벤더, 연핑크, 연노랑 같은 채도 낮고 밝은 색을 영역별로 나눠 쓰고, 카드와 버튼은 크고 둥글게(모서리 16px 이상), 그림자는 색이 살짝 섞인 부드러운 그림자로 해주세요. 글자는 너무 연하지 않게 짙은 회보라 계열로 해서 읽기 쉽게 해주세요.',
+  },
+  {
+    id: 'chalk',
+    name: '칠판 교실',
+    summary: '짙은 초록 칠판 + 분필 글씨 + 나무 테두리',
+    swatchClass: 'swatch-chalk',
+    text: '교실 칠판 느낌으로 디자인해주세요. 배경은 짙은 초록색 칠판(약간의 분필 가루 질감), 화면 가장자리는 나무 프레임 색 테두리, 글자는 분필처럼 흰색과 노란색, 강조는 분홍·하늘색 분필 색으로 해주세요. 제목에는 손글씨 느낌의 글꼴(예: Gaegu 또는 Nanum Pen Script, Google Fonts)을 쓰고, 본문은 읽기 쉬운 고딕으로 해주세요.',
+  },
+  {
+    id: 'notebook',
+    name: '종이 노트',
+    summary: '아이보리 종이 + 줄 노트 + 포스트잇 카드',
+    swatchClass: 'swatch-notebook',
+    text: '종이 노트 느낌으로 디자인해주세요. 배경은 아이보리색 종이에 옅은 파란 줄무늬(또는 격자), 카드는 포스트잇처럼 노랑·분홍·연두 색으로 살짝 기울이거나 그림자를 주고, 제목은 손글씨 느낌 글꼴(예: Gaegu, Google Fonts), 본문은 읽기 쉬운 글꼴로 해주세요. 버튼은 스티커 느낌의 둥근 모양으로 해주세요.',
+  },
+  {
+    id: 'dark',
+    name: '다크 대시보드',
+    summary: '진한 슬레이트 배경 + 카드 + 파랑 포인트',
+    swatchClass: 'swatch-dark',
+    text: '어두운 슬레이트(짙은 남회색) 배경의 대시보드 스타일로 디자인해주세요. 카드는 배경보다 한 단계 밝은 색에 얇은 테두리, 포인트 색은 밝은 파랑 하나만 쓰고, 숫자와 상태는 큼직하게 보여주세요. 눈이 편하도록 흰색 대신 아주 밝은 회색 글자를 쓰고, 표와 목록은 줄마다 은은한 구분선을 넣어주세요.',
+  },
+  {
+    id: 'brutal',
+    name: '네오 브루탈',
+    summary: '굵은 검정 테두리 + 원색 + 각진 그림자',
+    swatchClass: 'swatch-brutal',
+    text: '네오 브루탈리즘 스타일로 디자인해주세요. 배경은 선명한 노랑 또는 크림색, 카드와 버튼은 흰색 바탕에 3px 굵은 검정 테두리와 오프셋 그림자(오른쪽 아래로 4~6px, 번짐 없는 검정), 포인트는 원색(파랑·분홍·초록)으로 하고, 글자는 굵고 크게 해주세요. 버튼을 누르면 그림자가 줄어들며 눌리는 효과를 넣어주세요.',
+  },
+  {
+    id: 'nature',
+    name: '자연 · 숲',
+    summary: '차분한 초록·베이지 + 부드러운 곡선',
+    swatchClass: 'swatch-nature',
+    text: '숲과 자연을 닮은 차분한 디자인으로 해주세요. 이끼색·올리브·연한 베이지·흙색 팔레트를 쓰고, 모서리는 잎사귀처럼 비대칭으로 둥글게(예: 24px 6px 24px 6px), 그림자는 낮고 부드럽게, 아이콘과 일러스트는 선이 얇고 둥근 스타일로 해주세요. 글자는 짙은 갈색 또는 짙은 초록으로 해주세요.',
+  },
+  {
+    id: 'retro',
+    name: '레트로 픽셀',
+    summary: '8비트 게임 · 픽셀 글꼴 · 각진 버튼',
+    swatchClass: 'swatch-retro',
+    text: '옛날 8비트 게임 같은 레트로 픽셀 스타일로 디자인해주세요. 어두운 남보라 배경에 노랑·분홍·하늘·연두의 밝은 원색 포인트, 모서리는 둥글지 않고 계단 모양(또는 각진 테두리), 제목에는 픽셀 글꼴(예: DotGothic16 또는 Press Start 2P, Google Fonts)을 쓰되 본문은 읽기 쉬운 글꼴로 해주세요. 버튼은 눌리는 느낌이 나게 해주세요.',
+  },
+  {
+    id: 'editorial',
+    name: '에디토리얼 (잡지)',
+    summary: '큰 세리프 제목 + 흑백 + 한 가지 포인트 색',
+    swatchClass: 'swatch-editorial',
+    text: '잡지·신문 같은 에디토리얼 스타일로 디자인해주세요. 배경은 아주 옅은 크림색, 글자는 거의 검정, 포인트는 진한 빨강 하나만 쓰고, 큰 제목은 세리프 글꼴(예: Noto Serif KR, Google Fonts)로 아주 크게, 본문은 고딕으로 해주세요. 카드 대신 가는 구분선과 넉넉한 여백으로 영역을 나누고, 그림자와 둥근 모서리는 쓰지 말아주세요.',
+  },
+  {
+    id: 'contrast',
+    name: '고대비 (잘 보이게)',
+    summary: '검정·흰·노랑 + 아주 큰 글씨 + 굵은 포커스',
+    swatchClass: 'swatch-contrast',
+    text: '누구나 잘 보이는 고대비 접근성 디자인으로 해주세요. 검정 배경에 흰색 글자와 노란색 강조(또는 흰 배경에 검정 글자와 진한 파랑 강조)로 대비를 최대로 하고, 글자는 기본 18px 이상, 버튼은 높이 48px 이상으로 크게, 키보드로 이동할 때 보이는 포커스 테두리는 3px 이상 굵게 해주세요. 색만으로 구분하지 말고 글자나 아이콘도 함께 써주세요.',
+  },
+  {
+    id: 'sunset',
+    name: '선셋 그라데이션',
+    summary: '주황→분홍→보라 그라데이션 + 반투명 카드',
+    swatchClass: 'swatch-sunset',
+    text: '노을 같은 선셋 그라데이션 스타일로 디자인해주세요. 배경은 주황에서 분홍, 보라로 이어지는 큰 그라데이션, 카드는 반투명한 흰색(blur 포함)에 얇은 밝은 테두리, 버튼은 흰색 바탕에 보라색 글자로 해주세요. 글자가 배경색 때문에 읽기 어려워지지 않도록 대비를 충분히 확보해주세요.',
+  },
 ];
 
 const CLOSING_TEXT = '빌드 도구(Vite, React, webpack 등) 없이 순수 HTML/CSS/JS로 작성해주세요. 데스크톱과 모바일 화면 모두에서 자연스럽게 보이도록 반응형으로 만들어주세요. 화면에 보이는 버튼, 안내 문구, 오류 메시지 등 모든 텍스트는 한국어로 작성해주세요. TODO나 "여기에 구현" 같은 미완성 부분 없이, 위에 적은 기능들이 실제로 클릭하면 동작하는 완성된 코드로 작성해주세요. 입력값이 비어있거나 잘못된 경우에도 오류 없이 자연스럽게 동작하도록 예외 처리를 해주세요. 먼저 바로 실행 가능한 완성된 웹앱 코드를 한 번에 작성하고, 필요한 설명은 코드 작성이 끝난 뒤에 해주세요. 단, 위에서 설명한 제약 조건(빌드 도구 미사용, 지정한 데이터 저장 방식 등) 때문에 제가 원하는 기능을 제대로 구현하기 어렵다면, 마음대로 다른 방식으로 바꾸지 말고 먼저 어떤 제약을 왜 바꿔야 하는지 저에게 물어봐주세요. 제가 좋다고 하면 그때 그 기능을 추가하는 방법(설치·설정 방법 포함)까지 코드와 함께 설명해주세요. 저는 바이브코딩이 처음입니다. 코드 작성이 끝나면, 이 웹앱을 Google AI Studio의 GitHub 연결 기능으로 저장소에 올리고, Cloudflare Pages에서 그 저장소를 선택해 pages.dev 주소로 배포하는 방법을 단계별로 자세하고 쉽게 설명해주세요. 특히 Cloudflare Pages 설정 화면의 Framework preset, Build command, Build output directory에 무엇을 입력해야 하는지(빌드가 필요 없는 코드라면 비워두면 되는지)를 정확히 알려주세요.';
@@ -81,6 +158,47 @@ const FILE_TEXT = [
   '저장한 파일은 "링크가 있는 모든 사용자"가 볼 수 있게 공유 설정하고, 화면에 사진을 보여줄 때는 https://drive.google.com/thumbnail?id=파일ID&sz=w1000 형식의 주소를 사용해주세요.',
   '드라이브 접근 권한을 승인하는 화면이 나오면 어떻게 승인하는지도 설명해주세요.',
 ].join(' ');
+
+// ── 추가 입력 요소 문구 ──
+const ADMIN_TEXT = {
+  password: {
+    local: '관리자 전용 화면도 따로 만들어주세요(예: admin.html). 일반 화면에는 관리 기능이 보이지 않게 하고, 관리자는 비밀번호를 입력해야 들어갈 수 있게 해주세요. 이 방식은 코드를 열어보면 비밀번호가 보이는 가벼운 잠금일 뿐이라는 점도 코드 작성 후 알려주세요.',
+    sheets: '관리자 전용 화면도 따로 만들어주세요(예: admin.html). 일반 화면에는 관리 기능이 보이지 않게 하고, 관리자는 비밀번호를 입력해야 들어갈 수 있게 해주세요. 비밀번호는 웹앱 코드에 직접 쓰지 말고 Apps Script의 속성(PropertiesService)에 저장해서 Apps Script에서 확인하게 하고, 비밀번호를 처음 정하는 방법도 알려주세요.',
+    firebase: '관리자 전용 화면도 따로 만들어주세요(예: admin.html). 일반 화면에는 관리 기능이 보이지 않게 하고, 관리자는 Firebase Authentication의 이메일/비밀번호 로그인으로만 들어갈 수 있게 해주세요. 관리자 계정을 만드는 방법과, 관리자만 읽고 쓸 수 있도록 하는 보안 규칙도 알려주세요.',
+  },
+  google: '관리자 전용 화면도 따로 만들어주세요(예: admin.html). 일반 화면에는 관리 기능이 보이지 않게 하고, 관리자는 구글 로그인으로 들어가며 제가 알려주는 구글 계정(이메일 목록)만 허용해주세요. 이 로그인을 위해 Firebase Authentication을 함께 써야 한다면 먼저 저에게 물어봐주세요.',
+};
+const OPT_TEXT = {
+  sample: '처음 실행했을 때 빈 화면이 아니라 앱이 어떻게 동작하는지 바로 보이도록 가상의 예시 데이터(실제 사람 이름이 아닌 가짜 이름과 내용)를 넣어주고, 예시 데이터를 한 번에 지우는 버튼도 만들어주세요.',
+  csv: '저장된 데이터를 CSV 파일로 내려받는 버튼을 넣어주세요(엑셀에서 한글이 깨지지 않도록 UTF-8 BOM을 포함해주세요).',
+  print: '내용을 종이로 깔끔하게 인쇄할 수 있도록 인쇄용 화면(버튼·메뉴는 숨기고 내용만 보이게)도 만들어주세요.',
+  privacy: '학생 이름·성적 같은 개인정보를 다루는 앱입니다. 꼭 필요한 정보만 저장하고, 화면에 필요 이상으로 드러내지 않게 해주세요. 그리고 코드 작성이 끝난 뒤에, 공개 주소로 배포했을 때 개인정보가 누구에게 보일 수 있는지와 접근을 제한하는 방법을 알려주세요.',
+  darkmode: '화면 위쪽에 다크 모드 전환 버튼을 넣고, 선택한 모드는 기억해주세요.',
+};
+const ACCENT_COLOR = { '파랑': '파랑(#2f7df6 계열)', '보라': '보라(#7a5af8 계열)', '초록': '초록(#22a96b 계열)', '주황': '주황(#f08a24 계열)', '분홍': '분홍(#ec5fa0 계열)', '빨강': '빨강(#e5484d 계열)' };
+const DENSITY_TEXT = {
+  large: '글자와 버튼을 평소보다 크게(교실 맨 뒤에서도 보이도록 본문 20px 이상) 만들어주세요.',
+  compact: '한 화면에 많은 정보가 보이도록 간격과 글자 크기를 촘촘하게 만들어주세요. 단, 버튼은 손가락으로 누르기 편한 크기를 유지해주세요.',
+};
+
+// data-x 가 붙은 입력 요소(칩 선택, 추가 요청)의 값을 한 번에 읽고 쓰는 도우미
+function readExtras() {
+  const x = {};
+  document.querySelectorAll('[data-x]').forEach((el) => {
+    if (el.type === 'checkbox') { if (el.checked) (x[el.name] = x[el.name] || []).push(el.value); }
+    else if (el.type === 'radio') { if (el.checked) x[el.name] = el.value; }
+    else x[el.name] = el.value;
+  });
+  return x;
+}
+function writeExtras(x) {
+  x = x || {};
+  document.querySelectorAll('[data-x]').forEach((el) => {
+    if (el.type === 'checkbox') el.checked = Array.isArray(x[el.name]) && x[el.name].includes(el.value);
+    else if (el.type === 'radio') el.checked = (x[el.name] === undefined ? el.defaultChecked : x[el.name] === el.value);
+    else el.value = x[el.name] || '';
+  });
+}
 
 const state = {
   features: [],
@@ -407,6 +525,7 @@ function showStep(n) {
   document.querySelectorAll('.panel').forEach((p) => p.classList.remove('active'));
   document.getElementById('panel-' + n).classList.add('active');
 
+  document.getElementById('shell').classList.toggle('wide', n === 5);
   document.querySelectorAll('.step').forEach((s) => {
     const stepNum = Number(s.dataset.step);
     s.classList.toggle('active', stepNum === n);
@@ -467,17 +586,13 @@ function validateStep3() {
 //  프롬프트 조립
 // ============================================================
 
-function generatePrompt() {
-  if (!validateStep1()) { showStep(1); return; }
-  if (!validateStep2()) { showStep(2); return; }
-  if (!validateStorage()) { showStep(3); return; }
-  if (!validateStep3()) return;
-
+// 입력된 내용만으로 프롬프트 줄들을 만든다. live=true 면 아직 안 채운 부분은 건너뛴다(미리보기용).
+function buildPromptLines() {
   const purpose = getPurpose();
   const storage = getStorage();
   const topic = document.getElementById('topic').value.trim();
   const validFeatures = state.features.filter((f) => f.name.trim());
-
+  const ex = readExtras();
   const lines = [];
 
   // 0. 앱을 만들어달라는 지시문임을 맨 앞에 명확히 한다 — 뒤따르는 문장들은
@@ -486,44 +601,78 @@ function generatePrompt() {
   lines.push('');
 
   // 1. 목적별 삽입 문구
-  lines.push(PURPOSE_TEXT[purpose]);
-  lines.push('');
+  if (purpose) { lines.push(PURPOSE_TEXT[purpose]); lines.push(''); }
 
-  // 2. 주제
-  lines.push(`이 앱의 주제는 ${topic}입니다.`);
-  lines.push('');
+  // 2. 주제 + 사용자 + 기기
+  if (topic) lines.push(`이 앱의 주제는 ${topic}입니다.`);
+  if (ex.users && ex.users.length) lines.push(`이 앱을 사용하는 사람은 ${ex.users.join(', ')}입니다.`);
+  if (ex.devices && ex.devices.length) lines.push(`주로 ${ex.devices.join(', ')}에서 사용하니, 해당 화면 크기에서 버튼 크기와 배치가 편하도록 최적화해주세요.`);
+  if (topic || (ex.users && ex.users.length) || (ex.devices && ex.devices.length)) lines.push('');
 
   // 3. 기능 목록
-  lines.push('다음 기능들을 구현해주세요. 각 기능은 적어놓은 순서/설명 그대로 실제로 동작해야 하고, 기능이 여러 개면 서로 방해하지 않고 함께 정상 동작해야 합니다:');
-  validFeatures.forEach((f) => {
-    lines.push(`- ${f.name}: ${f.desc || '(설명 없음)'}`);
-    const steps = f.steps.map((s) => s.trim()).filter(Boolean);
-    steps.forEach((s, i) => lines.push(`  ${i + 1}. ${s}`));
-  });
-  lines.push('');
-
-  // 4. 데이터 저장 방식
-  lines.push(STORAGE_TEXT[storage]);
-  lines.push('');
-  if (storage === 'sheets' && document.getElementById('needFiles').checked) {
-    lines.push(FILE_TEXT);
+  if (validFeatures.length) {
+    lines.push('다음 기능들을 구현해주세요. 각 기능은 적어놓은 순서/설명 그대로 실제로 동작해야 하고, 기능이 여러 개면 서로 방해하지 않고 함께 정상 동작해야 합니다:');
+    validFeatures.forEach((f) => {
+      lines.push(`- ${f.name}: ${f.desc || '(설명 없음)'}`);
+      const steps = f.steps.map((s) => s.trim()).filter(Boolean);
+      steps.forEach((s, i) => lines.push(`  ${i + 1}. ${s}`));
+    });
     lines.push('');
   }
+  if ((ex.extraText || '').trim()) { lines.push(`추가 요청: ${ex.extraText.trim()}`); lines.push(''); }
+
+  // 4. 데이터 저장 방식 + 관리 페이지 + 함께 넣을 기능
+  if (storage) {
+    lines.push(STORAGE_TEXT[storage]);
+    lines.push('');
+    if (storage === 'sheets' && document.getElementById('needFiles').checked) { lines.push(FILE_TEXT); lines.push(''); }
+  }
+  if (ex.admin === 'password') { lines.push(ADMIN_TEXT.password[storage || 'local']); lines.push(''); }
+  else if (ex.admin === 'google') { lines.push(ADMIN_TEXT.google); lines.push(''); }
+  const opts = ex.opts || [];
+  const optLines = ['sample', 'csv', 'print', 'privacy', 'darkmode'].filter((k) => opts.includes(k)).map((k) => OPT_TEXT[k]);
+  if (optLines.length) { lines.push(...optLines); lines.push(''); }
 
   // 5. 디자인
-  if (state.designMode === 'custom') {
-    lines.push(document.getElementById('designText').value.trim());
-  } else {
-    const preset = DESIGN_PRESETS.find((p) => p.id === state.selectedPreset);
-    lines.push(preset.text);
-  }
-  lines.push('');
+  let design = '';
+  if (state.designMode === 'custom') design = document.getElementById('designText').value.trim();
+  else { const preset = DESIGN_PRESETS.find((p) => p.id === state.selectedPreset); design = preset ? preset.text : ''; }
+  if (design) lines.push(design);
+  if (ex.accent && ACCENT_COLOR[ex.accent]) lines.push(`포인트 색은 ${ACCENT_COLOR[ex.accent]}으로 해주세요.`);
+  if (ex.density && DENSITY_TEXT[ex.density]) lines.push(DENSITY_TEXT[ex.density]);
+  if (design || ex.accent || ex.density) lines.push('');
 
   // 6. 고정 문구
   lines.push(CLOSING_TEXT);
+  return lines;
+}
 
-  document.getElementById('resultText').value = lines.join('\n');
+function generatePrompt() {
+  if (!validateStep1()) { showStep(1); return; }
+  if (!validateStep2()) { showStep(2); return; }
+  if (!validateStorage()) { showStep(3); return; }
+  if (!validateStep3()) return;
+
+  document.getElementById('resultText').value = buildPromptLines().join('\n');
   showStep(5);
+}
+
+// 오른쪽 미리보기와 진행 체크리스트
+function renderLive() {
+  const live = document.getElementById('liveText');
+  if (!live) return;
+  const ok = {
+    purpose: !!getPurpose(),
+    topic: !!document.getElementById('topic').value.trim(),
+    features: state.features.some((f) => f.name.trim()),
+    storage: !!getStorage(),
+    design: state.designMode === 'custom' ? !!document.getElementById('designText').value.trim() : !!state.selectedPreset,
+  };
+  document.querySelectorAll('#checklist li').forEach((li) => li.classList.toggle('done', !!ok[li.dataset.k]));
+  const any = Object.values(ok).some(Boolean);
+  const text = any ? buildPromptLines().join('\n') : '';
+  live.textContent = text;
+  document.getElementById('liveCount').textContent = text ? `${text.length.toLocaleString()}자` : '0자';
 }
 
 // ============================================================
@@ -536,6 +685,7 @@ function openRevise() {
   renderRevisePresets();
   document.querySelectorAll('.panel').forEach((p) => p.classList.remove('active'));
   document.getElementById('panel-revise').classList.add('active');
+  document.getElementById('shell').classList.add('wide');
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -644,6 +794,7 @@ function resetAll() {
   document.querySelectorAll('input[name="storage"]').forEach((el) => { el.checked = false; });
   document.getElementById('needFiles').checked = false;
   document.getElementById('designText').value = '';
+  writeExtras({});
   state.selectedPreset = null;
   setDesignMode('custom');
   renderPresets();
@@ -688,7 +839,8 @@ function fillExample() {
 
   document.querySelector('input[name="storage"][value="local"]').checked = true;
 
-  state.selectedPreset = 'minimal';
+  writeExtras({ users: ['우리 반 학생'], devices: ['교실 전자칠판·빔프로젝터', 'PC·노트북'], admin: 'none', opts: ['sample'], density: 'large' });
+  state.selectedPreset = 'sky';
   setDesignMode('preset');
   renderPresets();
 
@@ -713,6 +865,7 @@ function saveDraft() {
       designMode: state.designMode,
       designText: document.getElementById('designText').value,
       selectedPreset: state.selectedPreset,
+      extras: readExtras(),
       revise: {
         newFeatures: reviseState.newFeatures.map((f) => ({ name: f.name, desc: f.desc, steps: f.steps })),
         existingNotes: reviseState.existingNotes,
@@ -724,6 +877,7 @@ function saveDraft() {
     };
     localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
   } catch { /* localStorage를 못 쓰는 환경이면 임시 저장은 그냥 건너뛴다 */ }
+  renderLive();
 }
 
 function clearDraft() {
@@ -759,6 +913,8 @@ function loadDraft() {
   document.getElementById('designText').value = draft.designText || '';
   state.selectedPreset = draft.selectedPreset || null;
   setDesignMode(draft.designMode === 'preset' ? 'preset' : 'custom');
+
+  writeExtras(draft.extras);
 
   const r = draft.revise;
   if (r) {
@@ -802,3 +958,5 @@ if (!loadDraft()) {
 }
 renderFeatures();
 renderPresets();
+
+renderLive();

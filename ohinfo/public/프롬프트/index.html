@@ -7,9 +7,9 @@
 <link rel="icon" type="image/svg+xml" href="../icon.svg">
 <link rel="apple-touch-icon" href="../apple-touch-icon.png">
 <link rel="stylesheet" href="../theme.css">
-<link rel="stylesheet" href="style.css?v=8">
+<link rel="stylesheet" href="style.css?v=10">
 </head>
-<body>
+<body class="ui-sky">
 
   <nav class="nav">
     <a href="../index.html" class="nav-brand">
@@ -19,7 +19,7 @@
     <div class="dark-toggle" id="darkToggle" title="다크모드" role="button" tabindex="0"></div>
   </nav>
 
-  <div class="wrap">
+  <div class="shell" id="shell">
 
     <div class="page-intro">
       <h1>프롬프트 생성기</h1>
@@ -33,6 +33,8 @@
       <div class="step" data-step="4"><span class="step-num">4</span><span class="step-label">디자인</span></div>
       <div class="step" data-step="5"><span class="step-num">5</span><span class="step-label">결과</span></div>
     </div>
+
+    <main class="main">
 
     <!-- ══ STEP 1: 목적 ══ -->
     <section class="panel card active" id="panel-1">
@@ -86,12 +88,39 @@
         <p class="err" id="err-topic" hidden>앱 주제를 입력해주세요.</p>
       </div>
 
+
+      <div class="field-grid">
+        <div class="field-block">
+          <label class="field-label">누가 쓰나요? <span class="opt">(여러 개 선택 가능)</span></label>
+          <div class="chips">
+            <label class="chip"><input type="checkbox" data-x name="users" value="나 혼자" onchange="saveDraft()"><span>나 혼자</span></label>
+            <label class="chip"><input type="checkbox" data-x name="users" value="우리 반 학생" onchange="saveDraft()"><span>우리 반 학생</span></label>
+            <label class="chip"><input type="checkbox" data-x name="users" value="동료 교사" onchange="saveDraft()"><span>동료 교사</span></label>
+            <label class="chip"><input type="checkbox" data-x name="users" value="학부모" onchange="saveDraft()"><span>학부모</span></label>
+          </div>
+        </div>
+        <div class="field-block">
+          <label class="field-label">주로 어떤 기기로 쓰나요? <span class="opt">(여러 개 선택 가능)</span></label>
+          <div class="chips">
+            <label class="chip"><input type="checkbox" data-x name="devices" value="PC·노트북" onchange="saveDraft()"><span>PC·노트북</span></label>
+            <label class="chip"><input type="checkbox" data-x name="devices" value="태블릿" onchange="saveDraft()"><span>태블릿</span></label>
+            <label class="chip"><input type="checkbox" data-x name="devices" value="스마트폰" onchange="saveDraft()"><span>스마트폰</span></label>
+            <label class="chip"><input type="checkbox" data-x name="devices" value="교실 전자칠판·빔프로젝터" onchange="saveDraft()"><span>전자칠판·빔프로젝터</span></label>
+          </div>
+        </div>
+      </div>
+
       <div class="field-block">
         <label class="field-label">기능 목록</label>
         <p class="hint">최소 1개 이상의 기능이 필요합니다.</p>
         <div id="featureList"></div>
         <button class="btn ghost" type="button" style="width:100%;margin-top:4px;" onclick="addFeature()">+ 기능 추가</button>
         <p class="err" id="err-features" hidden>기능을 최소 1개 이상 추가하고, 기능 이름을 입력해주세요.</p>
+      </div>
+
+      <div class="field-block">
+        <label class="field-label" for="extraText">그 밖에 꼭 넣고 싶은 요청 <span class="opt">(선택)</span></label>
+        <textarea id="extraText" class="inp" rows="3" data-x name="extraText" placeholder="예: 학교 로고 자리를 비워 주세요 / 학년·반은 1~3학년 1~10반으로 해주세요" oninput="saveDraft()"></textarea>
       </div>
 
       <div class="nav-btns">
@@ -141,6 +170,26 @@
 
       <p class="err" id="err-files" hidden>사진·PDF 파일을 저장하려면 위에서 구글 시트 연동을 골라주세요.</p>
 
+      <div class="field-block opts">
+        <label class="field-label">관리 페이지가 필요한가요?</label>
+        <p class="hint">학생이 입력하고 선생님이 모아서 본다면 관리 페이지가 필요합니다. 관리 페이지는 쓰는 화면과 따로 만들고, 관리자만 들어갈 수 있게 합니다.</p>
+        <div class="chips">
+          <label class="chip"><input type="radio" data-x name="admin" value="none" onchange="saveDraft()" checked><span>필요 없음</span></label>
+          <label class="chip"><input type="radio" data-x name="admin" value="password" onchange="saveDraft()"><span>비밀번호로 잠금</span></label>
+          <label class="chip"><input type="radio" data-x name="admin" value="google" onchange="saveDraft()"><span>구글 로그인으로 잠금</span></label>
+        </div>
+      </div>
+
+      <div class="field-block opts">
+        <label class="field-label">함께 넣을 기능 <span class="opt">(선택)</span></label>
+        <div class="chips">
+          <label class="chip"><input type="checkbox" data-x name="opts" value="sample" onchange="saveDraft()"><span>처음엔 예시 데이터로 채워 주세요</span></label>
+          <label class="chip"><input type="checkbox" data-x name="opts" value="csv" onchange="saveDraft()"><span>CSV(엑셀)로 내려받기</span></label>
+          <label class="chip"><input type="checkbox" data-x name="opts" value="print" onchange="saveDraft()"><span>인쇄용 화면</span></label>
+          <label class="chip"><input type="checkbox" data-x name="opts" value="privacy" onchange="saveDraft()"><span>학생 이름·성적 등 개인정보를 다뤄요</span></label>
+        </div>
+      </div>
+
       <div class="nav-btns">
         <button class="btn ghost" onclick="goStep(2)">이전</button>
         <button class="btn accent" onclick="goStep(4)">다음</button>
@@ -162,6 +211,33 @@
 
       <div id="designPreset" class="design-mode" hidden>
         <div class="preset-grid" id="presetGrid"></div>
+      </div>
+
+
+      <div class="field-grid design-opts">
+        <div class="field-block">
+          <label class="field-label">포인트 색 <span class="opt">(선택)</span></label>
+          <div class="chips">
+            <label class="chip"><input type="radio" data-x name="accent" value="" onchange="saveDraft()" checked><span>디자인에 맡김</span></label>
+            <label class="chip color"><input type="radio" data-x name="accent" value="파랑" onchange="saveDraft()"><span><i style="background:#2f7df6"></i>파랑</span></label>
+            <label class="chip color"><input type="radio" data-x name="accent" value="보라" onchange="saveDraft()"><span><i style="background:#7a5af8"></i>보라</span></label>
+            <label class="chip color"><input type="radio" data-x name="accent" value="초록" onchange="saveDraft()"><span><i style="background:#22a96b"></i>초록</span></label>
+            <label class="chip color"><input type="radio" data-x name="accent" value="주황" onchange="saveDraft()"><span><i style="background:#f08a24"></i>주황</span></label>
+            <label class="chip color"><input type="radio" data-x name="accent" value="분홍" onchange="saveDraft()"><span><i style="background:#ec5fa0"></i>분홍</span></label>
+            <label class="chip color"><input type="radio" data-x name="accent" value="빨강" onchange="saveDraft()"><span><i style="background:#e5484d"></i>빨강</span></label>
+          </div>
+        </div>
+        <div class="field-block">
+          <label class="field-label">글자 크기와 화면 밀도 <span class="opt">(선택)</span></label>
+          <div class="chips">
+            <label class="chip"><input type="radio" data-x name="density" value="" onchange="saveDraft()" checked><span>기본</span></label>
+            <label class="chip"><input type="radio" data-x name="density" value="large" onchange="saveDraft()"><span>크게 (교실 화면용)</span></label>
+            <label class="chip"><input type="radio" data-x name="density" value="compact" onchange="saveDraft()"><span>촘촘하게 (많은 정보)</span></label>
+          </div>
+          <div class="chips" style="margin-top:10px">
+            <label class="chip"><input type="checkbox" data-x name="opts" value="darkmode" onchange="saveDraft()"><span>다크 모드 전환 버튼</span></label>
+          </div>
+        </div>
       </div>
 
       <p class="err" id="err-design" hidden>디자인 내용을 입력하거나 견본을 선택해주세요.</p>
@@ -239,10 +315,24 @@
       </div>
     </section>
 
+    </main>
+
+    <aside class="live" id="live" aria-label="프롬프트 미리보기">
+      <div class="live-head"><h3>프롬프트 미리보기</h3><span class="live-count" id="liveCount">0자</span></div>
+      <ul class="checklist" id="checklist">
+        <li data-k="purpose">목적</li>
+        <li data-k="topic">주제</li>
+        <li data-k="features">기능</li>
+        <li data-k="storage">데이터 저장</li>
+        <li data-k="design">디자인</li>
+      </ul>
+      <pre class="live-text" id="liveText"></pre>
+    </aside>
+
   </div>
 
   <div id="toast" class="toast"></div>
 
-  <script src="script.js?v=14"></script>
+  <script src="script.js?v=15"></script>
 </body>
 </html>
