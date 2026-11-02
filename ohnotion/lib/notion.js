@@ -622,8 +622,9 @@ function makeRenderer(ctx) {
  * 페이지 하나를 읽어 { title, icon, coverUrl, html, blocks, hasEquation } 로.
  * slug는 하위 페이지 링크(/{slug}/{id})를 만드는 데 쓴다.
  */
-// 한 번에 쓸 노션 호출 수. 무료 플랜 한도 50에서 페이지 정보·잠금·캐시·통계 몫을 남긴다.
-export const CALL_BUDGET = 30;
+// 한 번에 쓸 노션 호출 수. 무료 플랜 한도 50에서 페이지 정보·잠금·캐시(Cache API도 호출로 셀 수 있음)·
+// 통계·예비본 재생성 몫을 넉넉히 남긴다("Too many subrequests"가 다시 나지 않도록 30에서 20으로).
+export const CALL_BUDGET = 20;
 
 /**
  * 페이지 하나를 읽어 { title, icon, coverUrl, html, blocks, hasEquation, ... } 로.
