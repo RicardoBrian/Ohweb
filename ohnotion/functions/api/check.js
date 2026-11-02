@@ -61,6 +61,10 @@ export async function onRequestGet(context) {
     return json({ ...base, ok: true, level: 'ok', pageId, title: pageTitle(page), ms: Date.now() - t0,
       lastEdited: page.last_edited_time, message: '노션 연결 정상' });
   } catch (e) {
+    // 큰 페이지는 나눠 읽는다 — 실패가 아니라 "진행 중". 한 번 더 누르거나 학생이 열면 이어 읽는다.
+    if (e?.name === 'Incomplete') {
+      return json({ ...base, ok: true, level: 'slow', pageId, ms: Date.now() - t0, message: `${explainError(e)} — ⟳를 한 번 더 누르면 이어서 불러와요` });
+    }
     return json({ ...base, ok: false, level: 'bad', pageId, ms: Date.now() - t0, message: explainError(e) });
   }
 }

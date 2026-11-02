@@ -15,6 +15,7 @@ import { renderPage } from './notion.js';
 import { cacheGet, cachePut } from './shared.js';
 
 const FRESH_TTL = 120;
+const PARTIAL_TTL = 120;
 const STALE_TTL = 7 * 86400;
 const inflight = new Map();
 
@@ -28,7 +29,20 @@ function renderAndStore(context, pageId, slug) {
   if (inflight.has(k.fresh)) return inflight.get(k.fresh);
   const job = (async () => {
     const t0 = Date.now();
-    const data = await renderPage(context.env.NOTION_TOKEN, pageId, slug);
+    // 큰 페이지는 여러 요청에 나눠 읽는다: 지난번까지 읽은 블록(partial)을 이어 쓴다.
+    // 2분 넘은 진행분은 버린다(그사이 노션에서 고쳤을 수 있으니 처음부터).
+    const pk = `partial:${pageId}`;
+    let partial = await cacheGet(context, pk);
+    if (!partial || Date.now() - (partial.started || 0) > PARTIAL_TTL * 1000) {
+      partial = { started: Date.now(), kids: {}, rows: {}, targets: {}, meta: {} };
+    }
+    let data;
+    try {
+      data = await renderPage(context.env.NOTION_TOKEN, pageId, slug, partial);
+    } catch (e) {
+      if (e?.name === 'Incomplete') await cachePut(context, pk, partial, PARTIAL_TTL);
+      throw e;
+    }
     data.renderedAt = new Date().toISOString();
     data.renderMs = Date.now() - t0;
     await Promise.all([
@@ -56,6 +70,7 @@ export async function getRendered(context, pageId, slug, { force = false, onBack
     if (stale) {
       // 일단 예비본을 보내고, 새로 그리기는 응답 뒤에 마저 한다.
       context.waitUntil(renderAndStore(context, pageId, slug).catch((e) => {
+        if (e?.name === 'Incomplete') return;   // 큰 페이지 나눠 읽는 중 — 다음 요청에서 이어 감
         console.error('노션 다시 그리기 실패(예비본 사용 중):', e?.message || e);
         return onBackgroundError?.(e);
       }));
