@@ -27,7 +27,7 @@ import { getPassword, isUnlocked, passwordMatches, unlockCookie } from '../lib/l
 // 학생 화면의 CSS/JS 주소 뒤에 붙는 버전. view.css나 view.js를 고치면 이 값을 바꾼다 —
 // 그래야 브라우저·Cloudflare에 남은 예전 파일 대신 새 파일을 받는다(첫 iframe 버전의
 // view.css가 남아 여백·HTML 창 크기가 다 깨져 보였던 일이 있었다).
-const ASSET_V = '2026110302';
+const ASSET_V = '2026110303';
 
 function html(body, status = 200) {
   return new Response(body, {
@@ -91,6 +91,17 @@ function renderLock(page, { wrong = false } = {}) {
     <button type="submit" class="lock-btn">열기</button>
   </form>
 </main>`), wrong ? 401 : 200);
+}
+
+// 큰 페이지를 나눠 읽는 동안 보여 주는 화면 — 1초 뒤 스스로 새로고침해서 이어 읽는다.
+function renderLoading(done) {
+  return html(shell('불러오는 중…', `${topbar()}
+<main class="list loading-page">
+  <div class="spinner"></div>
+  <h1>페이지를 불러오는 중이에요</h1>
+  <p class="empty">내용이 많은 페이지라 나눠서 불러오고 있어요. 잠시만 기다려 주세요.<br><span class="muted">읽은 블록 묶음 ${Number(done) || 0}개</span></p>
+</main>
+<script>setTimeout(function () { location.reload(); }, 1000);</script>`, { head: '<meta name="robots" content="noindex">' }));
 }
 
 const KATEX = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist';
@@ -190,10 +201,13 @@ export async function onRequest(context) {
         onBackgroundError: () => recordStat(env, page.slug, 'stale'),
       });
     } catch (e) {
+      // 큰 페이지: 이번 요청에서 읽은 데까지 저장해 뒀으니 잠시 뒤 자동으로 다시 열어 이어 읽는다.
+      if (e?.name === 'Incomplete') return renderLoading(e.done);
       console.error(`노션 그리기 실패 ${page.slug}/${pageId}:`, e?.message || e);
       context.waitUntil(recordStat(env, page.slug, 'error'));
+      // 상태 코드를 5xx로 내면 Cloudflare 오류 화면처럼 보일 수 있어, 안내 화면은 200으로 보낸다.
       return renderMessage('노션 내용을 불러오지 못했어요',
-        `잠시 후 새로고침해 주세요.<br><span class="muted">${escapeHtml(explainError(e))}</span>`, 502);
+        `잠시 후 새로고침해 주세요.<br><span class="muted">${escapeHtml(explainError(e))}</span>`, 200);
     }
     if (result.source === 'stale' && result.error) context.waitUntil(recordStat(env, page.slug, 'stale'));
     return html(renderDoc(page, route.sub, result));
