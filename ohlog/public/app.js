@@ -84,6 +84,13 @@ function ask(title, msg, okLabel = '확인') {
     $('askYes').onclick = () => done(true); $('askNo').onclick = () => done(false);
   });
 }
+// 컴시간 오류는 영어 코드·긴 줄 대신 짧은 한국어로 (원문은 콘솔에)
+function ttError(e) {
+  console.warn('[comci]', e);
+  return /컴시간 접속 실패|HTTP 5\d\d|Failed to fetch|Timeout|aborted|NetworkError|Load failed/i.test(String(e?.message || e))
+    ? '컴시간이 지금 응답하지 않아요. 저장해 둔 시간표를 보여드려요. 잠시 뒤 다시 눌러주세요.'
+    : `시간표를 불러오지 못했어요: ${String(e?.message || e).split('\n')[0]}`;
+}
 async function api(qs) {
   const r = await fetch('/api/comci?' + qs);
   const d = await r.json().catch(() => ({ error: `HTTP ${r.status}` }));
@@ -316,7 +323,7 @@ async function startApp() {
   const cached = restoreTt();
   go(location.hash.slice(1) || defaultView(), true);
   if (cached) renderAll();
-  try { await loadWeek(null); } catch (e) { toast('시간표 불러오기 실패: ' + e.message); }
+  try { await loadWeek(null); } catch (e) { toast(ttError(e)); }
   // 주말이면 다음 주를 먼저 보여준다
   if ([0, 6].includes(dow(todayISO()))) {
     const nx = S.weeks[S.weeks.findIndex((w) => w.r === S.curWeek) + 1];
@@ -349,8 +356,9 @@ function loadWeek(r, force) {
   const key = r ?? 'now';
   if (S.ttLoading.has(key)) return S.ttLoading.get(key);
   const p = S.profile;
-  const job = api(`code=${p.schoolCode}&teacher=${p.teacherId}` + (r != null ? `&week=${r}` : ''))
+  const job = api(`code=${p.schoolCode}&teacher=${p.teacherId}` + (r != null ? `&week=${r}` : '') + (force ? '&fresh=1' : ''))
     .then((d) => {
+      S.ttStale = !!d.stale;
       S.weeks = d.weeks; S.times = d.times; S.ttDebug = d.debug; S.classCount = d.classCount || []; S.homeroom = d.homeroom || []; S.teachers = d.teachers || [];
       S.tt.set(r ?? d.week, d.lessons.map(fromComci));
       S.ttFail.delete(r ?? d.week); S.stale.delete(r ?? d.week);
@@ -513,7 +521,7 @@ async function renderToday() {
   const w = weekOf(date);
   if (needWeek(w)) {
     $('todayList').innerHTML = '<div class="spinner"></div>';
-    try { await loadWeek(w.r); } catch (e) { toast('시간표 불러오기 실패: ' + e.message); }
+    try { await loadWeek(w.r); } catch (e) { toast(ttError(e)); }
     if (S.date === date && S.view === 'today') renderToday();
     return;
   }
@@ -608,7 +616,7 @@ async function renderWeek() {
   const w = S.weeks.find((x) => x.r === S.week) || S.weeks[0];
   if (needWeek(w)) {
     $('weekGrid').innerHTML = '<div class="spinner"></div>';
-    try { await loadWeek(w.r); } catch (e) { toast('시간표 불러오기 실패: ' + e.message); }
+    try { await loadWeek(w.r); } catch (e) { toast(ttError(e)); }
     if (S.view === 'week') renderWeek();
     return;
   }
@@ -1280,8 +1288,13 @@ document.addEventListener('click', async (e) => {
   else if (act === 'export-class') { go('export'); $('exClass').value = S.progressKey; $('exFrom').value = ''; renderExport(); }
   else if (act === 'reload-tt') {
     const r = S.week ?? S.curWeek;
-    S.tt.clear(); S.ttFail.clear(); S.clsTT.clear();
-    try { await loadWeek(r, true); toast('시간표를 다시 받았어요(최대 10분 전 자료일 수 있어요)'); } catch (err) { toast('실패: ' + err.message); }
+    S.ttFail.clear(); S.clsTT.clear(); // 화면의 시간표는 지우지 않는다 — 받기에 실패해도 보던 시간표가 남게
+    $('ttRefresh')?.setAttribute('disabled', '');
+    try {
+      await loadWeek(r, true);
+      toast(S.ttStale ? '컴시간이 응답하지 않아 마지막으로 받아 둔 시간표를 보여드려요' : '시간표를 컴시간에서 새로 받았어요');
+    } catch (err) { toast(ttError(err)); }
+    $('ttRefresh')?.removeAttribute('disabled');
     renderAll();
   }
 });
