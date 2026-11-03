@@ -47,11 +47,18 @@ const parse = (text) => {
   return JSON.parse(t.slice(0, t.lastIndexOf('}') + 1));
 };
 
+// 컴시간이 자동 요청을 다르게 대할 수 있어, 일반 브라우저와 같은 모양으로 요청한다
+const BROWSER_HEADERS = {
+  'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+  accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'accept-language': 'ko-KR,ko;q=0.9,en;q=0.5',
+  referer: 'http://comci.net:4082/st',
+};
 // budget: 이 요청 전체가 쓸 수 있는 시간(재시도·접속 정보 갱신을 다 합쳐서). 컴시간이 아예 응답하지 않을 때 화면을 오래 붙잡지 않게.
 async function getText(url, charset, budget) {
   const left = budget ? budget.until - Date.now() : 6000;
   if (left < 300) throw new Error('컴시간 응답 시간 초과(Timeout)');
-  const res = await fetch(url, { headers: { 'user-agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(Math.min(4500, left)) });
+  const res = await fetch(url, { headers: BROWSER_HEADERS, signal: AbortSignal.timeout(Math.min(4500, left)) });
   if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`);
   return new TextDecoder(charset).decode(await res.arrayBuffer());
 }
@@ -90,21 +97,35 @@ async function cached(key, ttl, make, { fresh = false, meta } = {}) {
 
 // /st 페이지 스크립트에서 동적 경로(route)·PREFIX·자료 키 번호를 뽑는다.
 // 컴시간은 가끔 이 스크립트를 바꾼다(따옴표 종류·경로 숫자 자릿수·공백) — 그 정도는 그대로 읽히게 느슨하게 찾는다.
+// 받은 페이지가 어떤 모양인지 짧게 요약한다(자동 진단 보고용 — 앱이 텔레그램으로 보낸다)
+export function pageDiag(html, pageUrl) {
+  return {
+    len: html.length,
+    has: { sc_data: /sc_data/.test(html), route: /\.\/\d+\?\d+l/.test(html), 성명: /성명/.test(html), script: /<script/i.test(html) },
+    tags: [...html.matchAll(/<(?:script|i?frame|form|meta)\b[^>]*>/gi)].map((m) => m[0].slice(0, 120)).slice(0, 8),
+    linked: pageUrl ? linkedSources(html, pageUrl) : [],
+    body: html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 240),
+  };
+}
 export function readBoot(host, html) {
-  const route = html.match(/url\s*:\s*['"]\.\/(\d+)\?(\w+)['"]/); // 예: url:'./36179?17384l'+sc
+  // 접속 주소: url:'./36179?17384l' 처럼 쓰이든 다른 곳에 있든 './숫자?숫자l' 모양을 찾는다(pycomcigan 과 같은 규칙)
+  const route = html.match(/url\s*:\s*['"]\.\/(\d+)\?(\w+)['"]/) || html.match(/\.\/(\d+)\?(\d+l)/);
   const prefix = html.match(/sc_data\(\s*['"]([^'"]*)['"]/)?.[1]; // 예: sc_data('73629_',sc,1,'0')
   if (!route || prefix == null) {
     const what = [!route && 'route', prefix == null && 'prefix'].filter(Boolean).join('·');
-    throw new Error(`/st 스크립트에서 ${what}를 못 찾음(사이트 구조 변경? ?st=1 로 확인)`);
+    const err = new Error(`/st 스크립트에서 ${what}를 못 찾음(사이트 구조 변경)`);
+    err.diag = pageDiag(html, host + '/st');
+    throw err;
   }
   const base = `${host}/${route[1]}?`; // "http://comci.net:4082/36179?"
   // 스크립트가 쓰는 자료 키 번호(갱신 때마다 바뀜). 못 찾으면 파서가 값의 모양으로 추측한다.
   const num = (re) => html.match(re)?.[1];
   const keys = {
-    teachers: num(/Q성명\(\s*자료\.자료(\d+)\[/),
-    subjects: num(/Q과목명\(\s*자료\.자료(\d+)\[/),
-    original: num(/원자료\s*=\s*Q자료\(\s*자료\.자료(\d+)\[/),
-    daily: num(/일일자료\s*=\s*Q자료\(\s*자료\.자료(\d+)\[/),
+    // Q성명(…) 같은 감싸기가 있든 없든(2026년 5월에 생김) 찾는다
+    teachers: num(/성명\s*=\s*(?:Q성명\(\s*)?자료\.자료(\d+)/),
+    subjects: num(/과목명\s*=\s*(?:Q과목명\(\s*)?자료\.자료(\d+)/) || num(/자료\.자료(\d+)\[sb\]/),
+    original: num(/원자료\s*=\s*Q자료\(\s*자료\.자료(\d+)/),
+    daily: num(/일일자료\s*=\s*Q자료\(\s*자료\.자료(\d+)/),
     room: num(/m3\s*=\s*자료\.자료(\d+)\[/),
   };
   return { host, base, search: base + route[2], prefix, keys };
@@ -122,7 +143,7 @@ async function getSmart(url, budget) {
   // 스크립트 파일은 EUC-KR 일 수도 UTF-8 일 수도 있다 → UTF-8 로 읽어 깨지면 EUC-KR
   const left = budget ? budget.until - Date.now() : 6000;
   if (left < 300) throw new Error('컴시간 응답 시간 초과(Timeout)');
-  const res = await fetch(url, { headers: { 'user-agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(Math.min(4500, left)) });
+  const res = await fetch(url, { headers: BROWSER_HEADERS, signal: AbortSignal.timeout(Math.min(4500, left)) });
   if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`);
   const buf = await res.arrayBuffer();
   const u = new TextDecoder('utf-8').decode(buf);
@@ -138,15 +159,19 @@ async function bootText(host, budget) {
 
 async function bootstrap(env, opts) {
   const tried = [];
+  let diag;
   for (const host of [env.COMCI_URL, ...HOSTS].filter(Boolean)) {
     try {
       const html = await cached('boot:' + host, TTL.boot, () => bootText(host, opts?.budget), opts);
       return readBoot(host, html);
     } catch (e) {
       tried.push(`${host}: ${e.message}`);
+      diag = e.diag || diag;
     }
   }
-  throw new Error('컴시간 접속 실패\n' + tried.join('\n'));
+  const err = new Error('컴시간 접속 실패\n' + tried.join('\n'));
+  err.diag = diag;
+  throw err;
 }
 
 // 시간표 표: [학년수, [반수, [요일수, [교시수, 코드…], …], …], …]
@@ -278,7 +303,7 @@ export async function onRequestGet({ request, env }) {
         body: page.replace(/\s+/g, ' ').slice(0, 700),
         sc_data: around(/sc_data/g), url: around(/url\s*:/g, 90), ajax: around(/\$\.ajax|fetch\(/g, 90), btoa: around(/btoa\(/g, 90), 성명: around(/성명/g, 90).slice(0, 2),
       });
-    } catch (e) { return json({ error: e.message }, 502); }
+    } catch (e) { return json({ error: e.message, diag: e.diag }, 424); }
   }
   const q = url.searchParams.get('q');
   const code = url.searchParams.get('code');
@@ -378,6 +403,7 @@ export async function onRequestGet({ request, env }) {
       debug: { sep: t.sep, mode: t.mode, clashes: t.clashes, cells: t.cells.length, homeroom: JSON.stringify(raw['담임'] ?? null).slice(0, 80) },
     });
   } catch (e) {
-    return json({ error: e.message }, 502);
+    // 502 가 아니라 424: classnote.gwansan.com 은 5xx 응답을 Cloudflare "Host Error" 페이지로 바꿔 원인 문장을 가린다
+    return json({ error: e.message, diag: e.diag }, 424);
   }
 }

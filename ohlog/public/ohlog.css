@@ -247,3 +247,7 @@ a.side-item, a.pick-item { text-decoration: none; }
 
 a.tab { text-decoration: none; }
 .tabbar .tab { padding: 0; min-width: 0; } /* 버튼(기본 여백 있음)과 링크 탭의 폭을 똑같이 */
+
+/* 컴시간이 안 될 때 '최근 주 시간표로 대신 보여주는 중' 안내 */
+.fallback-note { margin: 0 4px 10px; padding: 10px 12px; border-radius: 12px; background: rgba(255,159,10,0.14); color: var(--text); font-size: 0.86rem; line-height: 1.5; }
+body.ui-sky.dark .fallback-note { background: rgba(255,179,64,0.16); }
