@@ -65,6 +65,7 @@ globalThis.caches = { default: {
 globalThis.fetch = (orig => async (url, opt) => {
   const u = String(url);
   if (!u.startsWith('http://comci.net:4082')) return orig(url, opt);
+  if (upstream === 'nomarkers' && u.endsWith('/st')) return new Response(pct2bytes(comci.eucKrPercent(`<!DOCTYPE html><html xmlns='http://www.w3.org/1999/xhtml' lang='ko'><head><meta http-equiv='Content-Type' content='text/html'></head><body>컴시간 안내 ${'x'.repeat(2000)}</body></html>`)));
   if (upstream === 'hang') return new Promise((_, rej) => opt?.signal?.addEventListener('abort', () => rej(new DOMException('The operation was aborted due to timeout', 'TimeoutError')))); // 아예 응답이 없음
   if (upstream === '502') return new Response('<html><body>502 Bad Gateway</body></html>', { status: 502 });
   if (upstream === 'flaky' && flakyLeft > 0) { flakyLeft--; return new Response('<html>502</html>', { status: 502 }); }
@@ -442,7 +443,7 @@ await p.waitForFunction(() => document.getElementById('toast').textContent.inclu
 ok('다시 받기: 컴시간이 502면 "마지막으로 받아 둔 시간표를 보여드려요"라고 안내', true);
 await upMode('502', true); // 저장해 둔 것까지 없는 최악의 경우
 const hard = await capi('code=43917&teacher=10&week=1&fresh=1');
-ok('저장해 둔 것도 없으면 502 + 오류 메시지', hard.status === 502 && !!hard.body?.error, JSON.stringify(hard));
+ok('저장해 둔 것도 없으면 424(5xx 아님 — gwansan.com 이 가리지 않게) + 오류 메시지', hard.status === 424 && !!hard.body?.error, JSON.stringify(hard));
 await p.click('#ttRefresh');
 await p.waitForFunction(() => document.getElementById('toast').textContent.includes('컴시간이 지금 응답하지 않아요'));
 ok('다시 받기 실패: 영어 HTTP 코드 대신 짧은 한국어 안내', !(await p.textContent('#toast')).includes('HTTP'));
@@ -464,7 +465,38 @@ await upMode('hang', true); // 컴시간이 아예 응답하지 않음(연결만
 const t1 = Date.now();
 const hg = await capi('code=43917&teacher=10&week=1');
 const took = Date.now() - t1;
-ok('컴시간이 아예 응답하지 않아도 전체 대기 시간에 상한(테스트는 3초)이 있어 오래 붙잡지 않음', hg.status === 502 && took < 6500, `${took}ms ${hg.status}`);
+ok('컴시간이 아예 응답하지 않아도 전체 대기 시간에 상한(테스트는 3초)이 있어 오래 붙잡지 않음', hg.status === 424 && took < 6500, `${took}ms ${hg.status}`);
+// 이번 장애 재현: 컴시간이 스크립트(sc_data 등)가 없는 페이지를 준다
+await upMode('nomarkers', true);
+const nm = await capi('code=43917&teacher=10&week=1&fresh=1');
+ok('스크립트 없는 페이지: 424 + 받은 페이지 모양 진단(diag)이 오류에 붙음', nm.status === 424 && nm.body?.diag?.has?.sc_data === false && typeof nm.body?.diag?.len === 'number' && Array.isArray(nm.body?.diag?.tags), JSON.stringify(nm.body).slice(0, 300));
+// 앱: 기기에 보관된 주가 이번 주를 덮지 않는 상황(보관된 주를 2주 전으로 옮김) + 컴시간 고장 → 최근 주 시간표로 대신 보여주고 자동 보고
+await p.evaluate(() => {
+  for (const k of Object.keys(localStorage).filter((x) => x.startsWith('classlog:tt:'))) {
+    const c = JSON.parse(localStorage.getItem(k));
+    const back = (iso) => { const d = new Date(iso + 'T00:00:00'); d.setDate(d.getDate() - 14); return d.toISOString().slice(0, 10); };
+    c.weeks = c.weeks.map((w) => ({ ...w, start: w.start && back(w.start) }));
+    localStorage.setItem(k, JSON.stringify(c));
+  }
+  localStorage.removeItem('classlog:comci-report');
+});
+await p.click('.side-item[data-go="week"]');
+await p.reload(); // 앱을 실제로 다시 시작(같은 주소로 goto 하면 다시 불러오지 않는다)
+await p.waitForSelector('#weekGrid .fallback-note', { timeout: 15000 });
+ok('컴시간이 안 되면 최근 주 시간표를 이번 주 날짜에 맞춰 보여주고, 그렇다고 안내함', (await p.locator('#weekGrid .slot').count()) > 0 && (await p.textContent('#weekGrid .fallback-note')).includes('컴시간에 연결할 수 없어'));
+let autoRep = [];
+for (let i = 0; i < 20 && !autoRep.some((d) => d.text.includes('못 찾음')); i++) {
+  await env.withSecurityRulesDisabled(async (c) => { autoRep = (await c.firestore().collection('classlog_feedback').get()).docs.map((d) => d.data()).filter((d) => d.view === 'auto'); });
+  if (!autoRep.some((d) => d.text.includes('못 찾음'))) await new Promise((r) => setTimeout(r, 300));
+}
+ok('실패 원인(받은 페이지 모양 포함)을 자동으로 보고(텔레그램 알림과 같은 기록) — 오프라인(Failed to fetch)은 보고 안 함', autoRep.some((d) => d.text.includes('자동 진단') && d.text.includes('못 찾음') && d.text.includes('"sc_data":false')) && !autoRep.some((d) => d.text.includes('Failed to fetch')), JSON.stringify(autoRep.map((d) => d.text.slice(0, 200))));
+await upMode('ok', true);
+await p.click('.side-item[data-go="settings"]');
+await p.click('#ttRefresh');
+await p.waitForFunction(() => document.getElementById('toast').textContent.includes('새로 받았어요'));
+await p.click('.side-item[data-go="week"]');
+await p.waitForSelector('#weekGrid .slot');
+ok('컴시간이 돌아오면(다시 받기) 안내가 사라지고 진짜 시간표로 돌아옴', (await p.locator('#weekGrid .fallback-note').count()) === 0);
 await upMode('ok', true);
 await p.click('.side-item[data-go="progress"]');
 await p.waitForSelector('.class-card');
@@ -494,7 +526,7 @@ await p.fill('#fbText', '학급 시간표에서 선택과목이 겹쳐 보여요
 await p.click('#fbSend');
 await p.waitForSelector('#fbModal.show', { state: 'detached' });
 let fbDocs = [];
-await env.withSecurityRulesDisabled(async (c) => { fbDocs = (await c.firestore().collection('classlog_feedback').get()).docs.map((d) => d.data()); });
+await env.withSecurityRulesDisabled(async (c) => { fbDocs = (await c.firestore().collection('classlog_feedback').get()).docs.map((d) => d.data()).filter((d) => d.view !== 'auto'); }); // 자동 진단 보고는 빼고
 ok('피드백이 Firestore에 저장됨(종류·내용·보낸 사람)', fbDocs.length === 1 && fbDocs[0].kind === 'bug' && fbDocs[0].text.includes('선택과목') && fbDocs[0].teacherName === '교사10*', JSON.stringify(fbDocs));
 
 // 9) 다른 사람 데이터는 안 보임(관리자 일지 0건)

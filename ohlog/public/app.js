@@ -89,7 +89,7 @@ function ttError(e) {
   console.warn('[comci]', e);
   const raw = String(e?.message || e);
   const first = raw.split('\n').map((x) => x.trim()).filter(Boolean).at(-1) || raw; // 맨 마지막 줄이 가장 구체적인 원인
-  const msg = /컴시간 접속 실패|HTTP 5\d\d|Failed to fetch|Timeout|aborted|NetworkError|Load failed/i.test(raw)
+  const msg = /컴시간 접속 실패|못 찾음|HTTP 5\d\d|HTTP 424|Failed to fetch|Timeout|aborted|NetworkError|Load failed/i.test(raw)
     ? '컴시간이 지금 응답하지 않아요. 저장해 둔 시간표를 보여드려요. 잠시 뒤 다시 눌러주세요.'
     : `시간표를 불러오지 못했어요: ${raw.split('\n')[0]}`;
   return S.admin ? `${msg} [${first.slice(0, 110)}]` : msg; // 관리자에게는 원인을 짧게 덧붙인다
@@ -97,7 +97,7 @@ function ttError(e) {
 async function api(qs) {
   const r = await fetch('/api/comci?' + qs);
   const d = await r.json().catch(() => ({ error: `HTTP ${r.status}` }));
-  if (d.error) throw new Error(d.error);
+  if (d.error) { const err = new Error(d.error); err.diag = d.diag; err.status = r.status; throw err; }
   return d;
 }
 function show(screen) {
@@ -326,7 +326,7 @@ async function startApp() {
   const cached = restoreTt();
   go(location.hash.slice(1) || defaultView(), true);
   if (cached) renderAll();
-  try { await loadWeek(null); } catch (e) { toast(ttError(e)); }
+  try { await loadWeek(null); } catch (e) { toast(ttError(e)); reportComciFailure(e); applyFallback(); }
   // 주말이면 다음 주를 먼저 보여준다
   if ([0, 6].includes(dow(todayISO()))) {
     const nx = S.weeks[S.weeks.findIndex((w) => w.r === S.curWeek) + 1];
@@ -362,6 +362,7 @@ function loadWeek(r, force) {
   const job = api(`code=${p.schoolCode}&teacher=${p.teacherId}` + (r != null ? `&week=${r}` : '') + (force ? '&fresh=1' : ''))
     .then((d) => {
       S.ttStale = !!d.stale;
+      if (S.fallbackFrom) { S.fallbackFrom = null; S.tt.delete(0); }
       S.weeks = d.weeks; S.times = d.times; S.ttDebug = d.debug; S.classCount = d.classCount || []; S.homeroom = d.homeroom || []; S.teachers = d.teachers || [];
       S.tt.set(r ?? d.week, d.lessons.map(fromComci));
       S.ttFail.delete(r ?? d.week); S.stale.delete(r ?? d.week);
@@ -375,6 +376,44 @@ function loadWeek(r, force) {
     .finally(() => S.ttLoading.delete(key));
   S.ttLoading.set(key, job);
   return job;
+}
+// ── 컴시간이 안 될 때 ──
+// ① 최근에 받아 둔 주(기기 보관)의 시간표를 이번 주 날짜에 맞춰 보여준다(시간표는 대개 매주 같다). 화면에 그렇다고 알린다.
+const mondayOf = (iso) => addDays(iso, -((dow(iso) + 6) % 7));
+function applyFallback() {
+  const today = todayISO();
+  const w = weekOf(today);
+  if (w && S.tt.get(w.r)?.length) return; // 이번 주 시간표가 이미 있으면 그대로
+  const base = S.weeks.filter((x) => x.start && S.tt.get(x.r)?.length).sort((a, b) => b.start.localeCompare(a.start))[0];
+  if (!base) return;
+  const mon = mondayOf([0, 6].includes(dow(today)) ? addDays(today, 2) : today); // 주말이면 다음 주
+  S.tt.set(0, S.tt.get(base.r).map((l) => ({ ...l, date: addDays(mon, l.day - 1), changed: false })));
+  S.weeks = [{ r: 0, label: `${md(mon)} ~ ${md(addDays(mon, 5))}`, start: mon }];
+  S.curWeek = S.week = 0; S.date = [0, 6].includes(dow(today)) ? mon : today;
+  S.fallbackFrom = base.start;
+  renderAll();
+}
+const fallbackNote = () => (S.fallbackFrom
+  ? `<p class="fallback-note">컴시간에 연결할 수 없어 <b>${md(S.fallbackFrom)} 주</b> 시간표를 이번 주에 맞춰 보여드려요. 바뀐 수업은 반영되지 않았을 수 있어요.</p>` : '');
+// ② 무엇이 실패했는지(서버가 받은 컴시간 페이지 모양 포함) 관리자 텔레그램으로 자동 보고한다 — 하루 한 번, 기기마다.
+async function reportComciFailure(e) {
+  if (!e?.status) return; // 서버가 컴시간 실패를 알려준 경우만(폰이 잠깐 오프라인인 건 보고하지 않음)
+  try {
+    const day = todayISO();
+    if (store.get('classlog:comci-report') === day) return;
+    store.set('classlog:comci-report', day);
+    await sdkReady;
+    const p = S.profile;
+    const text = (`[자동 진단] 시간표 불러오기 실패\n${String(e?.message || e).slice(0, 300)}\n`
+      + `진단: ${JSON.stringify(e?.diag || { status: e?.status })}`).slice(0, 1000);
+    await addDoc(collection(db, 'classlog_feedback'), {
+      uid: S.user.uid, email: S.user.email, teacherName: p.teacherName, schoolName: p.schoolName,
+      kind: 'bug', text, view: 'auto', ua: navigator.userAgent.slice(0, 160), createdAt: serverTimestamp(),
+    });
+    fetch(GAS_URL, { method: 'POST', body: JSON.stringify({
+      secret: GAS_SECRET, action: 'notify', studentName: `[수업일지 자동 진단] ${p.teacherName}`, school: p.schoolName, grade: '', class: '', number: '', preview: text,
+    }) }).catch(() => {});
+  } catch (err) { console.warn('[comci 자동 보고 실패]', err); }
 }
 const needWeek = (w) => w && !S.tt.has(w.r) && !S.ttFail.has(w.r);
 const fromComci = (x) => ({
@@ -532,7 +571,7 @@ async function renderToday() {
   const slots = slotsFor(date);
   const written = slots.filter((s) => S.logs.has(logId(s))).length;
   $('todayCount').textContent = slots.length ? `수업 ${slots.length} · 작성 ${written}` : '수업';
-  $('todayNote').innerHTML = !S.weeks.length ? ''
+  $('todayNote').innerHTML = S.fallbackFrom ? fallbackNote() : !S.weeks.length ? ''
     : !w ? '<p class="muted small" style="margin-bottom:8px">컴시간에 이 날짜 시간표가 없어요(컴시간은 이번 주·다음 주 정도만 보여줘요). 기록한 수업과 직접 추가한 수업만 보여요.</p>' : '';
   if (!slots.length) {
     $('todayList').innerHTML = `<div class="empty-state">${[0, 6].includes(dow(date)) ? '주말이에요.' : '수업이 없어요.'}</div>`;
@@ -625,7 +664,7 @@ async function renderWeek() {
   }
   const slots = [];
   for (let d = 0; d < 5; d++) slots.push(...slotsFor(addDays(w.start, d)));
-  $('weekGrid').innerHTML = weekTable(slots, w.start);
+  $('weekGrid').innerHTML = fallbackNote() + weekTable(slots, w.start);
   $('weekGrid').querySelectorAll('.slot').forEach((b) => (b.onclick = () => openLog(slots[b.dataset.i])));
 }
 for (const id of ['weekSel', 'clsWeekSel']) $(id).onchange = (e) => { S.week = Number(e.target.value); renderView(); };
@@ -1296,7 +1335,7 @@ document.addEventListener('click', async (e) => {
     try {
       await loadWeek(r, true);
       toast(S.ttStale ? '컴시간이 응답하지 않아 마지막으로 받아 둔 시간표를 보여드려요' : '시간표를 컴시간에서 새로 받았어요');
-    } catch (err) { toast(ttError(err)); }
+    } catch (err) { toast(ttError(err)); reportComciFailure(err); applyFallback(); }
     $('ttRefresh')?.removeAttribute('disabled');
     renderAll();
   }
