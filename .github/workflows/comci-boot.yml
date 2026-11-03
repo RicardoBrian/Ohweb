@@ -1,0 +1,41 @@
+# 수업일지: 컴시간 접속 정보 자동 갱신
+# 컴시간 스크립트가 난독화돼 서버(Cloudflare)에서는 읽을 수 없으므로, 여기서 진짜 브라우저로 열어 알아낸다.
+# 값이 바뀌었을 때만 ohlog/lib/comci-boot.js 을 main 에 커밋한다 → Cloudflare Pages 가 자동 재배포.
+name: comci-boot
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 20 * * *' # 매일 05:17 (한국시간)
+permissions:
+  contents: write
+concurrency: comci-boot
+jobs:
+  capture:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: 브라우저 준비
+        working-directory: ohlog/tools
+        run: npm i --no-save --no-package-lock playwright@1.48.2 && npx playwright install --with-deps chromium
+      - name: 컴시간 열어서 접속 정보 알아내기
+        working-directory: ohlog/tools
+        run: node comci-capture.mjs ../lib/comci-boot.js
+      - name: 진단 자료 보관(화면·요청 기록)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: comci-capture
+          path: ohlog/tools/out/
+          retention-days: 7
+      - name: 바뀌었으면 커밋
+        run: |
+          if git diff --quiet -- ohlog/lib/comci-boot.js; then echo "변경 없음"; exit 0; fi
+          git config user.name "comci-boot bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add ohlog/lib/comci-boot.js
+          git commit -m "ohlog: 컴시간 접속 정보 자동 갱신"
+          git push
