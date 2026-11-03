@@ -389,6 +389,19 @@ function slotsFor(date) {
 const PREFS_ID = '_prefs';
 const prefs = () => S.plans.get(PREFS_ID) || {};
 const planDocs = () => [...S.plans.values()].filter((p) => p.id !== PREFS_ID && Array.isArray(p.items));
+const myHomeroom = () => {
+  const h = prefs().homeroom;
+  if (h?.grade && h?.cls) return { grade: h.grade, cls: h.cls, manual: true };
+  const c = S.homeroom[0]; // 컴시간 '담임' 표에서 찾은 반(추측이라 직접 등록이 우선)
+  return c ? { grade: c.grade, cls: c.class } : null;
+};
+async function saveHomeroom(h) {
+  await sdkReady;
+  try {
+    await setDoc(doc(sub('plans'), PREFS_ID), { homeroom: h, updatedAt: serverTimestamp() }, { merge: true });
+    toast(h ? '내 학급으로 설정했어요' : '내 학급 지정을 풀었어요');
+  } catch (e) { toast('저장 실패: ' + e.code); }
+}
 const noPlan = (subject) => (prefs().noPlan || []).includes(subject);
 const subjIdx = (subject) => { const i = (prefs().subjectOrder || []).indexOf(subject); return i < 0 ? 1000 : i; };
 const bySubject = (a, b) => subjIdx(a.subject) - subjIdx(b.subject) || a.subject.localeCompare(b.subject);
@@ -474,6 +487,7 @@ function markMenu() {
 }
 function go(view, replace) {
   if (!$('sec-' + view) || (view === 'admin' && !S.admin)) view = defaultView();
+  if (view === 'class' && S.view !== 'class') { S.cls = null; S.clsMode = 'class'; } // 탭을 열면 내 학급이 제일 먼저
   S.view = view;
   document.querySelectorAll('.section').forEach((s) => s.classList.toggle('active', s.id === 'sec-' + view));
   const title = { today: '오늘 수업', week: '시간표', class: '학급·교사 시간표', progress: '반별 진도', plan: '진도 계획', export: '내보내기', settings: '설정', admin: '승인 관리' }[view];
@@ -657,8 +671,8 @@ async function renderClass() {
     key = `${w.r}|t${t.id}`; qs = `code=${S.profile.schoolCode}&week=${w.r}&teacher=${t.id}`;
   } else {
     if (!S.cls) {
-      const hr = S.homeroom[0], mine = myClasses()[0];
-      S.cls = hr ? { grade: hr.grade, cls: hr.class } : mine ? { grade: mine.grade, cls: mine.cls } : { grade: 1, cls: 1 };
+      const hr = myHomeroom(), mine = myClasses()[0];
+      S.cls = hr ? { grade: hr.grade, cls: hr.cls } : mine ? { grade: mine.grade, cls: mine.cls } : { grade: 1, cls: 1 };
     }
     const grades = []; for (let g = 1; g < cc.length; g++) if (cc[g] > 0) grades.push(g);
     if (!grades.includes(S.cls.grade)) S.cls = { grade: grades[0] || 1, cls: 1 };
@@ -669,7 +683,8 @@ async function renderClass() {
     $('clsNum').value = S.cls.cls;
     const { grade, cls } = S.cls;
     title = `${grade}학년 ${cls}반 시간표`; sub = '과목 · 선생님 (컴시간 기준)';
-    badge = S.homeroom.some((h) => h.grade === grade && h.class === cls) ? '<span class="badge on">내 담임 반</span>' : '<span class="badge muted">보기 전용</span>';
+    const hr = myHomeroom();
+    badge = hr && hr.grade === grade && hr.cls === cls ? '<span class="badge on">내 학급</span>' : '<button type="button" class="btn sm" data-act="set-homeroom">내 학급으로 설정</button>';
     key = `${w.r}|${grade}-${cls}`; qs = `code=${S.profile.schoolCode}&week=${w.r}&grade=${grade}&class=${cls}`;
   }
   $('clsTitle').textContent = title; $('clsSub').textContent = sub; $('clsBadge').innerHTML = badge;
@@ -1098,7 +1113,7 @@ $('orderSave').onclick = async () => {
   await sdkReady;
   $('orderSave').disabled = true;
   try {
-    await setDoc(doc(sub('plans'), PREFS_ID), { subjectOrder: OD.order, noPlan: [...OD.off], updatedAt: serverTimestamp() });
+    await setDoc(doc(sub('plans'), PREFS_ID), { subjectOrder: OD.order, noPlan: [...OD.off], updatedAt: serverTimestamp() }, { merge: true });
     $('orderModal').classList.remove('show'); toast('순서를 저장했어요');
     PLAN_DRAFT = null; S.planKey = null; // 새 순서의 맨 위 과목으로
   } catch (e) { toast('저장 실패: ' + e.code); }
@@ -1149,6 +1164,14 @@ function renderSettings() {
   const d = S.ttDebug;
   $('ttDebugBox').classList.toggle('hidden', !(S.admin && d)); // 개발용 진단은 관리자에게만, 접어서
   $('ttDebug').textContent = d ? `해석: ${d.mode} · 분리 ${d.sep} · 겹침 ${d.clashes} · 전체 수업 ${d.cells}칸 · 담임표 ${d.homeroom}` : '';
+  // 내 학급: 학년·반을 고르면 바로 저장
+  const cc = S.classCount, h = prefs().homeroom;
+  $('hrGrade').innerHTML = '<option value="">지정 안 함</option>' + cc.map((n, g) => (g > 0 && n > 0 ? `<option value="${g}">${g}학년</option>` : '')).join('');
+  $('hrGrade').value = h?.grade ?? '';
+  $('hrNum').classList.toggle('hidden', !h?.grade);
+  if (h?.grade) { $('hrNum').innerHTML = Array.from({ length: cc[h.grade] || 1 }, (_, i) => `<option value="${i + 1}">${i + 1}반</option>`).join(''); $('hrNum').value = h.cls; }
+  const auto = !h && S.homeroom[0];
+  $('hrHint').textContent = auto ? `컴시간에서 담임 반(${auto.grade}학년 ${auto.class}반)을 찾아 임시로 쓰고 있어요. 맞지 않으면 직접 지정해 주세요.` : '학급·교사 시간표 탭을 열면 이 학급이 제일 먼저 나와요.';
   const tm = themeMode();
   $('themeSeg').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === tm));
   const fs = store.get('classlog-fs') || '1';
@@ -1157,6 +1180,8 @@ function renderSettings() {
   const standalone = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
   $('iosTip').classList.toggle('hidden', !(ios && !standalone));
 }
+$('hrGrade').onchange = (e) => saveHomeroom(e.target.value ? { grade: Number(e.target.value), cls: 1 } : null);
+$('hrNum').onchange = (e) => saveHomeroom({ grade: Number($('hrGrade').value), cls: Number(e.target.value) });
 $('themeSeg').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; store.set('classlog-theme', b.dataset.v); applyTheme(); renderSettings(); };
 $('fsSeg').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; store.set('classlog-fs', b.dataset.v); applyFs(b.dataset.v); renderSettings(); };
 
@@ -1244,6 +1269,7 @@ document.addEventListener('click', async (e) => {
   else if (act === 'feedback') openFeedback();
   else if (act === 'check-update') checkUpdate(true);
   else if (act === 'order') openOrder();
+  else if (act === 'set-homeroom') saveHomeroom({ grade: S.cls.grade, cls: S.cls.cls });
   else if (act === 'wk') {
     const n = Number(a.dataset.n), i = S.weeks.findIndex((w) => w.r === S.week);
     S.week = n === 0 ? S.curWeek : S.weeks[i + n]?.r ?? S.week;

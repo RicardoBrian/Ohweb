@@ -358,7 +358,7 @@ await p.waitForSelector('#logModal.show', { state: 'detached' });
 // 8c) 학급 시간표(담임용)
 await p.click('.side-item[data-go="class"]');
 await p.waitForSelector('#clsGrid .slot.ro');
-ok('학급 시간표: 내 담임 반(3-1)이 기본으로 열리고 배지가 보임', (await p.textContent('#clsTitle')).includes('3학년 1반') && (await p.textContent('#clsBadge')).includes('내 담임'));
+ok('학급 시간표: 등록 전에는 컴시간에서 찾은 담임 반(3-1)이 기본으로 열리고 "내 학급" 배지가 보임', (await p.textContent('#clsTitle')).includes('3학년 1반') && (await p.textContent('#clsBadge')).includes('내 학급'));
 ok('학급 시간표: 과목과 선생님 이름이 보임', /교사\d+\*/.test(await p.textContent('#clsGrid')) && (await p.locator('#clsGrid .slot.mine').count()) >= 1);
 await p.selectOption('#clsNum', '2');
 await p.waitForSelector('#clsTitle:has-text("3학년 2반")');
@@ -381,6 +381,38 @@ await p.selectOption('#clsTeacher', '10');
 await p.waitForSelector('#clsBadge .badge.on');
 ok('교사별: 나를 고르면 "일지는 시간표에서" 안내', (await p.textContent('#clsBadge')).includes('시간표'));
 await p.click('#clsMode button[data-v="class"]');
+
+// 8c4) 내 학급 등록: 학급·교사 탭을 열면 등록한 학급이 제일 먼저
+await p.waitForSelector('#clsGrid .slot.ro');
+ok('학급 시간표: 내 학급이 아닌 반에는 "내 학급으로 설정" 버튼이 보임', (await p.locator('#clsBadge [data-act="set-homeroom"]').count()) === 1);
+await p.click('#clsBadge [data-act="set-homeroom"]'); // 지금 보는 1학년 1반을 등록
+await p.waitForSelector('#clsBadge .badge.on');
+ok('버튼을 누르면 이 반이 "내 학급"으로 표시됨', (await p.textContent('#clsBadge')).includes('내 학급'));
+await p.click('.side-item[data-go="progress"]');
+await p.click('.side-item[data-go="class"]');
+await p.waitForSelector('#clsTitle:has-text("1학년 1반")');
+ok('다른 화면에 갔다가 학급·교사 탭을 다시 열면 등록한 학급(1학년 1반)이 제일 먼저 나옴(컴시간 추측 3학년 1반이 아님)', true);
+await p.click('.side-item[data-go="settings"]');
+await p.selectOption('#hrGrade', '2');
+await p.waitForSelector('#hrNum:not(.hidden)');
+await p.selectOption('#hrNum', '3');
+await p.waitForFunction(() => document.getElementById('hrNum').value === '3');
+await p.click('#sec-settings [data-act="order"]');
+await p.waitForSelector('#orderModal.show .order-row');
+await p.click('#orderSave');
+await p.waitForSelector('#orderModal.show', { state: 'detached' });
+let prefs2 = null;
+await env.withSecurityRulesDisabled(async (c) => { prefs2 = (await c.firestore().collectionGroup('plans').get()).docs.find((d) => d.id === '_prefs')?.data() || null; });
+ok('설정에서 2학년 3반으로 바꾸고 과목 순서를 저장해도 내 학급은 그대로(merge)', prefs2?.homeroom?.grade === 2 && prefs2?.homeroom?.cls === 3 && Array.isArray(prefs2?.subjectOrder), JSON.stringify(prefs2));
+await p.click('.side-item[data-go="class"]');
+await p.waitForSelector('#clsTitle:has-text("2학년 3반")');
+ok('바꾼 학급(2학년 3반)이 제일 먼저 나옴', (await p.textContent('#clsBadge')).includes('내 학급'));
+await p.click('.side-item[data-go="settings"]');
+await p.selectOption('#hrGrade', '');
+await p.waitForSelector('#hrNum', { state: 'hidden' });
+await p.click('.side-item[data-go="class"]');
+await p.waitForSelector('#clsTitle:has-text("3학년 1반")');
+ok('지정을 풀면 컴시간에서 찾은 담임 반(3학년 1반)으로 돌아감', true);
 await p.click('.side-item[data-go="progress"]');
 await p.waitForSelector('.class-card');
 await p.locator(`.class-card[data-k="${grade}-${cls}|수학"]`).click();
