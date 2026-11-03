@@ -393,6 +393,13 @@ const csv = readFileSync(await dl.path(), 'utf8');
 ok('CSV에 진도·내용이 들어감', csv.includes('등식의 성질') && csv.includes('일차방정식 풀이 연습'), csv.slice(0, 200));
 await shot(p, '09-export-pc');
 
+// 8c3) 출석 관리 링크(별도 사이트 — 데이터는 합치지 않고 링크만): 사이드바·오늘 카드·설정에서 새 탭으로
+await p.click('.side-item[data-go="today"]');
+const att = 'a[href="https://attend.gwansan.com"][target="_blank"][rel~="noopener"]';
+ok('출석 관리 링크: 사이드바 "연결" 묶음에 있음', (await p.locator(`.side-menu ${att}`).count()) === 1);
+ok('출석 관리 링크: 오늘 수업 카드 아래에 있음', (await p.locator(`#sec-today ${att}`).count()) === 1);
+ok('출석 관리 링크: 설정 바로가기에 있음', (await p.locator(`#sec-settings ${att}`).count()) === 1);
+
 // 8d) 푸터(저작권·인스타·메일) + 피드백
 ok('푸터: 관산중학교 오범석 저작권', (await p.textContent('#app .credit')).includes('관산중학교 오범석'));
 ok('푸터: 인스타그램·메일 링크', (await p.locator('#app .credit a[href="https://instagram.com/nosuk.beom"]').count()) === 1 && (await p.locator('#app .credit a[href="mailto:qjatjr7575@gmail.com"]').count()) === 1);

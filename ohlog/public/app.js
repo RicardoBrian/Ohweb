@@ -19,6 +19,8 @@ const sdkReady = (async () => {
 })();
 
 const ADMIN_EMAIL = 'qjatjr7575@gmail.com';
+// 출석 관리(별도 사이트·별도 Firebase)는 데이터를 합치지 않고 링크로만 연결한다. 통합(내년 다음 학기)할 때 여기부터 바꾼다.
+const ATTEND_URL = 'https://attend.gwansan.com';
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
 const STATUS = { normal: '정상', makeup: '보강', self: '자습', cancel: '결강' };
 const KIND = { makeup: '보강', swap: '교환', etc: '기타' };
@@ -459,6 +461,7 @@ function buildMenu() {
   $('sideMenu').innerHTML = MENU.map(([head, items]) => `<div class="side-head">${head}</div>` + items.map(([id, label, ic, adminOnly]) =>
     `<button type="button" class="side-item${adminOnly ? ' admin-only' : ''}" data-go="${id}">${icon(ic, 18)}${label}${id === 'admin' && pending ? ` <span class="badge off" style="margin-left:auto">${pending}</span>` : ''}</button>`).join('')).join('');
   $('tabbar').innerHTML = TABS.map(([id, label, ic]) => `<button type="button" class="tab" data-go="${id}">${icon(ic, 22)}${label}</button>`).join('');
+  $('sideMenu').insertAdjacentHTML('beforeend', `<div class="side-head">연결</div><a class="side-item" href="${ATTEND_URL}" target="_blank" rel="noopener">${icon('check', 18)}출석 관리<span class="ext">↗</span></a>`);
   document.querySelectorAll('.admin-link').forEach((el) => el.classList.toggle('hidden', !S.admin));
   markMenu();
 }
@@ -1255,4 +1258,5 @@ document.addEventListener('click', async (e) => {
 });
 
 fillIcons(); fillCredit();
+document.querySelectorAll('a[data-attend]').forEach((a) => { a.href = ATTEND_URL; });
 if (!bootFromCache()) show('screenBoot'); // 저장해 둔 게 없으면(처음·로그아웃) 로그인 확인이 끝날 때까지 잠깐 스플래시
