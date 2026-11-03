@@ -47,8 +47,11 @@ const parse = (text) => {
   return JSON.parse(t.slice(0, t.lastIndexOf('}') + 1));
 };
 
-async function getText(url, charset) {
-  const res = await fetch(url, { headers: { 'user-agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(6000) });
+// budget: 이 요청 전체가 쓸 수 있는 시간(재시도·접속 정보 갱신을 다 합쳐서). 컴시간이 아예 응답하지 않을 때 화면을 오래 붙잡지 않게.
+async function getText(url, charset, budget) {
+  const left = budget ? budget.until - Date.now() : 6000;
+  if (left < 300) throw new Error('컴시간 응답 시간 초과(Timeout)');
+  const res = await fetch(url, { headers: { 'user-agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(Math.min(4500, left)) });
   if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`);
   return new TextDecoder(charset).decode(await res.arrayBuffer());
 }
@@ -106,7 +109,7 @@ async function bootstrap(env, opts) {
   const tried = [];
   for (const host of [env.COMCI_URL, ...HOSTS].filter(Boolean)) {
     try {
-      const html = await cached('boot:' + host, TTL.boot, () => getText(host + '/st', 'euc-kr'), opts);
+      const html = await cached('boot:' + host, TTL.boot, () => getText(host + '/st', 'euc-kr', opts?.budget), opts);
       return readBoot(host, html);
     } catch (e) {
       tried.push(`${host}: ${e.message}`);
@@ -237,6 +240,7 @@ export async function onRequestGet({ request, env }) {
     // fresh=1('다시 받기'): 저장해 둔 접속 정보·시간표를 건너뛰고 컴시간에서 새로 받는다
     const fresh = url.searchParams.get('fresh') === '1';
     const meta = { stale: false };
+    const budget = { until: Date.now() + Number(env.COMCI_BUDGET_MS || 14000) };
     let week = url.searchParams.get('week');
     if (week && !/^\d{1,2}$/.test(week)) return json({ error: 'week 형식이 아님' }, 400);
 
@@ -244,11 +248,11 @@ export async function onRequestGet({ request, env }) {
     const run = async (opts) => {
       const c = await bootstrap(env, opts);
       if (q) {
-        const raw = parse(await retry(() => getText(c.search + eucKrPercent(q.slice(0, 40)), 'utf-8')));
+        const raw = parse(await retry(() => getText(c.search + eucKrPercent(q.slice(0, 40)), 'utf-8', opts.budget)));
         return { search: (raw['학교검색'] || []).map(([, region, name, sccode]) => ({ region, name, sccode })) };
       }
       const fetchWeek = async (w) =>
-        parse(await cached(`week:${code}:${w}`, TTL.week, () => getText(c.base + btoa(`${c.prefix}${code}_0_${w}`), 'utf-8'), { ...opts, meta }));
+        parse(await cached(`week:${code}:${w}`, TTL.week, () => getText(c.base + btoa(`${c.prefix}${code}_0_${w}`), 'utf-8', opts.budget), { ...opts, meta }));
       // week를 안 주면 1주차를 받아 보고, 컴시간이 말하는 '오늘이 속한 주(오늘r)'가 다르면 그 주로 다시 받는다.
       let wk = week, raw = await fetchWeek(wk || 1);
       if (!wk) {
@@ -258,8 +262,8 @@ export async function onRequestGet({ request, env }) {
       return { c, raw, wk };
     };
     let out;
-    try { out = await run({ fresh, meta }); }
-    catch (e) { if (fresh) throw e; out = await run({ fresh: true, meta }); }
+    try { out = await run({ fresh, meta, budget }); }
+    catch (e) { if (fresh || budget.until - Date.now() < 1500) throw e; out = await run({ fresh: true, meta, budget }); }
     if (out.search) return json({ schools: out.search });
     const { c, raw } = out;
     week = out.wk;

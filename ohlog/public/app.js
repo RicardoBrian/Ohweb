@@ -87,9 +87,12 @@ function ask(title, msg, okLabel = '확인') {
 // 컴시간 오류는 영어 코드·긴 줄 대신 짧은 한국어로 (원문은 콘솔에)
 function ttError(e) {
   console.warn('[comci]', e);
-  return /컴시간 접속 실패|HTTP 5\d\d|Failed to fetch|Timeout|aborted|NetworkError|Load failed/i.test(String(e?.message || e))
+  const raw = String(e?.message || e);
+  const first = raw.split('\n').map((x) => x.trim()).filter(Boolean).at(-1) || raw; // 맨 마지막 줄이 가장 구체적인 원인
+  const msg = /컴시간 접속 실패|HTTP 5\d\d|Failed to fetch|Timeout|aborted|NetworkError|Load failed/i.test(raw)
     ? '컴시간이 지금 응답하지 않아요. 저장해 둔 시간표를 보여드려요. 잠시 뒤 다시 눌러주세요.'
-    : `시간표를 불러오지 못했어요: ${String(e?.message || e).split('\n')[0]}`;
+    : `시간표를 불러오지 못했어요: ${raw.split('\n')[0]}`;
+  return S.admin ? `${msg} [${first.slice(0, 110)}]` : msg; // 관리자에게는 원인을 짧게 덧붙인다
 }
 async function api(qs) {
   const r = await fetch('/api/comci?' + qs);
