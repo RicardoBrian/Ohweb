@@ -109,11 +109,38 @@ export function readBoot(host, html) {
   };
   return { host, base, search: base + route[2], prefix, keys };
 }
+// /st 페이지 + (스크립트가 바깥 파일로 빠졌으면) 그 페이지가 불러오는 스크립트·프레임 파일을 합친 글.
+// 컴시간이 페이지 안의 스크립트를 별도 파일로 옮겨도 readBoot 가 그대로 찾을 수 있게 한다.
+const MARKERS = /sc_data|url\s*:/;
+export function linkedSources(html, pageUrl) {
+  return [...html.matchAll(/<(?:script|i?frame)\b[^>]*\bsrc\s*=\s*['"]?([^'" >]+)/gi)]
+    .map((m) => new URL(m[1], pageUrl).href)
+    .filter((u) => new URL(u).host === new URL(pageUrl).host && !/jquery/i.test(u)) // 컴시간 자기 파일만(jQuery 등 외부 라이브러리 제외)
+    .slice(0, 6);
+}
+async function getSmart(url, budget) {
+  // 스크립트 파일은 EUC-KR 일 수도 UTF-8 일 수도 있다 → UTF-8 로 읽어 깨지면 EUC-KR
+  const left = budget ? budget.until - Date.now() : 6000;
+  if (left < 300) throw new Error('컴시간 응답 시간 초과(Timeout)');
+  const res = await fetch(url, { headers: { 'user-agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(Math.min(4500, left)) });
+  if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`);
+  const buf = await res.arrayBuffer();
+  const u = new TextDecoder('utf-8').decode(buf);
+  return u.includes('�') ? new TextDecoder('euc-kr').decode(buf) : u;
+}
+async function bootText(host, budget) {
+  const page = host + '/st';
+  const html = await getText(page, 'euc-kr', budget);
+  if (MARKERS.test(html)) return html;
+  const parts = await Promise.all(linkedSources(html, page).map((u) => getSmart(u, budget).catch(() => '')));
+  return [html, ...parts].join('\n');
+}
+
 async function bootstrap(env, opts) {
   const tried = [];
   for (const host of [env.COMCI_URL, ...HOSTS].filter(Boolean)) {
     try {
-      const html = await cached('boot:' + host, TTL.boot, () => getText(host + '/st', 'euc-kr', opts?.budget), opts);
+      const html = await cached('boot:' + host, TTL.boot, () => bootText(host, opts?.budget), opts);
       return readBoot(host, html);
     } catch (e) {
       tried.push(`${host}: ${e.message}`);
@@ -239,9 +266,18 @@ export async function onRequestGet({ request, env }) {
     // /st 스크립트에서 접속 주소·학교 코드 앞부분·자료 번호가 들어 있을 만한 부분만 잘라 보여준다(구조가 바뀌었을 때 맞추는 용도)
     try {
       const host = env.COMCI_URL || HOSTS[0];
-      const html = await getText(host + '/st', 'euc-kr');
+      const page = await getText(host + '/st', 'euc-kr');
+      const html = await bootText(host); // 바깥 스크립트·프레임까지 합친 글
       const around = (re, n = 140) => [...html.matchAll(re)].slice(0, 4).map((m) => html.slice(Math.max(0, m.index - n), m.index + n));
-      return json({ len: html.length, sc_data: around(/sc_data/g), url: around(/url\s*:/g, 90), ajax: around(/\$\.ajax|fetch\(/g, 90), btoa: around(/btoa\(/g, 90), 성명: around(/성명/g, 90).slice(0, 2) });
+      let boot = null;
+      try { const b = readBoot(host, html); boot = { base: b.base, search: b.search, prefix: b.prefix, keys: b.keys }; } catch (e) { boot = { error: e.message }; }
+      return json({
+        len: page.length, combinedLen: html.length, boot,
+        linked: linkedSources(page, host + '/st'), // 페이지가 불러오는 컴시간 스크립트·프레임
+        tags: [...page.matchAll(/<(?:script|i?frame|form)\b[^>]*>/gi)].map((m) => m[0].slice(0, 160)).slice(0, 12),
+        body: page.replace(/\s+/g, ' ').slice(0, 700),
+        sc_data: around(/sc_data/g), url: around(/url\s*:/g, 90), ajax: around(/\$\.ajax|fetch\(/g, 90), btoa: around(/btoa\(/g, 90), 성명: around(/성명/g, 90).slice(0, 2),
+      });
     } catch (e) { return json({ error: e.message }, 502); }
   }
   const q = url.searchParams.get('q');
