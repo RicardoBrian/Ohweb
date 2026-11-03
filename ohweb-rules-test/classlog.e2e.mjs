@@ -53,10 +53,23 @@ function weekJson(r) {
     자료446: TEACHERS, 자료492: SUBJECTS, 자료481: timetable(r), 자료147: timetable(r), 자료245: [3],
   }) + '\0\0';
 }
+// 컴시간 상태: ok | 502(계속 502) | flaky(처음 한 번만 502) | newroute(접속 주소 규칙이 바뀜 — 옛 주소는 404)
+let upstream = 'ok', flakyLeft = 0;
+const stHtml = (no) => ST_HTML.replace('./36179?', `./${no}?`);
+// Workers 의 Cache API 흉내(Node 에는 없음): max-age 까지만 보관
+const memCache = new Map();
+globalThis.caches = { default: {
+  async match(req) { const e = memCache.get(req.url); return e && e.exp > Date.now() ? new Response(e.body) : undefined; },
+  async put(req, res) { const m = /max-age=(\d+)/.exec(res.headers.get('cache-control') || ''); memCache.set(req.url, { body: await res.text(), exp: Date.now() + Number(m?.[1] || 0) * 1000 }); },
+} };
 globalThis.fetch = (orig => async (url, opt) => {
   const u = String(url);
   if (!u.startsWith('http://comci.net:4082')) return orig(url, opt);
-  if (u.endsWith('/st')) return new Response(pct2bytes(comci.eucKrPercent(ST_HTML)));
+  if (upstream === '502') return new Response('<html><body>502 Bad Gateway</body></html>', { status: 502 });
+  if (upstream === 'flaky' && flakyLeft > 0) { flakyLeft--; return new Response('<html>502</html>', { status: 502 }); }
+  const routeNo = upstream === 'newroute' ? '99999' : '36179';
+  if (u.endsWith('/st')) return new Response(pct2bytes(comci.eucKrPercent(stHtml(routeNo))));
+  if (upstream === 'newroute' && !u.includes(`/${routeNo}?`)) return new Response('not found', { status: 404 }); // 옛 접속 주소
   if (u.includes('?17384l')) return new Response(JSON.stringify({ 학교검색: [[24966, '경기', '관산중학교', 43917]] }));
   const tok = atob(u.split('?')[1]);
   return new Response(weekJson(Number(tok.split('_').pop())));
@@ -86,6 +99,7 @@ const server = http.createServer(async (req, res) => {
     const { v } = await r.json();
     res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(JSON.stringify({ v: v + '-' + deploySalt })); return;
   }
+  if (u.pathname === '/__upstream') { upstream = u.searchParams.get('mode'); flakyLeft = upstream === 'flaky' ? 1 : 0; if (u.searchParams.get('clear')) memCache.clear(); res.writeHead(204); res.end(); return; }
   if (u.pathname === '/__deploy') { deploySalt++; res.writeHead(204); res.end(); return; }
   if (u.pathname === '/firebase-config.js') { res.writeHead(200, { 'content-type': 'text/javascript' }); res.end(fbconf); return; }
   const f = path.join(ROOT, u.pathname === '/' ? 'index.html' : u.pathname);
@@ -413,6 +427,34 @@ await p.waitForSelector('#hrNum', { state: 'hidden' });
 await p.click('.side-item[data-go="class"]');
 await p.waitForSelector('#clsTitle:has-text("3학년 1반")');
 ok('지정을 풀면 컴시간에서 찾은 담임 반(3학년 1반)으로 돌아감', true);
+
+// 8c5) 컴시간이 안 될 때: 502 대신 저장해 둔 시간표, 순간 실패는 재시도, 접속 주소 규칙이 바뀌면 자동 복구
+const capi = (qs) => p.evaluate(async (q) => { const r = await fetch('/api/comci?' + q); return { status: r.status, body: await r.json().catch(() => null) }; }, qs);
+const upMode = (m, clear) => fetch(`http://localhost:8098/__upstream?mode=${m}${clear ? '&clear=1' : ''}`);
+await upMode('ok'); await capi('code=43917&teacher=10&week=1&fresh=1'); // 정상 응답을 받아 저장해 둠
+await upMode('502');
+const st = await capi('code=43917&teacher=10&week=1&fresh=1');
+ok('컴시간이 502여도(다시 받기) 저장해 둔 시간표를 내려줌 — 502가 아니라 200 + stale', st.status === 200 && st.body.stale === true && st.body.lessons.length > 0, JSON.stringify({ s: st.status, stale: st.body?.stale }));
+await p.click('.side-item[data-go="settings"]');
+await p.click('#ttRefresh');
+await p.waitForFunction(() => document.getElementById('toast').textContent.includes('마지막으로 받아 둔'));
+ok('다시 받기: 컴시간이 502면 "마지막으로 받아 둔 시간표를 보여드려요"라고 안내', true);
+await upMode('502', true); // 저장해 둔 것까지 없는 최악의 경우
+const hard = await capi('code=43917&teacher=10&week=1&fresh=1');
+ok('저장해 둔 것도 없으면 502 + 오류 메시지', hard.status === 502 && !!hard.body?.error, JSON.stringify(hard));
+await p.click('#ttRefresh');
+await p.waitForFunction(() => document.getElementById('toast').textContent.includes('컴시간이 지금 응답하지 않아요'));
+ok('다시 받기 실패: 영어 HTTP 코드 대신 짧은 한국어 안내', !(await p.textContent('#toast')).includes('HTTP'));
+await p.click('.side-item[data-go="week"]');
+ok('다시 받기가 실패해도 화면의 시간표는 지워지지 않음', (await p.locator('#weekGrid .slot').count()) > 0);
+await upMode('flaky', true); // 처음 한 번만 502
+const fl = await capi('code=43917&teacher=10&week=1&fresh=1');
+ok('컴시간이 순간적으로만 502면 서버가 한 번 더 시도해 정상 응답(stale 아님)', fl.status === 200 && !fl.body.stale && fl.body.lessons.length > 0, JSON.stringify({ s: fl.status, stale: fl.body?.stale }));
+await upMode('ok', true); await capi('code=43917&teacher=10&week=1'); // 옛 접속 정보(주소 36179)가 저장된 상태
+await upMode('newroute'); // 컴시간이 접속 주소 규칙을 바꿈 — 저장해 둔 옛 접속 정보로는 404
+const nr = await capi('code=22222&teacher=10&week=1');
+ok('컴시간이 접속 주소 규칙을 바꿔도 접속 정보를 새로 받아 자동 복구(다시 받기를 안 눌러도)', nr.status === 200 && nr.body.lessons.length > 0, JSON.stringify({ s: nr.status, e: nr.body?.error }));
+await upMode('ok', true);
 await p.click('.side-item[data-go="progress"]');
 await p.waitForSelector('.class-card');
 await p.locator(`.class-card[data-k="${grade}-${cls}|수학"]`).click();

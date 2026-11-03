@@ -53,14 +53,35 @@ async function getText(url, charset) {
   return new TextDecoder(charset).decode(await res.arrayBuffer());
 }
 
-// Cloudflare 캐시(데이터센터별)에 문자열을 잠깐 둔다. 캐시 키는 가짜 주소면 된다.
-async function cached(key, ttl, make) {
+// 컴시간 서버는 비공식이라 가끔 순간적으로 502·타임아웃이 난다 → 한 번 더 시도한다.
+async function retry(fn, tries = 2) {
+  let err;
+  for (let i = 0; i < tries; i++) {
+    try { return await fn(); } catch (e) { err = e; if (i < tries - 1) await new Promise((r) => setTimeout(r, 500)); }
+  }
+  throw err;
+}
+
+// Cloudflare 캐시(데이터센터별)에 문자열을 둔다. 캐시 키는 가짜 주소면 된다.
+//   · 평소: ttl 초 동안은 캐시를 그대로 쓴다(fresh 면 건너뛰고 새로 받는다 — '다시 받기').
+//   · 컴시간이 안 될 때: 하루 동안 보관한 마지막 정상 응답을 대신 내려주고 meta.stale 로 알린다(502 대신).
+const STALE_TTL = 86400;
+async function cached(key, ttl, make, { fresh = false, meta } = {}) {
   const cache = typeof caches !== 'undefined' ? caches.default : null;
-  const req = new Request('https://comci-cache.invalid/' + encodeURIComponent(key));
-  const hit = cache && (await cache.match(req));
+  const keyReq = (k) => new Request('https://comci-cache.invalid/' + encodeURIComponent(k));
+  const hit = !fresh && cache && (await cache.match(keyReq(key)));
   if (hit) return hit.text();
-  const text = await make();
-  if (cache) await cache.put(req, new Response(text, { headers: { 'cache-control': `max-age=${ttl}` } }));
+  let text;
+  try { text = await retry(make); }
+  catch (e) {
+    const old = cache && (await cache.match(keyReq('stale:' + key)));
+    if (old) { if (meta) meta.stale = true; return old.text(); }
+    throw e;
+  }
+  if (cache) {
+    await cache.put(keyReq(key), new Response(text, { headers: { 'cache-control': `max-age=${ttl}` } }));
+    await cache.put(keyReq('stale:' + key), new Response(text, { headers: { 'cache-control': `max-age=${STALE_TTL}` } }));
+  }
   return text;
 }
 
@@ -81,11 +102,11 @@ export function readBoot(host, html) {
   };
   return { host, base, search: base + route.slice(8), prefix, keys };
 }
-async function bootstrap(env) {
+async function bootstrap(env, opts) {
   const tried = [];
   for (const host of [env.COMCI_URL, ...HOSTS].filter(Boolean)) {
     try {
-      const html = await cached('boot:' + host, TTL.boot, () => getText(host + '/st', 'euc-kr'));
+      const html = await cached('boot:' + host, TTL.boot, () => getText(host + '/st', 'euc-kr'), opts);
       return readBoot(host, html);
     } catch (e) {
       tried.push(`${host}: ${e.message}`);
@@ -213,24 +234,35 @@ export async function onRequestGet({ request, env }) {
   if (code && !/^\d{1,8}$/.test(code)) return json({ error: '학교코드 형식이 아님' }, 400);
 
   try {
-    const c = await bootstrap(env);
-
-    if (q) {
-      const raw = parse(await getText(c.search + eucKrPercent(q.slice(0, 40)), 'utf-8'));
-      const schools = (raw['학교검색'] || []).map(([, region, name, sccode]) => ({ region, name, sccode }));
-      return json({ schools });
-    }
-
-    const fetchWeek = async (w) =>
-      parse(await cached(`week:${code}:${w}`, TTL.week, () => getText(c.base + btoa(`${c.prefix}${code}_0_${w}`), 'utf-8')));
-    // week를 안 주면 1주차를 받아 보고, 컴시간이 말하는 '오늘이 속한 주(오늘r)'가 다르면 그 주로 다시 받는다.
+    // fresh=1('다시 받기'): 저장해 둔 접속 정보·시간표를 건너뛰고 컴시간에서 새로 받는다
+    const fresh = url.searchParams.get('fresh') === '1';
+    const meta = { stale: false };
     let week = url.searchParams.get('week');
     if (week && !/^\d{1,2}$/.test(week)) return json({ error: 'week 형식이 아님' }, 400);
-    let raw = await fetchWeek(week || 1);
-    if (!week) {
-      week = String(raw['오늘r'] > 0 ? raw['오늘r'] : 1);
-      if (week !== '1') raw = await fetchWeek(week);
-    }
+
+    // 컴시간이 접속 주소 규칙을 바꾸면 저장해 둔 접속 정보(1시간)로는 계속 실패한다 → 실패하면 접속 정보부터 새로 받아 한 번 더.
+    const run = async (opts) => {
+      const c = await bootstrap(env, opts);
+      if (q) {
+        const raw = parse(await retry(() => getText(c.search + eucKrPercent(q.slice(0, 40)), 'utf-8')));
+        return { search: (raw['학교검색'] || []).map(([, region, name, sccode]) => ({ region, name, sccode })) };
+      }
+      const fetchWeek = async (w) =>
+        parse(await cached(`week:${code}:${w}`, TTL.week, () => getText(c.base + btoa(`${c.prefix}${code}_0_${w}`), 'utf-8'), { ...opts, meta }));
+      // week를 안 주면 1주차를 받아 보고, 컴시간이 말하는 '오늘이 속한 주(오늘r)'가 다르면 그 주로 다시 받는다.
+      let wk = week, raw = await fetchWeek(wk || 1);
+      if (!wk) {
+        wk = String(raw['오늘r'] > 0 ? raw['오늘r'] : 1);
+        if (wk !== '1') raw = await fetchWeek(wk);
+      }
+      return { c, raw, wk };
+    };
+    let out;
+    try { out = await run({ fresh, meta }); }
+    catch (e) { if (fresh) throw e; out = await run({ fresh: true, meta }); }
+    if (out.search) return json({ schools: out.search });
+    const { c, raw } = out;
+    week = out.wk;
     if (url.searchParams.get('raw')) return json({ keys: Object.keys(raw), raw });
 
     const t = parseTimetable(raw, c.keys);
@@ -257,6 +289,7 @@ export async function onRequestGet({ request, env }) {
             .filter((x) => x.teacher === Number(teacher))
             .map((x) => ({ ...x, date: start ? addDays(start, x.day - 1) : null }));
     return json({
+      stale: meta.stale || undefined, // 컴시간이 응답하지 않아 마지막으로 받아 둔 시간표를 내려주는 중
       week: Number(week),
       weeks,
       times: raw['일과시간'] || [], // 교시별 시간 표시(예: "1(09:00)")

@@ -513,8 +513,8 @@
         </div>
         <div class="card">
           <h2><span class="icon" data-ic="clock"></span><span class="ttl">새로 받기<small>시간표나 앱이 안 바뀐 것 같을 때</small></span></h2>
-          <p class="muted small" style="margin-bottom:12px">시간표는 10분 저장해 두고 써요. 앱은 열 때마다 새 버전을 확인하지만, 바로 확인해 볼 수도 있어요.</p>
-          <div class="row"><button class="btn" data-act="reload-tt">시간표 다시 받기</button><button class="btn" data-act="check-update">앱 업데이트 확인</button></div>
+          <p class="muted small" style="margin-bottom:12px">시간표는 10분 저장해 두고 써요. "다시 받기"는 저장분을 건너뛰고 컴시간에서 새로 받아요. 컴시간이 응답하지 않으면 마지막으로 받아 둔 시간표를 보여줘요.</p>
+          <div class="row"><button class="btn" id="ttRefresh" data-act="reload-tt">시간표 다시 받기</button><button class="btn" data-act="check-update">앱 업데이트 확인</button></div>
           <details id="ttDebugBox" class="hidden" style="margin-top:12px"><summary class="muted small" style="cursor:pointer">진단 정보 (관리자)</summary><p class="muted small" id="ttDebug" style="margin-top:6px"></p></details>
         </div>
       </div>
