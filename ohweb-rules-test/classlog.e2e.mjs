@@ -455,6 +455,11 @@ await upMode('ok', true); await capi('code=43917&teacher=10&week=1'); // 옛 접
 await upMode('newroute'); // 컴시간이 접속 주소 규칙을 바꿈 — 저장해 둔 옛 접속 정보로는 404
 const nr = await capi('code=22222&teacher=10&week=1');
 ok('컴시간이 접속 주소 규칙을 바꿔도 접속 정보를 새로 받아 자동 복구(다시 받기를 안 눌러도)', nr.status === 200 && nr.body.lessons.length > 0, JSON.stringify({ s: nr.status, e: nr.body?.error }));
+await upMode('ok', true);
+const pr = await capi('code=43917&week=1&probe=full');
+ok('단계별 진단(?probe=full): 접속 정보 → 받기 → 읽기 → 해석 네 단계의 시간·크기를 돌려줌', pr.status === 200 && pr.body.steps.length === 4 && pr.body.steps.every((x) => typeof x.ms === 'number') && pr.body.steps[3].cells > 0, JSON.stringify(pr.body?.steps?.map((x) => x.name)));
+const pb = await capi('code=43917&week=1&probe=boot');
+ok('probe=boot 는 1단계에서 멈춤', pb.status === 200 && pb.body.steps.length === 1, JSON.stringify(pb.body?.steps?.length));
 await upMode('hang', true); // 컴시간이 아예 응답하지 않음(연결만 붙들고 있음)
 const t1 = Date.now();
 const hg = await capi('code=43917&teacher=10&week=1');

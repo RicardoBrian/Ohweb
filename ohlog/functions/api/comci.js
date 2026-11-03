@@ -244,6 +244,30 @@ export async function onRequestGet({ request, env }) {
     let week = url.searchParams.get('week');
     if (week && !/^\d{1,2}$/.test(week)) return json({ error: 'week 형식이 아님' }, 400);
 
+    // 단계별 진단(?probe=boot|fetch|parse|full): 어느 단계에서 느리거나 죽는지 시간·크기를 보여준다. 저장분은 건너뛴다.
+    const probe = url.searchParams.get('probe');
+    if (probe) {
+      if (!code) return json({ error: 'probe 에는 code(학교코드)가 필요' }, 400);
+      const out = { probe, week: week || '1', steps: [] };
+      const step = (name, since, extra) => out.steps.push({ name, ms: Date.now() - since, ...extra });
+      let t = Date.now();
+      const c = await bootstrap(env, { fresh: true, meta, budget });
+      step('1.접속 정보(/st)', t, { route: c.base, prefix: c.prefix, keys: c.keys });
+      if (probe === 'boot') return json(out);
+      t = Date.now();
+      const text = await getText(c.base + btoa(`${c.prefix}${code}_0_${week || 1}`), 'utf-8', budget);
+      step('2.시간표 받기', t, { chars: text.length, head: text.slice(0, 40) });
+      if (probe === 'fetch') return json(out);
+      t = Date.now();
+      const rawP = parse(text);
+      step('3.JSON 읽기', t, { keys: Object.keys(rawP).length });
+      if (probe === 'parse') return json(out);
+      t = Date.now();
+      const tt = parseTimetable(rawP, c.keys);
+      step('4.시간표 해석', t, { cells: tt.cells.length, mode: tt.mode, clashes: tt.clashes });
+      return json(out);
+    }
+
     // 컴시간이 접속 주소 규칙을 바꾸면 저장해 둔 접속 정보(1시간)로는 계속 실패한다 → 실패하면 접속 정보부터 새로 받아 한 번 더.
     const run = async (opts) => {
       const c = await bootstrap(env, opts);
