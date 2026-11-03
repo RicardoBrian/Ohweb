@@ -65,6 +65,7 @@ globalThis.caches = { default: {
 globalThis.fetch = (orig => async (url, opt) => {
   const u = String(url);
   if (!u.startsWith('http://comci.net:4082')) return orig(url, opt);
+  if (upstream === 'hang') return new Promise((_, rej) => opt?.signal?.addEventListener('abort', () => rej(new DOMException('The operation was aborted due to timeout', 'TimeoutError')))); // 아예 응답이 없음
   if (upstream === '502') return new Response('<html><body>502 Bad Gateway</body></html>', { status: 502 });
   if (upstream === 'flaky' && flakyLeft > 0) { flakyLeft--; return new Response('<html>502</html>', { status: 502 }); }
   const routeNo = upstream === 'newroute' ? '99999' : '36179';
@@ -91,7 +92,7 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://localhost');
   if (u.pathname === '/api/comci') {
-    const r = await comci.onRequestGet({ request: new Request('http://localhost' + req.url), env: {} });
+    const r = await comci.onRequestGet({ request: new Request('http://localhost' + req.url), env: { COMCI_BUDGET_MS: 3000 } });
     res.writeHead(r.status, { 'content-type': 'application/json' }); res.end(await r.text()); return;
   }
   if (u.pathname === '/api/version') {
@@ -454,6 +455,16 @@ await upMode('ok', true); await capi('code=43917&teacher=10&week=1'); // 옛 접
 await upMode('newroute'); // 컴시간이 접속 주소 규칙을 바꿈 — 저장해 둔 옛 접속 정보로는 404
 const nr = await capi('code=22222&teacher=10&week=1');
 ok('컴시간이 접속 주소 규칙을 바꿔도 접속 정보를 새로 받아 자동 복구(다시 받기를 안 눌러도)', nr.status === 200 && nr.body.lessons.length > 0, JSON.stringify({ s: nr.status, e: nr.body?.error }));
+await upMode('ok', true);
+const pr = await capi('code=43917&week=1&probe=full');
+ok('단계별 진단(?probe=full): 접속 정보 → 받기 → 읽기 → 해석 네 단계의 시간·크기를 돌려줌', pr.status === 200 && pr.body.steps.length === 4 && pr.body.steps.every((x) => typeof x.ms === 'number') && pr.body.steps[3].cells > 0, JSON.stringify(pr.body?.steps?.map((x) => x.name)));
+const pb = await capi('code=43917&week=1&probe=boot');
+ok('probe=boot 는 1단계에서 멈춤', pb.status === 200 && pb.body.steps.length === 1, JSON.stringify(pb.body?.steps?.length));
+await upMode('hang', true); // 컴시간이 아예 응답하지 않음(연결만 붙들고 있음)
+const t1 = Date.now();
+const hg = await capi('code=43917&teacher=10&week=1');
+const took = Date.now() - t1;
+ok('컴시간이 아예 응답하지 않아도 전체 대기 시간에 상한(테스트는 3초)이 있어 오래 붙잡지 않음', hg.status === 502 && took < 6500, `${took}ms ${hg.status}`);
 await upMode('ok', true);
 await p.click('.side-item[data-go="progress"]');
 await p.waitForSelector('.class-card');
