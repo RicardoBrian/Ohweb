@@ -224,6 +224,12 @@
 
   <div class="toolbar">
     <input class="inp search" type="search" id="searchInput" placeholder="학생 이름·학교 검색…" oninput="renderList()">
+    <select class="inp" id="schoolFilter" onchange="onSchoolFilter()" style="width:auto;"><option value="">학교 전체</option></select>
+    <select class="inp" id="classFilter" onchange="renderList()" style="width:auto;"><option value="">반 전체</option></select>
+    <div class="ag-seg" id="readSeg" role="group">
+      <button type="button" class="on" data-v="" onclick="setReadFilter('')">전체</button>
+      <button type="button" data-v="unread" onclick="setReadFilter('unread')">안읽음</button>
+    </div>
     <button class="btn sm" onclick="reload()"><svg width="13" height="13" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-refresh"/></svg>새로고침</button>
   </div>
 
@@ -290,6 +296,7 @@ async function loadAll() {
     threads.sort((a, b) => millis(b.lastMessageAt) - millis(a.lastMessageAt));
 
     recalcStats();
+    fillFilters();
 
     // URL 딥링크로 특정 학생 스레드 자동 오픈
     const params = new URLSearchParams(location.search);
@@ -301,9 +308,40 @@ async function loadAll() {
   }
 }
 
+const nvc = v => String(v||'').replace(/[^0-9]/g,'') || String(v||'').trim();
+let readFilter = '';
+window.setReadFilter = (v) => {
+  readFilter = v;
+  document.querySelectorAll('#readSeg button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  renderList();
+};
+function fillFilters() {
+  const ss = document.getElementById('schoolFilter'), cur = ss.value;
+  const schools = [...new Set(threads.map(t => t.schoolName).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ko'));
+  ss.innerHTML = '<option value="">학교 전체</option>' + schools.map(n => `<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('');
+  ss.value = schools.includes(cur) ? cur : '';
+  ss.style.display = schools.length > 1 ? '' : 'none';
+  fillClassFilter();
+}
+function fillClassFilter() {
+  const sc = document.getElementById('schoolFilter').value;
+  const cs = document.getElementById('classFilter'), cur = cs.value;
+  const m = new Map();
+  threads.forEach(t => { const g = nvc(t.grade), c = nvc(t.class); if (g && c && (!sc || t.schoolName === sc)) m.set(`${g}|${c}`, `${g}학년 ${c}반`); });
+  const keys = [...m.keys()].sort((a, b) => { const [ga, ca] = a.split('|').map(Number), [gb, cb] = b.split('|').map(Number); return ga - gb || ca - cb; });
+  cs.innerHTML = '<option value="">반 전체</option>' + keys.map(k => `<option value="${k}">${m.get(k)}</option>`).join('');
+  cs.value = keys.includes(cur) ? cur : '';
+  cs.style.display = keys.length > 1 ? '' : 'none';
+}
+window.onSchoolFilter = () => { fillClassFilter(); renderList(); };
 function getFiltered() {
   const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const sc = document.getElementById('schoolFilter').value;
+  const cf = document.getElementById('classFilter').value;
   return threads.filter(t => {
+    if (readFilter === 'unread' && !t.unreadByAdmin) return false;
+    if (sc && t.schoolName !== sc) return false;
+    if (cf && `${nvc(t.grade)}|${nvc(t.class)}` !== cf) return false;
     if (!q) return true;
     return (t.studentName||'').toLowerCase().includes(q) || (t.schoolName||'').toLowerCase().includes(q);
   });
@@ -313,7 +351,7 @@ function renderList() {
   const container = document.getElementById('threadList');
   const filtered = getFiltered();
   if (!filtered.length) {
-    container.innerHTML = `<div class="empty-state"><div class="empty-icon"><svg width="40" height="40"><use href="#ic-chat"/></svg></div><p>아직 학생 질문이 없습니다.</p></div>`;
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon"><svg width="40" height="40"><use href="#ic-chat"/></svg></div><p>${threads.length ? '조건에 맞는 대화가 없습니다.' : '아직 학생 질문이 없습니다.'}</p></div>`;
     return;
   }
   container.innerHTML = filtered.map(buildItem).join('');
