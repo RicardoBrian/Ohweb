@@ -315,6 +315,7 @@ async function startApp() {
   }, (e) => toast(`${name} 읽기 실패: ${e.code}`));
   S.unsub.push(live('logs', S.logs), live('plans', S.plans), live('extras', S.extras));
   if (S.admin) {
+    checkComciSync();
     S.unsub.push(onSnapshot(collection(db, 'classlog_users'), (snap) => {
       S.users = snap.docs.map((d) => ({ uid: d.id, ...d.data() })); renderAdmin(); buildMenu();
     }, (e) => toast('사용자 목록 실패: ' + e.code)));
@@ -522,7 +523,7 @@ function fillCredit() {
 function buildMenu() {
   const pending = S.users.filter((u) => u.status === 'pending').length;
   $('sideMenu').innerHTML = MENU.map(([head, items]) => `<div class="side-head">${head}</div>` + items.map(([id, label, ic, adminOnly]) =>
-    `<button type="button" class="side-item${adminOnly ? ' admin-only' : ''}" data-go="${id}">${icon(ic, 18)}${label}${id === 'admin' && pending ? ` <span class="badge off" style="margin-left:auto">${pending}</span>` : ''}</button>`).join('')).join('');
+    `<button type="button" class="side-item${adminOnly ? ' admin-only' : ''}" data-go="${id}">${icon(ic, 18)}${label}${id === 'admin' && (pending || S.sync?.warn) ? ` <span class="badge off" style="margin-left:auto">${pending || '!'}</span>` : ''}</button>`).join('')).join('');
   // 출석 관리(별도 사이트)는 설정 앞에 외부 링크 탭으로 — 누르면 새 창(홈 화면 앱에서는 Safari 시트)으로 열린다
   const tab = ([id, label, ic]) => `<button type="button" class="tab" data-go="${id}">${icon(ic, 22)}${label}</button>`;
   $('tabbar').innerHTML = TABS.slice(0, -1).map(tab).join('')
@@ -1235,10 +1236,41 @@ $('hrNum').onchange = (e) => saveHomeroom({ grade: Number($('hrGrade').value), c
 $('themeSeg').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; store.set('classlog-theme', b.dataset.v); applyTheme(); renderSettings(); };
 $('fsSeg').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; store.set('classlog-fs', b.dataset.v); applyFs(b.dataset.v); renderSettings(); };
 
+/* ───────── 컴시간 자동 확인(GitHub Actions) 상태 — 관리자만 ───────── */
+// 꺼지거나(60일 무변경 등) 멈추거나 실패하면: 승인 관리 메뉴에 표시 + 알림 + 텔레그램(하루 한 번)
+S.sync = null;
+async function checkComciSync() {
+  try {
+    const r = await fetch('/api/comci-sync', { cache: 'no-store' });
+    S.sync = await r.json();
+  } catch { return; }
+  renderSync(); buildMenu();
+  if (!S.sync.warn) return;
+  toast('⚠ ' + S.sync.warn + ' — 승인 관리에서 확인');
+  const day = todayISO();
+  if (store.get('classlog:sync-warn') === day) return;
+  store.set('classlog:sync-warn', day);
+  fetch(GAS_URL, { method: 'POST', body: JSON.stringify({
+    secret: GAS_SECRET, action: 'notify', studentName: '[수업일지 경고] 컴시간 자동 확인', school: '', grade: '', class: '', number: '',
+    preview: S.sync.warn + '\n앱 → 승인 관리 → "지금 다시 확인"을 누르면 다시 켜고 실행해요.',
+  }) }).catch(() => {});
+}
+function renderSync() {
+  const box = $('syncBox'); const s = S.sync;
+  if (!box || !s) return;
+  const when = (iso) => { if (!iso) return '없음'; const d = new Date(iso); return `${md(todayISO(d))} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+  const res = { success: '성공', failure: '실패', cancelled: '취소' }[s.lastRun?.conclusion] || (s.lastRun?.status === 'completed' ? s.lastRun?.conclusion : '진행 중');
+  box.innerHTML = (s.warn ? `<div class="badge off" style="margin-bottom:6px">⚠ ${esc(s.warn)}</div>` : '<div class="badge ok" style="margin-bottom:6px">정상</div>')
+    + `<div>마지막 확인: ${s.lastRun ? `${when(s.lastRun.at)} · ${esc(res)}` : '없음'}${s.lastRun?.url ? ` · <a href="${esc(s.lastRun.url)}" target="_blank" rel="noopener">기록</a>` : ''}</div>`
+    + `<div>현재 접속 주소: ${esc(s.captured?.route || '-')} (바뀐 날: ${when(s.captured?.capturedAt)})</div>`
+    + (s.token ? '' : '<div>Cloudflare 환경 변수 GITHUB_TOKEN 이 없어 "지금 다시 확인"을 쓸 수 없어요</div>');
+}
+
 /* ───────── 승인 관리(관리자) ───────── */
 const FB_KIND = { idea: '기능 제안', ux: '불편한 점', bug: '오류 신고', etc: '기타' };
 function renderAdmin() {
   if (!S.admin || S.view !== 'admin') return;
+  renderSync();
   $('adminFeedback').innerHTML = S.feedback.length ? S.feedback.map((f) => `<div class="user-row"><div style="min-width:0">
     <div class="nm">${esc(FB_KIND[f.kind] || '기타')} <span class="muted small" style="font-weight:500">${esc(f.teacherName)} · ${esc(f.schoolName)}${f.createdAt?.toDate ? ` · ${md(todayISO(f.createdAt.toDate()))}` : ''}</span></div>
     <div style="white-space:pre-wrap;font-size:0.92rem;margin-top:2px">${esc(f.text)}</div></div></div>`).join('') : '<div class="empty-state">아직 받은 피드백이 없어요.</div>';
@@ -1328,6 +1360,16 @@ document.addEventListener('click', async (e) => {
   else if (act === 'csv') downloadCsv();
   else if (act === 'print') window.print();
   else if (act === 'export-class') { go('export'); $('exClass').value = S.progressKey; $('exFrom').value = ''; renderExport(); }
+  else if (act === 'comci-sync') {
+    e.target.closest('button')?.setAttribute('disabled', '');
+    try {
+      const r = await fetch('/api/comci-sync', { method: 'POST' });
+      const j = await r.json();
+      toast(j.ok ? `${j.enabled ? '꺼져 있던 자동 확인을 다시 켜고 ' : ''}지금 확인을 시작했어요(1분쯤 걸려요. 주소가 바뀌었으면 몇 분 뒤 반영)` : j.error);
+    } catch (err) { toast('실패: ' + err.message); }
+    e.target.closest('button')?.removeAttribute('disabled');
+    setTimeout(checkComciSync, 90000);
+  }
   else if (act === 'reload-tt') {
     const r = S.week ?? S.curWeek;
     S.ttFail.clear(); S.clsTT.clear(); // 화면의 시간표는 지우지 않는다 — 받기에 실패해도 보던 시간표가 남게

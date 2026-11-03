@@ -5,7 +5,7 @@ name: comci-boot
 on:
   workflow_dispatch:
   schedule:
-    - cron: '17 20 * * *' # 매일 05:17 (한국시간)
+    - cron: '23 * * * *' # 1시간마다(매시 23분). 값이 바뀔 때만 커밋하므로 평소엔 아무것도 안 바뀐다
 permissions:
   contents: write
 concurrency: comci-boot
