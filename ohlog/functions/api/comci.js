@@ -157,13 +157,42 @@ async function bootText(host, budget) {
   return [html, ...parts].join('\n');
 }
 
+// 마지막으로 정상이었던 접속 정보. 2026-11 컴시간이 /st 스크립트를 난독화해(20KB → 69KB) 읽을 수 없게 됐지만,
+// 데이터를 주는 서버 주소는 그대로일 수 있어 이것으로 시도한다. 값은 10/29 사용자 진단(?st=1)에서 확인한 것.
+// 스크립트를 읽을 수 있을 때마다 최신 값을 캐시에 90일 저장해(LAST_GOOD) 다음 변경에도 대비한다.
+const KNOWN_BOOT = { route: '36179', search: '17384l', prefix: '73629_', keys: { teachers: '446', subjects: '492', original: '481', daily: '147', room: '245' } };
+const LAST_GOOD_TTL = 90 * 86400;
+const lastGoodReq = (host) => new Request('https://comci-cache.invalid/' + encodeURIComponent('lastgood:boot:' + host));
+async function rememberBoot(host, b) {
+  const cache = typeof caches !== 'undefined' ? caches.default : null;
+  if (cache) await cache.put(lastGoodReq(host), new Response(JSON.stringify(b), { headers: { 'cache-control': `max-age=${LAST_GOOD_TTL}` } }));
+}
+async function knownBoot(host) {
+  const cache = typeof caches !== 'undefined' ? caches.default : null;
+  const hit = cache && (await cache.match(lastGoodReq(host)));
+  if (hit) return { ...(await hit.json()), from: 'lastgood' };
+  const base = `${host}/${KNOWN_BOOT.route}?`;
+  return { host, base, search: base + KNOWN_BOOT.search, prefix: KNOWN_BOOT.prefix, keys: KNOWN_BOOT.keys, from: 'known' };
+}
+
 async function bootstrap(env, opts) {
   const tried = [];
   let diag;
   for (const host of [env.COMCI_URL, ...HOSTS].filter(Boolean)) {
     try {
       const html = await cached('boot:' + host, TTL.boot, () => bootText(host, opts?.budget), opts);
-      return readBoot(host, html);
+      try {
+        const b = readBoot(host, html);
+        await rememberBoot(host, b);
+        return b;
+      } catch (e) {
+        if (!e.diag) throw e;
+        // 스크립트를 못 읽음 → 마지막 정상 접속 정보로 시도(성공 여부는 시간표 받기에서 판가름)
+        const g = await knownBoot(host);
+        g.diag = e.diag;
+        if (opts?.meta) opts.meta.bootFallback = g.from;
+        return g;
+      }
     } catch (e) {
       tried.push(`${host}: ${e.message}`);
       diag = e.diag || diag;
@@ -326,7 +355,7 @@ export async function onRequestGet({ request, env }) {
       const step = (name, since, extra) => out.steps.push({ name, ms: Date.now() - since, ...extra });
       let t = Date.now();
       const c = await bootstrap(env, { fresh: true, meta, budget });
-      step('1.접속 정보(/st)', t, { route: c.base, prefix: c.prefix, keys: c.keys });
+      step('1.접속 정보(/st)', t, { route: c.base, prefix: c.prefix, keys: c.keys, fallback: c.from, diag: c.diag });
       if (probe === 'boot') return json(out);
       t = Date.now();
       const text = await getText(c.base + btoa(`${c.prefix}${code}_0_${week || 1}`), 'utf-8', budget);
@@ -345,6 +374,17 @@ export async function onRequestGet({ request, env }) {
     // 컴시간이 접속 주소 규칙을 바꾸면 저장해 둔 접속 정보(1시간)로는 계속 실패한다 → 실패하면 접속 정보부터 새로 받아 한 번 더.
     const run = async (opts) => {
       const c = await bootstrap(env, opts);
+      try { return await runWith(c, opts); }
+      catch (e) {
+        if (c.diag) { // 스크립트를 못 읽어 예전 접속 정보로 시도한 경우
+          const err = new Error(`컴시간 접속 실패\n컴시간이 /st 스크립트를 바꿔(읽을 수 없음) 마지막 정상 접속 정보(${c.from})로 시도했지만 실패: ${e.message}`);
+          err.diag = { ...c.diag, triedBase: c.base };
+          throw err;
+        }
+        throw e;
+      }
+    };
+    const runWith = async (c, opts) => {
       if (q) {
         const raw = parse(await retry(() => getText(c.search + eucKrPercent(q.slice(0, 40)), 'utf-8', opts.budget)));
         return { search: (raw['학교검색'] || []).map(([, region, name, sccode]) => ({ region, name, sccode })) };
@@ -400,7 +440,7 @@ export async function onRequestGet({ request, env }) {
       lessons,
       classLessons,
       homeroom: findHomeroom(raw, Number(teacher)),
-      debug: { sep: t.sep, mode: t.mode, clashes: t.clashes, cells: t.cells.length, homeroom: JSON.stringify(raw['담임'] ?? null).slice(0, 80) },
+      debug: { boot: meta.bootFallback || 'script', sep: t.sep, mode: t.mode, clashes: t.clashes, cells: t.cells.length, homeroom: JSON.stringify(raw['담임'] ?? null).slice(0, 80) },
     });
   } catch (e) {
     // 502 가 아니라 424: classnote.gwansan.com 은 5xx 응답을 Cloudflare "Host Error" 페이지로 바꿔 원인 문장을 가린다
