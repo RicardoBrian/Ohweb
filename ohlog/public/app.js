@@ -423,7 +423,7 @@ const MENU = [
   ['관리', [['plan', '진도 계획', 'list'], ['export', '내보내기', 'download'], ['settings', '설정', 'gear'], ['admin', '승인 관리', 'check', true]]],
 ];
 // 폰 하단 탭: 시간표가 맨 앞(처음 열면 시간표). 진도 계획·내보내기는 설정의 바로가기에서도 열 수 있다
-const TABS = [['week', '시간표', 'calendar'], ['today', '오늘', 'sun'], ['progress', '진도', 'chart'], ['class', '학급·교사', 'people'], ['settings', '설정', 'gear']];
+const TABS = [['week', '시간표', 'calendar'], ['today', '오늘', 'sun'], ['progress', '진도', 'chart'], ['class', '학급', 'people'], ['settings', '설정', 'gear']];
 const ICONS = {
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/>',
   calendar: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
@@ -460,7 +460,10 @@ function buildMenu() {
   const pending = S.users.filter((u) => u.status === 'pending').length;
   $('sideMenu').innerHTML = MENU.map(([head, items]) => `<div class="side-head">${head}</div>` + items.map(([id, label, ic, adminOnly]) =>
     `<button type="button" class="side-item${adminOnly ? ' admin-only' : ''}" data-go="${id}">${icon(ic, 18)}${label}${id === 'admin' && pending ? ` <span class="badge off" style="margin-left:auto">${pending}</span>` : ''}</button>`).join('')).join('');
-  $('tabbar').innerHTML = TABS.map(([id, label, ic]) => `<button type="button" class="tab" data-go="${id}">${icon(ic, 22)}${label}</button>`).join('');
+  // 출석 관리(별도 사이트)는 설정 앞에 외부 링크 탭으로 — 누르면 새 창(홈 화면 앱에서는 Safari 시트)으로 열린다
+  const tab = ([id, label, ic]) => `<button type="button" class="tab" data-go="${id}">${icon(ic, 22)}${label}</button>`;
+  $('tabbar').innerHTML = TABS.slice(0, -1).map(tab).join('')
+    + `<a class="tab" href="${ATTEND_URL}" target="_blank" rel="noopener">${icon('check', 22)}출석</a>` + tab(TABS.at(-1));
   $('sideMenu').insertAdjacentHTML('beforeend', `<div class="side-head">연결</div><a class="side-item" href="${ATTEND_URL}" target="_blank" rel="noopener">${icon('check', 18)}출석 관리<span class="ext">↗</span></a>`);
   document.querySelectorAll('.admin-link').forEach((el) => el.classList.toggle('hidden', !S.admin));
   markMenu();
@@ -1258,5 +1261,4 @@ document.addEventListener('click', async (e) => {
 });
 
 fillIcons(); fillCredit();
-document.querySelectorAll('a[data-attend]').forEach((a) => { a.href = ATTEND_URL; });
 if (!bootFromCache()) show('screenBoot'); // 저장해 둔 게 없으면(처음·로그아웃) 로그인 확인이 끝날 때까지 잠깐 스플래시

@@ -168,6 +168,8 @@ const vfit = await T.page.evaluate(() => {
 });
 ok('폰 시간표가 세로로도 한 화면에 다 들어옴(마지막 교시가 하단 탭 위)', vfit.lastBottom <= vfit.tabTop, JSON.stringify(vfit));
 if (SHOTS) await T.page.screenshot({ path: path.join(SHOTS, '02c-week-m-viewport.png') });
+const tabs = await T.page.evaluate(() => [...document.querySelectorAll('.tabbar .tab')].map((t) => ({ text: t.textContent.trim(), href: t.getAttribute('href'), target: t.getAttribute('target'), w: t.getBoundingClientRect().width, right: t.getBoundingClientRect().right })));
+ok('폰 하단 탭 6개: 시간표·오늘·진도·학급·출석·설정(출석은 외부 링크 탭, 설정 앞)', tabs.map((t) => t.text).join(',') === '시간표,오늘,진도,학급,출석,설정' && tabs[4].href === 'https://attend.gwansan.com' && tabs[4].target === '_blank' && tabs.every((t) => t.w >= 52 && t.right <= 390), JSON.stringify(tabs));
 await shot(T.page, '02b-week-m');
 
 // 4) 오늘 수업: 컴시간 수업 목록 + 일지 쓰기
@@ -393,12 +395,9 @@ const csv = readFileSync(await dl.path(), 'utf8');
 ok('CSV에 진도·내용이 들어감', csv.includes('등식의 성질') && csv.includes('일차방정식 풀이 연습'), csv.slice(0, 200));
 await shot(p, '09-export-pc');
 
-// 8c3) 출석 관리 링크(별도 사이트 — 데이터는 합치지 않고 링크만): 사이드바·오늘 카드·설정에서 새 탭으로
-await p.click('.side-item[data-go="today"]');
+// 8c3) 출석 관리 링크(별도 사이트 — 데이터는 합치지 않고 링크만): PC 사이드바
 const att = 'a[href="https://attend.gwansan.com"][target="_blank"][rel~="noopener"]';
-ok('출석 관리 링크: 사이드바 "연결" 묶음에 있음', (await p.locator(`.side-menu ${att}`).count()) === 1);
-ok('출석 관리 링크: 오늘 수업 카드 아래에 있음', (await p.locator(`#sec-today ${att}`).count()) === 1);
-ok('출석 관리 링크: 설정 바로가기에 있음', (await p.locator(`#sec-settings ${att}`).count()) === 1);
+ok('출석 관리 링크: PC 사이드바 "연결" 묶음에 새 탭 링크가 있음', (await p.locator(`.side-menu ${att}`).count()) === 1);
 
 // 8d) 푸터(저작권·인스타·메일) + 피드백
 ok('푸터: 관산중학교 오범석 저작권', (await p.textContent('#app .credit')).includes('관산중학교 오범석'));
