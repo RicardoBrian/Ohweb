@@ -149,8 +149,8 @@ async function getSmart(url, budget) {
   const u = new TextDecoder('utf-8').decode(buf);
   return u.includes('�') ? new TextDecoder('euc-kr').decode(buf) : u;
 }
-async function bootText(host, budget) {
-  const page = host + '/st';
+async function bootText(host, budget, path = 'st') {
+  const page = host + '/' + path;
   const html = await getText(page, 'euc-kr', budget);
   if (MARKERS.test(html)) return html;
   const parts = await Promise.all(linkedSources(html, page).map((u) => getSmart(u, budget).catch(() => '')));
@@ -320,14 +320,15 @@ export async function onRequestGet({ request, env }) {
     // /st 스크립트에서 접속 주소·학교 코드 앞부분·자료 번호가 들어 있을 만한 부분만 잘라 보여준다(구조가 바뀌었을 때 맞추는 용도)
     try {
       const host = env.COMCI_URL || HOSTS[0];
-      const page = await getText(host + '/st', 'euc-kr');
-      const html = await bootText(host); // 바깥 스크립트·프레임까지 합친 글
+      const path = /^[a-z]{1,8}$/.test(url.searchParams.get('page') || '') ? url.searchParams.get('page') : 'st'; // ?page=th → 교사용 페이지(/th)도 같은 방식으로 본다
+      const page = await getText(host + '/' + path, 'euc-kr');
+      const html = await bootText(host, undefined, path); // 바깥 스크립트·프레임까지 합친 글
       const around = (re, n = 140) => [...html.matchAll(re)].slice(0, 4).map((m) => html.slice(Math.max(0, m.index - n), m.index + n));
       let boot = null;
       try { const b = readBoot(host, html); boot = { base: b.base, search: b.search, prefix: b.prefix, keys: b.keys }; } catch (e) { boot = { error: e.message }; }
       return json({
-        len: page.length, combinedLen: html.length, boot,
-        linked: linkedSources(page, host + '/st'), // 페이지가 불러오는 컴시간 스크립트·프레임
+        page: path, len: page.length, combinedLen: html.length, boot,
+        linked: linkedSources(page, host + '/' + path), // 페이지가 불러오는 컴시간 스크립트·프레임
         tags: [...page.matchAll(/<(?:script|i?frame|form)\b[^>]*>/gi)].map((m) => m[0].slice(0, 160)).slice(0, 12),
         body: page.replace(/\s+/g, ' ').slice(0, 700),
         sc_data: around(/sc_data/g), url: around(/url\s*:/g, 90), ajax: around(/\$\.ajax|fetch\(/g, 90), btoa: around(/btoa\(/g, 90), 성명: around(/성명/g, 90).slice(0, 2),
