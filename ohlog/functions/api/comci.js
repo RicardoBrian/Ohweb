@@ -157,9 +157,11 @@ async function bootText(host, budget, path = 'st') {
   return [html, ...parts].join('\n');
 }
 
-// 마지막으로 정상이었던 접속 정보. 2026-11 컴시간이 /st 스크립트를 난독화해(20KB → 69KB) 읽을 수 없게 됐지만,
-// 데이터를 주는 서버 주소는 그대로일 수 있어 이것으로 시도한다. 값은 10/29 사용자 진단(?st=1)에서 확인한 것.
-// 스크립트를 읽을 수 있을 때마다 최신 값을 캐시에 90일 저장해(LAST_GOOD) 다음 변경에도 대비한다.
+// 마지막으로 정상이었던 접속 정보. 2026-11 컴시간이 /st 스크립트를 난독화해(20KB → 69KB) 글로는 읽을 수 없게 됐다.
+// CAPTURED: GitHub Actions(.github/workflows/comci-boot.yml)가 매일 진짜 브라우저로 컴시간을 열어 알아낸 값(바뀌면 자동 커밋).
+// KNOWN_BOOT: 10/29 사용자 진단(?st=1)에서 확인한 값(자료 키 번호는 이 경로일 때만 쓴다 — 다르면 파서가 값 모양으로 추측).
+// 스크립트를 읽을 수 있을 때마다 최신 값을 캐시에 90일 저장해(LAST_GOOD) 둔다.
+import CAPTURED from '../../lib/comci-boot.js';
 const KNOWN_BOOT = { route: '36179', search: '17384l', prefix: '73629_', keys: { teachers: '446', subjects: '492', original: '481', daily: '147', room: '245' } };
 const LAST_GOOD_TTL = 90 * 86400;
 const lastGoodReq = (host) => new Request('https://comci-cache.invalid/' + encodeURIComponent('lastgood:boot:' + host));
@@ -170,9 +172,14 @@ async function rememberBoot(host, b) {
 async function knownBoot(host) {
   const cache = typeof caches !== 'undefined' ? caches.default : null;
   const hit = cache && (await cache.match(lastGoodReq(host)));
+  const make = (v, from) => {
+    const base = `${host}/${v.route}?`;
+    return { host, base, search: base + v.search, prefix: v.prefix, keys: v.route === KNOWN_BOOT.route ? KNOWN_BOOT.keys : {}, from };
+  };
+  // 매일 브라우저로 확인한 값이 있으면 그것이 가장 최신이다
+  if (CAPTURED?.capturedAt && CAPTURED.route && CAPTURED.search && CAPTURED.prefix != null) return make(CAPTURED, 'captured');
   if (hit) return { ...(await hit.json()), from: 'lastgood' };
-  const base = `${host}/${KNOWN_BOOT.route}?`;
-  return { host, base, search: base + KNOWN_BOOT.search, prefix: KNOWN_BOOT.prefix, keys: KNOWN_BOOT.keys, from: 'known' };
+  return make(KNOWN_BOOT, 'known');
 }
 
 async function bootstrap(env, opts) {

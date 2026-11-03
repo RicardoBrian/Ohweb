@@ -12,6 +12,7 @@
 ## 수업일지(ohlog) — 컴시간 시간표
 - 컴시간은 비공식 사이트라 구조가 바뀔 수 있다. 시간표 오류는 대부분 `ohlog/functions/api/comci.js` 의 `readBoot`·`bootText`(접속 정보 읽기) 문제다.
 - 2026-11: 컴시간이 `/st` 의 스크립트를 난독화했다(20KB → 69KB, `sc_data` 등이 사라짐). 그래서 스크립트를 못 읽으면 마지막 정상 접속 정보(`KNOWN_BOOT`, 읽을 때마다 캐시에 90일 저장)로 시도한다. 응답의 `debug.boot` 가 `known`/`lastgood` 이면 이 경로로 받은 것이다.
+- 2026-11-03: 데이터 주소도 바뀜(옛 주소 → HTTP 520). `/th`(컴시간교사.kr)도 같은 난독화. 그래서 GitHub Actions `comci-boot`(`.github/workflows/comci-boot.yml`, 매일 05:17)가 진짜 브라우저로 `/st` 를 열어 학교를 선택하고, 페이지가 보내는 요청에서 route·search·prefix 를 뽑아 `ohlog/lib/comci-boot.js` 에 커밋한다(바뀐 때만). `debug.boot` 가 `captured` 면 이 값. 실패하면 Actions 실행의 `comci-capture` 아티팩트(화면·요청 기록)부터 본다.
 - 데이터 주소까지 바뀌면 424 + `diag`(받은 페이지 모양)로 실패하고, 앱이 텔레그램으로 자동 보고(`[수업일지 자동 진단]`)하며 최근 주 시간표로 대신 보여준다. 고칠 때는 그 보고의 `diag` 부터 본다.
 - **`classnote.gwansan.com` 은 서버의 5xx 오류 문장을 Cloudflare "Host Error" 페이지로 가린다.** 그래서 `/api/comci` 는 오류를 424 로 돌려준다. 5xx 를 새로 쓰지 말 것.
 - 진단 순서(주소 앞에 `https://classnotee.pages.dev`):
