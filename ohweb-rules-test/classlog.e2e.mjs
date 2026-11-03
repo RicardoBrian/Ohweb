@@ -65,7 +65,8 @@ globalThis.caches = { default: {
 globalThis.fetch = (orig => async (url, opt) => {
   const u = String(url);
   if (!u.startsWith('http://comci.net:4082')) return orig(url, opt);
-  if (upstream === 'nomarkers' && u.endsWith('/st')) return new Response(pct2bytes(comci.eucKrPercent(`<!DOCTYPE html><html xmlns='http://www.w3.org/1999/xhtml' lang='ko'><head><meta http-equiv='Content-Type' content='text/html'></head><body>컴시간 안내 ${'x'.repeat(2000)}</body></html>`)));
+  if ((upstream === 'nomarkers' || upstream === 'broken') && u.endsWith('/st')) return new Response(pct2bytes(comci.eucKrPercent(`<!DOCTYPE html><html xmlns='http://www.w3.org/1999/xhtml' lang='ko'><head><meta http-equiv='Content-Type' content='text/html'></head><body>컴시간 안내 ${'x'.repeat(2000)}</body></html>`)));
+  if (upstream === 'broken') return new Response('not found', { status: 404 }); // 데이터 주소까지 바뀜
   if (upstream === 'hang') return new Promise((_, rej) => opt?.signal?.addEventListener('abort', () => rej(new DOMException('The operation was aborted due to timeout', 'TimeoutError')))); // 아예 응답이 없음
   if (upstream === '502') return new Response('<html><body>502 Bad Gateway</body></html>', { status: 502 });
   if (upstream === 'flaky' && flakyLeft > 0) { flakyLeft--; return new Response('<html>502</html>', { status: 502 }); }
@@ -469,7 +470,10 @@ ok('컴시간이 아예 응답하지 않아도 전체 대기 시간에 상한(�
 // 이번 장애 재현: 컴시간이 스크립트(sc_data 등)가 없는 페이지를 준다
 await upMode('nomarkers', true);
 const nm = await capi('code=43917&teacher=10&week=1&fresh=1');
-ok('스크립트 없는 페이지: 424 + 받은 페이지 모양 진단(diag)이 오류에 붙음', nm.status === 424 && nm.body?.diag?.has?.sc_data === false && typeof nm.body?.diag?.len === 'number' && Array.isArray(nm.body?.diag?.tags), JSON.stringify(nm.body).slice(0, 300));
+ok('이번 장애(스크립트를 못 읽음, 데이터 주소는 그대로): 마지막 정상 접속 정보로 시간표를 정상으로 받음', nm.status === 200 && nm.body.lessons?.length > 0 && ['known', 'lastgood'].includes(nm.body.debug?.boot), JSON.stringify({ s: nm.status, boot: nm.body?.debug?.boot, e: nm.body?.error }));
+await upMode('broken', true); // 데이터 주소까지 바뀐 최악의 경우
+const bk = await capi('code=43917&teacher=10&week=1&fresh=1');
+ok('데이터 주소까지 바뀌면: 424 + "마지막 정상 접속 정보로 시도했지만 실패" + 받은 페이지 모양 진단(diag)', bk.status === 424 && bk.body?.error?.includes('마지막 정상 접속 정보') && bk.body?.diag?.has?.sc_data === false && Array.isArray(bk.body?.diag?.tags), JSON.stringify(bk.body).slice(0, 300));
 // 앱: 기기에 보관된 주가 이번 주를 덮지 않는 상황(보관된 주를 2주 전으로 옮김) + 컴시간 고장 → 최근 주 시간표로 대신 보여주고 자동 보고
 await p.evaluate(() => {
   for (const k of Object.keys(localStorage).filter((x) => x.startsWith('classlog:tt:'))) {
@@ -485,11 +489,11 @@ await p.reload(); // 앱을 실제로 다시 시작(같은 주소로 goto 하면
 await p.waitForSelector('#weekGrid .fallback-note', { timeout: 15000 });
 ok('컴시간이 안 되면 최근 주 시간표를 이번 주 날짜에 맞춰 보여주고, 그렇다고 안내함', (await p.locator('#weekGrid .slot').count()) > 0 && (await p.textContent('#weekGrid .fallback-note')).includes('컴시간에 연결할 수 없어'));
 let autoRep = [];
-for (let i = 0; i < 20 && !autoRep.some((d) => d.text.includes('못 찾음')); i++) {
+for (let i = 0; i < 20 && !autoRep.some((d) => d.text.includes('마지막 정상 접속 정보')); i++) {
   await env.withSecurityRulesDisabled(async (c) => { autoRep = (await c.firestore().collection('classlog_feedback').get()).docs.map((d) => d.data()).filter((d) => d.view === 'auto'); });
-  if (!autoRep.some((d) => d.text.includes('못 찾음'))) await new Promise((r) => setTimeout(r, 300));
+  if (!autoRep.some((d) => d.text.includes('마지막 정상 접속 정보'))) await new Promise((r) => setTimeout(r, 300));
 }
-ok('실패 원인(받은 페이지 모양 포함)을 자동으로 보고(텔레그램 알림과 같은 기록) — 오프라인(Failed to fetch)은 보고 안 함', autoRep.some((d) => d.text.includes('자동 진단') && d.text.includes('못 찾음') && d.text.includes('"sc_data":false')) && !autoRep.some((d) => d.text.includes('Failed to fetch')), JSON.stringify(autoRep.map((d) => d.text.slice(0, 200))));
+ok('실패 원인(받은 페이지 모양 포함)을 자동으로 보고(텔레그램 알림과 같은 기록) — 오프라인(Failed to fetch)은 보고 안 함', autoRep.some((d) => d.text.includes('자동 진단') && d.text.includes('마지막 정상 접속 정보') && d.text.includes('"sc_data":false')) && !autoRep.some((d) => d.text.includes('Failed to fetch')), JSON.stringify(autoRep.map((d) => d.text.slice(0, 200))));
 await upMode('ok', true);
 await p.click('.side-item[data-go="settings"]');
 await p.click('#ttRefresh');
