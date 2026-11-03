@@ -89,11 +89,15 @@ async function cached(key, ttl, make, { fresh = false, meta } = {}) {
 }
 
 // /st 페이지 스크립트에서 동적 경로(route)·PREFIX·자료 키 번호를 뽑는다.
+// 컴시간은 가끔 이 스크립트를 바꾼다(따옴표 종류·경로 숫자 자릿수·공백) — 그 정도는 그대로 읽히게 느슨하게 찾는다.
 export function readBoot(host, html) {
-  const route = html.match(/url:\s*'(\.[^']+)'/)?.[1]; // 예: ./36179?17384l
-  const prefix = html.match(/sc_data\('([^']*)'/)?.[1]; // 예: 73629_
-  if (!route || prefix == null) throw new Error('/st 스크립트에서 route/prefix를 못 찾음(사이트 구조 변경?)');
-  const base = host + route.slice(1, 8); // "/36179?"
+  const route = html.match(/url\s*:\s*['"]\.\/(\d+)\?(\w+)['"]/); // 예: url:'./36179?17384l'+sc
+  const prefix = html.match(/sc_data\(\s*['"]([^'"]*)['"]/)?.[1]; // 예: sc_data('73629_',sc,1,'0')
+  if (!route || prefix == null) {
+    const what = [!route && 'route', prefix == null && 'prefix'].filter(Boolean).join('·');
+    throw new Error(`/st 스크립트에서 ${what}를 못 찾음(사이트 구조 변경? ?st=1 로 확인)`);
+  }
+  const base = `${host}/${route[1]}?`; // "http://comci.net:4082/36179?"
   // 스크립트가 쓰는 자료 키 번호(갱신 때마다 바뀜). 못 찾으면 파서가 값의 모양으로 추측한다.
   const num = (re) => html.match(re)?.[1];
   const keys = {
@@ -103,7 +107,7 @@ export function readBoot(host, html) {
     daily: num(/일일자료\s*=\s*Q자료\(\s*자료\.자료(\d+)\[/),
     room: num(/m3\s*=\s*자료\.자료(\d+)\[/),
   };
-  return { host, base, search: base + route.slice(8), prefix, keys };
+  return { host, base, search: base + route[2], prefix, keys };
 }
 async function bootstrap(env, opts) {
   const tried = [];
@@ -231,6 +235,15 @@ export async function onRequestGet({ request, env }) {
     return json({ results });
   }
 
+  if (url.searchParams.get('st')) {
+    // /st 스크립트에서 접속 주소·학교 코드 앞부분·자료 번호가 들어 있을 만한 부분만 잘라 보여준다(구조가 바뀌었을 때 맞추는 용도)
+    try {
+      const host = env.COMCI_URL || HOSTS[0];
+      const html = await getText(host + '/st', 'euc-kr');
+      const around = (re, n = 140) => [...html.matchAll(re)].slice(0, 4).map((m) => html.slice(Math.max(0, m.index - n), m.index + n));
+      return json({ len: html.length, sc_data: around(/sc_data/g), url: around(/url\s*:/g, 90), ajax: around(/\$\.ajax|fetch\(/g, 90), btoa: around(/btoa\(/g, 90), 성명: around(/성명/g, 90).slice(0, 2) });
+    } catch (e) { return json({ error: e.message }, 502); }
+  }
   const q = url.searchParams.get('q');
   const code = url.searchParams.get('code');
   if (!q && !code) return json({ error: 'q(학교명) 또는 code(학교코드) 필요' }, 400);
