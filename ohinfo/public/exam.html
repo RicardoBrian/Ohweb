@@ -161,6 +161,8 @@
     .CodeMirror-scroll { min-height: 160px; }
     .CodeMirror-gutters { background: rgba(15,20,40,0.95); border-right: 1px solid rgba(255,255,255,0.1); }
     .CodeMirror-linenumber { color: #556; }
+    /* 배경이 진한 남색이라 기본 커서(검정)가 안 보인다 → 흰색·2px */
+    .CodeMirror-cursor { border-left: 2px solid #ffffff; }
     .cm-s-default .cm-keyword { color: #c792ea; } .cm-s-default .cm-string { color: #a5d6a7; } .cm-s-default .cm-number { color: #f78c6c; } .cm-s-default .cm-comment { color: #546e7a; font-style: italic; } .cm-s-default .cm-def { color: #82aaff; } .cm-s-default .cm-builtin { color: #ffcb6b; }
     .stdin-box { margin-top: 8px; }
     .stdin-box label { font-size: 0.75rem; color: var(--sub); font-weight: 700; display: block; margin-bottom: 4px; }
