@@ -23,6 +23,11 @@
   3. `/api/comci?code=43917&week=1&probe=fetch` (또는 `boot`/`parse`/`full`) — 어느 단계에서 실패하는지
 - 앱은 마지막 시간표를 기기(localStorage)와 서버 캐시(하루)에 보관하므로, 컴시간이 고장 나도 화면에는 마지막 시간표가 남는다.
 
+## 수업일지(ohlog) — 화면 파일 보관(서비스 워커)
+- `ohlog/public/sw.js` 가 화면 파일(`/`, app.js, css, firebase-config.js)을 폰에 보관해 켤 때 바로 띄운다. 켤 때·앱으로 돌아올 때 뒤에서 새로 받아 비교하고, 바뀌었으면 통째로 바꾼 뒤 'updated' 를 보내 앱이 스스로 다시 연다.
+- 화면 파일을 새로 추가하면 `sw.js` 의 `SHELL` 목록에도 넣는다(안 넣으면 그 파일은 그냥 인터넷에서 받는다). `/api/*`·외부 주소는 손대지 않는다.
+- 지난 주 시간표: 컴시간은 지난 주를 안 주므로 받아 본 주를 기기에 최근 12주 보관(`classlog:arch:*`)해 주 목록에 '저장본'(음수 r)으로 붙인다.
+
 ## 작업 마무리
 - ohlog 를 고치면 `ohweb-rules-test` 에서 `npm run test:classlog` 를 통과시킨 뒤 PR 을 만들어 **main 에 합친다**(사용자가 따로 말하지 않아도).
 - Firestore 규칙(`ohweb-firestore.rules`)은 자동 배포되지 않는다. 고치면 `npm run test:rules` 통과 후, Firebase 콘솔에 붙여넣어 게시해야 한다고 사용자에게 알린다.

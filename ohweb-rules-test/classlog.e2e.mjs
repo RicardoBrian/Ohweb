@@ -88,7 +88,7 @@ export const auth = getAuth(app); connectAuthEmulator(auth, 'http://127.0.0.1:90
 window.__signIn = (email) => signInWithCredential(auth, GoogleAuthProvider.credential(JSON.stringify({ sub: email, email, email_verified: true })));`;
 // 새 버전 감지: 실제 version.js 를 돌리고(ASSETS 는 정적 파일로 대신), '배포'는 소금 값을 올려 흉내 낸다
 const version = await import(new URL('../ohlog/functions/api/version.js', import.meta.url));
-let deploySalt = 0;
+let deploySalt = 0, appStamp = '';
 const assets = { fetch: async (u) => { const f = path.join(ROOT, new URL(u).pathname === '/' ? 'index.html' : new URL(u).pathname); return existsSync(f) ? new Response(readFileSync(f)) : new Response('', { status: 404 }); } };
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml' };
 const server = http.createServer(async (req, res) => {
@@ -107,7 +107,8 @@ const server = http.createServer(async (req, res) => {
   if (u.pathname === '/firebase-config.js') { res.writeHead(200, { 'content-type': 'text/javascript' }); res.end(fbconf); return; }
   const f = path.join(ROOT, u.pathname === '/' ? 'index.html' : u.pathname);
   if (!f.startsWith(ROOT) || !existsSync(f)) { res.writeHead(404); res.end(); return; }
-  res.writeHead(200, { 'content-type': TYPES[path.extname(f)] || 'application/octet-stream' }); res.end(readFileSync(f));
+  res.writeHead(200, { 'content-type': TYPES[path.extname(f)] || 'application/octet-stream' });
+  res.end(u.pathname === '/app.js' && appStamp ? readFileSync(f, 'utf8') + `\n// stamp ${appStamp}\n` : readFileSync(f)); // 배포 흉내(내용이 바뀐 app.js)
 });
 await new Promise((r) => server.listen(8098, r));
 
@@ -575,6 +576,34 @@ ok('설정에서 다크를 고르면 어두운 화면이 됨', await P.$eval('bo
 await P.click('.side-item[data-go="week"]');
 await P.waitForSelector('#weekGrid .slot');
 await shot(P, '10-week-dark');
+
+// 9.5) 화면 파일 보관(서비스 워커): 켤 때 바로 뜨고, 끊겨도 열리고, 새 버전은 알아서 바뀐다
+{
+  await p.goto('http://localhost:8098/#week');
+  await p.waitForFunction(() => document.querySelector('#app:not(.hidden)'));
+  await p.evaluate(() => navigator.serviceWorker.ready);
+  if (!(await p.evaluate(() => !!navigator.serviceWorker.controller))) { await p.reload(); await p.waitForFunction(() => document.querySelector('#app:not(.hidden)')); }
+  ok('서비스 워커가 화면 파일을 맡음(다음부터 폰에 보관한 화면으로 바로 뜸)', await p.evaluate(() => !!navigator.serviceWorker.controller));
+  await p.context().setOffline(true);
+  await p.reload();
+  let offlineOk = true;
+  try { await p.waitForSelector('#app:not(.hidden) #weekGrid .slot', { timeout: 15000 }); } catch { offlineOk = false; }
+  ok('인터넷이 끊겨도 보관한 화면과 저장된 시간표로 열림', offlineOk);
+  await p.context().setOffline(false);
+  appStamp = 'v2'; // 새 버전 배포(app.js 내용이 바뀜)
+  let loads = 0; const onLoad = () => loads++; p.on('load', onLoad);
+  await p.reload(); // 보관본으로 먼저 뜨고, 뒤에서 비교 → 바뀌었으면 알아서 한 번 더 다시 열림
+  const until = Date.now() + 20000;
+  while (loads < 2 && Date.now() < until) await p.waitForTimeout(250);
+  p.off('load', onLoad);
+  await p.waitForFunction(() => document.querySelector('#app:not(.hidden)'));
+  let newCode = false;
+  for (let i = 0; i < 20 && !newCode; i++) { try { newCode = await p.evaluate(() => fetch('/app.js').then((r) => r.text()).then((t) => t.includes('stamp v2'))); } catch {} if (!newCode) await p.waitForTimeout(250); }
+  ok('새 버전을 배포하면 보관본을 새로 받고 앱이 스스로 다시 열림', loads >= 2 && newCode, JSON.stringify({ loads, newCode }));
+  // 지난 주 저장본: 컴시간 목록에 없는 지난 주도 주 선택에 남는다
+  const opts = await p.locator('#weekSel option').allTextContents();
+  ok('받아 본 지난 주 시간표는 "저장본"으로 주 선택에 남음', opts.some((t) => t.includes('저장본')), JSON.stringify(opts));
+}
 
 // 10) 해상도별 화면(SHOTS 를 줄 때만): 휴대폰·태블릿·노트북·큰 모니터
 if (SHOTS) {
