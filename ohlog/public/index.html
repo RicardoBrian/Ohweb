@@ -300,6 +300,10 @@
         </div>
         <p class="muted small">같은 이름이 여럿이면 아래 시간표를 보고 내 것을 고르세요.</p>
         <div id="obPreview" style="margin-top:12px"></div>
+        <div class="privacy-sum"><b>개인정보 수집·이용 동의</b>
+          <ul><li>항목: 구글 이메일·이름, 학교, 교사 이름, 직접 쓴 일지·계획</li><li>목적: 로그인·승인, 시간표 표시, 기록 저장</li><li>보관: 탈퇴(삭제 요청) 때까지</li><li>Google·Cloudflare(해외 서버)에 저장돼요</li><li>동의하지 않을 수 있지만, 그러면 쓸 수 없어요</li></ul>
+          <a href="privacy.html" target="_blank" rel="noopener">개인정보 처리방침 전체 보기</a></div>
+        <label class="agree"><input type="checkbox" id="obAgree"> 위 내용에 동의합니다</label>
         <div class="modal-actions">
           <button class="btn ghost" id="obBack">학교 다시 고르기</button>
           <button class="btn accent" id="obSubmit" disabled>이 이름으로 신청</button>
@@ -570,7 +574,8 @@
     </div>
     <div class="field">
       <span>특이사항</span>
-      <textarea class="inp" id="lmNote" style="min-height:60px" placeholder="결석생, 학생 메모 등"></textarea>
+      <textarea class="inp" id="lmNote" style="min-height:60px" placeholder="다음 시간 준비, 수업 특이사항 등"></textarea>
+      <p class="muted small" style="margin:4px 0 0">학생 실명·연락처·건강 등 민감한 내용은 쓰지 마세요.</p>
     </div>
     <div class="modal-actions sticky">
       <button class="btn danger left hidden" id="lmDelete">삭제</button>
@@ -642,6 +647,19 @@
 </div>
 
 <!-- 확인 -->
+<div class="modal-overlay" id="privacyModal">
+  <div class="modal-box sm">
+    <h3>개인정보 수집·이용 동의</h3>
+    <p class="sub">계속 쓰시려면 아래 내용에 동의해 주세요.</p>
+    <div class="privacy-sum"><b>개인정보 수집·이용 동의</b>
+          <ul><li>항목: 구글 이메일·이름, 학교, 교사 이름, 직접 쓴 일지·계획</li><li>목적: 로그인·승인, 시간표 표시, 기록 저장</li><li>보관: 탈퇴(삭제 요청) 때까지</li><li>Google·Cloudflare(해외 서버)에 저장돼요</li><li>동의하지 않을 수 있지만, 그러면 쓸 수 없어요</li></ul>
+          <a href="privacy.html" target="_blank" rel="noopener">개인정보 처리방침 전체 보기</a></div>
+    <div class="modal-actions">
+      <button class="btn ghost" data-act="logout">로그아웃</button>
+      <button class="btn accent" id="privacyYes">동의하고 계속</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="askModal">
   <div class="modal-box sm">
     <h3 id="askTitle"></h3>

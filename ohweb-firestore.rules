@@ -401,7 +401,8 @@ service cloud.firestore {
     }
     function clProfileOk(d) {
       return d.keys().hasOnly(['email', 'name', 'schoolCode', 'schoolName', 'region', 'teacherId', 'teacherName',
-                               'status', 'createdAt', 'updatedAt', 'approvedAt'])
+                               'status', 'createdAt', 'updatedAt', 'approvedAt', 'privacyVersion', 'privacyAgreedAt'])
+          && d.get('privacyVersion', '') is string && d.get('privacyVersion', '').size() <= 20
           && d.email == request.auth.token.email
           && d.name is string && d.name.size() <= 80
           && d.schoolCode is int && d.teacherId is int
@@ -420,6 +421,7 @@ service cloud.firestore {
       allow create: if isAdmin()
           || (clGoogle() && request.auth.uid == uid && clProfileOk(request.resource.data)
               && request.resource.data.status == 'pending'
+              && request.resource.data.get('privacyVersion', '') != ''   // 개인정보 동의 없이는 가입 불가
               && !('approvedAt' in request.resource.data));
       // 본인 수정: 승인 상태·승인 시각은 못 올린다. 학교·이름을 바꾸거나 다시 신청하면 대기로만 갈 수 있다.
       allow update: if isAdmin()

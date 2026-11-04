@@ -181,9 +181,27 @@ function bootFromCache() {
 }
 
 // 프로필 상태에 맞는 화면으로
+// 개인정보 처리방침 버전(privacy.html 시행일). 바꾸면 모두에게 다시 동의를 받는다.
+const PRIVACY_VER = '2026-11-04';
+const privacyFields = () => ({ privacyVersion: PRIVACY_VER, privacyAgreedAt: serverTimestamp() });
 function route(before) {
   const p = S.profile;
   if (S.forceOnboard || !p) { startOnboard(); return; }
+  // 이미 가입한 선생님: 동의 기록이 없으면 한 번 받는다
+  if (p.privacyVersion !== PRIVACY_VER && store.get('classlog:privacy') !== PRIVACY_VER + ':' + S.user.uid) {
+    $('privacyModal').classList.add('show');
+    $('privacyYes').onclick = async () => {
+      $('privacyYes').disabled = true;
+      await sdkReady;
+      try { await setDoc(userRef(), { ...privacyFields(), updatedAt: serverTimestamp() }, { merge: true }); }
+      catch (e) { console.warn('[동의 저장 실패]', e); store.set('classlog:privacy', PRIVACY_VER + ':' + S.user.uid); } // 저장이 막혀도(규칙 게시 전) 쓰는 건 막지 않는다
+      $('privacyYes').disabled = false;
+      $('privacyModal').classList.remove('show');
+      p.privacyVersion = PRIVACY_VER;
+      route(before);
+    };
+    return;
+  }
   if (p.status !== 'approved') {
     stopApp();
     $('pendTitle').textContent = p.status === 'rejected' ? '승인되지 않았어요' : '승인 대기 중';
@@ -244,9 +262,10 @@ async function pickSchool(s) {
 }
 $('obBack').onclick = () => { steps(1); $('obSchool').classList.remove('hidden'); $('obTeacher').classList.add('hidden'); };
 $('obTeacherSel').onchange = previewTeacher;
+$('obAgree').onchange = () => { $('obSubmit').disabled = !Number($('obTeacherSel').value) || !$('obAgree').checked; };
 async function previewTeacher() {
   const id = Number($('obTeacherSel').value);
-  $('obSubmit').disabled = !id;
+  $('obSubmit').disabled = !id || !$('obAgree').checked;
   if (!id) { $('obPreview').innerHTML = ''; return; }
   steps(3);
   $('obPreview').innerHTML = '<div class="spinner"></div>';
@@ -274,6 +293,7 @@ $('obSubmit').onclick = async () => {
     teacherId: id, teacherName: t.name,
     // 관리자 본인은 바로 승인. 이미 승인된 사람이 같은 이름을 다시 고르면 그대로 둔다.
     status: S.admin || (same && p.status === 'approved') ? 'approved' : 'pending',
+    ...privacyFields(),
     updatedAt: serverTimestamp(),
   };
   if (!p) data.createdAt = serverTimestamp();
@@ -535,6 +555,7 @@ function fillCredit() {
     el.innerHTML = `<div>© ${new Date().getFullYear()} 관산중학교 오범석 · 수업일지</div><div class="links">
       <a href="https://instagram.com/nosuk.beom" target="_blank" rel="noopener" aria-label="인스타그램 @nosuk.beom" title="인스타그램 @nosuk.beom">${icon('ig', 18)}</a>
       <a href="mailto:qjatjr7575@gmail.com" aria-label="메일 qjatjr7575@gmail.com" title="메일 qjatjr7575@gmail.com">${icon('mail', 18)}</a>
+      <a href="privacy.html" target="_blank" rel="noopener" class="small" style="font-size:0.8rem">개인정보 처리방침</a>
       ${el.dataset.fb ? `<button type="button" class="link-btn" data-act="feedback" aria-label="피드백 남기기" title="피드백 남기기">${icon('chat', 18)}</button>` : ''}</div>`;
   });
 }

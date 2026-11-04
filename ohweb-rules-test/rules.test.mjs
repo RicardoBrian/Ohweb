@@ -242,7 +242,7 @@ await T('노션: 비로그인이 페이지 목록·개별 읽기(학생 화면)'
 {
   const g = (uid, email) => env.authenticatedContext(uid, { email, email_verified: true, firebase: { sign_in_provider: 'google.com' } }).firestore();
   const T1 = g('tch1', 't1@gmail.com'), T2 = g('tch2', 't2@gmail.com'), T3 = g('tch3', 't3@gmail.com');
-  const prof = (email, extra = {}) => ({ email, name: '선생님', schoolCode: 43917, schoolName: '관산중학교', region: '경기', teacherId: 10, teacherName: '김현*', status: 'pending', createdAt: serverTimestamp(), updatedAt: serverTimestamp(), ...extra });
+  const prof = (email, extra = {}) => ({ email, name: '선생님', schoolCode: 43917, schoolName: '관산중학교', region: '경기', teacherId: 10, teacherName: '김현*', status: 'pending', privacyVersion: '2026-11-04', privacyAgreedAt: serverTimestamp(), createdAt: serverTimestamp(), updatedAt: serverTimestamp(), ...extra });
   const log = { date: '2026-10-29', period: 3, grade: 3, cls: 2, subject: '수학', status: 'normal', planItem: '', unit: '', content: '방정식', homework: '', note: '', updatedAt: serverTimestamp() };
   console.log('── 수업일지: 공격 ──');
   await T('수업일지: 학생 계정(@ohinfo.local)이 교사 신청', setDoc(doc(A, 'classlog_users/uidA'), prof('stua@ohinfo.local')), false);
@@ -251,6 +251,7 @@ await T('노션: 비로그인이 페이지 목록·개별 읽기(학생 화면)'
   await T('수업일지: 남의 uid로 신청', setDoc(doc(T1, 'classlog_users/tch2'), prof('t1@gmail.com')), false);
   await T('수업일지: 다른 이메일로 신청', setDoc(doc(T1, 'classlog_users/tch1'), prof('other@gmail.com')), false);
   await T('수업일지: 모르는 필드 넣어 신청', setDoc(doc(T1, 'classlog_users/tch1'), prof('t1@gmail.com', { isAdmin: true })), false);
+  await T('수업일지: 개인정보 동의 없이 신청', setDoc(doc(T1, 'classlog_users/tch1'), prof('t1@gmail.com', { privacyVersion: '' })), false);
   await setDoc(doc(T1, 'classlog_users/tch1'), prof('t1@gmail.com'));
   await T('수업일지: 대기 중에 일지 쓰기', setDoc(doc(T1, 'classlog_users/tch1/logs/2026-10-29_3_3-2'), log), false);
   await T('수업일지: 대기 중에 스스로 승인', updateDoc(doc(T1, 'classlog_users/tch1'), { status: 'approved' }), false);

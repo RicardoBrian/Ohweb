@@ -144,6 +144,8 @@ async function onboard(page, teacherId) {
   await page.waitForSelector('#obTeacherSel option[value="10"]', { state: 'attached' });
   await page.selectOption('#obTeacherSel', String(teacherId));
   await page.waitForSelector('#obPreview .week-grid');
+  ok('개인정보 동의 전에는 신청 버튼이 꺼져 있음', await page.isDisabled('#obSubmit'));
+  await page.check('#obAgree');
 }
 
 // 1) 관리자: 가입하면 바로 승인
@@ -160,6 +162,31 @@ await onboard(T.page, 10);
 await T.page.click('#obSubmit');
 await T.page.waitForSelector('#screenPending.show');
 ok('교사는 신청 후 승인 대기 화면', (await T.page.textContent('#pendTitle')).includes('대기'));
+{
+  let tp = null;
+  // 화면은 저장 확인 전에 바뀔 수 있다 → 서버에 들어올 때까지 잠깐 기다린다
+  for (let i = 0; i < 30 && !tp; i++) {
+    await env.withSecurityRulesDisabled(async (c) => { tp = (await c.firestore().collection('classlog_users').get()).docs.map((d) => d.data()).find((d) => d.email === 'teacher@gmail.com'); });
+    if (!tp) await new Promise((r) => setTimeout(r, 200));
+  }
+  ok('가입 신청에 개인정보 동의(버전·시각)가 저장됨', tp?.privacyVersion === '2026-11-04' && !!tp?.privacyAgreedAt, JSON.stringify(tp));
+  // 동의 기록이 없는 기존 사용자(관리자 문서에서 지움) → 다시 열면 동의 창 → 동의하면 앱으로
+  let aid = null;
+  await env.withSecurityRulesDisabled(async (c) => {
+    const d = (await c.firestore().collection('classlog_users').get()).docs.find((x) => x.data().email === 'qjatjr7575@gmail.com');
+    aid = d.id; const { privacyVersion, privacyAgreedAt, ...rest } = d.data(); await c.firestore().doc('classlog_users/' + aid).set(rest);
+  });
+  await A.page.reload();
+  await A.page.waitForSelector('#privacyModal.show');
+  await A.page.click('#privacyYes');
+  await A.page.waitForSelector('#app:not(.hidden) #sec-today.active');
+  let ap = null;
+  for (let i = 0; i < 30 && ap?.privacyVersion !== '2026-11-04'; i++) {
+    await env.withSecurityRulesDisabled(async (c) => { ap = (await c.firestore().doc('classlog_users/' + aid).get()).data(); });
+    if (ap?.privacyVersion !== '2026-11-04') await new Promise((r) => setTimeout(r, 200));
+  }
+  ok('동의 기록 없는 기존 사용자는 동의 창 → 동의 저장 후 앱 사용', ap?.privacyVersion === '2026-11-04');
+}
 await shot(T.page, '02-pending-m');
 
 // 3) 관리자 승인 → 교사 화면 자동 전환
