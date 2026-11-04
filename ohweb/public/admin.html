@@ -318,6 +318,22 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* 시험 실시간 현황판 */
+    .live-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; }
+    .live-card { border-radius:12px; padding:10px 12px; border:2px solid transparent; cursor:pointer; font-size:0.8rem; line-height:1.5; }
+    .live-card .lc-name { font-weight:800; font-size:0.9rem; }
+    .live-card .lc-sub { color:var(--sub); font-size:0.75rem; }
+    .live-card.st-none { background:rgba(148,163,184,0.15); border-color:rgba(148,163,184,0.4); cursor:default; opacity:0.75; }
+    .live-card.st-doing { background:rgba(59,130,246,0.12); border-color:rgba(59,130,246,0.55); }
+    .live-card.st-done { background:rgba(34,197,94,0.12); border-color:rgba(34,197,94,0.55); }
+    .live-card.st-fail { background:rgba(239,68,68,0.12); border-color:rgba(239,68,68,0.7); }
+    .live-card .lc-off { display:inline-block; padding:1px 7px; border-radius:50px; font-size:0.68rem; font-weight:800; background:rgba(239,68,68,0.15); color:#ef4444; }
+    .live-card .lc-warn { color:#ef4444; font-weight:700; }
+    .live-card.blink { animation: liveBlink 1s ease-in-out infinite; }
+    @keyframes liveBlink { 50% { box-shadow:0 0 0 4px rgba(239,68,68,0.7); background:rgba(239,68,68,0.3); } }
+    .live-legend { display:flex; gap:12px; flex-wrap:wrap; font-size:0.75rem; color:var(--sub); margin-bottom:10px; }
+    .live-legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:4px; vertical-align:-1px; }
+
     /* 알림 토스트 */
     .toast {
       position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(80px);
@@ -1011,6 +1027,11 @@
             <button class="btn accent sm" onclick="exportResultsPDF()"><svg width="13" height="13" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-doc"/></svg>PDF 내보내기</button>
           </div>
         </div>
+        <div style="display:flex;gap:6px;margin-bottom:12px;">
+          <button class="btn sm" id="resModeTable" onclick="setResultMode('table')">결과 표</button>
+          <button class="btn ghost sm" id="resModeLive" onclick="setResultMode('live')">실시간</button>
+        </div>
+        <div id="liveBoard" class="hidden"></div>
         <div id="resultTable"><div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-chart"/></svg></div>배정을 선택하세요.</div></div>
       </div>
     </div>
@@ -1092,7 +1113,7 @@
   import { db, auth } from './firebase-config.js';
   import {
     collection, addDoc, getDocs, deleteDoc, doc,
-    query, where, orderBy, setDoc, getDoc, serverTimestamp, writeBatch, updateDoc, deleteField
+    query, where, orderBy, setDoc, getDoc, serverTimestamp, writeBatch, updateDoc, deleteField, onSnapshot
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import * as QCSV from './exam-qcsv.js?v=20261104a';
 
@@ -3274,8 +3295,182 @@
     return h ? `${h}시간 ${m}분` : `${m}분 ${s2}초`;
   }
 
+  // ── 실시간 현황판 ──
+  // exam_progress(asId==선택 배정)를 onSnapshot으로 구독해 학생 카드로 보여준다.
+  // 배정 대상 학생 중 기록이 없으면 미입장. 현황판이 화면에서 사라지면
+  // (다른 탭·메뉴로 이동, 결과 표로 전환, 배정 변경) 구독을 끊는다.
+  const LIVE_OFFLINE_MS = 90 * 1000;
+  let _resultMode = 'table';
+  const live = { asId: '', unsub: null, ticker: null, progs: new Map(), targets: [], assignment: null, qTitles: {}, qOrder: [], prevAlert: new Map(), blinkUntil: new Map(), peekId: '' };
+  function stopLive() {
+    if (live.unsub) { try { live.unsub(); } catch (e) {} }
+    clearInterval(live.ticker);
+    live.unsub = null; live.ticker = null; live.asId = '';
+    live.progs = new Map(); live.prevAlert = new Map(); live.blinkUntil = new Map();
+    document.getElementById('livePeekModal')?.remove();
+    live.peekId = '';
+  }
+  window.setResultMode = (mode) => {
+    _resultMode = mode === 'live' ? 'live' : 'table';
+    document.getElementById('resModeTable').className = 'btn sm' + (_resultMode === 'table' ? '' : ' ghost');
+    document.getElementById('resModeLive').className = 'btn sm' + (_resultMode === 'live' ? '' : ' ghost');
+    document.getElementById('resultTable').classList.toggle('hidden', _resultMode === 'live');
+    document.getElementById('liveBoard').classList.toggle('hidden', _resultMode !== 'live');
+    window.loadResults();
+  };
+  async function startLive(asId) {
+    stopLive();
+    const el = document.getElementById('liveBoard');
+    if (!asId) { el.innerHTML = '<div class="empty-state">배정을 선택하세요.</div>'; return; }
+    live.asId = asId;
+    el.innerHTML = '<div class="empty-state">불러오는 중…</div>';
+    try {
+      const aSnap = await getDoc(doc(db, 'exam_assignments', asId));
+      const a = aSnap.exists() ? aSnap.data() : {};
+      const [stSnap, qSnap] = await Promise.all([
+        getDocs(collection(db, 'students')),
+        a.examId ? getDocs(query(collection(db, 'exam_questions'), where('examId', '==', a.examId))) : Promise.resolve({ docs: [] }),
+      ]);
+      if (live.asId !== asId) return;
+      live.assignment = a;
+      live.targets = stSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(st => !st.isMaster
+        && (!a.grade || normGC(a.grade) === normGC(st.grade))
+        && (!a.class || normGC(a.class) === normGC(st.class))
+        && (!a.schoolName || a.schoolName === (st.schoolName || '')));
+      const qs = qSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+        .sort((x, y) => (x.order || 0) - (y.order || 0) || String(x.createdAt || '').localeCompare(String(y.createdAt || '')));
+      live.qOrder = qs.map(q => q.id);
+      live.qTitles = Object.fromEntries(qs.map((q, i) => [q.id, `Q${i + 1}. ${q.title || ''}`]));
+    } catch (e) {
+      if (live.asId === asId) el.innerHTML = '<div style="color:#ef4444;padding:20px;">오류: ' + escHtml(e.message) + '</div>';
+      return;
+    }
+    let first = true;
+    live.unsub = onSnapshot(query(collection(db, 'exam_progress'), where('asId', '==', asId)), snap => {
+      snap.docs.forEach(d => {
+        const p = { id: d.id, ...d.data() };
+        p._studentId = p.studentId || d.id.slice(asId.length + 1);
+        const prev = live.prevAlert.get(p._studentId);
+        if (!first && prev !== undefined && (p.alertCount || 0) > prev) live.blinkUntil.set(p._studentId, Date.now() + 6000);
+        live.prevAlert.set(p._studentId, p.alertCount || 0);
+        live.progs.set(p._studentId, p);
+      });
+      snap.docChanges().forEach(c => { if (c.type === 'removed') live.progs.delete(c.doc.data().studentId || c.doc.id.slice(asId.length + 1)); });
+      first = false;
+      renderLive();
+      if (live.peekId) renderPeek();
+    }, e => { el.innerHTML = '<div style="color:#ef4444;padding:20px;">실시간 연결 오류: ' + escHtml(e.message) + '</div>'; });
+    live.ticker = setInterval(() => {
+      // 현황판이 화면에서 사라졌으면 구독을 끊는다.
+      if (!el.offsetParent) { stopLive(); return; }
+      renderLive();
+    }, 5000);
+  }
+  function liveState(p) {
+    if (!p || (!p.startTime && p.status !== 'submitted')) return 'none';
+    if (p.status === 'submitted') return 'done';
+    if (p.pendingAnswers) return 'fail';
+    return 'doing';
+  }
+  function renderLive() {
+    const el = document.getElementById('liveBoard');
+    if (!live.asId) return;
+    const a = live.assignment || {};
+    const now = Date.now();
+    // 대상 학생 + 대상 밖이지만 기록이 있는 학생(마스터 등)
+    const ids = new Set(live.targets.map(t => t.id));
+    const rows = live.targets.map(t => ({ id: t.id, t, p: live.progs.get(t.id) }));
+    live.progs.forEach((p, id) => { if (!ids.has(id)) rows.push({ id, t: null, p }); });
+    rows.forEach(r => {
+      const src = r.p || r.t || {};
+      r.name = src.name || r.t?.name || '-';
+      r.num = src.num ?? r.t?.num ?? '';
+      r.cls = src.class ?? r.t?.class ?? '';
+      r.state = liveState(r.p);
+    });
+    rows.sort((x, y) => String(x.cls).localeCompare(String(y.cls), 'ko', { numeric: true }) || (parseInt(x.num) || 0) - (parseInt(y.num) || 0));
+    const cnt = { none: 0, doing: 0, done: 0, fail: 0 };
+    rows.forEach(r => cnt[r.state]++);
+    const total = live.qOrder.length;
+    const dur = Number(a.duration) || 0;
+    const card = r => {
+      const p = r.p || {};
+      const label = { none: '미입장', doing: '푸는 중', done: '제출', fail: '제출 실패' }[r.state];
+      let lines = '';
+      if (r.state !== 'none') {
+        const answered = typeof p.answeredCount === 'number' ? p.answeredCount : null;
+        lines += `<div>답 ${answered == null ? '-' : answered}${total ? '/' + total : ''}문항</div>`;
+        if (r.state === 'doing' || r.state === 'fail') {
+          if (dur > 0) {
+            const st = tsMs(p.startTime);
+            const left = Number.isNaN(st) ? null : Math.max(0, Math.round((st + dur * 60000 - now) / 1000));
+            lines += `<div>남은 시간 ${left == null ? '-' : `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`}</div>`;
+          }
+          const seen = tsMs(p.lastSeenAt);
+          if (!Number.isNaN(seen) && now - seen > LIVE_OFFLINE_MS) lines += `<div><span class="lc-off">연결 끊김</span></div>`;
+        }
+        lines += `<div class="${(p.alertCount || 0) > 0 ? 'lc-warn' : ''}">이탈 ${p.alertCount || 0} · <span class="${(p.pasteBlockCount || 0) > 0 ? 'lc-warn' : ''}">붙여넣기 ${p.pasteBlockCount || 0}</span></div>`;
+      }
+      const blink = (live.blinkUntil.get(r.id) || 0) > now;
+      const click = r.state === 'none' ? '' : ` onclick="openLivePeek(${jsArg(r.id)})"`;
+      return `<div class="live-card st-${r.state}${blink ? ' blink' : ''}" data-sid="${escHtml(r.id)}"${click}>
+        <div class="lc-name">${escHtml(r.num !== '' ? r.num + '. ' : '')}${escHtml(r.name)}</div>
+        <div class="lc-sub">${label}</div>${lines}</div>`;
+    };
+    el.innerHTML = `<div class="live-legend">
+        <span><i style="background:rgba(148,163,184,0.6)"></i>미입장 ${cnt.none}</span>
+        <span><i style="background:#3b82f6"></i>푸는 중 ${cnt.doing}</span>
+        <span><i style="background:#22c55e"></i>제출 ${cnt.done}</span>
+        <span><i style="background:#ef4444"></i>제출 실패 ${cnt.fail}</span>
+        <span>· 카드를 누르면 현재 답을 봅니다 · ${Math.round(LIVE_OFFLINE_MS / 1000)}초 넘게 소식이 없으면 '연결 끊김'</span>
+      </div>
+      ${rows.length ? `<div class="live-grid">${rows.map(card).join('')}</div>` : '<div class="empty-state">대상 학생이 없습니다.</div>'}`;
+    live.blinkUntil.forEach((t, id) => { if (t <= now) live.blinkUntil.delete(id); });
+  }
+  // 다른 화면에 갔다가 돌아와 현황판이 다시 보이면 구독을 다시 연다.
+  new IntersectionObserver(ents => {
+    if (ents.some(e => e.isIntersecting) && _resultMode === 'live' && !live.unsub) {
+      const v = document.getElementById('res_asId').value;
+      if (v) startLive(v);
+    }
+  }).observe(document.getElementById('liveBoard'));
+  window.openLivePeek = (sid) => {
+    live.peekId = sid;
+    document.getElementById('livePeekModal')?.remove();
+    const m = document.createElement('div');
+    m.id = 'livePeekModal';
+    m.style.cssText = 'position:fixed;inset:0;z-index:9000;display:flex;align-items:flex-start;justify-content:center;background:rgba(0,0,0,0.5);padding:20px;overflow-y:auto;';
+    m.onclick = e => { if (e.target === m) closeLivePeek(); };
+    document.body.appendChild(m);
+    renderPeek();
+  };
+  window.closeLivePeek = () => { live.peekId = ''; document.getElementById('livePeekModal')?.remove(); };
+  function renderPeek() {
+    const m = document.getElementById('livePeekModal');
+    if (!m) return;
+    const p = live.progs.get(live.peekId) || {};
+    const la = p.liveAnswers || {};
+    const keys = [...live.qOrder.filter(k => k in la), ...Object.keys(la).filter(k => !live.qOrder.includes(k))];
+    const body = keys.length ? keys.map((k, i) => `<div style="margin-bottom:12px;">
+        <div style="font-weight:700;font-size:0.82rem;margin-bottom:4px;">${escHtml(live.qTitles[k] || `Q${i + 1}`)}</div>
+        <pre style="white-space:pre-wrap;word-break:break-word;margin:0;padding:8px 10px;border-radius:8px;background:rgba(148,163,184,0.12);font-size:0.8rem;min-height:1.6em;">${la[k] ? escHtml(la[k]) : '<span style="color:var(--sub)">(아직 답 없음)</span>'}</pre></div>`).join('')
+      : '<div class="empty-state">아직 받은 답이 없습니다. (학생 화면이 30초마다 보냅니다)</div>';
+    const scroll = m.querySelector('.lp-body')?.scrollTop || 0;
+    m.innerHTML = `<div class="card" style="max-width:720px;width:100%;margin:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;">
+        <b>${escHtml(p.num ? p.num + '. ' : '')}${escHtml(p.name || '')} — 현재 답 (읽기 전용, 실시간)</b>
+        <button class="btn ghost sm" onclick="closeLivePeek()">닫기</button>
+      </div>
+      <div style="font-size:0.75rem;color:var(--sub);margin-bottom:10px;">마지막 수신 ${escHtml(fmtTs(p.lastSeenAt) || '-')}${p.status === 'submitted' ? ' · 제출함' : ''}</div>
+      <div class="lp-body" style="max-height:70vh;overflow-y:auto;">${body}</div>
+    </div>`;
+    const b = m.querySelector('.lp-body'); if (b) b.scrollTop = scroll;
+  }
+
   window.loadResults = async () => {
     const asId = document.getElementById('res_asId').value;
+    if (_resultMode === 'live') { if (asId !== live.asId || !live.unsub) startLive(asId); return; }
+    stopLive();
     const el = document.getElementById('resultTable');
     if (!asId) { el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-chart"/></svg></div>배정을 선택하세요.</div>'; return; }
     showLoading(true);
