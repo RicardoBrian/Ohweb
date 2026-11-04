@@ -396,6 +396,23 @@
 <a class="qna-fab" href="qna.html"><svg width="24" height="24"><use href="#ic-chat"/></svg><span class="badge" id="qnaBadge"></span><span class="qna-tip">정보 관련 질문이나 웹사이트 버그가 있으면 알려주세요.</span></a>
 
 <script type="module">
+  // 문항 이미지가 구글 드라이브 공유 링크(…/file/d/ID/view, open?id=ID)면 <img>로 바로
+  // 안 뜨므로 썸네일 주소로 바꿔 보여준다. 썸네일이 막히면 lh3 주소로 한 번 더 시도.
+  function driveFileId(url) {
+    const s = String(url || '');
+    if (!/^https:\/\/(drive|docs)\.google\.com\//.test(s)) return '';
+    const m = s.match(/\/d\/([\w-]{10,})|[?&]id=([\w-]{10,})/);
+    return m ? (m[1] || m[2]) : '';
+  }
+  function examImgSrc(url) {
+    const id = driveFileId(url);
+    return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w1600` : String(url || '');
+  }
+  window.examImgFallback = img => {
+    if (img.dataset.fb) return;
+    img.dataset.fb = '1';
+    img.src = `https://lh3.googleusercontent.com/d/${img.dataset.fid}=w1600`;
+  };
 import { db, auth } from './firebase-config.js';
 import { escHtml, safePhotoUrl } from './escape.js';
 import { setPageTitle } from './page-title.js';
@@ -1179,7 +1196,8 @@ function renderQuestion(q, i) {
     `;
   }
 
-  const imgHtml = q.imageUrl ? `<img class="q-img" src="${escHtml(q.imageUrl)}" alt="" loading="lazy">` : '';
+  const imgFid = driveFileId(q.imageUrl);
+  const imgHtml = q.imageUrl ? `<img class="q-img" src="${escHtml(examImgSrc(q.imageUrl))}" alt="" loading="lazy" referrerpolicy="no-referrer"${imgFid ? ` data-fid="${escHtml(imgFid)}" onerror="examImgFallback(this)"` : ''}>` : '';
 
   return `<div class="q-card" id="qcard_${i}">
     <div class="q-header">
