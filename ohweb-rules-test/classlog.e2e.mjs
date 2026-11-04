@@ -590,7 +590,7 @@ await shot(P, '10-week-dark');
   try { await p.waitForSelector('#app:not(.hidden) #weekGrid .slot', { timeout: 15000 }); } catch { offlineOk = false; }
   ok('인터넷이 끊겨도 보관한 화면과 저장된 시간표로 열림', offlineOk);
   await p.context().setOffline(false);
-  appStamp = 'v2'; // 새 버전 배포(app.js 내용이 바뀜)
+  appStamp = 'v2'; await deploy(); // 새 버전 배포(app.js 내용과 버전값이 바뀜)
   let loads = 0; const onLoad = () => loads++; p.on('load', onLoad);
   await p.reload(); // 보관본으로 먼저 뜨고, 뒤에서 비교 → 바뀌었으면 알아서 한 번 더 다시 열림
   const until = Date.now() + 20000;
