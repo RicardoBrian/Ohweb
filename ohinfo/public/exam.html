@@ -989,7 +989,7 @@ function startExamUI() {
     if (leftSec > 0) startTimer(leftSec);
     else setTimeout(() => submitExam(true), 300); // 이미 시간이 끝난 시험에 재입장 → 저장된 답으로 바로 제출
   }
-  updateProgress();
+  updateProgress();  startLiveSync();
 }
 
 // ── 코드 실행 (서버 위임) ──
@@ -1291,7 +1291,54 @@ function updateProgress() {
   });
   const pct = questions.length ? (filled / questions.length * 100) : 0;
   document.getElementById('progressFill').style.width = pct + '%';
+  _liveFilled = filled;
   scheduleDraftSave();
+  scheduleLiveSync();
+}
+
+// ── 실시간 진행 기록 (선생님 실시간 현황판용) ──
+// 시험 중 30초마다, 그리고 답이 바뀌면 10초 뒤에 exam_progress에
+// 답한 문항 수·마지막 접속 시각을 남긴다. 현재 답(liveAnswers)은 바뀐
+// 경우에만 같이 쓴다(문항당 5,000자까지). 제출 뒤에는 쓰지 않는다.
+let _liveFilled = 0, _liveTimer = null, _liveDebounce = null, _liveLastJson = '';
+function liveAnswerText(q, i) {
+  if (q.type === 'code') {
+    const cm = cmInstances[i];
+    return cm ? cm.getValue() : (codeAnswers[i]?.code || '');
+  }
+  const v = answers[i]?.value;
+  if (v === undefined || v === null) return '';
+  if (q.type === 'mc') {
+    const opt = getOptions(q)[v];
+    return `${Number(v) + 1}번${opt != null ? ' — ' + String(opt) : ''}`;
+  }
+  return String(v);
+}
+async function pushLive() {
+  if (submitted || !currentAssignment || !questions.length) return;
+  const live = {};
+  questions.forEach((q, i) => { live[q.id || ('q' + i)] = liveAnswerText(q, i).slice(0, 5000); });
+  const json = JSON.stringify(live);
+  const data = { answeredCount: _liveFilled, lastSeenAt: serverTimestamp() };
+  if (json !== _liveLastJson) data.liveAnswers = live;
+  try {
+    await setDoc(doc(db, 'exam_progress', `${currentAssignment.asId}_${SESSION.id}`), data, { merge: true });
+    if (data.liveAnswers) _liveLastJson = json;
+  } catch (e) {}
+}
+function scheduleLiveSync() {
+  if (submitted || !currentAssignment || _liveDebounce) return;
+  _liveDebounce = setTimeout(() => { _liveDebounce = null; pushLive(); }, 10000);
+}
+function startLiveSync() {
+  stopLiveSync();
+  _liveLastJson = '';
+  pushLive();
+  _liveTimer = setInterval(pushLive, 30000);
+}
+function stopLiveSync() {
+  clearInterval(_liveTimer); _liveTimer = null;
+  clearTimeout(_liveDebounce); _liveDebounce = null;
 }
 
 // ── 답안 임시저장 (이 기기 localStorage) ──
@@ -1409,6 +1456,7 @@ window.submitExam = async (isAuto = false) => {
       // 재시도할 일이 아니므로 임시저장을 지우고 결과 화면으로 보낸다.
       if (e.status !== 409) throw e;
       showLoading(false);
+      stopLiveSync();
       clearDraft();
       alert(e.message);
       await showMyResult(currentAssignment.asId);
@@ -1428,6 +1476,7 @@ window.submitExam = async (isAuto = false) => {
     }));
     // exam_results와 exam_progress(점수·제출상태)는 서버가 이미 기록했다.
     clearDraft();
+    stopLiveSync();
 
     showLoading(false);
     // 서술형·단답형은 선생님이 직접 채점하므로, 하나라도 있으면 아직 최종
