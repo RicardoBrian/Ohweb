@@ -390,12 +390,21 @@ const normalizeOut = s => String(s ?? '').replace(/\r\n/g, '\n').trimEnd();
 // 세서, 맞게 짠 코드도 0점이 됐다. 이제 서버 쪽 실패가 하나라도 있으면
 // 점수를 매기지 않고 수동 채점으로 넘긴다. 학생 코드의 실행 오류(예외)는
 // 서버가 정상 응답하므로 여기에 해당하지 않고 그대로 오답이다.
-async function gradeCode(env, code, testCases) {
+// budget: 제출 한 번에 쓸 수 있는 실행 횟수·시간. Cloudflare는 요청 하나가 바깥으로
+// 보내는 요청 수를 제한하고(무료 50개), 실행 서버가 느리면 학생이 하염없이 기다린다.
+// 코드 실행이 그 한도를 다 쓰면 마지막 결과 저장(Firestore)까지 막혀 제출 자체가
+// 실패하므로, 한도를 넘는 문항은 실행하지 않고 선생님 채점(null)으로 넘긴다.
+const GRADE_MAX_CALLS = 30;
+const GRADE_MAX_MS = 25000;
+async function gradeCode(env, code, testCases, budget) {
   if (!code.trim() || !testCases?.length) return null;
+  const left = budget.until - Date.now();
+  if (testCases.length > budget.calls || left < 3000) return null;
+  budget.calls -= testCases.length;
   // 테스트케이스를 순차로 돌리면 케이스 수만큼 지연이 쌓인다 — 병렬로 던진다.
   const results = await Promise.all(testCases.map(async tc => {
     try {
-      const { stdout } = await runPython(env, code, String(tc.input || ''));
+      const { stdout } = await runPython(env, code, String(tc.input || ''), { timeoutMs: Math.min(15000, left) });
       return normalizeOut(stdout) === normalizeOut(tc.expected);
     } catch (e) {
       console.error('exam: 코드 실행 실패 —', e.message);
@@ -592,6 +601,7 @@ async function actionSubmit(db, env, studentDocId, student, asId, answers, lang)
   const resultItems = [];
   const writes = [];
   let totalScore = 0, totalPoints = 0;
+  const budget = { calls: GRADE_MAX_CALLS, until: Date.now() + GRADE_MAX_MS };
 
   for (let i = 0; i < questions.length; i++) {
     const q = questions[i];
@@ -628,7 +638,7 @@ async function actionSubmit(db, env, studentDocId, student, asId, answers, lang)
 
     } else if (q.type === 'code') {
       const cases = key.testCases || [];
-      const passCount = await gradeCode(env, value, cases);
+      const passCount = await gradeCode(env, value, cases, budget);
       if (passCount === null) { feedback = 'manual'; }
       else {
         score = Math.round(points * (passCount / cases.length));

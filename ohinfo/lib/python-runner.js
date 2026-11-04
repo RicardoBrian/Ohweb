@@ -55,9 +55,9 @@ async function wandboxCompiler() {
   return wbCompiler || WANDBOX_FALLBACK;
 }
 
-async function runWandbox(code, stdin) {
+async function runWandbox(code, stdin, timeoutMs = 20000) {
   const compiler = await wandboxCompiler();
-  const d = await post(`${WANDBOX}/compile.json`, { 'Content-Type': 'application/json' }, { compiler, code, stdin }, 20000);
+  const d = await post(`${WANDBOX}/compile.json`, { 'Content-Type': 'application/json' }, { compiler, code, stdin }, timeoutMs);
   if (d == null || typeof d !== 'object' || !('status' in d || 'signal' in d)) {
     throw new RunnerError('실행 서버 응답 형식 오류', { detail: JSON.stringify(d).slice(0, 300) });
   }
@@ -74,7 +74,7 @@ async function runWandbox(code, stdin) {
 
 // ── Piston (PISTON_URL / PISTON_TOKEN 을 넣은 경우) ──
 let pyVersion = null, pyAt = 0;
-async function runPiston(env, code, stdin) {
+async function runPiston(env, code, stdin, timeoutMs = 15000) {
   const base = String(env.PISTON_URL || 'https://emkc.org/api/v2/piston').replace(/\/+$/, '');
   const headers = { 'Content-Type': 'application/json' };
   if (env.PISTON_TOKEN) headers.Authorization = env.PISTON_TOKEN;
@@ -89,7 +89,7 @@ async function runPiston(env, code, stdin) {
     language: 'python', version: pyVersion || '3.10.0',
     files: [{ name: 'main.py', content: code }], stdin,
     compile_timeout: 10000, run_timeout: 8000,
-  }, 15000);
+  }, timeoutMs);
   if (!d?.run) throw new RunnerError('실행 서버 응답 형식 오류', { detail: JSON.stringify(d).slice(0, 300) });
   return {
     stdout: d.run.stdout || '', stderr: d.run.stderr || '',
@@ -99,6 +99,7 @@ async function runPiston(env, code, stdin) {
 
 export const runnerName = env => (env?.PISTON_URL || env?.PISTON_TOKEN ? 'piston' : 'wandbox');
 
-export async function runPython(env, code, stdin) {
-  return runnerName(env) === 'piston' ? runPiston(env, code, stdin) : runWandbox(code, stdin);
+// opts.timeoutMs: 실행 서버 응답을 기다리는 최대 시간(제출 채점은 남은 시간만큼만 준다).
+export async function runPython(env, code, stdin, opts = {}) {
+  return runnerName(env) === 'piston' ? runPiston(env, code, stdin, opts.timeoutMs) : runWandbox(code, stdin, opts.timeoutMs);
 }
