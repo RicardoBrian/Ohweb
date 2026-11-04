@@ -27,25 +27,31 @@ self.addEventListener('activate', (e) => {
   })());
 });
 
-// 뒤에서 새로 받아 비교. 한꺼번에 받아서 다 성공해야 바꾼다(옛 파일·새 파일이 섞이지 않게).
-let running = null, lastAt = 0;
+// 뒤에서 새 버전 확인. 먼저 작은 버전값(/api/version — 화면 파일 내용으로 만든 값)만 보고, 달라졌을 때만
+// 화면 파일을 한꺼번에 받아 다 성공해야 바꾼다(옛 파일·새 파일이 섞이지 않게).
+let running = null;
+const VKEY = '/__shell-version';
+async function serverVersion() {
+  const r = await fetch('/api/version', { cache: 'no-store' });
+  return r.ok ? (await r.json()).v : null;
+}
 function refresh(force = false) {
   if (running) return running;
-  if (!force && Date.now() - lastAt < 5000) return Promise.resolve(false);
   running = (async () => {
     try {
-      const files = await fetchAll();
       const c = await caches.open(CACHE);
+      const v = await serverVersion().catch(() => null);
+      const had = await c.match(VKEY);
+      if (!force && v && had && (await had.text()) === v) return false; // 그대로
+      const files = await fetchAll();
       let changed = false;
       for (const [p, body] of files) {
         const old = await c.match(p);
         if (!old || (await old.text()) !== body) { changed = true; break; }
       }
-      if (changed) {
-        await store(files);
-        for (const cl of await self.clients.matchAll({ type: 'window' })) cl.postMessage({ type: 'updated' });
-      }
-      lastAt = Date.now(); // 성공했을 때만(끊겨서 실패한 직후 다시 열면 바로 다시 확인)
+      if (changed) await store(files);
+      if (v) await c.put(VKEY, new Response(v));
+      if (changed) for (const cl of await self.clients.matchAll({ type: 'window' })) cl.postMessage({ type: 'updated' });
       return changed;
     } catch { return false; } finally { running = null; }
   })();

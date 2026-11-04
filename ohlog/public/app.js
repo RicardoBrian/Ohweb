@@ -586,6 +586,7 @@ const ICONS = {
   text: '<path d="M4 19 9.5 5 15 19M6 14h7M16.5 19l2.5-6 2.5 6M17.4 17h3.2"/>',
   ig: '<rect x="4" y="4" width="16" height="16" rx="4.5"/><circle cx="12" cy="12" r="3.6"/><circle cx="16.6" cy="7.4" r=".6"/>',
   mail: '<rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="m4 7 8 6 8-6"/>',
+  shield: '<path d="M12 3 5 6v5.5c0 4.3 3 8 7 9.5 4-1.5 7-5.2 7-9.5V6z"/><path d="m9 12 2 2 4-4"/>',
 };
 const icon = (n, s) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;
 // 카드 머리글: 아이콘 + 제목 + 한 줄 설명 (+ 오른쪽 버튼) — 상자마다 역할이 보이게
@@ -597,7 +598,7 @@ function fillCredit() {
     el.innerHTML = `<div>© ${new Date().getFullYear()} 관산중학교 오범석 · 수업일지</div><div class="links">
       <a href="https://instagram.com/nosuk.beom" target="_blank" rel="noopener" aria-label="인스타그램 @nosuk.beom" title="인스타그램 @nosuk.beom">${icon('ig', 18)}</a>
       <a href="mailto:qjatjr7575@gmail.com" aria-label="메일 qjatjr7575@gmail.com" title="메일 qjatjr7575@gmail.com">${icon('mail', 18)}</a>
-      <a href="privacy.html" target="_blank" rel="noopener" class="small" style="font-size:0.8rem">개인정보 처리방침</a>
+      <a href="privacy.html" target="_blank" rel="noopener" aria-label="개인정보 처리방침" title="개인정보 처리방침">${icon('shield', 18)}</a>
       ${el.dataset.fb ? `<button type="button" class="link-btn" data-act="feedback" aria-label="피드백 남기기" title="피드백 남기기">${icon('chat', 18)}</button>` : ''}</div>`;
   });
 }
