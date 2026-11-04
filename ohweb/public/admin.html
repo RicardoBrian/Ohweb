@@ -801,8 +801,16 @@
           <textarea class="inp" id="q_content" rows="3" placeholder="문제 본문 (선택)" style="resize:vertical;"></textarea>
         </div>
         <div style="margin-bottom:12px;">
-          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">이미지 URL (선택)</label>
-          <input class="inp" id="q_imageUrl" placeholder="https://...">
+          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">이미지 (선택)</label>
+          <div id="q_imgDrop" onclick="document.getElementById('q_imgFile').click()" style="border:2px dashed var(--border-card);border-radius:10px;padding:14px;text-align:center;font-size:0.82rem;color:var(--sub);cursor:pointer;margin-bottom:6px;">
+            이미지를 여기에 끌어다 놓거나 눌러서 고르세요 (구글 드라이브에 저장)
+          </div>
+          <input type="file" id="q_imgFile" accept="image/*" class="hidden" onchange="onQImgFile(this.files[0]);this.value='';">
+          <input class="inp" id="q_imageUrl" placeholder="또는 이미지 주소·드라이브 링크 붙여넣기" oninput="renderQImgPreview()">
+          <div id="q_imgPreview" class="hidden" style="margin-top:8px;display:flex;align-items:flex-start;gap:8px;">
+            <img id="q_imgPreviewImg" alt="" referrerpolicy="no-referrer" style="max-width:220px;max-height:160px;border-radius:8px;border:1px solid var(--border-card);">
+            <button class="btn ghost sm" type="button" onclick="document.getElementById('q_imageUrl').value='';renderQImgPreview();">이미지 빼기</button>
+          </div>
         </div>
 
         <!-- 객관식 필드 -->
@@ -2558,6 +2566,7 @@
     document.getElementById('q_title').value = q.title||'';
     document.getElementById('q_content').value = q.content||'';
     document.getElementById('q_imageUrl').value = q.imageUrl||'';
+    renderQImgPreview();
     document.getElementById('q_points').value = q.points||10;
     renderQFormSelect(q.form || '');
     if (q.type === 'mc') {
@@ -2801,6 +2810,59 @@
     }
   }
 
+  // ── 문항 이미지: 끌어다 놓기 → 구글 드라이브 ──
+  // 질문방(ohinfo qna.html)·수업일지와 같은 Apps Script 업로드 창구를 쓴다. 문항에는
+  // 드라이브 링크를 그대로 저장하고(CSV에도 그 링크가 나간다), 학생 시험 화면
+  // (ohinfo exam.html)이 드라이브 링크를 썸네일 주소로 바꿔 보여준다.
+  const QIMG_UPLOAD_URL = 'https://script.google.com/macros/s/AKfycbzepbMXVCYAwoBcmFbmWQWRes1bSGfvhVHKGFNX6VHanVy-1mirxLkyHlROp0-agBX2/exec';
+  const QIMG_UPLOAD_SECRET = 'ohweb-upload-2026';
+  const driveFileId = url => {
+    const s = String(url || '');
+    if (!/^https:\/\/(drive|docs)\.google\.com\//.test(s)) return '';
+    const m = s.match(/\/d\/([\w-]{10,})|[?&]id=([\w-]{10,})/);
+    return m ? (m[1] || m[2]) : '';
+  };
+  const qImgSrc = url => { const id = driveFileId(url); return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w800` : String(url || ''); };
+
+  window.renderQImgPreview = () => {
+    const url = document.getElementById('q_imageUrl').value.trim();
+    const box = document.getElementById('q_imgPreview');
+    box.classList.toggle('hidden', !url);
+    if (url) document.getElementById('q_imgPreviewImg').src = qImgSrc(url);
+  };
+
+  window.onQImgFile = async (file) => {
+    if (!file) return;
+    if (!/^image\//.test(file.type)) { toast('이미지 파일만 올릴 수 있습니다.', 'error'); return; }
+    if (file.size > 20 * 1024 * 1024) { toast('20MB 이하 이미지만 올릴 수 있습니다.', 'error'); return; }
+    const examTitle = examById(document.getElementById('q_examId').value)?.title || '미분류';
+    const safe = s => String(s || '').replace(/[\\/:*?"<>|]/g, '_').trim();
+    const drop = document.getElementById('q_imgDrop');
+    const label = drop.textContent;
+    drop.textContent = '드라이브에 올리는 중…';
+    try {
+      const base64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(file); });
+      const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
+      const resp = await fetch(QIMG_UPLOAD_URL, { method: 'POST', body: JSON.stringify({
+        secret: QIMG_UPLOAD_SECRET, folder: `시험문항/${safe(examTitle)}`, filename: safe(`${stamp}_${file.name}`),
+        mimeType: file.type, base64 }) });
+      const data = await resp.json().catch(() => null);
+      if (!data || data.error || !data.url) throw new Error(data?.error || `HTTP ${resp.status}`);
+      document.getElementById('q_imageUrl').value = data.url;
+      renderQImgPreview();
+      toast('이미지를 올렸습니다. [저장]을 눌러야 문항에 반영됩니다.', 'success');
+    } catch (e) { toast('이미지 업로드 실패: ' + e.message, 'error'); }
+    drop.textContent = label;
+  };
+
+  (() => {
+    const drop = document.getElementById('q_imgDrop');
+    if (!drop) return;
+    ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.style.borderColor = 'var(--accent, #7c4dff)'; }));
+    ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, () => { drop.style.borderColor = ''; }));
+    drop.addEventListener('drop', e => { e.preventDefault(); onQImgFile(e.dataTransfer.files[0]); });
+  })();
+
   window.updateMcAnswerSelect = () => {
     const opts = document.getElementById('q_options').value.split('\n').map(s=>s.trim()).filter(Boolean);
     const sel = document.getElementById('q_answer_mc');
@@ -2814,6 +2876,7 @@
   window.resetQForm = () => {
     ['q_docId','q_title','q_content','q_imageUrl','q_options','q_answer_sa','q_essayMin','q_essayMax','q_inDesc','q_outDesc','q_inEx','q_outEx','q_boilerplate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('q_answer_mc').innerHTML = '<option value="0">선택지를 먼저 입력하세요</option>';
+    renderQImgPreview();
     renderTestCases([]);
     document.getElementById('q_points').value='10';
     renderQFormSelect('');
