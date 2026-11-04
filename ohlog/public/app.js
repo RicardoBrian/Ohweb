@@ -89,7 +89,8 @@ function ttError(e) {
   console.warn('[comci]', e);
   const raw = String(e?.message || e);
   const first = raw.split('\n').map((x) => x.trim()).filter(Boolean).at(-1) || raw; // 맨 마지막 줄이 가장 구체적인 원인
-  const msg = /컴시간 접속 실패|못 찾음|HTTP 5\d\d|HTTP 424|Failed to fetch|Timeout|aborted|NetworkError|Load failed/i.test(raw)
+  const msg = e?.diag?.recheck ? '컴시간 주소가 바뀌어 새 주소를 찾는 중이에요. 1~2분 뒤 자동으로 다시 받아요(그동안은 저장해 둔 시간표).'
+    : /컴시간 접속 실패|못 찾음|HTTP 5\d\d|HTTP 424|Failed to fetch|Timeout|aborted|NetworkError|Load failed/i.test(raw)
     ? '컴시간이 지금 응답하지 않아요. 저장해 둔 시간표를 보여드려요. 잠시 뒤 다시 눌러주세요.'
     : `시간표를 불러오지 못했어요: ${raw.split('\n')[0]}`;
   return S.admin ? `${msg} [${first.slice(0, 110)}]` : msg; // 관리자에게는 원인을 짧게 덧붙인다
@@ -397,8 +398,25 @@ function applyFallback() {
 const fallbackNote = () => (S.fallbackFrom
   ? `<p class="fallback-note">컴시간에 연결할 수 없어 <b>${md(S.fallbackFrom)} 주</b> 시간표를 이번 주에 맞춰 보여드려요. 바뀐 수업은 반영되지 않았을 수 있어요.</p>` : '');
 // ② 무엇이 실패했는지(서버가 받은 컴시간 페이지 모양 포함) 관리자 텔레그램으로 자동 보고한다 — 하루 한 번, 기기마다.
+// 컴시간이 접속 주소를 바꾼 직후면 서버가 자동 확인을 돌려 둔다(diag.recheck) → 1~2분 뒤 알아서 다시 받는다.
+// 세 번(약 7분) 다시 받아도 안 되면 그때 보고한다.
+let recheckTimer = null, recheckN = 0;
+function scheduleRecheck() {
+  if (recheckN >= 3) { recheckN = 0; return false; }
+  clearTimeout(recheckTimer);
+  recheckTimer = setTimeout(async () => {
+    recheckN++;
+    try {
+      await loadWeek(null, true);
+      recheckN = 0; S.ttFail.clear(); S.clsTT.clear();
+      toast('컴시간의 새 주소로 시간표를 다시 받았어요'); renderAll();
+    } catch (err) { reportComciFailure(err); }
+  }, [90, 120, 180][recheckN] * 1000);
+  return true;
+}
 async function reportComciFailure(e) {
   if (!e?.status) return; // 서버가 컴시간 실패를 알려준 경우만(폰이 잠깐 오프라인인 건 보고하지 않음)
+  if (e?.diag?.recheck && scheduleRecheck()) return;
   try {
     const day = todayISO();
     if (store.get('classlog:comci-report') === day) return;

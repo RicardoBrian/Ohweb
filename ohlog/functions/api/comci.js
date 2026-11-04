@@ -162,6 +162,7 @@ async function bootText(host, budget, path = 'st') {
 // KNOWN_BOOT: 10/29 사용자 진단(?st=1)에서 확인한 값(자료 키 번호는 이 경로일 때만 쓴다 — 다르면 파서가 값 모양으로 추측).
 // 스크립트를 읽을 수 있을 때마다 최신 값을 캐시에 90일 저장해(LAST_GOOD) 둔다.
 import CAPTURED from '../../lib/comci-boot.js';
+import { readCaptured, kickCapture } from '../../lib/github.js';
 const KNOWN_BOOT = { route: '36179', search: '17384l', prefix: '73629_', keys: { teachers: '446', subjects: '492', original: '481', daily: '147', room: '245' } };
 const LAST_GOOD_TTL = 90 * 86400;
 const lastGoodReq = (host) => new Request('https://comci-cache.invalid/' + encodeURIComponent('lastgood:boot:' + host));
@@ -169,15 +170,18 @@ async function rememberBoot(host, b) {
   const cache = typeof caches !== 'undefined' ? caches.default : null;
   if (cache) await cache.put(lastGoodReq(host), new Response(JSON.stringify(b), { headers: { 'cache-control': `max-age=${LAST_GOOD_TTL}` } }));
 }
-async function knownBoot(host) {
+async function knownBoot(host, env = {}, fresh = false) {
   const cache = typeof caches !== 'undefined' ? caches.default : null;
   const hit = cache && (await cache.match(lastGoodReq(host)));
   const make = (v, from) => {
     const base = `${host}/${v.route}?`;
     return { host, base, search: base + v.search, prefix: v.prefix, keys: v.route === KNOWN_BOOT.route ? KNOWN_BOOT.keys : {}, from };
   };
-  // 매일 브라우저로 확인한 값이 있으면 그것이 가장 최신이다
-  if (CAPTURED?.capturedAt && CAPTURED.route && CAPTURED.search && CAPTURED.prefix != null) return make(CAPTURED, 'captured');
+  // 브라우저로 확인한 값: 배포에 들어 있는 것과 GitHub main 의 최신 것(배포 전) 중 새것을 쓴다
+  const ok = (v) => v?.capturedAt && v.route && v.search && v.prefix != null;
+  const live = await readCaptured(env, fresh);
+  const cap = ok(live) && (!ok(CAPTURED) || live.capturedAt > CAPTURED.capturedAt) ? live : CAPTURED;
+  if (ok(cap)) return { ...make(cap, 'captured'), capturedAt: cap.capturedAt };
   if (hit) return { ...(await hit.json()), from: 'lastgood' };
   return make(KNOWN_BOOT, 'known');
 }
@@ -195,7 +199,7 @@ async function bootstrap(env, opts) {
       } catch (e) {
         if (!e.diag) throw e;
         // 스크립트를 못 읽음 → 마지막 정상 접속 정보로 시도(성공 여부는 시간표 받기에서 판가름)
-        const g = await knownBoot(host);
+        const g = await knownBoot(host, env, !!opts?.fresh);
         g.diag = e.diag;
         if (opts?.meta) opts.meta.bootFallback = g.from;
         return g;
@@ -385,8 +389,11 @@ export async function onRequestGet({ request, env }) {
       try { return await runWith(c, opts); }
       catch (e) {
         if (c.diag) { // 스크립트를 못 읽어 예전 접속 정보로 시도한 경우
-          const err = new Error(`컴시간 접속 실패\n컴시간이 /st 스크립트를 바꿔(읽을 수 없음) 마지막 정상 접속 정보(${c.from})로 시도했지만 실패: ${e.message}`);
-          err.diag = { ...c.diag, triedBase: c.base };
+          // 컴시간이 접속 주소를 또 바꾼 것 → 자동 확인(GitHub Actions)을 바로 돌려 새 주소를 찾게 한다(1~2분)
+          const kick = await kickCapture(env);
+          const err = new Error(`컴시간 접속 실패\n컴시간이 /st 스크립트를 바꿔(읽을 수 없음) 마지막 정상 접속 정보(${c.from})로 시도했지만 실패: ${e.message}`
+            + (kick.ok || kick.already ? '\n새 접속 주소를 찾는 중(1~2분 뒤 자동으로 다시 받아요)' : kick.error ? `\n자동 확인 실행 못 함: ${kick.error}` : ''));
+          err.diag = { ...c.diag, triedBase: c.base, capturedAt: c.capturedAt, recheck: !!(kick.ok || kick.already) };
           throw err;
         }
         throw e;
