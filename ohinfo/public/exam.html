@@ -542,7 +542,7 @@ let answers = {};     // qIdx → { value, lang }
 let codeAnswers = {}; // qIdx → { code, lang }
 const cmInstances = {};
 let alertCount = 0;
-let pasteBlockCount = 0; // 100자 이상 한번에 붙여넣기/드롭 시도해서 막힌 횟수
+let pasteBlockCount = 0; // 붙여넣기/드롭 시도해서 막힌 횟수
 let timerInterval = null;
 let remainSec = 0;
 let submitted = false;
@@ -850,15 +850,11 @@ async function updateAlertCount() {
   } catch(e) {}
 }
 
-// ── 순간 대량 입력(붙여넣기/드래그드롭) 차단 ──
-// 100자 이상이 타이핑이 아니라 한 번에 들어오면(붙여넣기, 드래그드롭)
-// 그 삽입 자체를 막는다 — AI 답을 통째로 붙여넣는 걸 막기 위함. 코딩
-// 에디터(CodeMirror)는 initCodeEditors()에서 beforeChange로 별도 처리.
-const BULK_INPUT_THRESHOLD = 100;
+// ── 붙여넣기/드래그드롭 차단 ──
+// 시험 답 칸(단답형·서술형)은 길이와 상관없이 붙여넣기·끌어다 놓기를 막는다 —
+// 직접 타이핑만. (예전엔 100자 이상만 막았다.) 코딩 에디터(CodeMirror)는
+// initCodeEditors()의 beforeChange에서 blockCodePaste로 따로 막는다.
 window.guardBulkInput = (event, idx) => {
-  const dt = event.clipboardData || event.dataTransfer;
-  const text = dt ? dt.getData('text') : '';
-  if (text.length < BULK_INPUT_THRESHOLD) return;
   event.preventDefault();
   pasteBlockCount++;
   const el = document.getElementById('pasteBlockCountEl');
@@ -866,10 +862,10 @@ window.guardBulkInput = (event, idx) => {
   document.getElementById('pasteBlockInfo')?.classList.remove('hidden');
   updatePasteBlockCount();
   const msgs = {
-    ko: `한 번에 ${BULK_INPUT_THRESHOLD}자 이상 붙여넣을 수 없습니다.`,
-    zh: `不能一次粘贴超过${BULK_INPUT_THRESHOLD}个字符。`,
-    ru: `Нельзя вставить больше ${BULK_INPUT_THRESHOLD} символов за раз.`,
-    en: `You can't paste ${BULK_INPUT_THRESHOLD}+ characters at once.`,
+    ko: '답은 붙여넣을 수 없습니다. 직접 입력하세요.',
+    zh: '答案不能粘贴，请直接输入。',
+    ru: 'Ответ нельзя вставлять. Набирайте вручную.',
+    en: "You can't paste answers. Please type them.",
   };
   showBanner('<svg width="14" height="14" style="vertical-align:-2px;margin-right:4px;"><use href="#ic-alert"/></svg>' + (msgs[currentLang] || msgs.ko));
 };
