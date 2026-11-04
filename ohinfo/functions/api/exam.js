@@ -42,6 +42,7 @@
  * 코드가 겹치는데, 둘은 서로 다른 Pages 프로젝트라 모듈을 공유할 수 없어
  * 부득이하게 중복이다 — 한쪽을 고치면 다른 쪽도 같이 봐야 한다.
  */
+import { runPython } from '../../lib/python-runner.js';
 
 // 이 API들은 전부 같은 도메인의 페이지에서만 부른다. '*'로 열어두면
 // 아무 사이트나 브라우저에서 호출할 수 있어서 우리 도메인으로 좁힌다.
@@ -76,7 +77,6 @@ const json = (body, status = 200) =>
 // 이미 노출된 값이라 비밀이 아니다. 학생 idToken 검증에만 쓴다.
 const WEB_API_KEY = 'AIzaSyB1SuaWwJgUY6SrCnmN8dmhG2cnVnGcl2s';
 const EMAIL_SUFFIX = '@ohinfo.local';
-const PISTON_PYTHON_VERSION = '3.10.0';
 const SETUP_ERROR = { error: '시험 기능이 아직 준비되지 않았습니다. 선생님께 문의해 주세요.', detail: 'FIREBASE_SERVICE_ACCOUNT_KEY 설정 문제' };
 
 // ── Google 서비스 계정 → OAuth 액세스 토큰 ──
@@ -383,53 +383,19 @@ function paperFor(examId, exam, questions, form) {
 // ── 코드형 문항 채점 ──
 const normalizeOut = s => String(s ?? '').replace(/\r\n/g, '\n').trimEnd();
 
-// 실행 서버 — 기본은 Piston 공개 API(emkc.org)인데, 이 공개 API는 2026-02-15부터
-// 허가받은 곳만 쓸 수 있게 바뀌었다(토큰 필요). 토큰을 받았거나 직접 띄운
-// Piston이 있으면 Cloudflare 환경변수 PISTON_URL / PISTON_TOKEN으로 지정한다.
-function pistonConfig(env) {
-  const base = String(env?.PISTON_URL || 'https://emkc.org/api/v2/piston').replace(/\/+$/, '');
-  const headers = { 'Content-Type': 'application/json' };
-  if (env?.PISTON_TOKEN) headers.Authorization = env.PISTON_TOKEN;
-  return { url: `${base}/execute`, headers };
-}
-
-async function runPython(cfg, code, stdin) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 12000);
-  try {
-    const res = await fetch(cfg.url, {
-      method: 'POST',
-      headers: cfg.headers,
-      signal: ctrl.signal,
-      body: JSON.stringify({
-        language: 'python',
-        version: PISTON_PYTHON_VERSION,
-        files: [{ name: 'main.py', content: code }],
-        stdin,
-        compile_timeout: 10000,
-        run_timeout: 8000,
-      }),
-    });
-    if (!res.ok) throw new Error(`실행 서버 오류 ${res.status}`);
-    const data = await res.json();
-    if (!data?.run) throw new Error('실행 서버 응답 형식 오류');
-    return data.run.stdout || '';
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
+// 실행 서버는 ../../lib/python-runner.js(기본 Wandbox, PISTON_URL/TOKEN 있으면 Piston).
+// 실행 서버 자체의 실패는 예외로 던져져 아래에서 "채점 불가"(null)가 된다.
 // 반환값: 통과한 케이스 수, 또는 null(= 채점 불가 → 선생님이 직접 채점).
 // 예전엔 실행 서버 자체가 실패해도(권한 없음·타임아웃) 그 케이스를 "오답"으로
 // 세서, 맞게 짠 코드도 0점이 됐다. 이제 서버 쪽 실패가 하나라도 있으면
 // 점수를 매기지 않고 수동 채점으로 넘긴다. 학생 코드의 실행 오류(예외)는
 // 서버가 정상 응답하므로 여기에 해당하지 않고 그대로 오답이다.
-async function gradeCode(cfg, code, testCases) {
+async function gradeCode(env, code, testCases) {
   if (!code.trim() || !testCases?.length) return null;
   // 테스트케이스를 순차로 돌리면 케이스 수만큼 지연이 쌓인다 — 병렬로 던진다.
   const results = await Promise.all(testCases.map(async tc => {
     try {
-      const stdout = await runPython(cfg, code, String(tc.input || ''));
+      const { stdout } = await runPython(env, code, String(tc.input || ''));
       return normalizeOut(stdout) === normalizeOut(tc.expected);
     } catch (e) {
       console.error('exam: 코드 실행 실패 —', e.message);
@@ -626,7 +592,6 @@ async function actionSubmit(db, env, studentDocId, student, asId, answers, lang)
   const resultItems = [];
   const writes = [];
   let totalScore = 0, totalPoints = 0;
-  const pcfg = pistonConfig(env);
 
   for (let i = 0; i < questions.length; i++) {
     const q = questions[i];
@@ -663,7 +628,7 @@ async function actionSubmit(db, env, studentDocId, student, asId, answers, lang)
 
     } else if (q.type === 'code') {
       const cases = key.testCases || [];
-      const passCount = await gradeCode(pcfg, value, cases);
+      const passCount = await gradeCode(env, value, cases);
       if (passCount === null) { feedback = 'manual'; }
       else {
         score = Math.round(points * (passCount / cases.length));
