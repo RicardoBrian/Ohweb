@@ -170,6 +170,19 @@
     .tc-box { margin-top: 10px; padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-card); background: var(--glass); font-size: 0.82rem; color: var(--sub); }
     .tc-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 6px; }
     .tc-label { font-weight: 700; min-width: 60px; color: var(--accent); }
+    /* 코딩 문항: 입력 형식 / 출력 형식 / 예시 입력·출력을 칸별로 나눠 보여준다 */
+    .cq-spec { margin: 4px 0 12px; display: grid; gap: 10px; }
+    .cq-sec { border: 1px solid var(--border-card); border-radius: var(--radius-sm); background: var(--glass); overflow: hidden; }
+    .cq-sec-h { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.02em; padding: 6px 12px; color: var(--accent); background: var(--accent-light); border-bottom: 1px solid var(--border-card); }
+    .cq-sec-b { padding: 9px 12px; font-size: 0.88rem; line-height: 1.6; color: var(--text); white-space: pre-wrap; word-break: break-all; }
+    .cq-ex { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .cq-ex pre { margin: 0; padding: 10px 12px; min-height: 2.6em; font-family: 'Courier New', Courier, monospace; font-size: 0.86rem; line-height: 1.5; background: rgba(15,20,40,0.92); color: #e8efff; white-space: pre; overflow-x: auto; }
+    .cq-none { color: var(--sub) !important; font-style: italic; font-family: inherit !important; }
+    .cq-ex pre.cq-none { color: #8a94b0 !important; }
+    @media (max-width: 640px) { .cq-ex { grid-template-columns: 1fr; } }
+    /* 시험 중 문제 글자 복사 방지(복사 이벤트도 막는다 — 아래 copy/cut 처리) */
+    #questionsWrap { -webkit-user-select: none; user-select: none; }
+    #questionsWrap textarea, #questionsWrap input, #questionsWrap .CodeMirror { -webkit-user-select: text; user-select: text; }
 
     /* 진행률 */
     .progress-bar { height: 4px; background: var(--border-card); border-radius: 2px; margin-bottom: 20px; overflow: hidden; }
@@ -861,6 +874,29 @@ window.guardBulkInput = (event, idx) => {
   showBanner('<svg width="14" height="14" style="vertical-align:-2px;margin-right:4px;"><use href="#ic-alert"/></svg>' + (msgs[currentLang] || msgs.ko));
 };
 
+// 코드 칸 붙여넣기 차단 — 횟수는 기존 붙여넣기 차단 횟수에 같이 센다.
+window.blockCodePaste = () => {
+  pasteBlockCount++;
+  const el = document.getElementById('pasteBlockCountEl');
+  if (el) el.innerText = pasteBlockCount;
+  document.getElementById('pasteBlockInfo')?.classList.remove('hidden');
+  updatePasteBlockCount();
+  const msgs = { ko: '코드는 붙여넣을 수 없습니다. 직접 입력하세요.', zh: '代码不能粘贴，请直接输入。', ru: 'Код нельзя вставлять. Набирайте вручную.', en: "You can't paste code. Please type it." };
+  showBanner('<svg width="14" height="14" style="vertical-align:-2px;margin-right:4px;"><use href="#ic-alert"/></svg>' + (msgs[currentLang] || msgs.ko));
+};
+
+// 시험 중(문항이 떠 있고 아직 제출 전)에는 복사·잘라내기를 막는다 — 문제나 코드를
+// 밖(AI 등)으로 가져가지 못하게. 제출 뒤나 시험 밖 화면은 그대로.
+['copy', 'cut'].forEach(ev => document.addEventListener(ev, e => {
+  if (submitted || !questions.length) return;
+  if (!e.target?.closest?.('#questionsWrap')) return;
+  e.preventDefault();
+}, true));
+document.addEventListener('contextmenu', e => {
+  if (submitted || !questions.length) return;
+  if (e.target?.closest?.('#questionsWrap')) e.preventDefault();
+});
+
 async function updatePasteBlockCount() {
   if (!currentAssignment) return;
   try {
@@ -1123,11 +1159,10 @@ function initCodeEditors() {
       // 자체를 취소한다 — CodeMirror는 origin으로 타이핑('+input')과
       // 붙여넣기('paste')/드롭('drop')을 구분해준다.
       cm.on('beforeChange', (instance, changeObj) => {
+        // 코드 칸은 길이와 상관없이 붙여넣기·끌어다 놓기를 전부 막는다(직접 타이핑만).
         if (changeObj.origin !== 'paste' && changeObj.origin !== 'drop') return;
-        const text = (changeObj.text || []).join('\n');
-        if (text.length < BULK_INPUT_THRESHOLD) return;
         changeObj.cancel();
-        window.guardBulkInput({ clipboardData: { getData: () => text }, preventDefault(){} }, i);
+        blockCodePaste();
       });
       cmInstances[i] = cm;
       // restore saved answer
@@ -1175,18 +1210,33 @@ function renderQuestion(q, i) {
       <div class="essay-counter" id="essayCounter_${i}" data-min="${Number(minLen)||0}"><span class="essay-counter-num">0</span>${charUnit}${limitHint?` · ${limitHint}`:''}</div>
     `;
   } else if (q.type === 'code') {
-    const tcHtml = (q.inEx || q.outEx) ? `<div class="tc-box">
-      ${q.inDesc ? `<div class="tc-row"><span class="tc-label">${currentLang==='zh'?'输入说明':currentLang==='ru'?'Ввод':currentLang==='en'?'Input format':'입력 형식'}</span><span>${escHtml(q.inDesc)}</span></div>` : ''}
-      ${q.outDesc ? `<div class="tc-row"><span class="tc-label">${currentLang==='zh'?'输出说明':currentLang==='ru'?'Вывод':currentLang==='en'?'Output format':'출력 형식'}</span><span>${escHtml(q.outDesc)}</span></div>` : ''}
-      ${q.inEx ? `<div class="tc-row"><span class="tc-label">${currentLang==='zh'?'输入例':currentLang==='ru'?'Пример':currentLang==='en'?'Sample input':'예시 입력'}</span><pre style="margin:0;font-size:0.82rem;">${escHtml(q.inEx)}</pre></div>` : ''}
-      ${q.outEx ? `<div class="tc-row"><span class="tc-label">${currentLang==='zh'?'输出例':currentLang==='ru'?'Ответ':currentLang==='en'?'Sample output':'예시 출력'}</span><pre style="margin:0;font-size:0.82rem;">${escHtml(q.outEx)}</pre></div>` : ''}
-    </div>` : '';
+    // 네 칸을 항상 보여준다 — 비어 있으면 '없음'(예: 입력이 없는 문제). 예전엔 예시가
+    // 없으면 형식 설명까지 통째로 빠졌고, 있어도 한 상자에 섞여 구분이 안 됐다.
+    const L = {
+      ko: ['입력 형식', '출력 형식', '예시 입력', '예시 출력', '없음'],
+      zh: ['输入格式', '输出格式', '输入样例', '输出样例', '无'],
+      ru: ['Формат ввода', 'Формат вывода', 'Пример ввода', 'Пример вывода', 'Нет'],
+      en: ['Input format', 'Output format', 'Sample input', 'Sample output', 'None'],
+    }[currentLang] || [];
+    const [lIn, lOut, lInEx, lOutEx, lNone] = L.length ? L : ['입력 형식', '출력 형식', '예시 입력', '예시 출력', '없음'];
+    const sec = (label, val, mono) => {
+      const has = String(val ?? '').trim() !== '';
+      const inner = mono
+        ? `<pre class="${has ? '' : 'cq-none'}">${has ? escHtml(val) : lNone}</pre>`
+        : `<div class="cq-sec-b${has ? '' : ' cq-none'}">${has ? escHtml(val) : lNone}</div>`;
+      return `<div class="cq-sec"><div class="cq-sec-h">${label}</div>${inner}</div>`;
+    };
+    const tcHtml = `<div class="cq-spec">
+      ${sec(lIn, q.inDesc)}
+      ${sec(lOut, q.outDesc)}
+      <div class="cq-ex">${sec(lInEx, q.inEx, true)}${sec(lOutEx, q.outEx, true)}</div>
+    </div>`;
     body = `
       ${tcHtml}
       <div class="code-meta">
         <span style="font-size:0.82rem;font-weight:700;color:var(--sub);">Python</span>
       </div>
-      <textarea class="code-editor" id="code_${i}" spellcheck="false" oninput="saveCode(${i},this.value)" onpaste="guardBulkInput(event,${i})" ondrop="guardBulkInput(event,${i})">${escHtml(getDefaultCode(q, currentLang))}</textarea>
+      <textarea class="code-editor" id="code_${i}" spellcheck="false" oninput="saveCode(${i},this.value)" onpaste="event.preventDefault();blockCodePaste()" ondrop="event.preventDefault();blockCodePaste()">${escHtml(getDefaultCode(q, currentLang))}</textarea>
       <div class="stdin-box">
         <label>${UI[currentLang].stdin}</label>
         <textarea class="stdin-input" id="stdin_${i}" placeholder="${UI[currentLang].stdinPlaceholder}" rows="2"></textarea>
