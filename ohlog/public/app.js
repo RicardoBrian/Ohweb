@@ -123,9 +123,28 @@ let CODE_V = null, PENDING_V = null, updating = false;
 if (location.search.includes('v=')) history.replaceState(null, '', location.pathname + location.hash); // 새로고침 때 붙인 ?v= 정리
 async function fetchVersion() { return (await (await fetch('/api/version', { cache: 'no-store' })).json()).v; }
 const busy = () => document.querySelector('.modal-overlay.show') || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
-function reloadFresh(v) { updating = true; location.replace(`${location.pathname}?v=${v}${location.hash}`); } // 주소가 달라서 캐시 없이 새로 받는다
+function reloadFresh(v) {
+  updating = true;
+  const sw = navigator.serviceWorker?.controller;
+  if (!sw) { location.replace(`${location.pathname}?v=${v}${location.hash}`); return; } // 주소가 달라서 캐시 없이 새로 받는다
+  // 화면 파일을 폰에 보관하는 경우: 보관본부터 새로 받게 하고(최대 8초) 다시 연다
+  const ch = new MessageChannel();
+  const done = () => location.reload();
+  const t = setTimeout(done, 8000);
+  ch.port1.onmessage = () => { clearTimeout(t); done(); };
+  sw.postMessage({ type: 'refresh' }, [ch.port2]);
+}
+// 서비스 워커(sw.js): 화면 파일을 폰에 보관해 켤 때 바로 뜨게 한다. 뒤에서 새 버전을 받으면 'updated' 를 알려 준다.
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch((e) => console.warn('[sw]', e));
+  navigator.serviceWorker.addEventListener('message', (e) => {
+    if (e.data?.type !== 'updated' || updating) return;
+    if (!busy()) { updating = true; location.reload(); } else $('updateBar').classList.remove('hidden');
+  });
+}
 async function checkUpdate(manual = false) {
   if (updating) return;
+  navigator.serviceWorker?.controller?.postMessage({ type: 'check' }); // 보관한 화면 파일도 뒤에서 새 버전 확인
   try {
     const v = await fetchVersion();
     if (!v) throw new Error('no version');
@@ -361,7 +380,26 @@ async function startApp() {
 // 시간표 보관(localStorage): 컴시간이 느리거나 끊겨도 마지막 시간표가 바로 보이게
 const ttKey = () => `classlog:tt:${S.profile.schoolCode}:${S.profile.teacherId}`;
 function saveTt() {
-  store.set(ttKey(), JSON.stringify({ weeks: S.weeks, times: S.times, cur: S.curWeek, classCount: S.classCount, homeroom: S.homeroom, teachers: S.teachers, debug: S.ttDebug, tt: Object.fromEntries(S.tt) }));
+  store.set(ttKey(), JSON.stringify({ weeks: S.weeks.filter((w) => !w.arch), times: S.times, cur: S.curWeek, classCount: S.classCount, homeroom: S.homeroom, teachers: S.teachers, debug: S.ttDebug,
+    tt: Object.fromEntries([...S.tt].filter(([r]) => r >= 0)) }));
+}
+// 지난 주 보관: 컴시간은 지난 주를 주지 않는다 → 받아 본 주의 내 시간표를 기기에 남겨 두고(최근 12주)
+// 주 목록 앞에 '저장본'으로 붙인다. 번호(r)는 음수로 따로 둬서 컴시간 주 번호와 섞이지 않게 한다.
+const archKey = () => `classlog:arch:${S.profile.schoolCode}:${S.profile.teacherId}`;
+function mergeArchive() {
+  let a = {};
+  try { a = JSON.parse(store.get(archKey()) || '{}') || {}; } catch {}
+  if (!S.fallbackFrom) for (const w of S.weeks) if (w.start && !w.arch && w.r >= 0 && S.tt.get(w.r)?.length) a[w.start] = S.tt.get(w.r);
+  const keep = Object.keys(a).sort().slice(-12);
+  a = Object.fromEntries(keep.map((k) => [k, a[k]]));
+  store.set(archKey(), JSON.stringify(a));
+  for (const w of S.weeks) if (w.arch) S.tt.delete(w.r);
+  S.weeks = S.weeks.filter((w) => !w.arch);
+  const first = S.weeks.map((w) => w.start).filter(Boolean).sort()[0];
+  const old = keep.filter((k) => !first || k < first);
+  const arch = old.map((k, i) => ({ r: i - old.length, label: k, start: k, arch: true }));
+  arch.forEach((w) => S.tt.set(w.r, a[w.start]));
+  S.weeks = [...arch, ...S.weeks];
 }
 function restoreTt() {
   try {
@@ -369,7 +407,8 @@ function restoreTt() {
     if (!c?.tt) return false;
     S.weeks = c.weeks || []; S.times = c.times || []; S.curWeek = c.cur ?? null; S.week = S.week ?? c.cur ?? null;
     S.classCount = c.classCount || []; S.homeroom = c.homeroom || []; S.teachers = c.teachers || []; S.ttDebug = c.debug || null;
-    for (const [r, v] of Object.entries(c.tt)) { S.tt.set(Number(r), v); S.stale.add(Number(r)); }
+    for (const [r, v] of Object.entries(c.tt)) { if (Number(r) < 0) continue; S.tt.set(Number(r), v); S.stale.add(Number(r)); }
+    mergeArchive();
     return S.tt.size > 0;
   } catch { return false; }
 }
@@ -388,6 +427,8 @@ function loadWeek(r, force) {
       S.weeks = d.weeks; S.times = d.times; S.ttDebug = d.debug; S.classCount = d.classCount || []; S.homeroom = d.homeroom || []; S.teachers = d.teachers || [];
       S.tt.set(r ?? d.week, d.lessons.map(fromComci));
       S.ttFail.delete(r ?? d.week); S.stale.delete(r ?? d.week);
+      mergeArchive();
+      if (!S.weeks.some((w) => w.r === S.week)) S.week = S.curWeek ?? d.week; // (대체 시간표 주 등) 없어진 주를 보고 있었으면 이번 주로
       saveTt();
       // '오늘이 속한 주'는 week 를 안 주고 받았을 때만 알 수 있다(다른 주를 받은 응답으로 정하면 안 됨)
       if (r == null) S.curWeek = d.week;
@@ -413,6 +454,7 @@ function applyFallback() {
   S.weeks = [{ r: 0, label: `${md(mon)} ~ ${md(addDays(mon, 5))}`, start: mon }];
   S.curWeek = S.week = 0; S.date = [0, 6].includes(dow(today)) ? mon : today;
   S.fallbackFrom = base.start;
+  mergeArchive();
   renderAll();
 }
 const fallbackNote = () => (S.fallbackFrom
@@ -684,7 +726,7 @@ $('todayDate').onchange = (e) => { if (e.target.value) { S.date = e.target.value
 // 주 선택(내 시간표·학급 시간표가 같은 주를 본다): 이전·다음 버튼과 목록
 function syncWeekControls() {
   // 폰에서 잘리지 않게 "10/26 ~ 10/31" 짧은 모양으로
-  const opts = S.weeks.map((w) => `<option value="${w.r}">${w.start ? `${md(w.start)} ~ ${md(addDays(w.start, 5))}` : esc(w.label)}${w.r === S.curWeek ? ' · 이번 주' : ''}</option>`).join('');
+  const opts = S.weeks.map((w) => `<option value="${w.r}">${w.start ? `${md(w.start)} ~ ${md(addDays(w.start, 5))}` : esc(w.label)}${w.r === S.curWeek ? ' · 이번 주' : ''}${w.arch ? ' · 저장본' : ''}</option>`).join('');
   for (const id of ['weekSel', 'clsWeekSel']) { $(id).innerHTML = opts; if (S.week != null) $(id).value = S.week; }
   const i = S.weeks.findIndex((w) => w.r === S.week);
   document.querySelectorAll('[data-act="wk"]').forEach((b) => {
@@ -695,7 +737,7 @@ function syncWeekControls() {
 async function renderWeek() {
   syncWeekControls();
   if (!S.weeks.length) { $('weekGrid').innerHTML = '<div class="spinner"></div>'; return; }
-  const w = S.weeks.find((x) => x.r === S.week) || S.weeks[0];
+  const w = S.weeks.find((x) => x.r === S.week) || S.weeks.find((x) => x.r === S.curWeek) || S.weeks.find((x) => !x.arch) || S.weeks[0];
   if (needWeek(w)) {
     $('weekGrid').innerHTML = '<div class="spinner"></div>';
     try { await loadWeek(w.r); } catch (e) { toast(ttError(e)); }
@@ -748,7 +790,8 @@ async function renderClass() {
   $('clsMode').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === (teacherMode ? 'teacher' : 'class')));
   for (const id of ['clsGrade', 'clsNum']) $(id).classList.toggle('hidden', teacherMode);
   $('clsTeacher').classList.toggle('hidden', !teacherMode);
-  const w = S.weeks.find((x) => x.r === S.week) || S.weeks[0];
+  const w = S.weeks.find((x) => x.r === S.week) || S.weeks.find((x) => x.r === S.curWeek) || S.weeks.find((x) => !x.arch) || S.weeks[0];
+  if (w.arch) { $('clsGrid').innerHTML = '<div class="card"><div class="empty-state">지난 주 저장본에는 내 시간표만 있어요.<br>학급·교사 시간표는 컴시간이 주는 주(이번 주부터)만 볼 수 있어요.</div></div>'; return; }
   let key, qs, title, badge = '', sub;
   if (teacherMode) {
     if (!S.teachers.length) { $('clsGrid').innerHTML = '<div class="spinner"></div>'; return; }
