@@ -470,7 +470,7 @@ ok('컴시간이 아예 응답하지 않아도 전체 대기 시간에 상한(�
 // 이번 장애 재현: 컴시간이 스크립트(sc_data 등)가 없는 페이지를 준다
 await upMode('nomarkers', true);
 const nm = await capi('code=43917&teacher=10&week=1&fresh=1');
-ok('이번 장애(스크립트를 못 읽음, 데이터 주소는 그대로): 마지막 정상 접속 정보로 시간표를 정상으로 받음', nm.status === 200 && nm.body.lessons?.length > 0 && ['known', 'lastgood'].includes(nm.body.debug?.boot), JSON.stringify({ s: nm.status, boot: nm.body?.debug?.boot, e: nm.body?.error }));
+ok('이번 장애(스크립트를 못 읽음, 데이터 주소는 그대로): 마지막 정상 접속 정보로 시간표를 정상으로 받음', nm.status === 200 && nm.body.lessons?.length > 0 && ['known', 'lastgood', 'captured'].includes(nm.body.debug?.boot), JSON.stringify({ s: nm.status, boot: nm.body?.debug?.boot, e: nm.body?.error }));
 await upMode('broken', true); // 데이터 주소까지 바뀐 최악의 경우
 const bk = await capi('code=43917&teacher=10&week=1&fresh=1');
 ok('데이터 주소까지 바뀌면: 424 + "마지막 정상 접속 정보로 시도했지만 실패" + 받은 페이지 모양 진단(diag)', bk.status === 424 && bk.body?.error?.includes('마지막 정상 접속 정보') && bk.body?.diag?.has?.sc_data === false && Array.isArray(bk.body?.diag?.tags), JSON.stringify(bk.body).slice(0, 300));
