@@ -175,7 +175,7 @@ async function knownBoot(host, env = {}, fresh = false) {
   const hit = cache && (await cache.match(lastGoodReq(host)));
   const make = (v, from) => {
     const base = `${host}/${v.route}?`;
-    return { host, base, search: base + v.search, prefix: v.prefix, keys: v.route === KNOWN_BOOT.route ? KNOWN_BOOT.keys : {}, from };
+    return { host, base, search: base + v.search, prefix: v.prefix, suffix: v.suffix || '', keys: v.route === KNOWN_BOOT.route ? KNOWN_BOOT.keys : {}, from };
   };
   // 브라우저로 확인한 값: 배포에 들어 있는 것과 GitHub main 의 최신 것(배포 전) 중 새것을 쓴다
   const ok = (v) => v?.capturedAt && v.route && v.search && v.prefix != null;
@@ -367,10 +367,10 @@ export async function onRequestGet({ request, env }) {
       const step = (name, since, extra) => out.steps.push({ name, ms: Date.now() - since, ...extra });
       let t = Date.now();
       const c = await bootstrap(env, { fresh: true, meta, budget });
-      step('1.접속 정보(/st)', t, { route: c.base, prefix: c.prefix, keys: c.keys, fallback: c.from, diag: c.diag });
+      step('1.접속 정보(/st)', t, { route: c.base, prefix: c.prefix, suffix: c.suffix, keys: c.keys, fallback: c.from, diag: c.diag });
       if (probe === 'boot') return json(out);
       t = Date.now();
-      const text = await getText(c.base + btoa(`${c.prefix}${code}_0_${week || 1}`), 'utf-8', budget);
+      const text = await getText(c.base + btoa(`${c.prefix}${code}_0_${week || 1}${c.suffix || ''}`), 'utf-8', budget);
       step('2.시간표 받기', t, { chars: text.length, head: text.slice(0, 40) });
       if (probe === 'fetch') return json(out);
       t = Date.now();
@@ -405,7 +405,7 @@ export async function onRequestGet({ request, env }) {
         return { search: (raw['학교검색'] || []).map(([, region, name, sccode]) => ({ region, name, sccode })) };
       }
       const fetchWeek = async (w) =>
-        parse(await cached(`week:${code}:${w}`, TTL.week, () => getText(c.base + btoa(`${c.prefix}${code}_0_${w}`), 'utf-8', opts.budget), { ...opts, meta }));
+        parse(await cached(`week:${code}:${w}`, TTL.week, () => getText(c.base + btoa(`${c.prefix}${code}_0_${w}${c.suffix || ''}`), 'utf-8', opts.budget), { ...opts, meta }));
       // week를 안 주면 1주차를 받아 보고, 컴시간이 말하는 '오늘이 속한 주(오늘r)'가 다르면 그 주로 다시 받는다.
       let wk = week, raw = await fetchWeek(wk || 1);
       if (!wk) {
