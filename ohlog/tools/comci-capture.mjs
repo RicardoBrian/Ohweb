@@ -20,9 +20,16 @@ const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePa
 const page = await browser.newPage({ locale: 'ko-KR' });
 page.on('request', (r) => { if (r.url().startsWith(HOST)) reqs.push({ method: r.method(), url: r.url() }); });
 page.on('pageerror', (e) => log('page error:', e.message));
+// 시간표 데이터 응답의 모양을 남긴다(암호화 여부 확인용)
+const bodies = [];
+page.on('response', async (r) => {
+  const q = r.url().match(/^https?:\/\/[^/]+\/\d+\?(.+)$/)?.[1];
+  if (!q || /^\d+l/.test(q)) return;
+  try { const t = await r.text(); bodies.push({ url: r.url(), len: t.length, head: t.slice(0, 300) }); } catch {}
+});
 
 function analyze() {
-  let route, search, prefix;
+  let route, search, prefix, suffix;
   for (const { url } of reqs) {
     const m = url.match(/^https?:\/\/[^/]+\/(\d+)\?(.+)$/);
     if (!m) continue;
@@ -30,10 +37,11 @@ function analyze() {
     const s = q.match(/^(\d+l)/); // 학교 검색: ./36179?17384l + EUC-KR 학교명
     if (s) { route = m[1]; search = s[1]; continue; }
     const d = b64(q); // 시간표: ./36179?btoa('73629_43917_0_1')
-    const p = d && d.match(new RegExp('^(.*?)' + CODE + '_0_\\d+$'));
-    if (p) { route = m[1]; prefix = p[1]; }
+    // 2026-11-05: 끝에 '_enc2' 같은 꼬리가 붙기 시작함 → 꼬리도 따로 기억한다
+    const p = d && d.match(new RegExp('^(.*?)' + CODE + '_0_\\d+(_\\w+)?$'));
+    if (p) { route = m[1]; prefix = p[1]; suffix = p[2] || ''; }
   }
-  return { route, search, prefix };
+  return { route, search, prefix, suffix };
 }
 
 let result = {};
@@ -65,6 +73,8 @@ try {
   log('오류:', e.message);
 } finally {
   writeFileSync('out/requests.json', JSON.stringify(reqs, null, 2));
+  writeFileSync('out/data-bodies.json', JSON.stringify(bodies, null, 2));
+  for (const b of bodies) log('데이터 응답', b.len, '자:', JSON.stringify(b.head.slice(0, 200)));
   writeFileSync('out/page.html', await page.content().catch(() => ''));
   await browser.close();
 }
@@ -77,6 +87,6 @@ if (!result.route || !result.search || result.prefix == null) {
 }
 const src = readFileSync(OUT, 'utf8');
 const prev = JSON.parse(src.slice(src.indexOf('{'), src.lastIndexOf('}') + 1));
-const same = prev.route === result.route && prev.search === result.search && prev.prefix === result.prefix;
+const same = prev.route === result.route && prev.search === result.search && prev.prefix === result.prefix && (prev.suffix || '') === result.suffix;
 log(same ? '기존 값과 같음(파일 그대로)' : '바뀜 → 파일 갱신');
 if (!same || !prev.capturedAt) writeFileSync(OUT, src.slice(0, src.indexOf('{')) + JSON.stringify({ ...prev, ...result, capturedAt: new Date().toISOString() }, null, 2) + ';\n');
