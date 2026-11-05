@@ -123,7 +123,7 @@ const DESIGN_PRESETS = [
   },
 ];
 
-const CLOSING_TEXT = '빌드 도구(Vite, React, webpack 등) 없이 순수 HTML/CSS/JS로 작성해주세요. 데스크톱과 모바일 화면 모두에서 자연스럽게 보이도록 반응형으로 만들어주세요. 화면에 보이는 버튼, 안내 문구, 오류 메시지 등 모든 텍스트는 한국어로 작성해주세요. TODO나 "여기에 구현" 같은 미완성 부분 없이, 위에 적은 기능들이 실제로 클릭하면 동작하는 완성된 코드로 작성해주세요. 입력값이 비어있거나 잘못된 경우에도 오류 없이 자연스럽게 동작하도록 예외 처리를 해주세요. 먼저 바로 실행 가능한 완성된 웹앱 코드를 한 번에 작성하고, 필요한 설명은 코드 작성이 끝난 뒤에 해주세요. 단, 위에서 설명한 제약 조건(빌드 도구 미사용, 지정한 데이터 저장 방식 등) 때문에 제가 원하는 기능을 제대로 구현하기 어렵다면, 마음대로 다른 방식으로 바꾸지 말고 먼저 어떤 제약을 왜 바꿔야 하는지 저에게 물어봐주세요. 제가 좋다고 하면 그때 그 기능을 추가하는 방법(설치·설정 방법 포함)까지 코드와 함께 설명해주세요. 저는 바이브코딩이 처음입니다. 코드 작성이 끝나면, 이 웹앱을 Google AI Studio의 GitHub 연결 기능으로 저장소에 올리고, Cloudflare Pages에서 그 저장소를 선택해 pages.dev 주소로 배포하는 방법을 단계별로 자세하고 쉽게 설명해주세요. 특히 Cloudflare Pages 설정 화면의 Framework preset, Build command, Build output directory에 무엇을 입력해야 하는지(빌드가 필요 없는 코드라면 비워두면 되는지)를 정확히 알려주세요.';
+const CLOSING_TEXT = '빌드 도구(Vite, React, webpack 등) 없이 순수 HTML/CSS/JS로 작성해주세요. 데스크톱과 모바일 화면 모두에서 자연스럽게 보이도록 반응형으로 만들어주세요. 화면에 보이는 버튼, 안내 문구, 오류 메시지 등 모든 텍스트는 한국어로 작성해주세요. TODO나 "여기에 구현" 같은 미완성 부분 없이, 위에 적은 기능들이 실제로 클릭하면 동작하는 완성된 코드로 작성해주세요. 입력값이 비어있거나 잘못된 경우에도 오류 없이 자연스럽게 동작하도록 예외 처리를 해주세요. 먼저 바로 실행 가능한 완성된 웹앱 코드를 한 번에 작성하고, 필요한 설명은 코드 작성이 끝난 뒤에 해주세요. 단, 위에서 설명한 제약 조건(빌드 도구 미사용, 지정한 데이터 저장 방식 등) 때문에 제가 원하는 기능을 제대로 구현하기 어렵다면, 마음대로 다른 방식으로 바꾸지 말고 먼저 어떤 제약을 왜 바꿔야 하는지 저에게 물어봐주세요. 제가 좋다고 하면 그때 그 기능을 추가하는 방법(설치·설정 방법 포함)까지 코드와 함께 설명해주세요. 저는 바이브코딩이 처음입니다.';
 
 // 데이터 저장 방식별 삽입 문구. 받는 사람이 코드를 직접 고칠 줄 모른다는 전제라,
 // 연결에 필요한 값은 AI가 채팅으로 물어보고 직접 반영하게 하고, 시트 머리글이나
@@ -166,6 +166,7 @@ const ADMIN_TEXT = {
     sheets: '관리자 전용 화면도 따로 만들어주세요(예: admin.html). 일반 화면에는 관리 기능이 보이지 않게 하고, 관리자는 비밀번호를 입력해야 들어갈 수 있게 해주세요. 비밀번호는 웹앱 코드에 직접 쓰지 말고 Apps Script의 속성(PropertiesService)에 저장해서 Apps Script에서 확인하게 하고, 비밀번호를 처음 정하는 방법도 알려주세요.',
     firebase: '관리자 전용 화면도 따로 만들어주세요(예: admin.html). 일반 화면에는 관리 기능이 보이지 않게 하고, 관리자는 Firebase Authentication의 이메일/비밀번호 로그인으로만 들어갈 수 있게 해주세요. 관리자 계정을 만드는 방법과, 관리자만 읽고 쓸 수 있도록 하는 보안 규칙도 알려주세요.',
   },
+  googleSheets: '관리자 전용 화면도 따로 만들어주세요(예: admin.html). 일반 화면에는 관리 기능이 보이지 않게 하고, 관리자는 구글 로그인(Google Identity Services)으로 들어갑니다. 로그인 후 받은 ID 토큰을 Apps Script가 서버에서 검증하고, 허용한 교사 이메일 목록과 일치할 때만 관리 기능을 열어주세요. 화면(브라우저)에서만 관리자 여부를 판단하면 안 됩니다. 허용할 이메일 목록은 코드에 쓰지 말고 Apps Script의 속성(PropertiesService)에 저장하고, 제가 알려드릴 이메일을 거기에 넣는 방법을 알려주세요.',
   google: '관리자 전용 화면도 따로 만들어주세요(예: admin.html). 일반 화면에는 관리 기능이 보이지 않게 하고, 관리자는 구글 로그인으로 들어가며 제가 알려주는 구글 계정(이메일 목록)만 허용해주세요. 이 로그인을 위해 Firebase Authentication을 함께 써야 한다면 먼저 저에게 물어봐주세요.',
 };
 const OPT_TEXT = {
@@ -628,7 +629,7 @@ function buildPromptLines() {
     if (storage === 'sheets' && document.getElementById('needFiles').checked) { lines.push(FILE_TEXT); lines.push(''); }
   }
   if (ex.admin === 'password') { lines.push(ADMIN_TEXT.password[storage || 'local']); lines.push(''); }
-  else if (ex.admin === 'google') { lines.push(ADMIN_TEXT.google); lines.push(''); }
+  else if (ex.admin === 'google') { lines.push(storage === 'sheets' ? ADMIN_TEXT.googleSheets : ADMIN_TEXT.google); lines.push(''); }
   const opts = ex.opts || [];
   const optLines = ['sample', 'csv', 'print', 'privacy', 'darkmode'].filter((k) => opts.includes(k)).map((k) => OPT_TEXT[k]);
   if (optLines.length) { lines.push(...optLines); lines.push(''); }
@@ -845,6 +846,78 @@ function fillExample() {
   renderPresets();
 
   toast('예시 데이터를 채웠습니다. 자유롭게 고쳐서 써보세요');
+  saveDraft();
+}
+
+// ============================================================
+//  견본 프롬프트
+// ============================================================
+
+const SAMPLES = {
+  grade: {
+    topic: '수행평가 성적 확인·서명 앱',
+    users: ['나 혼자', '우리 반 학생'],
+    devices: ['스마트폰', 'PC·노트북'],
+    features: [
+      {
+        name: '성적 CSV 업로드 (교사)',
+        desc: '교사가 성적 CSV를 올리면 구글 시트에 저장한다. 빈 양식도 내려받을 수 있다',
+        steps: [
+          '교사가 구글 로그인으로 관리 화면에 들어간다',
+          'CSV 양식 내려받기 버튼으로 열 제목이 들어 있는 빈 양식을 받는다. 열 순서는 학년, 반, 번호, 이름, 학생 고유 코드, 총점, 등급이고, 그 뒤에 영역별 수행평가 점수를 원하는 개수만큼 붙인다. 영역 열의 제목은 CSV 첫 줄에서 읽어 화면에 그대로 쓴다',
+          'CSV를 올리면 미리보기에서 행 수와 오류(고유 코드 중복, 빈 값)를 보여준다',
+          '확인을 누르면 시트에 저장한다. 이미 데이터가 있으면 덮어쓸지 먼저 묻는다',
+        ],
+      },
+      {
+        name: '내 성적 확인 (학생, 로그인 없음)',
+        desc: '학생이 로그인 없이 접속해 본인의 고유 코드를 입력하면 본인의 성적만 보인다',
+        steps: [
+          '학생이 학생 고유 코드를 입력한다',
+          '맞으면 이름, 총점, 등급, 영역별 수행평가 점수가 나온다',
+          '틀리면 "코드를 확인해 주세요"만 보여주고, 코드가 존재하는지는 알려주지 않는다',
+        ],
+      },
+      {
+        name: '확인 서명 제출 (학생)',
+        desc: '점수를 확인한 학생이 서명하고 저장하면 해당 학생 행에 기록된다',
+        steps: [
+          '점수 화면 아래에 서명란(손가락·마우스로 그리는 칸)과 지우기 버튼이 있다',
+          '확인했습니다 버튼을 누르면 서명 이미지와 시각이 그 학생 행에 저장된다',
+          '이미 서명한 학생에게는 서명 완료 표시를 보여주고 다시 저장하지 못하게 한다',
+        ],
+      },
+      {
+        name: '서명 결과 PDF 일괄 저장 (교사)',
+        desc: '교사가 학년·반을 골라 서명한 학생들의 확인서를 PDF 하나로 저장한다',
+        steps: [
+          '관리 화면에서 학년과 반을 고르면 서명 완료 학생과 미서명 학생 목록이 따로 보인다',
+          '반 전체 PDF 저장 버튼을 누르면 학생 한 명당 한 쪽씩 이름, 번호, 총점, 등급, 영역별 점수, 서명, 서명 시각이 들어간 PDF가 만들어진다',
+        ],
+      },
+    ],
+    extraText: '보안 조건: (1) 학생 화면에는 시트의 전체 명단을 내려보내지 말고, 학생이 코드를 입력하면 Apps Script가 그 학생 한 줄만 돌려주세요. (2) 학생 고유 코드는 6자 이상이어야 하고, 5번 연속 틀리면 5분 동안 입력을 막아주세요. (3) 서명 이미지는 가로 400px 이하의 PNG로 줄여서 시트 한 칸(5만 자) 안에 들어가게 저장해주세요. (4) 이 앱은 Cloudflare Pages로 배포할 예정이라, 학생 화면은 로그인 없이 누구나 열 수 있어야 합니다.',
+    storage: 'sheets',
+    admin: 'google',
+    opts: ['sample', 'privacy'],
+    preset: 'minimal',
+  },
+};
+
+function fillSample(id) {
+  const sm = SAMPLES[id];
+  if (!sm) return;
+  document.querySelector('input[name="purpose"][value="edu"]').checked = true;
+  document.getElementById('topic').value = sm.topic;
+  state.features = sm.features.map((f) => ({ key: 'f' + (++featureSeq), name: f.name, desc: f.desc, steps: f.steps.slice() }));
+  renderFeatures();
+  document.querySelector(`input[name="storage"][value="${sm.storage}"]`).checked = true;
+  document.getElementById('needFiles').checked = false;
+  writeExtras({ users: sm.users, devices: sm.devices, admin: sm.admin, opts: sm.opts, extraText: sm.extraText });
+  state.selectedPreset = sm.preset;
+  setDesignMode('preset');
+  renderPresets();
+  toast('견본을 채웠습니다. 고쳐서 써보세요 (교사 이메일은 AI가 물으면 알려주세요)');
   saveDraft();
 }
 
