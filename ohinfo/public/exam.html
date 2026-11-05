@@ -161,6 +161,8 @@
     .CodeMirror-scroll { min-height: 160px; }
     .CodeMirror-gutters { background: rgba(15,20,40,0.95); border-right: 1px solid rgba(255,255,255,0.1); }
     .CodeMirror-linenumber { color: #556; }
+    /* 배경이 진한 남색이라 기본 커서(검정)가 안 보인다 → 흰색·2px */
+    .CodeMirror-cursor { border-left: 2px solid #ffffff; }
     .cm-s-default .cm-keyword { color: #c792ea; } .cm-s-default .cm-string { color: #a5d6a7; } .cm-s-default .cm-number { color: #f78c6c; } .cm-s-default .cm-comment { color: #546e7a; font-style: italic; } .cm-s-default .cm-def { color: #82aaff; } .cm-s-default .cm-builtin { color: #ffcb6b; }
     .stdin-box { margin-top: 8px; }
     .stdin-box label { font-size: 0.75rem; color: var(--sub); font-weight: 700; display: block; margin-bottom: 4px; }
@@ -168,6 +170,19 @@
     .tc-box { margin-top: 10px; padding: 10px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border-card); background: var(--glass); font-size: 0.82rem; color: var(--sub); }
     .tc-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 6px; }
     .tc-label { font-weight: 700; min-width: 60px; color: var(--accent); }
+    /* 코딩 문항: 입력 형식 / 출력 형식 / 예시 입력·출력을 칸별로 나눠 보여준다 */
+    .cq-spec { margin: 4px 0 12px; display: grid; gap: 10px; }
+    .cq-sec { border: 1px solid var(--border-card); border-radius: var(--radius-sm); background: var(--glass); overflow: hidden; }
+    .cq-sec-h { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.02em; padding: 6px 12px; color: var(--accent); background: var(--accent-light); border-bottom: 1px solid var(--border-card); }
+    .cq-sec-b { padding: 9px 12px; font-size: 0.88rem; line-height: 1.6; color: var(--text); white-space: pre-wrap; word-break: break-all; }
+    .cq-ex { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .cq-ex pre { margin: 0; padding: 10px 12px; min-height: 2.6em; font-family: 'Courier New', Courier, monospace; font-size: 0.86rem; line-height: 1.5; background: rgba(15,20,40,0.92); color: #e8efff; white-space: pre; overflow-x: auto; }
+    .cq-none { color: var(--sub) !important; font-style: italic; font-family: inherit !important; }
+    .cq-ex pre.cq-none { color: #8a94b0 !important; }
+    @media (max-width: 640px) { .cq-ex { grid-template-columns: 1fr; } }
+    /* 시험 중 문제 글자 복사 방지(복사 이벤트도 막는다 — 아래 copy/cut 처리) */
+    #questionsWrap { -webkit-user-select: none; user-select: none; }
+    #questionsWrap textarea, #questionsWrap input, #questionsWrap .CodeMirror { -webkit-user-select: text; user-select: text; }
 
     /* 진행률 */
     .progress-bar { height: 4px; background: var(--border-card); border-radius: 2px; margin-bottom: 20px; overflow: hidden; }
@@ -396,6 +411,23 @@
 <a class="qna-fab" href="qna.html"><svg width="24" height="24"><use href="#ic-chat"/></svg><span class="badge" id="qnaBadge"></span><span class="qna-tip">정보 관련 질문이나 웹사이트 버그가 있으면 알려주세요.</span></a>
 
 <script type="module">
+  // 문항 이미지가 구글 드라이브 공유 링크(…/file/d/ID/view, open?id=ID)면 <img>로 바로
+  // 안 뜨므로 썸네일 주소로 바꿔 보여준다. 썸네일이 막히면 lh3 주소로 한 번 더 시도.
+  function driveFileId(url) {
+    const s = String(url || '');
+    if (!/^https:\/\/(drive|docs)\.google\.com\//.test(s)) return '';
+    const m = s.match(/\/d\/([\w-]{10,})|[?&]id=([\w-]{10,})/);
+    return m ? (m[1] || m[2]) : '';
+  }
+  function examImgSrc(url) {
+    const id = driveFileId(url);
+    return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w1600` : String(url || '');
+  }
+  window.examImgFallback = img => {
+    if (img.dataset.fb) return;
+    img.dataset.fb = '1';
+    img.src = `https://lh3.googleusercontent.com/d/${img.dataset.fid}=w1600`;
+  };
 import { db, auth } from './firebase-config.js';
 import { escHtml, safePhotoUrl } from './escape.js';
 import { setPageTitle } from './page-title.js';
@@ -510,7 +542,7 @@ let answers = {};     // qIdx → { value, lang }
 let codeAnswers = {}; // qIdx → { code, lang }
 const cmInstances = {};
 let alertCount = 0;
-let pasteBlockCount = 0; // 100자 이상 한번에 붙여넣기/드롭 시도해서 막힌 횟수
+let pasteBlockCount = 0; // 붙여넣기/드롭 시도해서 막힌 횟수
 let timerInterval = null;
 let remainSec = 0;
 let submitted = false;
@@ -818,15 +850,11 @@ async function updateAlertCount() {
   } catch(e) {}
 }
 
-// ── 순간 대량 입력(붙여넣기/드래그드롭) 차단 ──
-// 100자 이상이 타이핑이 아니라 한 번에 들어오면(붙여넣기, 드래그드롭)
-// 그 삽입 자체를 막는다 — AI 답을 통째로 붙여넣는 걸 막기 위함. 코딩
-// 에디터(CodeMirror)는 initCodeEditors()에서 beforeChange로 별도 처리.
-const BULK_INPUT_THRESHOLD = 100;
+// ── 붙여넣기/드래그드롭 차단 ──
+// 시험 답 칸(단답형·서술형)은 길이와 상관없이 붙여넣기·끌어다 놓기를 막는다 —
+// 직접 타이핑만. (예전엔 100자 이상만 막았다.) 코딩 에디터(CodeMirror)는
+// initCodeEditors()의 beforeChange에서 blockCodePaste로 따로 막는다.
 window.guardBulkInput = (event, idx) => {
-  const dt = event.clipboardData || event.dataTransfer;
-  const text = dt ? dt.getData('text') : '';
-  if (text.length < BULK_INPUT_THRESHOLD) return;
   event.preventDefault();
   pasteBlockCount++;
   const el = document.getElementById('pasteBlockCountEl');
@@ -834,13 +862,36 @@ window.guardBulkInput = (event, idx) => {
   document.getElementById('pasteBlockInfo')?.classList.remove('hidden');
   updatePasteBlockCount();
   const msgs = {
-    ko: `한 번에 ${BULK_INPUT_THRESHOLD}자 이상 붙여넣을 수 없습니다.`,
-    zh: `不能一次粘贴超过${BULK_INPUT_THRESHOLD}个字符。`,
-    ru: `Нельзя вставить больше ${BULK_INPUT_THRESHOLD} символов за раз.`,
-    en: `You can't paste ${BULK_INPUT_THRESHOLD}+ characters at once.`,
+    ko: '답은 붙여넣을 수 없습니다. 직접 입력하세요.',
+    zh: '答案不能粘贴，请直接输入。',
+    ru: 'Ответ нельзя вставлять. Набирайте вручную.',
+    en: "You can't paste answers. Please type them.",
   };
   showBanner('<svg width="14" height="14" style="vertical-align:-2px;margin-right:4px;"><use href="#ic-alert"/></svg>' + (msgs[currentLang] || msgs.ko));
 };
+
+// 코드 칸 붙여넣기 차단 — 횟수는 기존 붙여넣기 차단 횟수에 같이 센다.
+window.blockCodePaste = () => {
+  pasteBlockCount++;
+  const el = document.getElementById('pasteBlockCountEl');
+  if (el) el.innerText = pasteBlockCount;
+  document.getElementById('pasteBlockInfo')?.classList.remove('hidden');
+  updatePasteBlockCount();
+  const msgs = { ko: '코드는 붙여넣을 수 없습니다. 직접 입력하세요.', zh: '代码不能粘贴，请直接输入。', ru: 'Код нельзя вставлять. Набирайте вручную.', en: "You can't paste code. Please type it." };
+  showBanner('<svg width="14" height="14" style="vertical-align:-2px;margin-right:4px;"><use href="#ic-alert"/></svg>' + (msgs[currentLang] || msgs.ko));
+};
+
+// 시험 중(문항이 떠 있고 아직 제출 전)에는 복사·잘라내기를 막는다 — 문제나 코드를
+// 밖(AI 등)으로 가져가지 못하게. 제출 뒤나 시험 밖 화면은 그대로.
+['copy', 'cut'].forEach(ev => document.addEventListener(ev, e => {
+  if (submitted || !questions.length) return;
+  if (!e.target?.closest?.('#questionsWrap')) return;
+  e.preventDefault();
+}, true));
+document.addEventListener('contextmenu', e => {
+  if (submitted || !questions.length) return;
+  if (e.target?.closest?.('#questionsWrap')) e.preventDefault();
+});
 
 async function updatePasteBlockCount() {
   if (!currentAssignment) return;
@@ -938,7 +989,7 @@ function startExamUI() {
     if (leftSec > 0) startTimer(leftSec);
     else setTimeout(() => submitExam(true), 300); // 이미 시간이 끝난 시험에 재입장 → 저장된 답으로 바로 제출
   }
-  updateProgress();
+  updateProgress();  startLiveSync();
 }
 
 // ── 코드 실행 (서버 위임) ──
@@ -1104,11 +1155,10 @@ function initCodeEditors() {
       // 자체를 취소한다 — CodeMirror는 origin으로 타이핑('+input')과
       // 붙여넣기('paste')/드롭('drop')을 구분해준다.
       cm.on('beforeChange', (instance, changeObj) => {
+        // 코드 칸은 길이와 상관없이 붙여넣기·끌어다 놓기를 전부 막는다(직접 타이핑만).
         if (changeObj.origin !== 'paste' && changeObj.origin !== 'drop') return;
-        const text = (changeObj.text || []).join('\n');
-        if (text.length < BULK_INPUT_THRESHOLD) return;
         changeObj.cancel();
-        window.guardBulkInput({ clipboardData: { getData: () => text }, preventDefault(){} }, i);
+        blockCodePaste();
       });
       cmInstances[i] = cm;
       // restore saved answer
@@ -1156,18 +1206,33 @@ function renderQuestion(q, i) {
       <div class="essay-counter" id="essayCounter_${i}" data-min="${Number(minLen)||0}"><span class="essay-counter-num">0</span>${charUnit}${limitHint?` · ${limitHint}`:''}</div>
     `;
   } else if (q.type === 'code') {
-    const tcHtml = (q.inEx || q.outEx) ? `<div class="tc-box">
-      ${q.inDesc ? `<div class="tc-row"><span class="tc-label">${currentLang==='zh'?'输入说明':currentLang==='ru'?'Ввод':currentLang==='en'?'Input format':'입력 형식'}</span><span>${escHtml(q.inDesc)}</span></div>` : ''}
-      ${q.outDesc ? `<div class="tc-row"><span class="tc-label">${currentLang==='zh'?'输出说明':currentLang==='ru'?'Вывод':currentLang==='en'?'Output format':'출력 형식'}</span><span>${escHtml(q.outDesc)}</span></div>` : ''}
-      ${q.inEx ? `<div class="tc-row"><span class="tc-label">${currentLang==='zh'?'输入例':currentLang==='ru'?'Пример':currentLang==='en'?'Sample input':'예시 입력'}</span><pre style="margin:0;font-size:0.82rem;">${escHtml(q.inEx)}</pre></div>` : ''}
-      ${q.outEx ? `<div class="tc-row"><span class="tc-label">${currentLang==='zh'?'输出例':currentLang==='ru'?'Ответ':currentLang==='en'?'Sample output':'예시 출력'}</span><pre style="margin:0;font-size:0.82rem;">${escHtml(q.outEx)}</pre></div>` : ''}
-    </div>` : '';
+    // 네 칸을 항상 보여준다 — 비어 있으면 '없음'(예: 입력이 없는 문제). 예전엔 예시가
+    // 없으면 형식 설명까지 통째로 빠졌고, 있어도 한 상자에 섞여 구분이 안 됐다.
+    const L = {
+      ko: ['입력 형식', '출력 형식', '예시 입력', '예시 출력', '없음'],
+      zh: ['输入格式', '输出格式', '输入样例', '输出样例', '无'],
+      ru: ['Формат ввода', 'Формат вывода', 'Пример ввода', 'Пример вывода', 'Нет'],
+      en: ['Input format', 'Output format', 'Sample input', 'Sample output', 'None'],
+    }[currentLang] || [];
+    const [lIn, lOut, lInEx, lOutEx, lNone] = L.length ? L : ['입력 형식', '출력 형식', '예시 입력', '예시 출력', '없음'];
+    const sec = (label, val, mono) => {
+      const has = String(val ?? '').trim() !== '';
+      const inner = mono
+        ? `<pre class="${has ? '' : 'cq-none'}">${has ? escHtml(val) : lNone}</pre>`
+        : `<div class="cq-sec-b${has ? '' : ' cq-none'}">${has ? escHtml(val) : lNone}</div>`;
+      return `<div class="cq-sec"><div class="cq-sec-h">${label}</div>${inner}</div>`;
+    };
+    const tcHtml = `<div class="cq-spec">
+      ${sec(lIn, q.inDesc)}
+      ${sec(lOut, q.outDesc)}
+      <div class="cq-ex">${sec(lInEx, q.inEx, true)}${sec(lOutEx, q.outEx, true)}</div>
+    </div>`;
     body = `
       ${tcHtml}
       <div class="code-meta">
         <span style="font-size:0.82rem;font-weight:700;color:var(--sub);">Python</span>
       </div>
-      <textarea class="code-editor" id="code_${i}" spellcheck="false" oninput="saveCode(${i},this.value)" onpaste="guardBulkInput(event,${i})" ondrop="guardBulkInput(event,${i})">${escHtml(getDefaultCode(q, currentLang))}</textarea>
+      <textarea class="code-editor" id="code_${i}" spellcheck="false" oninput="saveCode(${i},this.value)" onpaste="event.preventDefault();blockCodePaste()" ondrop="event.preventDefault();blockCodePaste()">${escHtml(getDefaultCode(q, currentLang))}</textarea>
       <div class="stdin-box">
         <label>${UI[currentLang].stdin}</label>
         <textarea class="stdin-input" id="stdin_${i}" placeholder="${UI[currentLang].stdinPlaceholder}" rows="2"></textarea>
@@ -1179,7 +1244,8 @@ function renderQuestion(q, i) {
     `;
   }
 
-  const imgHtml = q.imageUrl ? `<img class="q-img" src="${escHtml(q.imageUrl)}" alt="" loading="lazy">` : '';
+  const imgFid = driveFileId(q.imageUrl);
+  const imgHtml = q.imageUrl ? `<img class="q-img" src="${escHtml(examImgSrc(q.imageUrl))}" alt="" loading="lazy" referrerpolicy="no-referrer"${imgFid ? ` data-fid="${escHtml(imgFid)}" onerror="examImgFallback(this)"` : ''}>` : '';
 
   return `<div class="q-card" id="qcard_${i}">
     <div class="q-header">
@@ -1225,7 +1291,54 @@ function updateProgress() {
   });
   const pct = questions.length ? (filled / questions.length * 100) : 0;
   document.getElementById('progressFill').style.width = pct + '%';
+  _liveFilled = filled;
   scheduleDraftSave();
+  scheduleLiveSync();
+}
+
+// ── 실시간 진행 기록 (선생님 실시간 현황판용) ──
+// 시험 중 30초마다, 그리고 답이 바뀌면 10초 뒤에 exam_progress에
+// 답한 문항 수·마지막 접속 시각을 남긴다. 현재 답(liveAnswers)은 바뀐
+// 경우에만 같이 쓴다(문항당 5,000자까지). 제출 뒤에는 쓰지 않는다.
+let _liveFilled = 0, _liveTimer = null, _liveDebounce = null, _liveLastJson = '';
+function liveAnswerText(q, i) {
+  if (q.type === 'code') {
+    const cm = cmInstances[i];
+    return cm ? cm.getValue() : (codeAnswers[i]?.code || '');
+  }
+  const v = answers[i]?.value;
+  if (v === undefined || v === null) return '';
+  if (q.type === 'mc') {
+    const opt = getOptions(q)[v];
+    return `${Number(v) + 1}번${opt != null ? ' — ' + String(opt) : ''}`;
+  }
+  return String(v);
+}
+async function pushLive() {
+  if (submitted || !currentAssignment || !questions.length) return;
+  const live = {};
+  questions.forEach((q, i) => { live[q.id || ('q' + i)] = liveAnswerText(q, i).slice(0, 5000); });
+  const json = JSON.stringify(live);
+  const data = { answeredCount: _liveFilled, lastSeenAt: serverTimestamp() };
+  if (json !== _liveLastJson) data.liveAnswers = live;
+  try {
+    await setDoc(doc(db, 'exam_progress', `${currentAssignment.asId}_${SESSION.id}`), data, { merge: true });
+    if (data.liveAnswers) _liveLastJson = json;
+  } catch (e) {}
+}
+function scheduleLiveSync() {
+  if (submitted || !currentAssignment || _liveDebounce) return;
+  _liveDebounce = setTimeout(() => { _liveDebounce = null; pushLive(); }, 10000);
+}
+function startLiveSync() {
+  stopLiveSync();
+  _liveLastJson = '';
+  pushLive();
+  _liveTimer = setInterval(pushLive, 30000);
+}
+function stopLiveSync() {
+  clearInterval(_liveTimer); _liveTimer = null;
+  clearTimeout(_liveDebounce); _liveDebounce = null;
 }
 
 // ── 답안 임시저장 (이 기기 localStorage) ──
@@ -1343,6 +1456,7 @@ window.submitExam = async (isAuto = false) => {
       // 재시도할 일이 아니므로 임시저장을 지우고 결과 화면으로 보낸다.
       if (e.status !== 409) throw e;
       showLoading(false);
+      stopLiveSync();
       clearDraft();
       alert(e.message);
       await showMyResult(currentAssignment.asId);
@@ -1362,6 +1476,7 @@ window.submitExam = async (isAuto = false) => {
     }));
     // exam_results와 exam_progress(점수·제출상태)는 서버가 이미 기록했다.
     clearDraft();
+    stopLiveSync();
 
     showLoading(false);
     // 서술형·단답형은 선생님이 직접 채점하므로, 하나라도 있으면 아직 최종

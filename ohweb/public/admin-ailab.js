@@ -132,8 +132,13 @@ function render() {
 }
 
 function asgPicker() {
+  // 같은 제목·학교끼리 묶어서(optgroup) 반 순서로 — 배정이 많아져도 찾기 쉽게
+  const groups = new Map();
+  for (const a of S.asgs) { const k = `${a.title} · ${a.schoolName}`; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(a); }
+  const opts = [...groups].map(([k, list]) => `<optgroup label="${E(k)}">${list.slice().sort((x, y) => x.grade - y.grade || x.class - y.class).map(a =>
+    `<option value="${E(a.id)}" ${a.id === S.asId ? 'selected' : ''}>${E(classLabel(a))}${a.status === 'ON' ? ' (열림)' : ''}</option>`).join('')}</optgroup>`).join('');
   return `<div class="card"><div class="select-controls"><label>AI 수업</label>
-    <select class="inp" data-ai="pickAs">${S.asgs.map(a => `<option value="${E(a.id)}" ${a.id === S.asId ? 'selected' : ''}>${E(a.title)} — ${E(a.schoolName)} ${E(a.grade)}학년 ${E(a.class)}반 ${a.status === 'ON' ? '' : '(닫힘)'}</option>`).join('')}</select></div></div>`;
+    <select class="inp" data-ai="pickAs">${opts}</select></div></div>`;
 }
 
 const SRC_NAMES = { search: '구글 이미지', draw: '그리기', camera: '카메라' };
@@ -164,9 +169,16 @@ function assignHtml() {
   const editing = S.editId && ed.id;
   const kind = editing ? (ed.kind === 'table' || ed.kind === 'text' ? ed.kind : 'image') : (S.kindDraft || 'image');
   if (S.tblFor !== (S.editId || 'new')) { S.tbl = ed.table ? { ...ed.table } : (S.draft && S.draft.table ? { ...S.draft.table } : null); S.tblFor = S.editId || 'new'; }
+  const formOpen = editing || S.formOpen || !S.asgs.length;
+  const listCard = `<div class="card"><div class="ai-h"><h2>배정 목록</h2>
+      <span class="ai-sub" style="flex:1;">학생 홈 카드는 [앱 설정]에서 "AI 실험실"을 켜야 보입니다.</span>
+      ${formOpen ? '' : '<button class="btn sm accent" data-ai="openForm">＋ 새 AI 수업 배정</button>'}</div>
+    <div id="aiAsgList">${asgListHtml()}</div></div>`;
+  if (!formOpen) return listCard;
   return `<div class="card ai-assign" data-kind="${kind}">
     <div class="ai-h"><h2>${editing ? `설정 수정 · ${E(classLabel(ed))}` : 'AI 수업 배정'}</h2>
-      ${editing ? '' : '<button class="btn sm ghost" data-ai="resetForm" title="입력 칸을 처음 상태로 비웁니다">초기화</button>'}</div>
+      <span class="ai-btns">${editing ? '' : '<button class="btn sm ghost" data-ai="resetForm" title="입력 칸을 처음 상태로 비웁니다">초기화</button>'}
+      ${!editing && S.asgs.length ? '<button class="btn sm ghost" data-ai="closeForm">닫기</button>' : ''}</span></div>
     <div class="ai-sec"><div class="ai-sec-t">수업 제목</div>
       <input class="inp" id="aiT_title" placeholder="예: 개와 고양이 분류하기" value="${E(ed.title || '')}"></div>
     <div class="ai-sec"><div class="ai-sec-t">활동 종류${editing ? ' <span class="ai-sub">(배정한 뒤에는 바꿀 수 없어요)</span>' : ''}</div>
@@ -210,34 +222,49 @@ function assignHtml() {
       ${editing ? '<button class="btn ghost" data-ai="cancelEdit">취소</button>' : ''}
       <span class="ai-sub">${editing ? '바꾼 설정은 학생 화면에 바로 반영됩니다.' : '배정한 뒤에도 입력 내용이 남습니다. 반만 바꿔 다시 배정하세요.'}</span>
     </div></div>
-    <div class="card"><div class="ai-h"><h2>배정 목록</h2><span class="ai-sub">학생 홈 카드는 [앱 설정]에서 "AI 실험실"을 켜야 보입니다.</span></div>${asgListHtml()}</div>`;
+    ${listCard}`;
 }
 
-// 같은 제목·학교끼리 묶어서, 반마다 한 줄.
+// 같은 제목·학교끼리 묶어서, 반마다 한 줄. 열린 수업이 위로. 필터·접기는 admin-groups.js(AG).
+const AGK = 'ai';
+const asgGroupKey = a => `${a.title}|${a.schoolName}`;
 function asgListHtml() {
   if (!S.asgs.length) return '<div class="empty-state">아직 배정한 AI 수업이 없습니다.</div>';
-  const groups = new Map();
-  for (const a of S.asgs) {
-    const k = `${a.title}|${a.schoolName}`;
-    if (!groups.has(k)) groups.set(k, []);
-    groups.get(k).push(a);
-  }
-  return [...groups.values()].map(list => {
-    list.sort((x, y) => x.grade - y.grade || x.class - y.class);
-    const rows = list.map(a => `<div class="ai-asg">
-      <div class="ai-asg-c"><b>${E(classLabel(a))}</b>
-        <span class="ai-sub">모둠 ${a.groupSize || 2}명 · ${isTbl(a) ? `📊 ${E((a.table || {}).name || '표 데이터')} → 🎯 ${E((a.table || {}).target || '')} · ` : ''}${isTbl(a) ? '' : a.kind === 'text' ? `💬 문장 분류(${a.textModel === 'mean' ? '🌏 뜻 이해' : '🔤 단어 조각'}) · 레이블 최대 ${a.maxLabels || 5}개 · 문장 ${a.minPerLabel || 10}개 · 테스트 ${a.minTestPerLabel || 3}개 · ` : `사진: ${srcOf(a).map(x => SRC_NAMES[x] || x).join('·')}${srcOf(a).includes('camera') && !a.cameraUpload ? '(기기에만)' : ''} · 레이블 최대 ${a.maxLabels || 5}개 · 사진 ${a.minPerLabel || 15}장 · 테스트 ${a.minTestPerLabel || 3}장 · `}게시판 ${a.board ? `${E(a.board.name)}(${(a.boardScope || 'class') === 'all' ? '모든 반 함께' : '반별'})` : '없음'}</span></div>
-      <label class="toggle" title="${a.status === 'ON' ? '학생 화면 열림 (누르면 닫기)' : '학생 화면 닫힘 (누르면 열기)'}"><input type="checkbox" data-ai="status" data-id="${E(a.id)}" ${a.status === 'ON' ? 'checked' : ''}><div class="toggle-track"></div></label>
-      <div class="ai-btns">
-        <button class="btn sm" data-ai="goPairs" data-id="${E(a.id)}">모둠 구성</button>
-        <button class="btn sm" data-ai="goBoard" data-id="${E(a.id)}">현황판</button>
-        <button class="btn sm" data-ai="goResults" data-id="${E(a.id)}">결과</button>
+  const KIND = { image: '🖼 이미지', text: '💬 문장', table: '📊 표' };
+  const bar = AG.bar(AGK, { schools: [...new Set(S.asgs.map(a => a.schoolName).filter(Boolean))].sort(), grades: AG.gradesOf(S.asgs.map(a => a.grade)), status: ['열림', '닫힘'], search: '수업 제목 검색…' });
+  const shown = S.asgs.filter(a => AG.pass(AGK, { school: a.schoolName, grade: a.grade, on: a.status === 'ON', text: a.title }));
+  if (!shown.length) return bar + AG.empty(AGK);
+  const groups = AG.groupBy(shown, asgGroupKey).map(g => ({ ...g, live: g.items.some(a => a.status === 'ON') }));
+  groups.sort((x, y) => y.live - x.live);   // 안에서는 최근 배정 순(S.asgs 순서) 유지
+  return bar + `<div class="ag-sum">수업 ${groups.length}개 · 배정 ${shown.length}개 · 열림 ${shown.filter(a => a.status === 'ON').length}개</div><div class="ag-list wide">` + groups.map(({ key, items: list, live }) => {
+    list = list.slice().sort((x, y) => x.grade - y.grade || x.class - y.class);
+    const on = list.filter(a => a.status === 'ON').length;
+    const rows = list.map(a => `<div class="ag-r">
+      <div class="ag-rl"><div class="ag-rn">${E(classLabel(a))}</div>
+        <div class="ag-rs">모둠 ${a.groupSize || 2}명 · ${isTbl(a) ? `📊 ${E((a.table || {}).name || '표 데이터')} → 🎯 ${E((a.table || {}).target || '')} · ` : ''}${isTbl(a) ? '' : a.kind === 'text' ? `💬 문장 분류(${a.textModel === 'mean' ? '🌏 뜻 이해' : '🔤 단어 조각'}) · 레이블 최대 ${a.maxLabels || 5}개 · 문장 ${a.minPerLabel || 10}개 · 테스트 ${a.minTestPerLabel || 3}개 · ` : `사진: ${srcOf(a).map(x => SRC_NAMES[x] || x).join('·')}${srcOf(a).includes('camera') && !a.cameraUpload ? '(기기에만)' : ''} · 레이블 최대 ${a.maxLabels || 5}개 · 사진 ${a.minPerLabel || 15}장 · 테스트 ${a.minTestPerLabel || 3}장 · `}게시판 ${a.board ? `${E(a.board.name)}(${(a.boardScope || 'class') === 'all' ? '모든 반 함께' : '반별'})` : '없음'}</div></div>
+      <div class="ag-ra">
+        <label class="ios-switch" title="${a.status === 'ON' ? '학생 화면 열림 (누르면 닫기)' : '학생 화면 닫힘 (누르면 열기)'}"><input type="checkbox" data-ai="status" data-id="${E(a.id)}" ${a.status === 'ON' ? 'checked' : ''}><span></span></label>
+        <button class="btn sm ghost" data-ai="goPairs" data-id="${E(a.id)}">모둠</button>
+        <button class="btn sm ghost" data-ai="goBoard" data-id="${E(a.id)}">현황판</button>
+        <button class="btn sm ghost" data-ai="goResults" data-id="${E(a.id)}">결과</button>
         <button class="btn sm ghost" data-ai="edit" data-id="${E(a.id)}">수정</button>
-        <button class="btn sm ghost ai-del" data-ai="delAsg" data-id="${E(a.id)}" title="삭제">삭제</button>
+        <button class="icon-action danger" data-ai="delAsg" data-id="${E(a.id)}" title="삭제"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
       </div></div>`).join('');
-    return `<div class="ai-group"><div class="ai-group-h"><b>${E(list[0].title)}</b> <span class="ai-sub">${E(list[0].schoolName)} · ${list.length}개 반</span></div>${rows}</div>`;
-  }).join('');
+    const k0 = list[0].kind === 'table' || list[0].kind === 'text' ? list[0].kind : 'image';
+    return `<div class="ag-g${live ? ' live' : ''}${AG.isOpen(AGK, key) ? '' : ' closed'}" ${AG.gattr(AGK, key)}>
+      <div class="ag-h"><span class="ag-caret">▾</span>
+        <div class="ag-t"><div class="ag-name">${E(list[0].title)}</div>
+          <div class="ag-meta"><span>${E(list[0].schoolName)}</span><span>${KIND[k0]}</span><span>${list.length}개 반</span>
+            <span class="ag-pill${on ? ' on' : ''}">${on ? `열림 ${on}/${list.length}` : '모두 닫힘'}</span></div></div>
+        <div class="ag-acts">
+          ${list.length > 1 ? `<button class="btn ghost sm" data-ai="groupStatus" data-g="${E(key)}" data-on="${on === list.length ? '0' : '1'}">${on === list.length ? '모두 닫기' : '모두 열기'}</button>` : ''}
+          <button class="btn ghost sm" data-ai="addClass" data-id="${E(list[0].id)}" title="같은 설정으로 다른 반에 배정합니다">＋ 반</button>
+        </div></div>
+      <div class="ag-b">${rows}</div></div>`;
+  }).join('') + '</div>';
 }
+function renderAsgList() { const el = $('aiAsgList'); if (el) el.innerHTML = asgListHtml(); }
+AG.on(AGK, renderAsgList);
 
 // 입력이 바뀔 때 폼 일부만 고친다(다시 그리면 입력 중인 칸이 풀리므로).
 function refreshAssignForm(changed) {
@@ -537,6 +564,7 @@ const actions = {
         // 내용은 그대로 두고 반만 다음 반으로 넘겨 둔다(여러 반에 연달아 배정하기 쉽게).
         S.draft = { ...f, class: String(Math.min(15, Number(f.class) + 1)) };
         S.kindDraft = f.kind;
+        S.formOpen = true;
       }
       S.editId = '';
       await loadBase(); render();
@@ -545,6 +573,32 @@ const actions = {
   edit(el) { S.editId = el.dataset.id; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); },
   csvFile() { /* 파일 고르기는 change에서 */ },
   cancelEdit() { S.editId = ''; render(); },
+  openForm() { S.formOpen = true; render(); window.scrollTo({ top: 0, behavior: 'smooth' }); },
+  closeForm() { S.formOpen = false; render(); },
+  // 같은 설정으로 다른 반에 배정 — 그 배정을 초안으로 채우고 폼을 연다(반만 바꾸면 됨)
+  addClass(el) {
+    const a = S.asgs.find(x => x.id === el.dataset.id); if (!a) return;
+    const { id, createdAt, ...rest } = a;
+    if (a.kind === 'text') rest.textModel = a.textModel || 'words';   // 예전 배정(값 없음)은 단어 조각
+    // 이 수업이 아직 안 간 다음 반을 미리 골라 둔다
+    const used = new Set(S.asgs.filter(x => asgGroupKey(x) === asgGroupKey(a) && nv(x.grade) === nv(a.grade)).map(x => Number(nv(x.class))));
+    let c = 1; while (used.has(c) && c < 15) c++;
+    rest.class = String(c);
+    S.editId = ''; S.draft = rest; S.kindDraft = a.kind === 'table' || a.kind === 'text' ? a.kind : 'image';
+    S.tbl = null; S.tblFor = ''; S.formOpen = true;
+    render(); window.scrollTo({ top: 0, behavior: 'smooth' });
+    toast('반을 바꾸고 [배정하기]를 누르세요.');
+  },
+  async groupStatus(el) {
+    const open = el.dataset.on === '1';
+    const list = S.asgs.filter(a => asgGroupKey(a) === el.dataset.g && (a.status === 'ON') !== open);
+    await guard(async () => {
+      await Promise.all(list.map(a => updateDoc(doc(db, 'ai_assignments', a.id), { status: open ? 'ON' : 'OFF' })));
+      list.forEach(a => { a.status = open ? 'ON' : 'OFF'; });
+      toast(`${list.length}개 반 ${open ? '열림' : '닫힘'}`, 'ok');
+    });
+    renderAsgList();
+  },
   resetForm() { S.draft = null; S.tbl = null; S.tblFor = ''; S.kindDraft = ''; render(); },
   async delAsg(el) {
     const a = S.asgs.find(x => x.id === el.dataset.id);
@@ -674,7 +728,14 @@ const changeActions = {
     refreshTable();
   },
   target(el) { if (S.tbl) { S.tbl.target = el.value; refreshTable(); } },
-  async status(el) { await guard(async () => { await updateDoc(doc(db, 'ai_assignments', el.dataset.id), { status: el.checked ? 'ON' : 'OFF' }); await loadBase(); render(); }); },
+  async status(el) {
+    const a = S.asgs.find(x => x.id === el.dataset.id);
+    el.disabled = true;
+    const ok = await guard(async () => { await updateDoc(doc(db, 'ai_assignments', el.dataset.id), { status: el.checked ? 'ON' : 'OFF' }); return true; });
+    if (ok && a) a.status = el.checked ? 'ON' : 'OFF'; else el.checked = !el.checked;
+    el.disabled = false;
+    renderAsgList();
+  },
   pickAs(el) { go(S.tab, el.value); },
   async addMem(el) {
     if (!el.value) return;

@@ -47,51 +47,171 @@ const parse = (text) => {
   return JSON.parse(t.slice(0, t.lastIndexOf('}') + 1));
 };
 
-async function getText(url, charset) {
-  const res = await fetch(url, { headers: { 'user-agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(6000) });
+// 컴시간이 자동 요청을 다르게 대할 수 있어, 일반 브라우저와 같은 모양으로 요청한다
+const BROWSER_HEADERS = {
+  'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+  accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+  'accept-language': 'ko-KR,ko;q=0.9,en;q=0.5',
+  referer: 'http://comci.net:4082/st',
+};
+// budget: 이 요청 전체가 쓸 수 있는 시간(재시도·접속 정보 갱신을 다 합쳐서). 컴시간이 아예 응답하지 않을 때 화면을 오래 붙잡지 않게.
+async function getText(url, charset, budget) {
+  const left = budget ? budget.until - Date.now() : 6000;
+  if (left < 300) throw new Error('컴시간 응답 시간 초과(Timeout)');
+  const res = await fetch(url, { headers: BROWSER_HEADERS, signal: AbortSignal.timeout(Math.min(4500, left)) });
   if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`);
   return new TextDecoder(charset).decode(await res.arrayBuffer());
 }
 
-// Cloudflare 캐시(데이터센터별)에 문자열을 잠깐 둔다. 캐시 키는 가짜 주소면 된다.
-async function cached(key, ttl, make) {
+// 컴시간 서버는 비공식이라 가끔 순간적으로 502·타임아웃이 난다 → 한 번 더 시도한다.
+async function retry(fn, tries = 2) {
+  let err;
+  for (let i = 0; i < tries; i++) {
+    try { return await fn(); } catch (e) { err = e; if (i < tries - 1) await new Promise((r) => setTimeout(r, 500)); }
+  }
+  throw err;
+}
+
+// Cloudflare 캐시(데이터센터별)에 문자열을 둔다. 캐시 키는 가짜 주소면 된다.
+//   · 평소: ttl 초 동안은 캐시를 그대로 쓴다(fresh 면 건너뛰고 새로 받는다 — '다시 받기').
+//   · 컴시간이 안 될 때: 하루 동안 보관한 마지막 정상 응답을 대신 내려주고 meta.stale 로 알린다(502 대신).
+const STALE_TTL = 86400;
+async function cached(key, ttl, make, { fresh = false, meta } = {}) {
   const cache = typeof caches !== 'undefined' ? caches.default : null;
-  const req = new Request('https://comci-cache.invalid/' + encodeURIComponent(key));
-  const hit = cache && (await cache.match(req));
+  const keyReq = (k) => new Request('https://comci-cache.invalid/' + encodeURIComponent(k));
+  const hit = !fresh && cache && (await cache.match(keyReq(key)));
   if (hit) return hit.text();
-  const text = await make();
-  if (cache) await cache.put(req, new Response(text, { headers: { 'cache-control': `max-age=${ttl}` } }));
+  let text;
+  try { text = await retry(make); }
+  catch (e) {
+    const old = cache && (await cache.match(keyReq('stale:' + key)));
+    if (old) { if (meta) meta.stale = true; return old.text(); }
+    throw e;
+  }
+  if (cache) {
+    await cache.put(keyReq(key), new Response(text, { headers: { 'cache-control': `max-age=${ttl}` } }));
+    await cache.put(keyReq('stale:' + key), new Response(text, { headers: { 'cache-control': `max-age=${STALE_TTL}` } }));
+  }
   return text;
 }
 
 // /st 페이지 스크립트에서 동적 경로(route)·PREFIX·자료 키 번호를 뽑는다.
+// 컴시간은 가끔 이 스크립트를 바꾼다(따옴표 종류·경로 숫자 자릿수·공백) — 그 정도는 그대로 읽히게 느슨하게 찾는다.
+// 받은 페이지가 어떤 모양인지 짧게 요약한다(자동 진단 보고용 — 앱이 텔레그램으로 보낸다)
+export function pageDiag(html, pageUrl) {
+  return {
+    len: html.length,
+    has: { sc_data: /sc_data/.test(html), route: /\.\/\d+\?\d+l/.test(html), 성명: /성명/.test(html), script: /<script/i.test(html) },
+    tags: [...html.matchAll(/<(?:script|i?frame|form|meta)\b[^>]*>/gi)].map((m) => m[0].slice(0, 120)).slice(0, 8),
+    linked: pageUrl ? linkedSources(html, pageUrl) : [],
+    body: html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 240),
+  };
+}
 export function readBoot(host, html) {
-  const route = html.match(/url:\s*'(\.[^']+)'/)?.[1]; // 예: ./36179?17384l
-  const prefix = html.match(/sc_data\('([^']*)'/)?.[1]; // 예: 73629_
-  if (!route || prefix == null) throw new Error('/st 스크립트에서 route/prefix를 못 찾음(사이트 구조 변경?)');
-  const base = host + route.slice(1, 8); // "/36179?"
+  // 접속 주소: url:'./36179?17384l' 처럼 쓰이든 다른 곳에 있든 './숫자?숫자l' 모양을 찾는다(pycomcigan 과 같은 규칙)
+  const route = html.match(/url\s*:\s*['"]\.\/(\d+)\?(\w+)['"]/) || html.match(/\.\/(\d+)\?(\d+l)/);
+  const prefix = html.match(/sc_data\(\s*['"]([^'"]*)['"]/)?.[1]; // 예: sc_data('73629_',sc,1,'0')
+  if (!route || prefix == null) {
+    const what = [!route && 'route', prefix == null && 'prefix'].filter(Boolean).join('·');
+    const err = new Error(`/st 스크립트에서 ${what}를 못 찾음(사이트 구조 변경)`);
+    err.diag = pageDiag(html, host + '/st');
+    throw err;
+  }
+  const base = `${host}/${route[1]}?`; // "http://comci.net:4082/36179?"
   // 스크립트가 쓰는 자료 키 번호(갱신 때마다 바뀜). 못 찾으면 파서가 값의 모양으로 추측한다.
   const num = (re) => html.match(re)?.[1];
   const keys = {
-    teachers: num(/Q성명\(\s*자료\.자료(\d+)\[/),
-    subjects: num(/Q과목명\(\s*자료\.자료(\d+)\[/),
-    original: num(/원자료\s*=\s*Q자료\(\s*자료\.자료(\d+)\[/),
-    daily: num(/일일자료\s*=\s*Q자료\(\s*자료\.자료(\d+)\[/),
+    // Q성명(…) 같은 감싸기가 있든 없든(2026년 5월에 생김) 찾는다
+    teachers: num(/성명\s*=\s*(?:Q성명\(\s*)?자료\.자료(\d+)/),
+    subjects: num(/과목명\s*=\s*(?:Q과목명\(\s*)?자료\.자료(\d+)/) || num(/자료\.자료(\d+)\[sb\]/),
+    original: num(/원자료\s*=\s*Q자료\(\s*자료\.자료(\d+)/),
+    daily: num(/일일자료\s*=\s*Q자료\(\s*자료\.자료(\d+)/),
     room: num(/m3\s*=\s*자료\.자료(\d+)\[/),
   };
-  return { host, base, search: base + route.slice(8), prefix, keys };
+  return { host, base, search: base + route[2], prefix, keys };
 }
-async function bootstrap(env) {
+// /st 페이지 + (스크립트가 바깥 파일로 빠졌으면) 그 페이지가 불러오는 스크립트·프레임 파일을 합친 글.
+// 컴시간이 페이지 안의 스크립트를 별도 파일로 옮겨도 readBoot 가 그대로 찾을 수 있게 한다.
+const MARKERS = /sc_data|url\s*:/;
+export function linkedSources(html, pageUrl) {
+  return [...html.matchAll(/<(?:script|i?frame)\b[^>]*\bsrc\s*=\s*['"]?([^'" >]+)/gi)]
+    .map((m) => new URL(m[1], pageUrl).href)
+    .filter((u) => new URL(u).host === new URL(pageUrl).host && !/jquery/i.test(u)) // 컴시간 자기 파일만(jQuery 등 외부 라이브러리 제외)
+    .slice(0, 6);
+}
+async function getSmart(url, budget) {
+  // 스크립트 파일은 EUC-KR 일 수도 UTF-8 일 수도 있다 → UTF-8 로 읽어 깨지면 EUC-KR
+  const left = budget ? budget.until - Date.now() : 6000;
+  if (left < 300) throw new Error('컴시간 응답 시간 초과(Timeout)');
+  const res = await fetch(url, { headers: BROWSER_HEADERS, signal: AbortSignal.timeout(Math.min(4500, left)) });
+  if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`);
+  const buf = await res.arrayBuffer();
+  const u = new TextDecoder('utf-8').decode(buf);
+  return u.includes('�') ? new TextDecoder('euc-kr').decode(buf) : u;
+}
+async function bootText(host, budget, path = 'st') {
+  const page = host + '/' + path;
+  const html = await getText(page, 'euc-kr', budget);
+  if (MARKERS.test(html)) return html;
+  const parts = await Promise.all(linkedSources(html, page).map((u) => getSmart(u, budget).catch(() => '')));
+  return [html, ...parts].join('\n');
+}
+
+// 마지막으로 정상이었던 접속 정보. 2026-11 컴시간이 /st 스크립트를 난독화해(20KB → 69KB) 글로는 읽을 수 없게 됐다.
+// CAPTURED: GitHub Actions(.github/workflows/comci-boot.yml)가 매일 진짜 브라우저로 컴시간을 열어 알아낸 값(바뀌면 자동 커밋).
+// KNOWN_BOOT: 10/29 사용자 진단(?st=1)에서 확인한 값(자료 키 번호는 이 경로일 때만 쓴다 — 다르면 파서가 값 모양으로 추측).
+// 스크립트를 읽을 수 있을 때마다 최신 값을 캐시에 90일 저장해(LAST_GOOD) 둔다.
+import CAPTURED from '../../lib/comci-boot.js';
+import { readCaptured, kickCapture } from '../../lib/github.js';
+const KNOWN_BOOT = { route: '36179', search: '17384l', prefix: '73629_', keys: { teachers: '446', subjects: '492', original: '481', daily: '147', room: '245' } };
+const LAST_GOOD_TTL = 90 * 86400;
+const lastGoodReq = (host) => new Request('https://comci-cache.invalid/' + encodeURIComponent('lastgood:boot:' + host));
+async function rememberBoot(host, b) {
+  const cache = typeof caches !== 'undefined' ? caches.default : null;
+  if (cache) await cache.put(lastGoodReq(host), new Response(JSON.stringify(b), { headers: { 'cache-control': `max-age=${LAST_GOOD_TTL}` } }));
+}
+async function knownBoot(host, env = {}, fresh = false) {
+  const cache = typeof caches !== 'undefined' ? caches.default : null;
+  const hit = cache && (await cache.match(lastGoodReq(host)));
+  const make = (v, from) => {
+    const base = `${host}/${v.route}?`;
+    return { host, base, search: base + v.search, prefix: v.prefix, keys: v.route === KNOWN_BOOT.route ? KNOWN_BOOT.keys : {}, from };
+  };
+  // 브라우저로 확인한 값: 배포에 들어 있는 것과 GitHub main 의 최신 것(배포 전) 중 새것을 쓴다
+  const ok = (v) => v?.capturedAt && v.route && v.search && v.prefix != null;
+  const live = await readCaptured(env, fresh);
+  const cap = ok(live) && (!ok(CAPTURED) || live.capturedAt > CAPTURED.capturedAt) ? live : CAPTURED;
+  if (ok(cap)) return { ...make(cap, 'captured'), capturedAt: cap.capturedAt };
+  if (hit) return { ...(await hit.json()), from: 'lastgood' };
+  return make(KNOWN_BOOT, 'known');
+}
+
+async function bootstrap(env, opts) {
   const tried = [];
+  let diag;
   for (const host of [env.COMCI_URL, ...HOSTS].filter(Boolean)) {
     try {
-      const html = await cached('boot:' + host, TTL.boot, () => getText(host + '/st', 'euc-kr'));
-      return readBoot(host, html);
+      const html = await cached('boot:' + host, TTL.boot, () => bootText(host, opts?.budget), opts);
+      try {
+        const b = readBoot(host, html);
+        await rememberBoot(host, b);
+        return b;
+      } catch (e) {
+        if (!e.diag) throw e;
+        // 스크립트를 못 읽음 → 마지막 정상 접속 정보로 시도(성공 여부는 시간표 받기에서 판가름)
+        const g = await knownBoot(host, env, !!opts?.fresh);
+        g.diag = e.diag;
+        if (opts?.meta) opts.meta.bootFallback = g.from;
+        return g;
+      }
     } catch (e) {
       tried.push(`${host}: ${e.message}`);
+      diag = e.diag || diag;
     }
   }
-  throw new Error('컴시간 접속 실패\n' + tried.join('\n'));
+  const err = new Error('컴시간 접속 실패\n' + tried.join('\n'));
+  err.diag = diag;
+  throw err;
 }
 
 // 시간표 표: [학년수, [반수, [요일수, [교시수, 코드…], …], …], …]
@@ -207,30 +327,99 @@ export async function onRequestGet({ request, env }) {
     return json({ results });
   }
 
+  if (url.searchParams.get('st')) {
+    // /st 스크립트에서 접속 주소·학교 코드 앞부분·자료 번호가 들어 있을 만한 부분만 잘라 보여준다(구조가 바뀌었을 때 맞추는 용도)
+    try {
+      const host = env.COMCI_URL || HOSTS[0];
+      const path = /^[a-z]{1,8}$/.test(url.searchParams.get('page') || '') ? url.searchParams.get('page') : 'st'; // ?page=th → 교사용 페이지(/th)도 같은 방식으로 본다
+      const page = await getText(host + '/' + path, 'euc-kr');
+      const html = await bootText(host, undefined, path); // 바깥 스크립트·프레임까지 합친 글
+      const around = (re, n = 140) => [...html.matchAll(re)].slice(0, 4).map((m) => html.slice(Math.max(0, m.index - n), m.index + n));
+      let boot = null;
+      try { const b = readBoot(host, html); boot = { base: b.base, search: b.search, prefix: b.prefix, keys: b.keys }; } catch (e) { boot = { error: e.message }; }
+      return json({
+        page: path, len: page.length, combinedLen: html.length, boot,
+        linked: linkedSources(page, host + '/' + path), // 페이지가 불러오는 컴시간 스크립트·프레임
+        tags: [...page.matchAll(/<(?:script|i?frame|form)\b[^>]*>/gi)].map((m) => m[0].slice(0, 160)).slice(0, 12),
+        body: page.replace(/\s+/g, ' ').slice(0, 700),
+        sc_data: around(/sc_data/g), url: around(/url\s*:/g, 90), ajax: around(/\$\.ajax|fetch\(/g, 90), btoa: around(/btoa\(/g, 90), 성명: around(/성명/g, 90).slice(0, 2),
+      });
+    } catch (e) { return json({ error: e.message, diag: e.diag }, 424); }
+  }
   const q = url.searchParams.get('q');
   const code = url.searchParams.get('code');
   if (!q && !code) return json({ error: 'q(학교명) 또는 code(학교코드) 필요' }, 400);
   if (code && !/^\d{1,8}$/.test(code)) return json({ error: '학교코드 형식이 아님' }, 400);
 
   try {
-    const c = await bootstrap(env);
-
-    if (q) {
-      const raw = parse(await getText(c.search + eucKrPercent(q.slice(0, 40)), 'utf-8'));
-      const schools = (raw['학교검색'] || []).map(([, region, name, sccode]) => ({ region, name, sccode }));
-      return json({ schools });
-    }
-
-    const fetchWeek = async (w) =>
-      parse(await cached(`week:${code}:${w}`, TTL.week, () => getText(c.base + btoa(`${c.prefix}${code}_0_${w}`), 'utf-8')));
-    // week를 안 주면 1주차를 받아 보고, 컴시간이 말하는 '오늘이 속한 주(오늘r)'가 다르면 그 주로 다시 받는다.
+    // fresh=1('다시 받기'): 저장해 둔 접속 정보·시간표를 건너뛰고 컴시간에서 새로 받는다
+    const fresh = url.searchParams.get('fresh') === '1';
+    const meta = { stale: false };
+    const budget = { until: Date.now() + Number(env.COMCI_BUDGET_MS || 14000) };
     let week = url.searchParams.get('week');
     if (week && !/^\d{1,2}$/.test(week)) return json({ error: 'week 형식이 아님' }, 400);
-    let raw = await fetchWeek(week || 1);
-    if (!week) {
-      week = String(raw['오늘r'] > 0 ? raw['오늘r'] : 1);
-      if (week !== '1') raw = await fetchWeek(week);
+
+    // 단계별 진단(?probe=boot|fetch|parse|full): 어느 단계에서 느리거나 죽는지 시간·크기를 보여준다. 저장분은 건너뛴다.
+    const probe = url.searchParams.get('probe');
+    if (probe) {
+      if (!code) return json({ error: 'probe 에는 code(학교코드)가 필요' }, 400);
+      const out = { probe, week: week || '1', steps: [] };
+      const step = (name, since, extra) => out.steps.push({ name, ms: Date.now() - since, ...extra });
+      let t = Date.now();
+      const c = await bootstrap(env, { fresh: true, meta, budget });
+      step('1.접속 정보(/st)', t, { route: c.base, prefix: c.prefix, keys: c.keys, fallback: c.from, diag: c.diag });
+      if (probe === 'boot') return json(out);
+      t = Date.now();
+      const text = await getText(c.base + btoa(`${c.prefix}${code}_0_${week || 1}`), 'utf-8', budget);
+      step('2.시간표 받기', t, { chars: text.length, head: text.slice(0, 40) });
+      if (probe === 'fetch') return json(out);
+      t = Date.now();
+      const rawP = parse(text);
+      step('3.JSON 읽기', t, { keys: Object.keys(rawP).length });
+      if (probe === 'parse') return json(out);
+      t = Date.now();
+      const tt = parseTimetable(rawP, c.keys);
+      step('4.시간표 해석', t, { cells: tt.cells.length, mode: tt.mode, clashes: tt.clashes });
+      return json(out);
     }
+
+    // 컴시간이 접속 주소 규칙을 바꾸면 저장해 둔 접속 정보(1시간)로는 계속 실패한다 → 실패하면 접속 정보부터 새로 받아 한 번 더.
+    const run = async (opts) => {
+      const c = await bootstrap(env, opts);
+      try { return await runWith(c, opts); }
+      catch (e) {
+        if (c.diag) { // 스크립트를 못 읽어 예전 접속 정보로 시도한 경우
+          // 컴시간이 접속 주소를 또 바꾼 것 → 자동 확인(GitHub Actions)을 바로 돌려 새 주소를 찾게 한다(1~2분)
+          const kick = await kickCapture(env);
+          const err = new Error(`컴시간 접속 실패\n컴시간이 /st 스크립트를 바꿔(읽을 수 없음) 마지막 정상 접속 정보(${c.from})로 시도했지만 실패: ${e.message}`
+            + (kick.ok || kick.already ? '\n새 접속 주소를 찾는 중(1~2분 뒤 자동으로 다시 받아요)' : kick.error ? `\n자동 확인 실행 못 함: ${kick.error}` : ''));
+          err.diag = { ...c.diag, triedBase: c.base, capturedAt: c.capturedAt, recheck: !!(kick.ok || kick.already) };
+          throw err;
+        }
+        throw e;
+      }
+    };
+    const runWith = async (c, opts) => {
+      if (q) {
+        const raw = parse(await retry(() => getText(c.search + eucKrPercent(q.slice(0, 40)), 'utf-8', opts.budget)));
+        return { search: (raw['학교검색'] || []).map(([, region, name, sccode]) => ({ region, name, sccode })) };
+      }
+      const fetchWeek = async (w) =>
+        parse(await cached(`week:${code}:${w}`, TTL.week, () => getText(c.base + btoa(`${c.prefix}${code}_0_${w}`), 'utf-8', opts.budget), { ...opts, meta }));
+      // week를 안 주면 1주차를 받아 보고, 컴시간이 말하는 '오늘이 속한 주(오늘r)'가 다르면 그 주로 다시 받는다.
+      let wk = week, raw = await fetchWeek(wk || 1);
+      if (!wk) {
+        wk = String(raw['오늘r'] > 0 ? raw['오늘r'] : 1);
+        if (wk !== '1') raw = await fetchWeek(wk);
+      }
+      return { c, raw, wk };
+    };
+    let out;
+    try { out = await run({ fresh, meta, budget }); }
+    catch (e) { if (fresh || budget.until - Date.now() < 1500) throw e; out = await run({ fresh: true, meta, budget }); }
+    if (out.search) return json({ schools: out.search });
+    const { c, raw } = out;
+    week = out.wk;
     if (url.searchParams.get('raw')) return json({ keys: Object.keys(raw), raw });
 
     const t = parseTimetable(raw, c.keys);
@@ -257,6 +446,7 @@ export async function onRequestGet({ request, env }) {
             .filter((x) => x.teacher === Number(teacher))
             .map((x) => ({ ...x, date: start ? addDays(start, x.day - 1) : null }));
     return json({
+      stale: meta.stale || undefined, // 컴시간이 응답하지 않아 마지막으로 받아 둔 시간표를 내려주는 중
       week: Number(week),
       weeks,
       times: raw['일과시간'] || [], // 교시별 시간 표시(예: "1(09:00)")
@@ -265,9 +455,10 @@ export async function onRequestGet({ request, env }) {
       lessons,
       classLessons,
       homeroom: findHomeroom(raw, Number(teacher)),
-      debug: { sep: t.sep, mode: t.mode, clashes: t.clashes, cells: t.cells.length, homeroom: JSON.stringify(raw['담임'] ?? null).slice(0, 80) },
+      debug: { boot: meta.bootFallback || 'script', sep: t.sep, mode: t.mode, clashes: t.clashes, cells: t.cells.length, homeroom: JSON.stringify(raw['담임'] ?? null).slice(0, 80) },
     });
   } catch (e) {
-    return json({ error: e.message }, 502);
+    // 502 가 아니라 424: classnote.gwansan.com 은 5xx 응답을 Cloudflare "Host Error" 페이지로 바꿔 원인 문장을 가린다
+    return json({ error: e.message, diag: e.diag }, 424);
   }
 }

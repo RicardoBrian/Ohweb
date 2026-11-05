@@ -53,10 +53,26 @@ function weekJson(r) {
     자료446: TEACHERS, 자료492: SUBJECTS, 자료481: timetable(r), 자료147: timetable(r), 자료245: [3],
   }) + '\0\0';
 }
+// 컴시간 상태: ok | 502(계속 502) | flaky(처음 한 번만 502) | newroute(접속 주소 규칙이 바뀜 — 옛 주소는 404)
+let upstream = 'ok', flakyLeft = 0;
+const stHtml = (no) => ST_HTML.replace('./36179?', `./${no}?`);
+// Workers 의 Cache API 흉내(Node 에는 없음): max-age 까지만 보관
+const memCache = new Map();
+globalThis.caches = { default: {
+  async match(req) { const e = memCache.get(req.url); return e && e.exp > Date.now() ? new Response(e.body) : undefined; },
+  async put(req, res) { const m = /max-age=(\d+)/.exec(res.headers.get('cache-control') || ''); memCache.set(req.url, { body: await res.text(), exp: Date.now() + Number(m?.[1] || 0) * 1000 }); },
+} };
 globalThis.fetch = (orig => async (url, opt) => {
   const u = String(url);
   if (!u.startsWith('http://comci.net:4082')) return orig(url, opt);
-  if (u.endsWith('/st')) return new Response(pct2bytes(comci.eucKrPercent(ST_HTML)));
+  if ((upstream === 'nomarkers' || upstream === 'broken') && u.endsWith('/st')) return new Response(pct2bytes(comci.eucKrPercent(`<!DOCTYPE html><html xmlns='http://www.w3.org/1999/xhtml' lang='ko'><head><meta http-equiv='Content-Type' content='text/html'></head><body>컴시간 안내 ${'x'.repeat(2000)}</body></html>`)));
+  if (upstream === 'broken') return new Response('not found', { status: 404 }); // 데이터 주소까지 바뀜
+  if (upstream === 'hang') return new Promise((_, rej) => opt?.signal?.addEventListener('abort', () => rej(new DOMException('The operation was aborted due to timeout', 'TimeoutError')))); // 아예 응답이 없음
+  if (upstream === '502') return new Response('<html><body>502 Bad Gateway</body></html>', { status: 502 });
+  if (upstream === 'flaky' && flakyLeft > 0) { flakyLeft--; return new Response('<html>502</html>', { status: 502 }); }
+  const routeNo = upstream === 'newroute' ? '99999' : '36179';
+  if (u.endsWith('/st')) return new Response(pct2bytes(comci.eucKrPercent(stHtml(routeNo))));
+  if (upstream === 'newroute' && !u.includes(`/${routeNo}?`)) return new Response('not found', { status: 404 }); // 옛 접속 주소
   if (u.includes('?17384l')) return new Response(JSON.stringify({ 학교검색: [[24966, '경기', '관산중학교', 43917]] }));
   const tok = atob(u.split('?')[1]);
   return new Response(weekJson(Number(tok.split('_').pop())));
@@ -72,13 +88,13 @@ export const auth = getAuth(app); connectAuthEmulator(auth, 'http://127.0.0.1:90
 window.__signIn = (email) => signInWithCredential(auth, GoogleAuthProvider.credential(JSON.stringify({ sub: email, email, email_verified: true })));`;
 // 새 버전 감지: 실제 version.js 를 돌리고(ASSETS 는 정적 파일로 대신), '배포'는 소금 값을 올려 흉내 낸다
 const version = await import(new URL('../ohlog/functions/api/version.js', import.meta.url));
-let deploySalt = 0;
+let deploySalt = 0, appStamp = '';
 const assets = { fetch: async (u) => { const f = path.join(ROOT, new URL(u).pathname === '/' ? 'index.html' : new URL(u).pathname); return existsSync(f) ? new Response(readFileSync(f)) : new Response('', { status: 404 }); } };
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml' };
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://localhost');
   if (u.pathname === '/api/comci') {
-    const r = await comci.onRequestGet({ request: new Request('http://localhost' + req.url), env: {} });
+    const r = await comci.onRequestGet({ request: new Request('http://localhost' + req.url), env: { COMCI_BUDGET_MS: 3000 } });
     res.writeHead(r.status, { 'content-type': 'application/json' }); res.end(await r.text()); return;
   }
   if (u.pathname === '/api/version') {
@@ -86,11 +102,13 @@ const server = http.createServer(async (req, res) => {
     const { v } = await r.json();
     res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(JSON.stringify({ v: v + '-' + deploySalt })); return;
   }
+  if (u.pathname === '/__upstream') { upstream = u.searchParams.get('mode'); flakyLeft = upstream === 'flaky' ? 1 : 0; if (u.searchParams.get('clear')) memCache.clear(); res.writeHead(204); res.end(); return; }
   if (u.pathname === '/__deploy') { deploySalt++; res.writeHead(204); res.end(); return; }
   if (u.pathname === '/firebase-config.js') { res.writeHead(200, { 'content-type': 'text/javascript' }); res.end(fbconf); return; }
   const f = path.join(ROOT, u.pathname === '/' ? 'index.html' : u.pathname);
   if (!f.startsWith(ROOT) || !existsSync(f)) { res.writeHead(404); res.end(); return; }
-  res.writeHead(200, { 'content-type': TYPES[path.extname(f)] || 'application/octet-stream' }); res.end(readFileSync(f));
+  res.writeHead(200, { 'content-type': TYPES[path.extname(f)] || 'application/octet-stream' });
+  res.end(u.pathname === '/app.js' && appStamp ? readFileSync(f, 'utf8') + `\n// stamp ${appStamp}\n` : readFileSync(f)); // 배포 흉내(내용이 바뀐 app.js)
 });
 await new Promise((r) => server.listen(8098, r));
 
@@ -127,6 +145,8 @@ async function onboard(page, teacherId) {
   await page.waitForSelector('#obTeacherSel option[value="10"]', { state: 'attached' });
   await page.selectOption('#obTeacherSel', String(teacherId));
   await page.waitForSelector('#obPreview .week-grid');
+  ok('개인정보 동의 전에는 신청 버튼이 꺼져 있음', await page.isDisabled('#obSubmit'));
+  await page.check('#obAgree');
 }
 
 // 1) 관리자: 가입하면 바로 승인
@@ -143,6 +163,31 @@ await onboard(T.page, 10);
 await T.page.click('#obSubmit');
 await T.page.waitForSelector('#screenPending.show');
 ok('교사는 신청 후 승인 대기 화면', (await T.page.textContent('#pendTitle')).includes('대기'));
+{
+  let tp = null;
+  // 화면은 저장 확인 전에 바뀔 수 있다 → 서버에 들어올 때까지 잠깐 기다린다
+  for (let i = 0; i < 30 && !tp; i++) {
+    await env.withSecurityRulesDisabled(async (c) => { tp = (await c.firestore().collection('classlog_users').get()).docs.map((d) => d.data()).find((d) => d.email === 'teacher@gmail.com'); });
+    if (!tp) await new Promise((r) => setTimeout(r, 200));
+  }
+  ok('가입 신청에 개인정보 동의(버전·시각)가 저장됨', tp?.privacyVersion === '2026-11-04' && !!tp?.privacyAgreedAt, JSON.stringify(tp));
+  // 동의 기록이 없는 기존 사용자(관리자 문서에서 지움) → 다시 열면 동의 창 → 동의하면 앱으로
+  let aid = null;
+  await env.withSecurityRulesDisabled(async (c) => {
+    const d = (await c.firestore().collection('classlog_users').get()).docs.find((x) => x.data().email === 'qjatjr7575@gmail.com');
+    aid = d.id; const { privacyVersion, privacyAgreedAt, ...rest } = d.data(); await c.firestore().doc('classlog_users/' + aid).set(rest);
+  });
+  await A.page.reload();
+  await A.page.waitForSelector('#privacyModal.show');
+  await A.page.click('#privacyYes');
+  await A.page.waitForSelector('#app:not(.hidden) #sec-today.active');
+  let ap = null;
+  for (let i = 0; i < 30 && ap?.privacyVersion !== '2026-11-04'; i++) {
+    await env.withSecurityRulesDisabled(async (c) => { ap = (await c.firestore().doc('classlog_users/' + aid).get()).data(); });
+    if (ap?.privacyVersion !== '2026-11-04') await new Promise((r) => setTimeout(r, 200));
+  }
+  ok('동의 기록 없는 기존 사용자는 동의 창 → 동의 저장 후 앱 사용', ap?.privacyVersion === '2026-11-04');
+}
 await shot(T.page, '02-pending-m');
 
 // 3) 관리자 승인 → 교사 화면 자동 전환
@@ -168,6 +213,8 @@ const vfit = await T.page.evaluate(() => {
 });
 ok('폰 시간표가 세로로도 한 화면에 다 들어옴(마지막 교시가 하단 탭 위)', vfit.lastBottom <= vfit.tabTop, JSON.stringify(vfit));
 if (SHOTS) await T.page.screenshot({ path: path.join(SHOTS, '02c-week-m-viewport.png') });
+const tabs = await T.page.evaluate(() => [...document.querySelectorAll('.tabbar .tab')].map((t) => ({ text: t.textContent.trim(), href: t.getAttribute('href'), target: t.getAttribute('target'), w: t.getBoundingClientRect().width, right: t.getBoundingClientRect().right })));
+ok('폰 하단 탭 6개: 시간표·오늘·진도·학급·출석·설정(출석은 외부 링크 탭, 설정 앞)', tabs.map((t) => t.text).join(',') === '시간표,오늘,진도,학급,출석,설정' && tabs[4].href === 'https://attend.gwansan.com' && tabs[4].target === '_blank' && tabs.every((t) => t.w >= 52 && t.right <= 390), JSON.stringify(tabs));
 await shot(T.page, '02b-week-m');
 
 // 4) 오늘 수업: 컴시간 수업 목록 + 일지 쓰기
@@ -356,7 +403,7 @@ await p.waitForSelector('#logModal.show', { state: 'detached' });
 // 8c) 학급 시간표(담임용)
 await p.click('.side-item[data-go="class"]');
 await p.waitForSelector('#clsGrid .slot.ro');
-ok('학급 시간표: 내 담임 반(3-1)이 기본으로 열리고 배지가 보임', (await p.textContent('#clsTitle')).includes('3학년 1반') && (await p.textContent('#clsBadge')).includes('내 담임'));
+ok('학급 시간표: 등록 전에는 컴시간에서 찾은 담임 반(3-1)이 기본으로 열리고 "내 학급" 배지가 보임', (await p.textContent('#clsTitle')).includes('3학년 1반') && (await p.textContent('#clsBadge')).includes('내 학급'));
 ok('학급 시간표: 과목과 선생님 이름이 보임', /교사\d+\*/.test(await p.textContent('#clsGrid')) && (await p.locator('#clsGrid .slot.mine').count()) >= 1);
 await p.selectOption('#clsNum', '2');
 await p.waitForSelector('#clsTitle:has-text("3학년 2반")');
@@ -379,6 +426,110 @@ await p.selectOption('#clsTeacher', '10');
 await p.waitForSelector('#clsBadge .badge.on');
 ok('교사별: 나를 고르면 "일지는 시간표에서" 안내', (await p.textContent('#clsBadge')).includes('시간표'));
 await p.click('#clsMode button[data-v="class"]');
+
+// 8c4) 내 학급 등록: 학급·교사 탭을 열면 등록한 학급이 제일 먼저
+await p.waitForSelector('#clsGrid .slot.ro');
+ok('학급 시간표: 내 학급이 아닌 반에는 "내 학급으로 설정" 버튼이 보임', (await p.locator('#clsBadge [data-act="set-homeroom"]').count()) === 1);
+await p.click('#clsBadge [data-act="set-homeroom"]'); // 지금 보는 1학년 1반을 등록
+await p.waitForSelector('#clsBadge .badge.on');
+ok('버튼을 누르면 이 반이 "내 학급"으로 표시됨', (await p.textContent('#clsBadge')).includes('내 학급'));
+await p.click('.side-item[data-go="progress"]');
+await p.click('.side-item[data-go="class"]');
+await p.waitForSelector('#clsTitle:has-text("1학년 1반")');
+ok('다른 화면에 갔다가 학급·교사 탭을 다시 열면 등록한 학급(1학년 1반)이 제일 먼저 나옴(컴시간 추측 3학년 1반이 아님)', true);
+await p.click('.side-item[data-go="settings"]');
+await p.selectOption('#hrGrade', '2');
+await p.waitForSelector('#hrNum:not(.hidden)');
+await p.selectOption('#hrNum', '3');
+await p.waitForFunction(() => document.getElementById('hrNum').value === '3');
+await p.click('#sec-settings [data-act="order"]');
+await p.waitForSelector('#orderModal.show .order-row');
+await p.click('#orderSave');
+await p.waitForSelector('#orderModal.show', { state: 'detached' });
+let prefs2 = null;
+await env.withSecurityRulesDisabled(async (c) => { prefs2 = (await c.firestore().collectionGroup('plans').get()).docs.find((d) => d.id === '_prefs')?.data() || null; });
+ok('설정에서 2학년 3반으로 바꾸고 과목 순서를 저장해도 내 학급은 그대로(merge)', prefs2?.homeroom?.grade === 2 && prefs2?.homeroom?.cls === 3 && Array.isArray(prefs2?.subjectOrder), JSON.stringify(prefs2));
+await p.click('.side-item[data-go="class"]');
+await p.waitForSelector('#clsTitle:has-text("2학년 3반")');
+ok('바꾼 학급(2학년 3반)이 제일 먼저 나옴', (await p.textContent('#clsBadge')).includes('내 학급'));
+await p.click('.side-item[data-go="settings"]');
+await p.selectOption('#hrGrade', '');
+await p.waitForSelector('#hrNum', { state: 'hidden' });
+await p.click('.side-item[data-go="class"]');
+await p.waitForSelector('#clsTitle:has-text("3학년 1반")');
+ok('지정을 풀면 컴시간에서 찾은 담임 반(3학년 1반)으로 돌아감', true);
+
+// 8c5) 컴시간이 안 될 때: 502 대신 저장해 둔 시간표, 순간 실패는 재시도, 접속 주소 규칙이 바뀌면 자동 복구
+const capi = (qs) => p.evaluate(async (q) => { const r = await fetch('/api/comci?' + q); return { status: r.status, body: await r.json().catch(() => null) }; }, qs);
+const upMode = (m, clear) => fetch(`http://localhost:8098/__upstream?mode=${m}${clear ? '&clear=1' : ''}`);
+await upMode('ok'); await capi('code=43917&teacher=10&week=1&fresh=1'); // 정상 응답을 받아 저장해 둠
+await upMode('502');
+const st = await capi('code=43917&teacher=10&week=1&fresh=1');
+ok('컴시간이 502여도(다시 받기) 저장해 둔 시간표를 내려줌 — 502가 아니라 200 + stale', st.status === 200 && st.body.stale === true && st.body.lessons.length > 0, JSON.stringify({ s: st.status, stale: st.body?.stale }));
+await p.click('.side-item[data-go="settings"]');
+await p.click('#ttRefresh');
+await p.waitForFunction(() => document.getElementById('toast').textContent.includes('마지막으로 받아 둔'));
+ok('다시 받기: 컴시간이 502면 "마지막으로 받아 둔 시간표를 보여드려요"라고 안내', true);
+await upMode('502', true); // 저장해 둔 것까지 없는 최악의 경우
+const hard = await capi('code=43917&teacher=10&week=1&fresh=1');
+ok('저장해 둔 것도 없으면 424(5xx 아님 — gwansan.com 이 가리지 않게) + 오류 메시지', hard.status === 424 && !!hard.body?.error, JSON.stringify(hard));
+await p.click('#ttRefresh');
+await p.waitForFunction(() => document.getElementById('toast').textContent.includes('컴시간이 지금 응답하지 않아요'));
+ok('다시 받기 실패: 영어 HTTP 코드 대신 짧은 한국어 안내', !(await p.textContent('#toast')).includes('HTTP'));
+await p.click('.side-item[data-go="week"]');
+ok('다시 받기가 실패해도 화면의 시간표는 지워지지 않음', (await p.locator('#weekGrid .slot').count()) > 0);
+await upMode('flaky', true); // 처음 한 번만 502
+const fl = await capi('code=43917&teacher=10&week=1&fresh=1');
+ok('컴시간이 순간적으로만 502면 서버가 한 번 더 시도해 정상 응답(stale 아님)', fl.status === 200 && !fl.body.stale && fl.body.lessons.length > 0, JSON.stringify({ s: fl.status, stale: fl.body?.stale }));
+await upMode('ok', true); await capi('code=43917&teacher=10&week=1'); // 옛 접속 정보(주소 36179)가 저장된 상태
+await upMode('newroute'); // 컴시간이 접속 주소 규칙을 바꿈 — 저장해 둔 옛 접속 정보로는 404
+const nr = await capi('code=22222&teacher=10&week=1');
+ok('컴시간이 접속 주소 규칙을 바꿔도 접속 정보를 새로 받아 자동 복구(다시 받기를 안 눌러도)', nr.status === 200 && nr.body.lessons.length > 0, JSON.stringify({ s: nr.status, e: nr.body?.error }));
+await upMode('ok', true);
+const pr = await capi('code=43917&week=1&probe=full');
+ok('단계별 진단(?probe=full): 접속 정보 → 받기 → 읽기 → 해석 네 단계의 시간·크기를 돌려줌', pr.status === 200 && pr.body.steps.length === 4 && pr.body.steps.every((x) => typeof x.ms === 'number') && pr.body.steps[3].cells > 0, JSON.stringify(pr.body?.steps?.map((x) => x.name)));
+const pb = await capi('code=43917&week=1&probe=boot');
+ok('probe=boot 는 1단계에서 멈춤', pb.status === 200 && pb.body.steps.length === 1, JSON.stringify(pb.body?.steps?.length));
+await upMode('hang', true); // 컴시간이 아예 응답하지 않음(연결만 붙들고 있음)
+const t1 = Date.now();
+const hg = await capi('code=43917&teacher=10&week=1');
+const took = Date.now() - t1;
+ok('컴시간이 아예 응답하지 않아도 전체 대기 시간에 상한(테스트는 3초)이 있어 오래 붙잡지 않음', hg.status === 424 && took < 6500, `${took}ms ${hg.status}`);
+// 이번 장애 재현: 컴시간이 스크립트(sc_data 등)가 없는 페이지를 준다
+await upMode('nomarkers', true);
+const nm = await capi('code=43917&teacher=10&week=1&fresh=1');
+ok('이번 장애(스크립트를 못 읽음, 데이터 주소는 그대로): 마지막 정상 접속 정보로 시간표를 정상으로 받음', nm.status === 200 && nm.body.lessons?.length > 0 && ['known', 'lastgood', 'captured'].includes(nm.body.debug?.boot), JSON.stringify({ s: nm.status, boot: nm.body?.debug?.boot, e: nm.body?.error }));
+await upMode('broken', true); // 데이터 주소까지 바뀐 최악의 경우
+const bk = await capi('code=43917&teacher=10&week=1&fresh=1');
+ok('데이터 주소까지 바뀌면: 424 + "마지막 정상 접속 정보로 시도했지만 실패" + 받은 페이지 모양 진단(diag)', bk.status === 424 && bk.body?.error?.includes('마지막 정상 접속 정보') && bk.body?.diag?.has?.sc_data === false && Array.isArray(bk.body?.diag?.tags), JSON.stringify(bk.body).slice(0, 300));
+// 앱: 기기에 보관된 주가 이번 주를 덮지 않는 상황(보관된 주를 2주 전으로 옮김) + 컴시간 고장 → 최근 주 시간표로 대신 보여주고 자동 보고
+await p.evaluate(() => {
+  for (const k of Object.keys(localStorage).filter((x) => x.startsWith('classlog:tt:'))) {
+    const c = JSON.parse(localStorage.getItem(k));
+    const back = (iso) => { const d = new Date(iso + 'T00:00:00'); d.setDate(d.getDate() - 14); return d.toISOString().slice(0, 10); };
+    c.weeks = c.weeks.map((w) => ({ ...w, start: w.start && back(w.start) }));
+    localStorage.setItem(k, JSON.stringify(c));
+  }
+  localStorage.removeItem('classlog:comci-report');
+});
+await p.click('.side-item[data-go="week"]');
+await p.reload(); // 앱을 실제로 다시 시작(같은 주소로 goto 하면 다시 불러오지 않는다)
+await p.waitForSelector('#weekGrid .fallback-note', { timeout: 15000 });
+ok('컴시간이 안 되면 최근 주 시간표를 이번 주 날짜에 맞춰 보여주고, 그렇다고 안내함', (await p.locator('#weekGrid .slot').count()) > 0 && (await p.textContent('#weekGrid .fallback-note')).includes('컴시간에 연결할 수 없어'));
+let autoRep = [];
+for (let i = 0; i < 20 && !autoRep.some((d) => d.text.includes('마지막 정상 접속 정보')); i++) {
+  await env.withSecurityRulesDisabled(async (c) => { autoRep = (await c.firestore().collection('classlog_feedback').get()).docs.map((d) => d.data()).filter((d) => d.view === 'auto'); });
+  if (!autoRep.some((d) => d.text.includes('마지막 정상 접속 정보'))) await new Promise((r) => setTimeout(r, 300));
+}
+ok('실패 원인(받은 페이지 모양 포함)을 자동으로 보고(텔레그램 알림과 같은 기록) — 오프라인(Failed to fetch)은 보고 안 함', autoRep.some((d) => d.text.includes('자동 진단') && d.text.includes('마지막 정상 접속 정보') && d.text.includes('"sc_data":false')) && !autoRep.some((d) => d.text.includes('Failed to fetch')), JSON.stringify(autoRep.map((d) => d.text.slice(0, 200))));
+await upMode('ok', true);
+await p.click('.side-item[data-go="settings"]');
+await p.click('#ttRefresh');
+await p.waitForFunction(() => document.getElementById('toast').textContent.includes('새로 받았어요'));
+await p.click('.side-item[data-go="week"]');
+await p.waitForSelector('#weekGrid .slot');
+ok('컴시간이 돌아오면(다시 받기) 안내가 사라지고 진짜 시간표로 돌아옴', (await p.locator('#weekGrid .fallback-note').count()) === 0);
+await upMode('ok', true);
 await p.click('.side-item[data-go="progress"]');
 await p.waitForSelector('.class-card');
 await p.locator(`.class-card[data-k="${grade}-${cls}|수학"]`).click();
@@ -393,6 +544,10 @@ const csv = readFileSync(await dl.path(), 'utf8');
 ok('CSV에 진도·내용이 들어감', csv.includes('등식의 성질') && csv.includes('일차방정식 풀이 연습'), csv.slice(0, 200));
 await shot(p, '09-export-pc');
 
+// 8c3) 출석 관리 링크(별도 사이트 — 데이터는 합치지 않고 링크만): PC 사이드바
+const att = 'a[href="https://attend.gwansan.com"][target="_blank"][rel~="noopener"]';
+ok('출석 관리 링크: PC 사이드바 "연결" 묶음에 새 탭 링크가 있음', (await p.locator(`.side-menu ${att}`).count()) === 1);
+
 // 8d) 푸터(저작권·인스타·메일) + 피드백
 ok('푸터: 관산중학교 오범석 저작권', (await p.textContent('#app .credit')).includes('관산중학교 오범석'));
 ok('푸터: 인스타그램·메일 링크', (await p.locator('#app .credit a[href="https://instagram.com/nosuk.beom"]').count()) === 1 && (await p.locator('#app .credit a[href="mailto:qjatjr7575@gmail.com"]').count()) === 1);
@@ -403,7 +558,7 @@ await p.fill('#fbText', '학급 시간표에서 선택과목이 겹쳐 보여요
 await p.click('#fbSend');
 await p.waitForSelector('#fbModal.show', { state: 'detached' });
 let fbDocs = [];
-await env.withSecurityRulesDisabled(async (c) => { fbDocs = (await c.firestore().collection('classlog_feedback').get()).docs.map((d) => d.data()); });
+await env.withSecurityRulesDisabled(async (c) => { fbDocs = (await c.firestore().collection('classlog_feedback').get()).docs.map((d) => d.data()).filter((d) => d.view !== 'auto'); }); // 자동 진단 보고는 빼고
 ok('피드백이 Firestore에 저장됨(종류·내용·보낸 사람)', fbDocs.length === 1 && fbDocs[0].kind === 'bug' && fbDocs[0].text.includes('선택과목') && fbDocs[0].teacherName === '교사10*', JSON.stringify(fbDocs));
 
 // 9) 다른 사람 데이터는 안 보임(관리자 일지 0건)
@@ -421,6 +576,34 @@ ok('설정에서 다크를 고르면 어두운 화면이 됨', await P.$eval('bo
 await P.click('.side-item[data-go="week"]');
 await P.waitForSelector('#weekGrid .slot');
 await shot(P, '10-week-dark');
+
+// 9.5) 화면 파일 보관(서비스 워커): 켤 때 바로 뜨고, 끊겨도 열리고, 새 버전은 알아서 바뀐다
+{
+  await p.goto('http://localhost:8098/#week');
+  await p.waitForFunction(() => document.querySelector('#app:not(.hidden)'));
+  await p.evaluate(() => navigator.serviceWorker.ready);
+  if (!(await p.evaluate(() => !!navigator.serviceWorker.controller))) { await p.reload(); await p.waitForFunction(() => document.querySelector('#app:not(.hidden)')); }
+  ok('서비스 워커가 화면 파일을 맡음(다음부터 폰에 보관한 화면으로 바로 뜸)', await p.evaluate(() => !!navigator.serviceWorker.controller));
+  await p.context().setOffline(true);
+  await p.reload();
+  let offlineOk = true;
+  try { await p.waitForSelector('#app:not(.hidden) #weekGrid .slot', { timeout: 15000 }); } catch { offlineOk = false; }
+  ok('인터넷이 끊겨도 보관한 화면과 저장된 시간표로 열림', offlineOk);
+  await p.context().setOffline(false);
+  appStamp = 'v2'; await deploy(); // 새 버전 배포(app.js 내용과 버전값이 바뀜)
+  let loads = 0; const onLoad = () => loads++; p.on('load', onLoad);
+  await p.reload(); // 보관본으로 먼저 뜨고, 뒤에서 비교 → 바뀌었으면 알아서 한 번 더 다시 열림
+  const until = Date.now() + 20000;
+  while (loads < 2 && Date.now() < until) await p.waitForTimeout(250);
+  p.off('load', onLoad);
+  await p.waitForFunction(() => document.querySelector('#app:not(.hidden)'));
+  let newCode = false;
+  for (let i = 0; i < 20 && !newCode; i++) { try { newCode = await p.evaluate(() => fetch('/app.js').then((r) => r.text()).then((t) => t.includes('stamp v2'))); } catch {} if (!newCode) await p.waitForTimeout(250); }
+  ok('새 버전을 배포하면 보관본을 새로 받고 앱이 스스로 다시 열림', loads >= 2 && newCode, JSON.stringify({ loads, newCode }));
+  // 지난 주 저장본: 컴시간 목록에 없는 지난 주도 주 선택에 남는다
+  const opts = await p.locator('#weekSel option').allTextContents();
+  ok('받아 본 지난 주 시간표는 "저장본"으로 주 선택에 남음', opts.some((t) => t.includes('저장본')), JSON.stringify(opts));
+}
 
 // 10) 해상도별 화면(SHOTS 를 줄 때만): 휴대폰·태블릿·노트북·큰 모니터
 if (SHOTS) {

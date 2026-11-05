@@ -52,7 +52,28 @@ export class NotionError extends Error {
   }
 }
 
-export function makeClient(token) {
+// Cloudflare 무료 플랜은 요청 하나당 외부 호출(subrequest)이 50번까지다. 블록이 많은
+// 페이지(열·표·토글이 많은 학습지)는 한 번에 다 못 읽어 502가 났다. 그래서 한 번에
+// 쓸 노션 호출 수(budget)를 정해 두고, 다 못 읽으면 Incomplete를 던진다 — 읽은 데까지는
+// lib/render.js가 저장해 두고 다음 요청에서 이어 읽는다.
+export class BudgetExhausted extends Error {
+  constructor() { super('이번 요청에서 쓸 수 있는 노션 호출을 다 썼어요'); this.name = 'BudgetExhausted'; }
+}
+export class Incomplete extends Error {
+  constructor(done) {
+    super(`페이지가 커서 나눠 불러오는 중이에요(지금까지 블록 묶음 ${done}개)`);
+    this.name = 'Incomplete';
+    this.done = done;
+  }
+}
+
+export function makeClient(token, { budget = Infinity } = {}) {
+  let used = 0;
+  // 노션 말고 다른 외부 호출(북마크 미리보기 등)도 같은 한도를 쓴다.
+  const spend = () => {
+    if (used >= budget) throw new BudgetExhausted();
+    used++;
+  };
   let active = 0;
   const waiting = [];
   const acquire = () => new Promise((res) => {
@@ -67,6 +88,7 @@ export function makeClient(token) {
     await acquire();
     try {
       for (let attempt = 0; ; attempt++) {
+        spend();
         const res = await fetch(API + path, {
           method,
           headers: {
@@ -91,6 +113,8 @@ export function makeClient(token) {
   }
 
   return {
+    spend,
+    get used() { return used; },
     page: (id) => call(`/pages/${dashed(id)}`),
     me: () => call('/users/me'),
     block: (id) => call(`/blocks/${dashed(id)}`),
@@ -114,6 +138,7 @@ export function makeClient(token) {
 
 /** NotionError를 관리자·학생이 알아들을 말로. */
 export function explainError(e) {
+  if (e?.name === 'Incomplete') return e.message;
   if (e instanceof NotionError) {
     if (e.status === 401) return 'NOTION_TOKEN이 틀렸어요(통합 시크릿을 다시 확인)';
     if (e.status === 404 || e.code === 'object_not_found') return '페이지를 찾을 수 없어요 — 노션에서 이 페이지에 통합(연결)을 추가했는지 확인';
@@ -123,9 +148,21 @@ export function explainError(e) {
   return `오류: ${e?.message || e}`;
 }
 
-// ── 블록 트리 읽기 ──
-async function loadTree(client, rootId) {
+// ── 블록 트리 읽기(나눠 읽기 지원) ──
+// partial = { kids: {블록ID: 하위 블록 배열}, rows: {DB ID: 항목}, targets: {페이지ID: 페이지},
+//             meta: {주소: 미리보기}, page: 페이지 정보 } — JSON으로 저장할 수 있는 모양.
+// 이미 읽은 것은 partial에서 꺼내고, 없는 것만 노션에 묻는다. 호출 한도를 다 쓰면 complete=false.
+async function loadTree(client, rootId, partial) {
   let count = 0;
+  let complete = true;
+  const isBudget = (e) => e?.name === 'BudgetExhausted';
+
+  // partial에 든 배열을 그대로 고치면 저장본이 부풀어서, 꺼낼 때마다 얕은 복사본을 쓴다.
+  async function kidsOf(id) {
+    if (!partial.kids[id]) partial.kids[id] = await client.children(id);
+    return partial.kids[id].map((b) => ({ ...b }));
+  }
+
   async function expand(blocks, depth) {
     count += blocks.length;
     await Promise.all(blocks.map(async (b) => {
@@ -135,45 +172,58 @@ async function loadTree(client, rootId) {
       // 동기화 블록 사본은 원본의 내용을 읽는다.
       const sourceId = b.type === 'synced_block' && b.synced_block?.synced_from?.block_id
         ? b.synced_block.synced_from.block_id : b.id;
-      b.children = await client.children(sourceId).catch(() => []);
+      try {
+        b.children = await kidsOf(sourceId);
+      } catch (e) {
+        if (isBudget(e)) complete = false;
+        b.children = [];
+        return;
+      }
       await expand(b.children, depth + 1);
     }));
-    return blocks;
   }
-  const top = await client.children(rootId);
-  await expand(top, 0);
-  // 하위 DB는 항목 목록을 같이 읽어 둔다(제목 링크용).
-  const dbs = [];
-  (function walk(list) {
-    for (const b of list || []) {
-      if (b.type === 'child_database') dbs.push(b);
-      walk(b.children);
-    }
-  })(top);
-  await Promise.all(dbs.map(async (b) => {
-    b.rows = await client.queryDatabase(b.id).catch(() => null);
-  }));
 
-  // "페이지 링크" 블록은 대상 페이지의 제목·아이콘을, 북마크는 웹페이지 미리보기
-  // (제목·설명·대표 이미지)를 미리 읽어 둔다. 노션 화면처럼 카드로 그리기 위해.
+  let top;
+  try { top = await kidsOf(rootId); } catch (e) {
+    if (isBudget(e)) return { complete: false };
+    throw e;
+  }
+  await expand(top, 0);
+  if (!complete) return { complete: false };
+
+  // 트리를 다 읽은 뒤에만: 하위 DB 항목, "페이지 링크"의 제목·아이콘, 북마크 미리보기.
+  const dbs = [];
   const links = [];
   const bookmarks = [];
   (function walk(list) {
     for (const b of list || []) {
+      if (b.type === 'child_database') dbs.push(b);
       if (b.type === 'link_to_page' && b.link_to_page?.page_id) links.push(b);
       if (b.type === 'bookmark' || b.type === 'link_preview') bookmarks.push(b);
       walk(b.children);
     }
   })(top);
+  const remember = async (bag, key, load) => {
+    if (key in bag) return bag[key];
+    try {
+      bag[key] = await load();
+    } catch (e) {
+      if (isBudget(e)) { complete = false; return null; }
+      bag[key] = null;
+    }
+    return bag[key];
+  };
   await Promise.all([
+    ...dbs.map(async (b) => { b.rows = await remember(partial.rows, b.id, () => client.queryDatabase(b.id)); }),
     ...links.slice(0, 30).map(async (b) => {
-      b.target = await client.page(b.link_to_page.page_id).catch(() => null);
+      b.target = await remember(partial.targets, b.link_to_page.page_id, () => client.page(b.link_to_page.page_id));
     }),
     ...bookmarks.slice(0, 15).map(async (b) => {
-      b.meta = await fetchLinkMeta(b[b.type]?.url);
+      const url = b[b.type]?.url;
+      b.meta = await remember(partial.meta, url || '', () => { client.spend(); return fetchLinkMeta(url); });
     }),
   ]);
-  return { blocks: top, count };
+  return { complete, blocks: top, count };
 }
 
 // 북마크 카드용 미리보기 — <title>, og:title/description/image, 파비콘. 3초 안에 못 받으면 주소만.
@@ -572,9 +622,26 @@ function makeRenderer(ctx) {
  * 페이지 하나를 읽어 { title, icon, coverUrl, html, blocks, hasEquation } 로.
  * slug는 하위 페이지 링크(/{slug}/{id})를 만드는 데 쓴다.
  */
-export async function renderPage(token, pageId, slug) {
-  const client = makeClient(token);
-  const [page, tree] = await Promise.all([client.page(pageId), loadTree(client, pageId)]);
+// 한 번에 쓸 노션 호출 수. 무료 플랜 한도 50에서 페이지 정보·잠금·캐시(Cache API도 호출로 셀 수 있음)·
+// 통계·예비본 재생성 몫을 넉넉히 남긴다("Too many subrequests"가 다시 나지 않도록 30에서 20으로).
+export const CALL_BUDGET = 20;
+
+/**
+ * 페이지 하나를 읽어 { title, icon, coverUrl, html, blocks, hasEquation, ... } 로.
+ * partial(선택)에 지난번까지 읽은 것이 있으면 이어서 읽는다. 한 번에 다 못 읽으면
+ * partial을 채운 채로 Incomplete를 던진다(호출한 쪽이 partial을 저장했다가 다시 부른다).
+ */
+export async function renderPage(token, pageId, slug, partial = { kids: {}, rows: {}, targets: {}, meta: {} }) {
+  const client = makeClient(token, { budget: CALL_BUDGET });
+  if (!partial.page) {
+    try { partial.page = await client.page(pageId); } catch (e) {
+      if (e?.name === 'BudgetExhausted') throw new Incomplete(Object.keys(partial.kids).length);
+      throw e;
+    }
+  }
+  const page = partial.page;
+  const tree = await loadTree(client, pageId, partial);
+  if (!tree.complete) throw new Incomplete(Object.keys(partial.kids).length);
   // 목차 블록용: 페이지 안의 제목들을 미리 모은다.
   const headings = [];
   (function walk(list) {

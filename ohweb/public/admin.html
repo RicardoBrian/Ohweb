@@ -318,6 +318,22 @@
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* 시험 실시간 현황판 */
+    .live-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; }
+    .live-card { border-radius:12px; padding:10px 12px; border:2px solid transparent; cursor:pointer; font-size:0.8rem; line-height:1.5; }
+    .live-card .lc-name { font-weight:800; font-size:0.9rem; }
+    .live-card .lc-sub { color:var(--sub); font-size:0.75rem; }
+    .live-card.st-none { background:rgba(148,163,184,0.15); border-color:rgba(148,163,184,0.4); cursor:default; opacity:0.75; }
+    .live-card.st-doing { background:rgba(59,130,246,0.12); border-color:rgba(59,130,246,0.55); }
+    .live-card.st-done { background:rgba(34,197,94,0.12); border-color:rgba(34,197,94,0.55); }
+    .live-card.st-fail { background:rgba(239,68,68,0.12); border-color:rgba(239,68,68,0.7); }
+    .live-card .lc-off { display:inline-block; padding:1px 7px; border-radius:50px; font-size:0.68rem; font-weight:800; background:rgba(239,68,68,0.15); color:#ef4444; }
+    .live-card .lc-warn { color:#ef4444; font-weight:700; }
+    .live-card.blink { animation: liveBlink 1s ease-in-out infinite; }
+    @keyframes liveBlink { 50% { box-shadow:0 0 0 4px rgba(239,68,68,0.7); background:rgba(239,68,68,0.3); } }
+    .live-legend { display:flex; gap:12px; flex-wrap:wrap; font-size:0.75rem; color:var(--sub); margin-bottom:10px; }
+    .live-legend i { display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:4px; vertical-align:-1px; }
+
     /* 알림 토스트 */
     .toast {
       position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(80px);
@@ -619,25 +635,14 @@
     </div>
 
     <div class="card">
-      <h2><span class="icon"><svg width="18" height="18"><use href="#ic-target"/></svg></span> 학급 선택</h2>
-      <div class="select-controls">
-        <label>학교</label>
-        <select class="inp" id="appSchool" onchange="loadAppSettings()"><option value="">학교 선택</option></select>
-        <label>학년</label>
-        <select class="inp" id="appGrade" onchange="loadAppSettings()">
-          <option value="">전체</option>
-          <option value="1">1학년</option><option value="2">2학년</option><option value="3">3학년</option>
-        </select>
-        <label>반</label>
-        <select class="inp" id="appClass" onchange="loadAppSettings()">
-          <option value="">전체</option>
-          <option value="1">1반</option><option value="2">2반</option><option value="3">3반</option><option value="4">4반</option><option value="5">5반</option>
-        </select>
+      <div class="ag-bar" style="margin-bottom:6px;">
+        <select class="inp ag-sel" id="appSchool" onchange="onAppSchoolChange()"><option value="">학교 선택</option></select>
+        <div class="ag-seg" id="appGradeSeg" role="group"></div>
       </div>
-    </div>
-
-    <div id="appSettingsArea">
-      <div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-device"/></svg></div>학교와 학급을 선택하세요.</div>
+      <p style="font-size:0.78rem;color:var(--sub);margin:4px 2px 12px;">학생 홈 화면에 보일 앱을 반마다 켜고 끕니다. 열 위의 [켜기]·[끄기]는 지금 보이는 반 전체에, 줄 끝의 버튼은 그 반에만 적용됩니다.</p>
+      <div id="appSettingsArea">
+        <div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-device"/></svg></div>학교를 선택하세요.</div>
+      </div>
     </div>
 
   </div>
@@ -812,8 +817,16 @@
           <textarea class="inp" id="q_content" rows="3" placeholder="문제 본문 (선택)" style="resize:vertical;"></textarea>
         </div>
         <div style="margin-bottom:12px;">
-          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">이미지 URL (선택)</label>
-          <input class="inp" id="q_imageUrl" placeholder="https://...">
+          <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">이미지 (선택)</label>
+          <div id="q_imgDrop" onclick="document.getElementById('q_imgFile').click()" style="border:2px dashed var(--border-card);border-radius:10px;padding:14px;text-align:center;font-size:0.82rem;color:var(--sub);cursor:pointer;margin-bottom:6px;">
+            이미지를 여기에 끌어다 놓거나 눌러서 고르세요 (구글 드라이브에 저장)
+          </div>
+          <input type="file" id="q_imgFile" accept="image/*" class="hidden" onchange="onQImgFile(this.files[0]);this.value='';">
+          <input class="inp" id="q_imageUrl" placeholder="또는 이미지 주소·드라이브 링크 붙여넣기" oninput="renderQImgPreview()">
+          <div id="q_imgPreview" class="hidden" style="margin-top:8px;display:flex;align-items:flex-start;gap:8px;">
+            <img id="q_imgPreviewImg" alt="" referrerpolicy="no-referrer" style="max-width:220px;max-height:160px;border-radius:8px;border:1px solid var(--border-card);">
+            <button class="btn ghost sm" type="button" onclick="document.getElementById('q_imageUrl').value='';renderQImgPreview();">이미지 빼기</button>
+          </div>
         </div>
 
         <!-- 객관식 필드 -->
@@ -907,6 +920,9 @@
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
           <h2 style="margin:0;"><span class="icon"><svg width="18" height="18"><use href="#ic-doc"/></svg></span> 문제 목록</h2>
           <div style="display:flex;gap:6px;">
+            <button class="btn ghost sm" title="이 시험의 문항을 CSV(엑셀)로 받습니다. 문항이 없으면 예시가 든 양식을 받습니다." onclick="downloadQCsv()">CSV 받기</button>
+            <button class="btn ghost sm" title="고친 CSV를 올려 이 시험의 문항을 한 번에 바꿉니다. 반영 전에 미리보기를 보여줍니다." onclick="pickQCsv()">CSV 올리기</button>
+            <input type="file" id="qcsvFile" accept=".csv,.tsv,.txt,text/csv" class="hidden" onchange="onQCsvFile(this)">
             <button class="btn ghost sm" title="예전 문항의 정답을 학생이 못 읽는 곳(exam_answers)으로 옮깁니다" onclick="migrateAnswers()">정답 분리</button>
             <button class="icon-action" title="번역 보완" onclick="fixMissingTranslations()"><svg width="17" height="17"><use href="#ic-globe"/></svg></button>
           </div>
@@ -916,6 +932,7 @@
             <option value="">시험을 선택하세요</option>
           </select>
         </div>
+        <div id="qcsvPreview" class="hidden" style="margin-bottom:14px;"></div>
         <div id="qList"><div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-help"/></svg></div>문제를 선택하세요.</div></div>
       </div>
     </div>
@@ -1010,6 +1027,11 @@
             <button class="btn accent sm" onclick="exportResultsPDF()"><svg width="13" height="13" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-doc"/></svg>PDF 내보내기</button>
           </div>
         </div>
+        <div style="display:flex;gap:6px;margin-bottom:12px;">
+          <button class="btn sm" id="resModeTable" onclick="setResultMode('table')">결과 표</button>
+          <button class="btn ghost sm" id="resModeLive" onclick="setResultMode('live')">실시간</button>
+        </div>
+        <div id="liveBoard" class="hidden"></div>
         <div id="resultTable"><div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-chart"/></svg></div>배정을 선택하세요.</div></div>
       </div>
     </div>
@@ -1085,13 +1107,15 @@
 
 <script src="admin-nav.js"></script>
 <script src="admin-rows.js"></script>
+<script src="admin-groups.js"></script>
 <script type="module" src="admin-ailab.js?v=20261022a"></script>
 <script type="module">
   import { db, auth } from './firebase-config.js';
   import {
     collection, addDoc, getDocs, deleteDoc, doc,
-    query, where, orderBy, setDoc, getDoc, serverTimestamp, writeBatch, updateDoc, deleteField
+    query, where, orderBy, setDoc, getDoc, serverTimestamp, writeBatch, updateDoc, deleteField, onSnapshot
   } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import * as QCSV from './exam-qcsv.js?v=20261104a';
 
   // 인증 확인
   await window.AdminAuth.ready;
@@ -1111,6 +1135,8 @@
   let csvData = [];
   let confirmCallback = null;
   let _appStudents = [];   // 앱설정용 학생 캐시
+  let _assignList = [];    // 시험 배정 목록 (시험 목록·배정 관리가 같이 씀)
+  let _assignCache = {};
 
   // 학년/반 정규화 + appSettings 키 (home.html과 동일 규칙)
   const nv = v => String(v||'').replace(/학년|년급|학|반|班|кл\./g,'').trim();
@@ -1653,23 +1679,36 @@
 
   // ── 앱 설정 ──
   // 학생 데이터 기반으로 학교 드롭다운 채우기 (등록된 학생의 학교명 = 자유텍스트)
+  // ── 앱 공개 설정: 학교 하나를 골라 "반 × 앱" 표로 켜고 끈다 ──
+  let _appGrade = '';
+  let _appRows = [];     // [{ docId, grade, class, count, apps }]
+  const APP_SCHOOL_KEY = 'adm_app_school';
   window.loadAppStudents = async () => {
     const snap = await getDocs(collection(db, 'students'));
     _appStudents = snap.docs.map(d => d.data());
     const names = [...new Set(_appStudents.map(s => (s.schoolName||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ko'));
     const sel = document.getElementById('appSchool');
-    const cur = sel.value;
-    sel.innerHTML = '<option value="">학교 선택</option>' + names.map(n => `<option value="${n.replace(/"/g,'&quot;')}">${n}</option>`).join('');
-    if (cur && names.includes(cur)) sel.value = cur;
+    let cur = sel.value;
+    if (!cur) { try { cur = localStorage.getItem(APP_SCHOOL_KEY) || ''; } catch (e) {} }
+    if (!names.includes(cur)) cur = names.length === 1 ? names[0] : '';
+    sel.innerHTML = '<option value="">학교 선택</option>' + names.map(n => `<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('');
+    sel.value = cur;
+    window.loadAppSettings();
   };
+  window.onAppSchoolChange = () => {
+    try { localStorage.setItem(APP_SCHOOL_KEY, document.getElementById('appSchool').value); } catch (e) {}
+    _appGrade = '';
+    window.loadAppSettings();
+  };
+  window.setAppGrade = (g) => { _appGrade = g; renderAppMatrix(); };
 
   window.loadAppSettings = async () => {
     const schoolName = document.getElementById('appSchool').value;
-    const grade = document.getElementById('appGrade').value;
-    const cls = document.getElementById('appClass').value;
     const area = document.getElementById('appSettingsArea');
+    const segEl = document.getElementById('appGradeSeg');
 
     if (!schoolName) {
+      segEl.innerHTML = ''; segEl.style.display = 'none';
       area.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-device"/></svg></div>학교를 선택하세요.</div>';
       return;
     }
@@ -1677,85 +1716,109 @@
     showLoading(true);
     try {
       // 해당 학교 학생들의 실제 (학년·반) 조합만 추출 (없는 학급은 안 보이게)
-      const seen = new Set();
-      const combos = [];
+      const combos = new Map();
       _appStudents
         .filter(s => (s.schoolName||'').trim() === schoolName)
         .forEach(s => {
           const g = nv(s.grade), c = nv(s.class);
           if (!g || !c) return;
-          if (grade && nv(grade) !== g) return;
-          if (cls && nv(cls) !== c) return;
           const k = g + '|' + c;
-          if (!seen.has(k)) { seen.add(k); combos.push({ grade: g, class: c }); }
+          if (!combos.has(k)) combos.set(k, { grade: g, class: c, count: 0 });
+          combos.get(k).count++;
         });
-      combos.sort((a,b) => (parseInt(a.grade)||0)-(parseInt(b.grade)||0) || (parseInt(a.class)||0)-(parseInt(b.class)||0));
+      const list = [...combos.values()].sort((a,b) => (parseInt(a.grade)||0)-(parseInt(b.grade)||0) || (parseInt(a.class)||0)-(parseInt(b.class)||0));
 
-      if (!combos.length) {
-        area.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-people"/></svg></div>이 학교에 등록된 학급(학생)이 없습니다.</div>';
-        showLoading(false);
-        return;
-      }
-
-      const schEnc = encodeURIComponent(schoolName);
-      const settingDocs = await Promise.all(combos.map(combo => {
+      _appRows = await Promise.all(list.map(combo => {
         const docId = appKey(schoolName, combo.grade, combo.class);
         return getDoc(doc(db, 'appSettings', docId)).then(d => ({
           ...combo, docId,
-          apps: d.exists() ? (d.data().apps || {}) : {}
+          apps: d.exists() ? { ...(d.data().apps || {}) } : {}
         }));
       }));
-
-      area.innerHTML = settingDocs.map(s => `
-        <div class="card" id="card_${s.docId}">
-          <h2><span class="icon"><svg width="18" height="18"><use href="#ic-people"/></svg></span> ${s.grade}학년 ${s.class}반</h2>
-          <div class="app-grid">
-            ${APPS.map(app => `
-              <div class="app-card">
-                <div class="app-card-name" style="display:flex;align-items:center;gap:6px;"><svg width="15" height="15" style="color:var(--sub);flex-shrink:0;"><use href="#${app.icon}"/></svg>${app.name}</div>
-                <div class="app-card-id">${app.id}</div>
-                <label class="toggle" title="${app.name} 공개">
-                  <input type="checkbox" ${s.apps[app.id] ? 'checked' : ''}
-                    onchange="saveAppSetting('${s.docId}','${schEnc}','${s.grade}','${s.class}','${app.id}',this.checked)">
-                  <div class="toggle-track"></div>
-                </label>
-              </div>
-            `).join('')}
-          </div>
-          <div class="btn-row">
-            <button class="btn sm accent" onclick="enableAll('${s.docId}')">전체 공개</button>
-            <button class="btn sm danger" onclick="disableAll('${s.docId}')">전체 비공개</button>
-          </div>
-        </div>
-      `).join('');
+      const grades = [...new Set(_appRows.map(r => r.grade))];
+      if (_appGrade && !grades.includes(_appGrade)) _appGrade = '';
+      renderAppMatrix();
     } catch (e) {
       toast('오류: ' + e.message, 'error');
     }
     showLoading(false);
   };
 
-  window.saveAppSetting = async (docId, schoolEnc, grade, cls, appId, enabled) => {
+  function renderAppMatrix() {
+    const area = document.getElementById('appSettingsArea');
+    const segEl = document.getElementById('appGradeSeg');
+    const grades = [...new Set(_appRows.map(r => r.grade))];
+    segEl.style.display = grades.length > 1 ? '' : 'none';
+    segEl.innerHTML = [['', '전체'], ...grades.map(g => [g, g + '학년'])].map(([v, l]) =>
+      `<button type="button" class="${_appGrade === v ? 'on' : ''}" onclick="setAppGrade('${v}')">${l}</button>`).join('');
+    if (!_appRows.length) {
+      area.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-people"/></svg></div>이 학교에 등록된 학급(학생)이 없습니다.</div>';
+      return;
+    }
+    const rows = _appRows.filter(r => !_appGrade || r.grade === _appGrade);
+    const onCount = app => rows.filter(r => r.apps[app.id]).length;
+    let lastGrade = null;
+    const body = rows.map((r, i) => {
+      const head = (!_appGrade && r.grade !== lastGrade && grades.length > 1)
+        ? `<tr class="app-mx-grade"><td colspan="${APPS.length + 2}">${r.grade}학년</td></tr>` : '';
+      lastGrade = r.grade;
+      return head + `<tr>
+        <td><b>${r.grade}학년 ${r.class}반</b><span class="app-mx-cnt">${r.count}명</span></td>
+        ${APPS.map(app => `<td><label class="ios-switch" title="${r.grade}학년 ${r.class}반 · ${app.name}"><input type="checkbox" ${r.apps[app.id] ? 'checked' : ''} onchange="saveAppSetting('${r.docId}','${app.id}',this.checked,this)"><span></span></label></td>`).join('')}
+        <td><span class="app-mx-row"><button type="button" onclick="setAppBulk('row','${r.docId}',true)">모두 켜기</button> <button type="button" onclick="setAppBulk('row','${r.docId}',false)">끄기</button></span></td>
+      </tr>`;
+    }).join('');
+    area.innerHTML = `<div class="app-mx-wrap"><table class="app-mx">
+      <thead><tr><th>반</th>${APPS.map(app => `<th><span class="app-mx-h">
+        <b><svg width="15" height="15" style="color:var(--sub);"><use href="#${app.icon}"/></svg>${app.name}</b>
+        <span style="font-weight:500;">${onCount(app)}/${rows.length}반 공개</span>
+        <span class="app-mx-col"><button type="button" onclick="setAppBulk('col','${app.id}',true)">켜기</button><button type="button" onclick="setAppBulk('col','${app.id}',false)">끄기</button></span>
+      </span></th>`).join('')}<th></th></tr></thead>
+      <tbody>${body}</tbody></table></div>`;
+  }
+
+  async function writeAppRow(r) {
+    const schoolName = document.getElementById('appSchool').value;
+    await setDoc(doc(db, 'appSettings', r.docId), { schoolName, grade: r.grade, class: r.class, apps: r.apps }, { merge: true });
+  }
+
+  window.saveAppSetting = async (docId, appId, enabled, input) => {
+    const r = _appRows.find(x => x.docId === docId);
+    if (!r) return;
+    const prev = r.apps[appId];
+    r.apps[appId] = enabled;
+    if (input) input.disabled = true;
     try {
-      const schoolName = decodeURIComponent(schoolEnc);
-      const ref = doc(db, 'appSettings', docId);
-      const snap = await getDoc(ref);
-      const apps = snap.exists() ? (snap.data().apps || {}) : {};
-      apps[appId] = enabled;
-      await setDoc(ref, { schoolName, grade, class: cls, apps }, { merge: true });
-      toast(`${appId} ${enabled ? '공개' : '비공개'} 설정 저장`, 'success');
+      await writeAppRow(r);
+      const app = APPS.find(a => a.id === appId);
+      toast(`${r.grade}학년 ${r.class}반 · ${app ? app.name : appId} ${enabled ? '공개' : '비공개'}`, 'success');
+      renderAppMatrix();
     } catch (e) {
+      r.apps[appId] = prev;
+      if (input) { input.checked = !enabled; input.disabled = false; }
       toast('저장 오류: ' + e.message, 'error');
     }
   };
 
-  window.enableAll = async (docId) => {
-    const card = document.getElementById('card_' + docId);
-    card.querySelectorAll('input[type=checkbox]').forEach(cb => { if (!cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change')); } });
-  };
-
-  window.disableAll = async (docId) => {
-    const card = document.getElementById('card_' + docId);
-    card.querySelectorAll('input[type=checkbox]').forEach(cb => { if (cb.checked) { cb.checked = false; cb.dispatchEvent(new Event('change')); } });
+  // kind 'row' → 그 반의 모든 앱, 'col' → 지금 보이는 모든 반의 그 앱
+  window.setAppBulk = async (kind, id, enabled) => {
+    const rows = _appRows.filter(r => !_appGrade || r.grade === _appGrade);
+    const targets = kind === 'row' ? _appRows.filter(r => r.docId === id) : rows;
+    const changed = targets.filter(r => (kind === 'row' ? APPS.map(a => a.id) : [id]).some(a => !!r.apps[a] !== enabled));
+    if (!changed.length) { toast('바꿀 것이 없습니다.'); return; }
+    showLoading(true);
+    try {
+      await Promise.all(changed.map(r => {
+        (kind === 'row' ? APPS.map(a => a.id) : [id]).forEach(a => { r.apps[a] = enabled; });
+        return writeAppRow(r);
+      }));
+      toast(`${changed.length}개 반 ${enabled ? '공개' : '비공개'}로 저장`, 'success');
+    } catch (e) {
+      toast('저장 오류: ' + e.message, 'error');
+      await window.loadAppSettings();
+    }
+    renderAppMatrix();
+    showLoading(false);
   };
 
   // ── 초기화 ──
@@ -1786,51 +1849,110 @@
 
   // ── 패들릿 수업 관리 (Firestore) ──
 
-  let _adminGradeFilter = 'all';
-  window.setAdminGradeTab = (g) => {
-    _adminGradeFilter = g;
-    document.querySelectorAll('.adm-grade-tab').forEach(btn => btn.classList.toggle('active', btn.dataset.g === g));
-    document.querySelectorAll('.adm-grade-group').forEach(el => {
-      el.style.display = (g === 'all' || el.dataset.g === g) ? '' : 'none';
-    });
-  };
+  // 목록: 같은 수업(이름+학교)끼리 한 카드로 묶고, 카드 안에 반마다 한 줄.
+  // 켜진 수업이 위로, 그다음 최근에 만든 순. 위의 필터 줄로 학교·학년·상태·이름을 거른다.
   let _adminClassById = {};
+  let _adminList = [];
   window.editAdminClassById = (id) => { if (_adminClassById[id]) window.editAdminUI(_adminClassById[id]); };
+  window.translateAdminClassById = (id) => { if (_adminClassById[id]) window.openTranslateModal(_adminClassById[id]); };
+  const tsOf = v => v?.toMillis ? v.toMillis() : (v?.seconds ? v.seconds * 1000 : 0);
   window.loadAdminList = async () => {
     const data = await getDocs(query(collection(db, 'classes'), orderBy('createdAt', 'asc')));
-    const list = data.docs.map(d => ({ id: d.id, ...d.data() }));
-    _adminClassById = Object.fromEntries(list.map(c => [c.id, c]));   // 행을 눌러 수정할 때 id 로 찾는다
+    _adminList = data.docs.map(d => ({ id: d.id, ...d.data() }));
+    _adminClassById = Object.fromEntries(_adminList.map(c => [c.id, c]));   // 행을 눌러 수정할 때 id 로 찾는다
+    renderAdminList();
+  };
+  AG.on('pad', () => renderAdminList());
+  const padGroupId = c => `${(c.name || '').trim()}|${c.schoolName || '관산중학교'}`;
+  function renderAdminList() {
     const el = document.getElementById('adminList');
-    if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-board"/></svg></div>등록된 수업이 없습니다.</div>'; return; }
-    const gradeOrder = ['1','2','3'];
-    const groups = {};
-    list.forEach(c => {
-      const g = (c.grade && gradeOrder.includes(String(c.grade))) ? String(c.grade) : '기타';
-      if (!groups[g]) groups[g] = [];
-      groups[g].push(c);
-    });
-    const renderItem = c => `
-      <div class="list-item row-open" data-open="editAdminClassById" data-arg="${escHtml(c.id)}" title="눌러서 수정">
-        <div>
-          <div class="list-item-name"><svg width="15" height="15" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-board"/></svg>${c.name}</div>
-          <div class="list-item-sub">${c.schoolName||'관산중학교'} · ${!c.grade ? '학교 전체' : !c.group ? c.grade+'학년 전체' : c.grade+'학년 '+c.group+'반'} <span style="font-size:0.75rem;padding:2px 7px;border-radius:6px;font-weight:700;background:${c.status==='ON'?'rgba(34,197,94,0.15)':'rgba(239,68,68,0.12)'};color:${c.status==='ON'?'#16a34a':'#ef4444'}">${c.status}</span></div>
-        </div>
-        <div class="list-item-actions" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          <label class="ios-switch" title="${c.status==='ON'?'켜짐 — 누르면 끔':'꺼짐 — 누르면 켬'}"><input type="checkbox" ${c.status==='ON'?'checked':''} onchange="toggleClassStatus('${c.id}',this.checked?'ON':'OFF')"><span></span></label>
-          <button class="btn ghost sm" style="color:var(--accent)" onclick='openTranslateModal(${JSON.stringify(c).replace(/'/g,"&#39;")})'>번역</button>
+    if (!_adminList.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-board"/></svg></div>등록된 수업이 없습니다.</div>'; return; }
+    const schoolsAll = [...new Set(_adminList.map(c => c.schoolName || '관산중학교'))].sort((a, b) => a.localeCompare(b, 'ko'));
+    const bar = AG.bar('pad', { schools: schoolsAll, grades: AG.gradesOf(_adminList.map(c => c.grade)), status: ['켜짐', '꺼짐'], search: '수업 이름 검색…' });
+    const shown = _adminList.filter(c => AG.pass('pad', { school: c.schoolName || '관산중학교', grade: c.grade, on: c.status === 'ON', text: c.name }));
+    const groups = AG.groupBy(shown, padGroupId).map(g => ({
+      ...g, live: g.items.some(c => c.status === 'ON'), last: Math.max(...g.items.map(c => tsOf(c.createdAt))),
+    }));
+    groups.sort((x, y) => (y.live - x.live) || (y.last - x.last));
+    const onTotal = shown.filter(c => c.status === 'ON').length;
+    const sum = `<div class="ag-sum">수업 ${groups.length}개 · 게시판 ${shown.length}개 · 켜짐 ${onTotal}개${shown.length !== _adminList.length ? ` (전체 ${_adminList.length}개 중)` : ''}</div>`;
+    if (!groups.length) { el.innerHTML = bar + AG.empty('pad'); return; }
+    const row = c => `
+      <div class="ag-r row-open" data-open="editAdminClassById" data-arg="${escHtml(c.id)}" title="눌러서 수정">
+        <div class="ag-rl"><div class="ag-rn">${escHtml(AG.classLabel(c.grade, c.group))}</div>
+          ${c.boardLayout === 'columns' ? '<div class="ag-rs">칼럼형</div>' : ''}</div>
+        <div class="ag-ra">
+          <label class="ios-switch" title="${c.status==='ON'?'켜짐 — 누르면 끔':'꺼짐 — 누르면 켬'}"><input type="checkbox" ${c.status==='ON'?'checked':''} onchange="toggleClassStatus('${c.id}',this.checked?'ON':'OFF',this)"><span></span></label>
+          <button class="btn ghost sm" style="color:var(--accent)" onclick="translateAdminClassById('${c.id}')">번역</button>
           <button class="icon-action danger" title="삭제" onclick="delAdminClass('${c.id}')"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
         </div>
       </div>`;
-    const orderedKeys = [...gradeOrder.filter(g => groups[g]), ...(groups['기타'] ? ['기타'] : [])];
-    const tabKeys = ['all', ...orderedKeys];
-    const tabLabels = {all:'전체', '1':'1학년', '2':'2학년', '3':'3학년', '기타':'기타'};
-    const tabs = tabKeys.map(g => `<button class="adm-grade-tab btn ghost sm${_adminGradeFilter===g?' active':''}" data-g="${g}" onclick="setAdminGradeTab('${g}')" style="margin-right:4px;margin-bottom:8px;">${tabLabels[g]||g}</button>`).join('');
-    const content = orderedKeys.map(g => `
-      <div class="adm-grade-group" data-g="${g}" style="${_adminGradeFilter!=='all'&&_adminGradeFilter!==g?'display:none':''}">
-        <div style="margin-bottom:4px;margin-top:4px;font-size:0.8rem;font-weight:700;color:var(--sub);padding:0 2px;">${tabLabels[g]||g}</div>
-        ${groups[g].map(renderItem).join('')}
-      </div>`).join('');
-    el.innerHTML = `<div style="margin-bottom:4px;">${tabs}</div>${content}`;
+    const card = g => {
+      const items = g.items.slice().sort((a, b) => AG.byClass({ grade: a.grade, cls: a.group }, { grade: b.grade, cls: b.group }));
+      const first = items[0];
+      const on = items.filter(c => c.status === 'ON').length;
+      const gid = escHtml(JSON.stringify(g.key));
+      if (items.length === 1) {   // 반이 하나뿐인 수업은 한 줄로
+        const c = first;
+        return `<div class="ag-g single${g.live ? ' live' : ''}">
+          <div class="ag-r row-open" data-open="editAdminClassById" data-arg="${escHtml(c.id)}" title="눌러서 수정">
+            <div class="ag-rl"><div class="ag-name">${escHtml(c.name)}</div>
+              <div class="ag-meta"><span>${escHtml(c.schoolName || '관산중학교')}</span><span>${escHtml(AG.classLabel(c.grade, c.group))}</span>${c.boardLayout === 'columns' ? '<span>칼럼형</span>' : ''}</div></div>
+            <div class="ag-ra">
+              <label class="ios-switch" title="${c.status==='ON'?'켜짐 — 누르면 끔':'꺼짐 — 누르면 켬'}"><input type="checkbox" ${c.status==='ON'?'checked':''} onchange="toggleClassStatus('${c.id}',this.checked?'ON':'OFF',this)"><span></span></label>
+              <button class="btn ghost sm" style="color:var(--accent)" onclick="translateAdminClassById('${c.id}')">번역</button>
+              <button class="btn ghost sm" title="같은 내용으로 다른 반에 게시판을 더 만듭니다" onclick="copyAdminClass('${c.id}')">＋ 반</button>
+              <button class="icon-action danger" title="삭제" onclick="delAdminClass('${c.id}')"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
+            </div>
+          </div></div>`;
+      }
+      return `<div class="ag-g${g.live ? ' live' : ''}${AG.isOpen('pad', g.key) ? '' : ' closed'}" ${AG.gattr('pad', g.key)}>
+        <div class="ag-h">
+          <span class="ag-caret">▾</span>
+          <div class="ag-t"><div class="ag-name">${escHtml(first.name)}</div>
+            <div class="ag-meta"><span>${escHtml(first.schoolName || '관산중학교')}</span><span>${items.length}개 반</span>
+              <span class="ag-pill${on ? ' on' : ''}">${on ? `켜짐 ${on}/${items.length}` : '모두 꺼짐'}</span></div></div>
+          <div class="ag-acts">
+            ${items.length > 1 ? `<button class="btn ghost sm" onclick='setClassGroupStatus(${gid}, ${on === items.length ? "\"OFF\"" : "\"ON\""})'>${on === items.length ? '모두 끄기' : '모두 켜기'}</button>` : ''}
+            <button class="btn ghost sm" title="같은 내용으로 다른 반에 게시판을 더 만듭니다" onclick="copyAdminClass('${first.id}')">＋ 반</button>
+          </div>
+        </div>
+        <div class="ag-b">${items.map(row).join('')}</div>
+      </div>`;
+    };
+    el.innerHTML = bar + sum + `<div class="ag-list">${groups.map(card).join('')}</div>`;
+  }
+  window.setClassGroupStatus = async (gid, status) => {
+    const items = _adminList.filter(c => padGroupId(c) === gid && c.status !== status);
+    if (!items.length) return;
+    showLoading(true);
+    try {
+      await Promise.all(items.map(c => updateDoc(doc(db, 'classes', c.id), { status })));
+      items.forEach(c => { c.status = status; });
+      toast(`${items.length}개 반 ${status === 'ON' ? '켬' : '끔'}`, 'success');
+    } catch (e) { toast('저장 오류: ' + e.message, 'error'); }
+    renderAdminList();
+    showLoading(false);
+  };
+  // 같은 수업을 다른 반에 더 만들 때 — 내용만 채우고 반은 새로 담는다.
+  window.copyAdminClass = async (id) => {
+    const c = _adminClassById[id]; if (!c) return;
+    window.resetAdminForm();
+    document.getElementById('adm_name').value = c.name || '';
+    document.getElementById('adm_desc').value = c.desc || '';
+    document.getElementById('adm_ex').value = c.ex || '';
+    document.getElementById('adm_popup').value = c.popup || '';
+    const layout = c.boardLayout === 'columns' ? 'columns' : 'grid';
+    document.querySelector(`input[name="adm_layout"][value="${layout}"]`).checked = true;
+    document.getElementById('adm_columns').value = (c.columns || []).join('\n');
+    onAdmLayoutChange();
+    await buildPaddletDropdowns();
+    const schoolSel = document.getElementById('adm_school');
+    if ([...schoolSel.options].some(o => o.value === (c.schoolName || '관산중학교'))) { schoolSel.value = c.schoolName || '관산중학교'; onAdmSchoolChange(); }
+    const info = document.getElementById('adm_edit_info');
+    info.style.display = 'block'; info.innerText = `복사해서 새로 만들기: ${c.name} — 반을 담고 저장하세요`;
+    document.getElementById('adm_cancel_btn').classList.remove('hidden');
+    document.querySelector('#section-paddlet .pane-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   // ── 패들릿 배정 드롭다운 (학교/학년/반) ──
@@ -1968,11 +2090,13 @@
     showLoading(false);
   };
 
-  window.toggleClassStatus = async (id, status) => {
-    showLoading(true);
-    await updateDoc(doc(db, 'classes', id), { status });
-    await window.loadAdminList();
-    showLoading(false);
+  window.toggleClassStatus = async (id, status, input) => {
+    if (input) input.disabled = true;
+    try {
+      await updateDoc(doc(db, 'classes', id), { status });
+      if (_adminClassById[id]) _adminClassById[id].status = status;
+    } catch (e) { toast('저장 오류: ' + e.message, 'error'); }
+    renderAdminList();
   };
 
   window.editAdminUI = async (c) => {
@@ -2056,22 +2180,37 @@
   async function loadExamList() {
     const snap = await getDocs(query(collection(db, 'exams'), orderBy('createdAt', 'desc')));
     exams = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    // 시험마다 배정 수·열린 수를 보여 주려고 배정도 같이 읽는다
+    try {
+      const as = await getDocs(query(collection(db,'exam_assignments'), orderBy('createdAt','desc')));
+      _assignList = as.docs.map(d=>({id:d.id,...d.data()}));
+    } catch (e) { /* 배정을 못 읽어도 시험 목록은 보인다 */ }
     renderExamList();
   }
 
+  AG.on('exam', () => renderExamList());
   function renderExamList() {
     const el = document.getElementById('examList');
     if (!exams.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-clipboard"/></svg></div>등록된 시험이 없습니다.</div>'; return; }
-    el.innerHTML = exams.map(e => `
-      <div class="list-item row-open" data-open="editExam" data-arg="${escHtml(e.id)}" title="눌러서 수정">
-        <div class="list-item-info">
-          <div class="list-item-name"><svg width="15" height="15" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-clipboard"/></svg>${escHtml(e.title)}</div>
-          ${e.desc || examFormsOf(e).length ? `<div class="list-item-sub">${escHtml(e.desc||'')}${e.desc && examFormsOf(e).length ? ' · ' : ''}${examFormsOf(e).length ? `${examFormsOf(e).join('·')}형${e.shuffleForms ? ' (순서 섞기)' : ''}` : ''}</div>` : ''}
-        </div>
-        <div class="list-item-actions">
-          <button class="icon-action danger" title="삭제" onclick="deleteExam(${jsArg(e.id)},${jsArg(e.title)})"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
-        </div>
-      </div>`).join('');
+    const stat = id => { const l = _assignList.filter(a => a.examId === id); return { n: l.length, on: l.filter(a => a.status === 'ON').length, schools: [...new Set(l.map(a => a.schoolName).filter(Boolean))] }; };
+    const bar = exams.length > 5 ? AG.bar('exam', { status: ['열린 배정 있음', '닫힘'], search: '시험 제목 검색…' }) : '';
+    const shown = exams.filter(e => AG.pass('exam', { on: stat(e.id).on > 0, text: (e.title || '') + ' ' + (e.desc || '') }));
+    if (!shown.length) { el.innerHTML = bar + AG.empty('exam'); return; }
+    el.innerHTML = bar + '<div class="ag-list">' + shown.map(e => {
+      const st = stat(e.id), forms = examFormsOf(e);
+      const meta = [e.desc ? escHtml(e.desc) : '', forms.length ? `${forms.join('·')}형${e.shuffleForms ? ' (순서 섞기)' : ''}` : '',
+        st.n ? `배정 ${st.n}개${st.schools.length ? ' · ' + escHtml(st.schools.join(', ')) : ''}` : '배정 없음'].filter(Boolean).map(x => `<span>${x}</span>`).join('');
+      return `<div class="ag-g single${st.on ? ' live' : ''}">
+        <div class="ag-r row-open" data-open="editExam" data-arg="${escHtml(e.id)}" title="눌러서 수정">
+          <div class="ag-rl"><div class="ag-name">${escHtml(e.title)}</div>
+            <div class="ag-meta">${meta}${st.on ? `<span class="ag-pill on">열림 ${st.on}</span>` : ''}</div></div>
+          <div class="ag-ra">
+            <button class="btn ghost sm" onclick="showExamTab('questions');document.getElementById('qlist_examId').value=${jsArg(e.id)};document.getElementById('q_examId').value=${jsArg(e.id)};onQFormExamChange(${jsArg(e.id)})">문제</button>
+            <button class="btn ghost sm" onclick="showExamTab('assign');prefillAssign(${jsArg(e.id)}, '')">배정</button>
+            <button class="icon-action danger" title="삭제" onclick="deleteExam(${jsArg(e.id)},${jsArg(e.title)})"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
+          </div>
+        </div></div>`;
+    }).join('') + '</div>';
   }
 
   // ── 시험지 유형(A/B/C/D형) ──
@@ -2448,6 +2587,7 @@
     document.getElementById('q_title').value = q.title||'';
     document.getElementById('q_content').value = q.content||'';
     document.getElementById('q_imageUrl').value = q.imageUrl||'';
+    renderQImgPreview();
     document.getElementById('q_points').value = q.points||10;
     renderQFormSelect(q.form || '');
     if (q.type === 'mc') {
@@ -2482,6 +2622,268 @@
     });
   };
 
+  // ── 문항 CSV 받기/올리기 ──
+  // 고른 시험의 문항만 다룬다(시험 자체는 위 '시험 관리'에서만 만든다). 형식과 규칙은
+  // exam-qcsv.js — 올린 CSV가 곧 그 시험의 문항 목록이 된다(ID 있는 행 수정, ID 없는
+  // 행 추가, CSV에 없는 문항 삭제, 행 순서 = 문항 순서). 저장은 saveQuestionDoc을 거쳐
+  // 정답이 exam_answers로 분리된다.
+  const QCSV_TYPE_FIELDS = {
+    mc: ['options', 'optionsEn', 'optionsZh', 'optionsRu'],
+    essay: ['minLen', 'maxLen'],
+    code: ['inDesc', 'outDesc', 'inEx', 'outEx', 'boilerplate'],
+  };
+  let _qcsvPlan = null;
+
+  async function loadExamQuestionsFull(examId) {
+    const snap = await getDocs(query(collection(db,'exam_questions'), where('examId','==',examId)));
+    const qs = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.order||0)-(b.order||0));
+    return attachAnswers(qs);
+  }
+
+  function readFileText(file) {
+    const read = enc => new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result);
+      r.onerror = () => rej(r.error || new Error('파일을 읽지 못했습니다.'));
+      r.readAsText(file, enc);
+    });
+    // 엑셀에서 "CSV(쉼표로 분리)"로 저장하면 EUC-KR이라 UTF-8로 읽으면 한글이 깨진다.
+    return read('UTF-8').then(t => isGarbled(t) ? read('EUC-KR') : t);
+  }
+
+  window.downloadQCsv = async () => {
+    const examId = document.getElementById('qlist_examId').value;
+    if (!examId) { toast('시험을 먼저 선택하세요.', 'error'); return; }
+    showLoading(true);
+    try {
+      const qs = await loadExamQuestionsFull(examId);
+      const blob = new Blob([QCSV.buildCsv(qs)], { type: 'text/csv;charset=utf-8;' });
+      const title = String(examById(examId)?.title || examId).replace(/[\\/:*?"<>|]/g, '_');
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `문항_${title}.csv`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+      toast(qs.length ? `문항 ${qs.length}개를 받았습니다. 정답이 들어 있으니 학생에게 보내지 마세요.` : '문항이 없어 예시 4문항이 든 양식을 받았습니다. 예시 줄은 지우고 쓰세요.', 'success');
+    } catch(e) { toast('오류: ' + e.message, 'error'); }
+    showLoading(false);
+  };
+
+  window.pickQCsv = () => {
+    if (!document.getElementById('qlist_examId').value) { toast('시험을 먼저 선택하세요.', 'error'); return; }
+    document.getElementById('qcsvFile').click();
+  };
+
+  window.onQCsvFile = async (input) => {
+    const file = input.files[0];
+    input.value = ''; // 같은 파일을 고쳐서 다시 올려도 onchange가 불리게
+    if (!file) return;
+    const examId = document.getElementById('qlist_examId').value;
+    if (!examId) { toast('시험을 먼저 선택하세요.', 'error'); return; }
+    showLoading(true);
+    try {
+      const [text, existing] = await Promise.all([readFileText(file), loadExamQuestionsFull(examId)]);
+      const plan = QCSV.planImport(text, existing, examFormsOf(examById(examId)));
+      if (plan.error) { toast(plan.error, 'error'); }
+      else { _qcsvPlan = { ...plan, examId, fileName: file.name }; renderQCsvPreview(); }
+    } catch(e) { toast('오류: ' + e.message, 'error'); }
+    showLoading(false);
+  };
+
+  function qcsvCounts(p) {
+    const n = s => p.items.filter(x => x.status === s).length;
+    return { add: n('add'), update: n('update'), error: p.errorCount, del: p.deletions.length,
+      moved: p.items.filter(x => x.status === 'same' && x.orderChanged).length,
+      same: p.items.filter(x => x.status === 'same' && !x.orderChanged).length };
+  }
+
+  function renderQCsvPreview() {
+    const p = _qcsvPlan;
+    const el = document.getElementById('qcsvPreview');
+    if (!p) { el.classList.add('hidden'); el.innerHTML = ''; return; }
+    const c = qcsvCounts(p);
+    const nothing = !c.add && !c.update && !c.del && !c.moved;
+    const tag = (txt, color) => `<span style="padding:2px 9px;border-radius:50px;font-size:0.72rem;font-weight:800;background:${color}22;color:${color};white-space:nowrap;">${txt}</span>`;
+    const ST = { add: tag('추가', '#22c55e'), update: tag('수정', '#3b82f6'), error: tag('오류', '#ef4444') };
+    const typeLabels = QCSV.QCSV_TYPE_LABEL;
+    const rows = p.items.map(it => {
+      const st = it.status === 'same' ? (it.orderChanged ? tag('순서만', '#f59e0b') : tag('그대로', '#94a3b8')) : ST[it.status];
+      const note = it.errors.length ? `<span style="color:#ef4444;">${it.errors.map(escHtml).join('<br>')}</span>`
+        : (it.fromOtherId ? '<span style="color:var(--sub);">이 시험에 없는 문항ID → 새 문항으로 추가</span>' : '');
+      return `<tr>
+        <td style="padding:6px 8px;color:var(--sub);white-space:nowrap;">${it.line}줄</td>
+        <td style="padding:6px 8px;">${st}</td>
+        <td style="padding:6px 8px;white-space:nowrap;">${escHtml(typeLabels[it.data.type] || '')}</td>
+        <td style="padding:6px 8px;">${escHtml(it.data.title || '')}${note ? '<br>' + note : ''}</td>
+      </tr>`;
+    }).join('');
+    const delRows = p.deletions.map(q => `<tr>
+        <td style="padding:6px 8px;color:var(--sub);">-</td>
+        <td style="padding:6px 8px;">${tag('삭제', '#ef4444')}</td>
+        <td style="padding:6px 8px;white-space:nowrap;">${escHtml(typeLabels[q.type] || q.type || '')}</td>
+        <td style="padding:6px 8px;">${escHtml(q.title || '')}</td>
+      </tr>`).join('');
+    el.innerHTML = `<div style="border:1px solid var(--border-card);border-radius:12px;padding:12px;background:var(--glass);">
+      <div style="font-weight:800;margin-bottom:6px;">CSV 미리보기 · ${escHtml(p.fileName)}</div>
+      <div style="font-size:0.85rem;margin-bottom:8px;">추가 ${c.add} · 수정 ${c.update} · 삭제 <b style="color:${c.del ? '#ef4444' : 'inherit'}">${c.del}</b> · 순서만 ${c.moved} · 그대로 ${c.same}${c.error ? ` · <b style="color:#ef4444;">오류 ${c.error}</b>` : ''}</div>
+      ${c.error ? '<div style="font-size:0.82rem;color:#ef4444;margin-bottom:8px;">오류가 있는 줄을 고쳐서 다시 올리세요. 오류가 하나라도 있으면 아무것도 반영하지 않습니다.</div>' : ''}
+      <div class="table-wrap" style="max-height:340px;overflow:auto;"><table style="width:100%;font-size:0.82rem;">
+        <thead><tr><th style="padding:6px 8px;text-align:left;">줄</th><th style="padding:6px 8px;text-align:left;">상태</th><th style="padding:6px 8px;text-align:left;">유형</th><th style="padding:6px 8px;text-align:left;">제목</th></tr></thead>
+        <tbody>${rows}${delRows}</tbody>
+      </table></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px;">
+        <button class="btn ghost sm" onclick="cancelQCsv()">취소</button>
+        <button class="btn accent sm" onclick="applyQCsv()" ${c.error || nothing ? 'disabled' : ''}>${nothing ? '바뀐 것 없음' : '반영'}</button>
+      </div>
+    </div>`;
+    el.classList.remove('hidden');
+  }
+
+  window.cancelQCsv = () => { _qcsvPlan = null; renderQCsvPreview(); };
+
+  window.applyQCsv = async () => {
+    const p = _qcsvPlan;
+    if (!p || p.errorCount) return;
+    const c = qcsvCounts(p);
+    let taken = 0;
+    try { taken = (await getDocs(query(collection(db,'exam_progress'), where('examId','==',p.examId)))).size; } catch(e) {}
+    const lines = [`추가 ${c.add}개, 수정 ${c.update}개, 삭제 ${c.del}개${c.moved ? `, 순서 변경 ${c.moved}개` : ''}를 반영합니다.`];
+    if (c.del) lines.push('', '삭제할 문항:', ...p.deletions.slice(0, 10).map(q => '· ' + (q.title || q.id)), ...(c.del > 10 ? [`· …외 ${c.del - 10}개`] : []));
+    if (taken) lines.push('', `⚠ 이 시험은 이미 ${taken}명이 응시(입장)했습니다. 문항을 바꾸거나 지우면 결과·채점이 맞지 않을 수 있습니다.`);
+    confirmDialog('문항 CSV 반영', lines.join('\n'), () => runQCsvApply(p), (c.del || taken) ? null : '반영');
+    if (c.del || taken) document.getElementById('confirmOkBtn').innerText = c.del ? '삭제 포함 반영' : '반영';
+  };
+
+  // 제목·내용·보기를 zh/ru/en으로 번역한 필드. 실패한 언어는 수정일 때 지워서
+  // (옛 문장의 번역이 남지 않게) '번역 보완' 버튼이 다시 잡게 한다.
+  async function qcsvTranslate(data, isUpdate) {
+    const opts = data.type === 'mc' ? (data.options || []) : [];
+    const texts = [data.title, ...(data.content ? [data.content] : []), ...opts];
+    const langs = [['zh-cn','Zh'],['ru','Ru'],['en','En']];
+    const settled = await Promise.allSettled(langs.map(([code]) => translateTexts(texts, code)));
+    const out = {}; let failed = false;
+    langs.forEach(([, cap], i) => {
+      if (settled[i].status === 'fulfilled') {
+        const r = settled[i].value; let j = 0;
+        out['title'+cap] = r[j++] || '';
+        if (data.content) out['content'+cap] = r[j++] || '';
+        else if (isUpdate) out['content'+cap] = deleteField();
+        if (opts.length) out['options'+cap] = r.slice(j);
+      } else {
+        failed = true;
+        if (isUpdate) {
+          out['title'+cap] = deleteField(); out['content'+cap] = deleteField();
+          if (opts.length) out['options'+cap] = deleteField();
+        }
+      }
+    });
+    return { out, failed };
+  }
+
+  async function runQCsvApply(p) {
+    showLoading(true);
+    const failed = []; let done = 0, trFailed = 0;
+    for (const it of p.items) {
+      if (it.status === 'same' && !it.orderChanged) continue;
+      try {
+        if (it.status === 'same') {
+          await updateDoc(doc(db, 'exam_questions', it.id), { order: it.order });
+          done++; continue;
+        }
+        const isUpdate = it.status === 'update';
+        const data = { ...it.data, examId: p.examId, order: it.order };
+        if (isUpdate) {
+          // 유형을 바꿨거나 칸을 비운 경우 예전 값이 남지 않게 지운다.
+          Object.entries(QCSV_TYPE_FIELDS).forEach(([type, keys]) => {
+            if (type !== data.type) keys.forEach(k => { data[k] = deleteField(); });
+          });
+          if (data.type === 'essay') ['minLen','maxLen'].forEach(k => { if (!data[k]) data[k] = deleteField(); });
+        }
+        if (it.textChanged) {
+          const tr = await qcsvTranslate(data, isUpdate);
+          Object.assign(data, tr.out);
+          if (tr.failed) trFailed++;
+        }
+        await saveQuestionDoc(isUpdate ? it.id : null, data, { createdAt: serverTimestamp() });
+        done++;
+      } catch(e) { failed.push(`${it.line}줄 「${it.data.title}」: ${e.message}`); }
+    }
+    for (const q of p.deletions) {
+      try { await deleteQuestionDoc(q.id); done++; }
+      catch(e) { failed.push(`삭제 「${q.title || q.id}」: ${e.message}`); }
+    }
+    const editing = document.getElementById('q_docId').value;
+    if (editing && (p.deletions.some(q => q.id === editing) || p.items.some(x => x.id === editing && x.status === 'update'))) resetQForm();
+    _qcsvPlan = null;
+    renderQCsvPreview();
+    await loadQList(p.examId);
+    showLoading(false);
+    if (failed.length) {
+      const el = document.getElementById('qcsvPreview');
+      el.innerHTML = `<div style="border:1px solid #ef4444;border-radius:12px;padding:12px;font-size:0.84rem;">
+        <b style="color:#ef4444;">${failed.length}건을 저장하지 못했습니다</b> (나머지 ${done}건은 반영됨). 다시 [CSV 받기]로 지금 상태를 받아 확인하세요.
+        <div style="margin-top:6px;color:var(--sub);">${failed.map(escHtml).join('<br>')}</div>
+        <div style="text-align:right;margin-top:8px;"><button class="btn ghost sm" onclick="cancelQCsv()">닫기</button></div></div>`;
+      el.classList.remove('hidden');
+      toast(`${failed.length}건 실패`, 'error');
+    } else {
+      toast(`문항 ${done}건을 반영했습니다.` + (trFailed ? ` (번역 실패 ${trFailed}개 — '번역 보완' 버튼으로 다시 하세요)` : ''), trFailed ? 'error' : 'success');
+    }
+  }
+
+  // ── 문항 이미지: 끌어다 놓기 → 구글 드라이브 ──
+  // 질문방(ohinfo qna.html)·수업일지와 같은 Apps Script 업로드 창구를 쓴다. 문항에는
+  // 드라이브 링크를 그대로 저장하고(CSV에도 그 링크가 나간다), 학생 시험 화면
+  // (ohinfo exam.html)이 드라이브 링크를 썸네일 주소로 바꿔 보여준다.
+  const QIMG_UPLOAD_URL = 'https://script.google.com/macros/s/AKfycbzepbMXVCYAwoBcmFbmWQWRes1bSGfvhVHKGFNX6VHanVy-1mirxLkyHlROp0-agBX2/exec';
+  const QIMG_UPLOAD_SECRET = 'ohweb-upload-2026';
+  const driveFileId = url => {
+    const s = String(url || '');
+    if (!/^https:\/\/(drive|docs)\.google\.com\//.test(s)) return '';
+    const m = s.match(/\/d\/([\w-]{10,})|[?&]id=([\w-]{10,})/);
+    return m ? (m[1] || m[2]) : '';
+  };
+  const qImgSrc = url => { const id = driveFileId(url); return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w800` : String(url || ''); };
+
+  window.renderQImgPreview = () => {
+    const url = document.getElementById('q_imageUrl').value.trim();
+    const box = document.getElementById('q_imgPreview');
+    box.classList.toggle('hidden', !url);
+    if (url) document.getElementById('q_imgPreviewImg').src = qImgSrc(url);
+  };
+
+  window.onQImgFile = async (file) => {
+    if (!file) return;
+    if (!/^image\//.test(file.type)) { toast('이미지 파일만 올릴 수 있습니다.', 'error'); return; }
+    if (file.size > 20 * 1024 * 1024) { toast('20MB 이하 이미지만 올릴 수 있습니다.', 'error'); return; }
+    const examTitle = examById(document.getElementById('q_examId').value)?.title || '미분류';
+    const safe = s => String(s || '').replace(/[\\/:*?"<>|]/g, '_').trim();
+    const drop = document.getElementById('q_imgDrop');
+    const label = drop.textContent;
+    drop.textContent = '드라이브에 올리는 중…';
+    try {
+      const base64 = await new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1]); r.onerror = rej; r.readAsDataURL(file); });
+      const stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
+      const resp = await fetch(QIMG_UPLOAD_URL, { method: 'POST', body: JSON.stringify({
+        secret: QIMG_UPLOAD_SECRET, folder: `시험문항/${safe(examTitle)}`, filename: safe(`${stamp}_${file.name}`),
+        mimeType: file.type, base64 }) });
+      const data = await resp.json().catch(() => null);
+      if (!data || data.error || !data.url) throw new Error(data?.error || `HTTP ${resp.status}`);
+      document.getElementById('q_imageUrl').value = data.url;
+      renderQImgPreview();
+      toast('이미지를 올렸습니다. [저장]을 눌러야 문항에 반영됩니다.', 'success');
+    } catch (e) { toast('이미지 업로드 실패: ' + e.message, 'error'); }
+    drop.textContent = label;
+  };
+
+  (() => {
+    const drop = document.getElementById('q_imgDrop');
+    if (!drop) return;
+    ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.style.borderColor = 'var(--accent, #7c4dff)'; }));
+    ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, () => { drop.style.borderColor = ''; }));
+    drop.addEventListener('drop', e => { e.preventDefault(); onQImgFile(e.dataTransfer.files[0]); });
+  })();
+
   window.updateMcAnswerSelect = () => {
     const opts = document.getElementById('q_options').value.split('\n').map(s=>s.trim()).filter(Boolean);
     const sel = document.getElementById('q_answer_mc');
@@ -2495,6 +2897,7 @@
   window.resetQForm = () => {
     ['q_docId','q_title','q_content','q_imageUrl','q_options','q_answer_sa','q_essayMin','q_essayMax','q_inDesc','q_outDesc','q_inEx','q_outEx','q_boilerplate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('q_answer_mc').innerHTML = '<option value="0">선택지를 먼저 입력하세요</option>';
+    renderQImgPreview();
     renderTestCases([]);
     document.getElementById('q_points').value='10';
     renderQFormSelect('');
@@ -2623,29 +3026,44 @@
     showLoading(false);
   };
 
+  // 배정 목록: 같은 시험·학교끼리 한 카드, 카드 안에 반마다 한 줄. 열린 배정이 위로.
   async function loadAssignList() {
     const snap = await getDocs(query(collection(db,'exam_assignments'), orderBy('createdAt','desc')));
-    const list = snap.docs.map(d=>({id:d.id,...d.data()}));
+    _assignList = snap.docs.map(d=>({id:d.id,...d.data()}));
+    _assignCache = {}; _assignList.forEach(a => { _assignCache[a.id] = a; });
+    renderAssignList();
+  }
+  AG.on('asg', () => renderAssignList());
+  const asGroupId = a => `${a.examId}|${a.schoolName || ''}`;
+  function renderAssignList() {
     const el = document.getElementById('assignList');
+    const list = _assignList;
     if (!list.length) { el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-target"/></svg></div>등록된 배정이 없습니다.</div>'; return; }
-    _assignCache = {}; list.forEach(a => { _assignCache[a.id] = a; });
-    el.innerHTML = list.map(a => {
+    const titleOf = a => (exams.find(e=>e.id===a.examId)?.title) || a.examId;
+    const bar = AG.bar('asg', {
+      schools: [...new Set(list.map(a => a.schoolName || '').filter(Boolean))].sort((x,y)=>x.localeCompare(y,'ko')),
+      grades: AG.gradesOf(list.map(a => a.grade)), status: ['열림', '닫힘'], search: '시험 이름·코드 검색…',
+    });
+    const shown = list.filter(a => AG.pass('asg', { school: a.schoolName || '', grade: a.grade, on: a.status === 'ON', text: titleOf(a) + ' ' + (a.code || '') }));
+    if (!shown.length) { el.innerHTML = bar + AG.empty('asg'); return; }
+    const groups = AG.groupBy(shown, asGroupId).map(g => ({ ...g, live: g.items.some(a => a.status === 'ON'), last: Math.max(...g.items.map(a => tsOf(a.createdAt))) }));
+    groups.sort((x, y) => (y.live - x.live) || (y.last - x.last));
+    const row = a => {
       const exam = exams.find(e=>e.id===a.examId);
       const forms = examFormsOf(exam);
       let formInfo = '';
       if (forms.length) {
-        if (forms.includes(a.formMode)) formInfo = ` · ${a.formMode}형`;
+        if (forms.includes(a.formMode)) formInfo = `${a.formMode}형`;
         else {
           const cnt = {}; Object.values(a.formByStudent || {}).forEach(f => { cnt[f] = (cnt[f] || 0) + 1; });
-          formInfo = ` · 학생별 (${forms.map(f => `${f} ${cnt[f] || 0}`).join(' · ')})`;
+          formInfo = `학생별 (${forms.map(f => `${f} ${cnt[f] || 0}`).join(' · ')})`;
         }
       }
-      return `<div class="list-item">
-        <div class="list-item-info">
-          <div class="list-item-name"><svg width="15" height="15" style="vertical-align:-2px;margin-right:3px;"><use href="#ic-target"/></svg>${a.code ? `<b style="letter-spacing:0.1em;">${escHtml(a.code)}</b> — ` : ''}${escHtml(exam?.title||a.examId)}</div>
-          <div class="list-item-sub">${escHtml(a.schoolName?a.schoolName+' · ':'전체 학교 · ')}${!a.grade ? '전체 학년' : (!a.class ? escHtml(a.grade)+'학년 전체' : escHtml(a.grade)+'학년 '+escHtml(a.class)+'반')} · ${a.duration>0?Number(a.duration)+'분':'무제한'}${a.code ? '' : ' · 코드 없음'}${Number(a.entryMinutes) > 0 ? ` · 입장 마감 ON 후 ${Number(a.entryMinutes)}분` : ''}${escHtml(formInfo)}</div>
-        </div>
-        <div class="list-item-actions" style="display:flex;gap:8px;align-items:center;">
+      const sub = [a.code ? `코드 <b style="letter-spacing:0.08em;">${escHtml(a.code)}</b>` : '코드 없음', a.duration>0 ? Number(a.duration)+'분' : '무제한',
+        Number(a.entryMinutes) > 0 ? `입장 마감 ON 후 ${Number(a.entryMinutes)}분` : '', escHtml(formInfo)].filter(Boolean).join(' · ');
+      return `<div class="ag-r">
+        <div class="ag-rl"><div class="ag-rn">${escHtml(AG.classLabel(a.grade, a.class))}</div><div class="ag-rs">${sub}</div></div>
+        <div class="ag-ra">
           ${forms.length ? `<button class="btn ghost sm" title="반 전체 유형을 바꾸거나 학생마다 유형을 정합니다" onclick="openFormModal(${jsArg(a.id)})">유형</button>` : ''}
           <label class="as-switch" title="켜면 학생이 입장할 수 있습니다">
             <span class="as-switch-label">${a.status==='ON'?'열림':'닫힘'}</span>
@@ -2655,11 +3073,59 @@
             <span class="as-switch-label">정답 ${a.revealAnswers?'공개':'비공개'}</span>
             <span class="toggle"><input type="checkbox" ${a.revealAnswers?'checked':''} onchange="toggleAsReveal(${jsArg(a.id)},this)"><span class="toggle-track reveal"></span></span>
           </label>
+          <button class="icon-action" title="결과 보기" onclick="openAssignResults(${jsArg(a.id)})"><svg width="16" height="16"><use href="#ic-chart"/></svg></button>
           <button class="icon-action danger" title="삭제" onclick="deleteAssign('${a.id}')"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
         </div>
       </div>`;
-    }).join('');
+    };
+    const card = g => {
+      const items = g.items.slice().sort((x, y) => AG.byClass({ grade: x.grade, cls: x.class }, { grade: y.grade, cls: y.class }));
+      const on = items.filter(a => a.status === 'ON').length;
+      const gid = jsArg(g.key);
+      return `<div class="ag-g${g.live ? ' live' : ''}${AG.isOpen('asg', g.key) ? '' : ' closed'}" ${AG.gattr('asg', g.key)}>
+        <div class="ag-h">
+          <span class="ag-caret">▾</span>
+          <div class="ag-t"><div class="ag-name">${escHtml(titleOf(items[0]))}</div>
+            <div class="ag-meta"><span>${escHtml(items[0].schoolName || '전체 학교')}</span><span>${items.length}개 배정</span>
+              <span class="ag-pill${on ? ' on' : ''}">${on ? `열림 ${on}/${items.length}` : '모두 닫힘'}</span></div></div>
+          <div class="ag-acts">
+            ${items.length > 1 ? `<button class="btn ghost sm" onclick="setAssignGroupStatus(${gid}, ${on === items.length ? 'false' : 'true'})">${on === items.length ? '모두 닫기' : '모두 열기'}</button>` : ''}
+            <button class="btn ghost sm" title="이 시험을 다른 반에 더 배정합니다" onclick="prefillAssign(${jsArg(items[0].examId)}, ${jsArg(items[0].schoolName || '')})">＋ 반</button>
+          </div>
+        </div>
+        <div class="ag-b">${items.map(row).join('')}</div>
+      </div>`;
+    };
+    const onTotal = shown.filter(a => a.status === 'ON').length;
+    el.innerHTML = bar + `<div class="ag-sum">시험 ${new Set(shown.map(a => a.examId)).size}개 · 배정 ${shown.length}개 · 열림 ${onTotal}개</div><div class="ag-list wide">${groups.map(card).join('')}</div>`;
   }
+  window.setAssignGroupStatus = async (gid, open) => {
+    const items = _assignList.filter(a => asGroupId(a) === gid && (a.status === 'ON') !== open);
+    if (!items.length) return;
+    showLoading(true);
+    try {
+      await Promise.all(items.map(a => updateDoc(doc(db,'exam_assignments',a.id), open ? { status: 'ON', openedAt: serverTimestamp() } : { status: 'OFF' })));
+      items.forEach(a => { a.status = open ? 'ON' : 'OFF'; });
+      toast(`${items.length}개 배정 ${open ? '열림' : '닫힘'}`, 'success');
+    } catch (e) { toast('저장 오류: ' + e.message, 'error'); }
+    renderAssignList();
+    showLoading(false);
+  };
+  window.prefillAssign = (examId, school) => {
+    window.resetAsForm();
+    document.getElementById('as_examId').value = examId;
+    const sch = document.getElementById('as_schoolName');
+    if ([...sch.options].some(o => o.value === school)) sch.value = school;
+    window.renderAsFormSelect();
+    document.querySelector('#examTab-assign .pane-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    toast('반을 고르고 [＋ 담기] 후 저장하세요.');
+  };
+  window.openAssignResults = async (id) => {
+    window.showExamTab('results');
+    await loadAssignSelect();
+    document.getElementById('res_asId').value = id;
+    window.loadResults();
+  };
 
   // 배정 목록의 스위치 — 누르는 즉시 저장하고 옆 글자만 바꾼다(목록을 다시
   // 그리지 않아 화면이 깜빡이지 않는다). 저장이 실패하면 스위치를 되돌린다.
@@ -2669,6 +3135,8 @@
     try {
       await updateDoc(doc(db,'exam_assignments',id), data);
       if (label) label.textContent = input.checked ? labelOn : labelOff;
+      if (_assignCache[id]) Object.assign(_assignCache[id], data);
+      if ('status' in data) renderAssignList();
     } catch(e) {
       input.checked = !input.checked;
       toast('저장 오류: '+e.message, 'error');
@@ -2697,7 +3165,6 @@
   // ── 배정의 유형 정하기(모달) ──
   // 반 전체 한 유형으로 바꾸거나, 학생마다 유형을 고른다. 이미 입장한 학생은
   // 처음 받은 시험지 유형이 그대로 유지된다(서버가 진행 기록의 form을 우선).
-  let _assignCache = {};
   window.openFormModal = async (asId) => {
     const a = _assignCache[asId]; if (!a) return;
     const forms = examFormsOf(examById(a.examId));
@@ -2791,10 +3258,13 @@
     const list = snap.docs.map(d=>({id:d.id,...d.data()}));
     const sel = document.getElementById('res_asId');
     const cur = sel.value;
-    sel.innerHTML = '<option value="">배정을 선택하세요</option>' + list.map(a => {
-      const exam = exams.find(e=>e.id===a.examId);
-      const scopeLabel = !a.grade ? '전체 학년' : (!a.class ? a.grade+'학년 전체' : a.grade+'학년'+a.class+'반');
-      return `<option value="${escHtml(a.id)}" ${a.id===cur?'selected':''}>${escHtml(a.code ? a.code+' — ' : '')}${escHtml(exam?.title||'')} (${escHtml(scopeLabel)})</option>`;
+    // 시험별로 묶고(optgroup), 반 순서로
+    const byExam = AG.groupBy(list, a => a.examId);
+    sel.innerHTML = '<option value="">배정을 선택하세요</option>' + byExam.map(g => {
+      const exam = exams.find(e=>e.id===g.key);
+      const items = g.items.slice().sort((x, y) => (x.schoolName||'').localeCompare(y.schoolName||'','ko') || AG.byClass({ grade: x.grade, cls: x.class }, { grade: y.grade, cls: y.class }));
+      return `<optgroup label="${escHtml(exam?.title || g.key)}">${items.map(a =>
+        `<option value="${escHtml(a.id)}" ${a.id===cur?'selected':''}>${escHtml(a.schoolName ? a.schoolName+' ' : '')}${escHtml(AG.classLabel(a.grade, a.class))}${a.code ? ' · '+escHtml(a.code) : ''}${a.status==='ON' ? ' (열림)' : ''}</option>`).join('')}</optgroup>`;
     }).join('');
   }
 
@@ -2825,8 +3295,182 @@
     return h ? `${h}시간 ${m}분` : `${m}분 ${s2}초`;
   }
 
+  // ── 실시간 현황판 ──
+  // exam_progress(asId==선택 배정)를 onSnapshot으로 구독해 학생 카드로 보여준다.
+  // 배정 대상 학생 중 기록이 없으면 미입장. 현황판이 화면에서 사라지면
+  // (다른 탭·메뉴로 이동, 결과 표로 전환, 배정 변경) 구독을 끊는다.
+  const LIVE_OFFLINE_MS = 90 * 1000;
+  let _resultMode = 'table';
+  const live = { asId: '', unsub: null, ticker: null, progs: new Map(), targets: [], assignment: null, qTitles: {}, qOrder: [], prevAlert: new Map(), blinkUntil: new Map(), peekId: '' };
+  function stopLive() {
+    if (live.unsub) { try { live.unsub(); } catch (e) {} }
+    clearInterval(live.ticker);
+    live.unsub = null; live.ticker = null; live.asId = '';
+    live.progs = new Map(); live.prevAlert = new Map(); live.blinkUntil = new Map();
+    document.getElementById('livePeekModal')?.remove();
+    live.peekId = '';
+  }
+  window.setResultMode = (mode) => {
+    _resultMode = mode === 'live' ? 'live' : 'table';
+    document.getElementById('resModeTable').className = 'btn sm' + (_resultMode === 'table' ? '' : ' ghost');
+    document.getElementById('resModeLive').className = 'btn sm' + (_resultMode === 'live' ? '' : ' ghost');
+    document.getElementById('resultTable').classList.toggle('hidden', _resultMode === 'live');
+    document.getElementById('liveBoard').classList.toggle('hidden', _resultMode !== 'live');
+    window.loadResults();
+  };
+  async function startLive(asId) {
+    stopLive();
+    const el = document.getElementById('liveBoard');
+    if (!asId) { el.innerHTML = '<div class="empty-state">배정을 선택하세요.</div>'; return; }
+    live.asId = asId;
+    el.innerHTML = '<div class="empty-state">불러오는 중…</div>';
+    try {
+      const aSnap = await getDoc(doc(db, 'exam_assignments', asId));
+      const a = aSnap.exists() ? aSnap.data() : {};
+      const [stSnap, qSnap] = await Promise.all([
+        getDocs(collection(db, 'students')),
+        a.examId ? getDocs(query(collection(db, 'exam_questions'), where('examId', '==', a.examId))) : Promise.resolve({ docs: [] }),
+      ]);
+      if (live.asId !== asId) return;
+      live.assignment = a;
+      live.targets = stSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(st => !st.isMaster
+        && (!a.grade || normGC(a.grade) === normGC(st.grade))
+        && (!a.class || normGC(a.class) === normGC(st.class))
+        && (!a.schoolName || a.schoolName === (st.schoolName || '')));
+      const qs = qSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+        .sort((x, y) => (x.order || 0) - (y.order || 0) || String(x.createdAt || '').localeCompare(String(y.createdAt || '')));
+      live.qOrder = qs.map(q => q.id);
+      live.qTitles = Object.fromEntries(qs.map((q, i) => [q.id, `Q${i + 1}. ${q.title || ''}`]));
+    } catch (e) {
+      if (live.asId === asId) el.innerHTML = '<div style="color:#ef4444;padding:20px;">오류: ' + escHtml(e.message) + '</div>';
+      return;
+    }
+    let first = true;
+    live.unsub = onSnapshot(query(collection(db, 'exam_progress'), where('asId', '==', asId)), snap => {
+      snap.docs.forEach(d => {
+        const p = { id: d.id, ...d.data() };
+        p._studentId = p.studentId || d.id.slice(asId.length + 1);
+        const prev = live.prevAlert.get(p._studentId);
+        if (!first && prev !== undefined && (p.alertCount || 0) > prev) live.blinkUntil.set(p._studentId, Date.now() + 6000);
+        live.prevAlert.set(p._studentId, p.alertCount || 0);
+        live.progs.set(p._studentId, p);
+      });
+      snap.docChanges().forEach(c => { if (c.type === 'removed') live.progs.delete(c.doc.data().studentId || c.doc.id.slice(asId.length + 1)); });
+      first = false;
+      renderLive();
+      if (live.peekId) renderPeek();
+    }, e => { el.innerHTML = '<div style="color:#ef4444;padding:20px;">실시간 연결 오류: ' + escHtml(e.message) + '</div>'; });
+    live.ticker = setInterval(() => {
+      // 현황판이 화면에서 사라졌으면 구독을 끊는다.
+      if (!el.offsetParent) { stopLive(); return; }
+      renderLive();
+    }, 5000);
+  }
+  function liveState(p) {
+    if (!p || (!p.startTime && p.status !== 'submitted')) return 'none';
+    if (p.status === 'submitted') return 'done';
+    if (p.pendingAnswers) return 'fail';
+    return 'doing';
+  }
+  function renderLive() {
+    const el = document.getElementById('liveBoard');
+    if (!live.asId) return;
+    const a = live.assignment || {};
+    const now = Date.now();
+    // 대상 학생 + 대상 밖이지만 기록이 있는 학생(마스터 등)
+    const ids = new Set(live.targets.map(t => t.id));
+    const rows = live.targets.map(t => ({ id: t.id, t, p: live.progs.get(t.id) }));
+    live.progs.forEach((p, id) => { if (!ids.has(id)) rows.push({ id, t: null, p }); });
+    rows.forEach(r => {
+      const src = r.p || r.t || {};
+      r.name = src.name || r.t?.name || '-';
+      r.num = src.num ?? r.t?.num ?? '';
+      r.cls = src.class ?? r.t?.class ?? '';
+      r.state = liveState(r.p);
+    });
+    rows.sort((x, y) => String(x.cls).localeCompare(String(y.cls), 'ko', { numeric: true }) || (parseInt(x.num) || 0) - (parseInt(y.num) || 0));
+    const cnt = { none: 0, doing: 0, done: 0, fail: 0 };
+    rows.forEach(r => cnt[r.state]++);
+    const total = live.qOrder.length;
+    const dur = Number(a.duration) || 0;
+    const card = r => {
+      const p = r.p || {};
+      const label = { none: '미입장', doing: '푸는 중', done: '제출', fail: '제출 실패' }[r.state];
+      let lines = '';
+      if (r.state !== 'none') {
+        const answered = typeof p.answeredCount === 'number' ? p.answeredCount : null;
+        lines += `<div>답 ${answered == null ? '-' : answered}${total ? '/' + total : ''}문항</div>`;
+        if (r.state === 'doing' || r.state === 'fail') {
+          if (dur > 0) {
+            const st = tsMs(p.startTime);
+            const left = Number.isNaN(st) ? null : Math.max(0, Math.round((st + dur * 60000 - now) / 1000));
+            lines += `<div>남은 시간 ${left == null ? '-' : `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`}</div>`;
+          }
+          const seen = tsMs(p.lastSeenAt);
+          if (!Number.isNaN(seen) && now - seen > LIVE_OFFLINE_MS) lines += `<div><span class="lc-off">연결 끊김</span></div>`;
+        }
+        lines += `<div class="${(p.alertCount || 0) > 0 ? 'lc-warn' : ''}">이탈 ${p.alertCount || 0} · <span class="${(p.pasteBlockCount || 0) > 0 ? 'lc-warn' : ''}">붙여넣기 ${p.pasteBlockCount || 0}</span></div>`;
+      }
+      const blink = (live.blinkUntil.get(r.id) || 0) > now;
+      const click = r.state === 'none' ? '' : ` onclick="openLivePeek(${jsArg(r.id)})"`;
+      return `<div class="live-card st-${r.state}${blink ? ' blink' : ''}" data-sid="${escHtml(r.id)}"${click}>
+        <div class="lc-name">${escHtml(r.num !== '' ? r.num + '. ' : '')}${escHtml(r.name)}</div>
+        <div class="lc-sub">${label}</div>${lines}</div>`;
+    };
+    el.innerHTML = `<div class="live-legend">
+        <span><i style="background:rgba(148,163,184,0.6)"></i>미입장 ${cnt.none}</span>
+        <span><i style="background:#3b82f6"></i>푸는 중 ${cnt.doing}</span>
+        <span><i style="background:#22c55e"></i>제출 ${cnt.done}</span>
+        <span><i style="background:#ef4444"></i>제출 실패 ${cnt.fail}</span>
+        <span>· 카드를 누르면 현재 답을 봅니다 · ${Math.round(LIVE_OFFLINE_MS / 1000)}초 넘게 소식이 없으면 '연결 끊김'</span>
+      </div>
+      ${rows.length ? `<div class="live-grid">${rows.map(card).join('')}</div>` : '<div class="empty-state">대상 학생이 없습니다.</div>'}`;
+    live.blinkUntil.forEach((t, id) => { if (t <= now) live.blinkUntil.delete(id); });
+  }
+  // 다른 화면에 갔다가 돌아와 현황판이 다시 보이면 구독을 다시 연다.
+  new IntersectionObserver(ents => {
+    if (ents.some(e => e.isIntersecting) && _resultMode === 'live' && !live.unsub) {
+      const v = document.getElementById('res_asId').value;
+      if (v) startLive(v);
+    }
+  }).observe(document.getElementById('liveBoard'));
+  window.openLivePeek = (sid) => {
+    live.peekId = sid;
+    document.getElementById('livePeekModal')?.remove();
+    const m = document.createElement('div');
+    m.id = 'livePeekModal';
+    m.style.cssText = 'position:fixed;inset:0;z-index:9000;display:flex;align-items:flex-start;justify-content:center;background:rgba(0,0,0,0.5);padding:20px;overflow-y:auto;';
+    m.onclick = e => { if (e.target === m) closeLivePeek(); };
+    document.body.appendChild(m);
+    renderPeek();
+  };
+  window.closeLivePeek = () => { live.peekId = ''; document.getElementById('livePeekModal')?.remove(); };
+  function renderPeek() {
+    const m = document.getElementById('livePeekModal');
+    if (!m) return;
+    const p = live.progs.get(live.peekId) || {};
+    const la = p.liveAnswers || {};
+    const keys = [...live.qOrder.filter(k => k in la), ...Object.keys(la).filter(k => !live.qOrder.includes(k))];
+    const body = keys.length ? keys.map((k, i) => `<div style="margin-bottom:12px;">
+        <div style="font-weight:700;font-size:0.82rem;margin-bottom:4px;">${escHtml(live.qTitles[k] || `Q${i + 1}`)}</div>
+        <pre style="white-space:pre-wrap;word-break:break-word;margin:0;padding:8px 10px;border-radius:8px;background:rgba(148,163,184,0.12);font-size:0.8rem;min-height:1.6em;">${la[k] ? escHtml(la[k]) : '<span style="color:var(--sub)">(아직 답 없음)</span>'}</pre></div>`).join('')
+      : '<div class="empty-state">아직 받은 답이 없습니다. (학생 화면이 30초마다 보냅니다)</div>';
+    const scroll = m.querySelector('.lp-body')?.scrollTop || 0;
+    m.innerHTML = `<div class="card" style="max-width:720px;width:100%;margin:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;">
+        <b>${escHtml(p.num ? p.num + '. ' : '')}${escHtml(p.name || '')} — 현재 답 (읽기 전용, 실시간)</b>
+        <button class="btn ghost sm" onclick="closeLivePeek()">닫기</button>
+      </div>
+      <div style="font-size:0.75rem;color:var(--sub);margin-bottom:10px;">마지막 수신 ${escHtml(fmtTs(p.lastSeenAt) || '-')}${p.status === 'submitted' ? ' · 제출함' : ''}</div>
+      <div class="lp-body" style="max-height:70vh;overflow-y:auto;">${body}</div>
+    </div>`;
+    const b = m.querySelector('.lp-body'); if (b) b.scrollTop = scroll;
+  }
+
   window.loadResults = async () => {
     const asId = document.getElementById('res_asId').value;
+    if (_resultMode === 'live') { if (asId !== live.asId || !live.unsub) startLive(asId); return; }
+    stopLive();
     const el = document.getElementById('resultTable');
     if (!asId) { el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-chart"/></svg></div>배정을 선택하세요.</div>'; return; }
     showLoading(true);

@@ -180,19 +180,19 @@ await page.evaluate(() => { window.dispatchEvent(new Event('blur')); window.disp
 await page.evaluate(() => { window.dispatchEvent(new Event('focus')); window.dispatchEvent(new Event('blur')); window.dispatchEvent(new Event('focus')); });
 await page.waitForTimeout(800);
 ok((await page.textContent('#alertCount')) === '2' && (await readProg('AS1_StuA'))?.alertCount === 2, '화면 이탈 감지: 두 번 나감 → 2회, 진행 기록에도 저장');
-// 붙여넣기: 100자 이상은 막고 횟수 기록, 짧은 건 허용
+// 붙여넣기: 답 칸은 길이와 상관없이 전부 막고 횟수 기록
 const pasteInto = (sel, n) => page.evaluate(([sel, n]) => {
   const dt = new DataTransfer(); dt.setData('text/plain', 'x'.repeat(n));
   const ev = new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true });
   document.querySelector(sel).dispatchEvent(ev); return ev.defaultPrevented;
 }, [sel, n]);
-ok(await pasteInto('#essay_1', 150) === true && await pasteInto('#essay_1', 50) === false, '서술형: 150자 붙여넣기 차단, 50자는 허용');
+ok(await pasteInto('#essay_1', 150) === true && await pasteInto('#essay_1', 5) === true, '서술형: 150자·5자 붙여넣기 모두 차단');
 await page.waitForSelector('#qcard_2 .CodeMirror', { timeout: 15000 });
 const cmBefore = await page.evaluate(() => document.querySelector('#qcard_2 .CodeMirror').CodeMirror.getValue());
-await page.evaluate(() => { const cm = document.querySelector('#qcard_2 .CodeMirror').CodeMirror; cm.replaceRange('y'.repeat(150), { line: 0, ch: 0 }, null, 'paste'); });
-ok(await page.evaluate(b => document.querySelector('#qcard_2 .CodeMirror').CodeMirror.getValue() === b, cmBefore), '코딩 에디터: 150자 붙여넣기 차단');
+await page.evaluate(() => { const cm = document.querySelector('#qcard_2 .CodeMirror').CodeMirror; cm.replaceRange('y', { line: 0, ch: 0 }, null, 'paste'); });
+ok(await page.evaluate(b => document.querySelector('#qcard_2 .CodeMirror').CodeMirror.getValue() === b, cmBefore), '코딩 에디터: 1자 붙여넣기도 차단');
 await page.waitForTimeout(800);
-ok((await page.textContent('#pasteBlockCountEl')) === '2' && (await readProg('AS1_StuA'))?.pasteBlockCount === 2, '붙여넣기 차단 2회 → 화면 표시 + 진행 기록 저장');
+ok((await page.textContent('#pasteBlockCountEl')) === '3' && (await readProg('AS1_StuA'))?.pasteBlockCount === 3, '붙여넣기 차단 3회 → 화면 표시 + 진행 기록 저장');
 // 답 입력
 await page.evaluate(() => selectMC(0, 0));
 await page.fill('#essay_1', '자동저장 확인용 서술 답안');
@@ -224,7 +224,7 @@ const progStart2 = await readProg('AS1_StuA');
 ok(progStart2.startTime.toMillis() === progStart1.startTime.toMillis(), '재입장해도 시작 시각 그대로');
 ok((await page.inputValue('#essay_1')) === '자동저장 확인용 서술 답안', '새로고침 후 서술형 답안 복원');
 ok(await page.evaluate(() => document.querySelector('.mc-opt.selected') !== null), '새로고침 후 객관식 선택 복원');
-ok((await page.textContent('#alertCount')) === '2' && (await page.textContent('#pasteBlockCountEl')) === '2', '새로고침해도 이탈·붙여넣기 횟수 유지(0으로 안 돌아감)');
+ok((await page.textContent('#alertCount')) === '2' && (await page.textContent('#pasteBlockCountEl')) === '3', '새로고침해도 이탈·붙여넣기 횟수 유지(0으로 안 돌아감)');
 ok(progStart2.enterCount === 2, '재입장 → 입장 횟수 2');
 
 // 7) 제출 — 실제 서버 채점
