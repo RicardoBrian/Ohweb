@@ -150,6 +150,13 @@
           </div>
         </label>
         <label class="radio-card">
+          <input type="radio" name="storage" value="studio" onchange="saveDraft()">
+          <div class="radio-card-body">
+            <div class="radio-card-title">구글 시트 (AI Studio에서 바로 연결)</div>
+            <div class="radio-card-desc">AI Studio 안에서 구글 시트를 바로 연결합니다. 시트나 Apps Script를 따로 만들어 붙여넣지 않습니다.</div>
+          </div>
+        </label>
+        <label class="radio-card">
           <input type="radio" name="storage" value="firebase" onchange="saveDraft()">
           <div class="radio-card-body">
             <div class="radio-card-title">Firebase (Firestore) 연동</div>
@@ -333,6 +340,6 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="script.js?v=17"></script>
+  <script src="script.js?v=18"></script>
 </body>
 </html>
