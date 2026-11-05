@@ -822,39 +822,13 @@ function resetAll() {
 //  예시로 채워보기
 // ============================================================
 
-function fillExample() {
-  document.querySelector('input[name="purpose"][value="edu"]').checked = true;
-  document.getElementById('topic').value = '수업 집중용 타이머';
-
-  state.features = [{
-    key: 'f' + (++featureSeq),
-    name: '집중 타이머',
-    desc: '설정한 시간 동안 카운트다운하고, 시간이 끝나면 알림을 준다',
-    steps: [
-      '선생님이 분/초를 입력하고 시작 버튼을 누른다',
-      '화면에 남은 시간이 큰 숫자로 표시된다',
-      '시간이 끝나면 알림음이 울리고 화면이 깜빡인다',
-    ],
-  }];
-  renderFeatures();
-
-  document.querySelector('input[name="storage"][value="local"]').checked = true;
-
-  writeExtras({ users: ['우리 반 학생'], devices: ['교실 전자칠판·빔프로젝터', 'PC·노트북'], admin: 'none', opts: ['sample'], density: 'large' });
-  state.selectedPreset = 'sky';
-  setDesignMode('preset');
-  renderPresets();
-
-  toast('예시 데이터를 채웠습니다. 자유롭게 고쳐서 써보세요');
-  saveDraft();
-}
-
 // ============================================================
 //  견본 프롬프트
 // ============================================================
 
 const SAMPLES = {
   grade: {
+    label: '성적 확인·서명',
     topic: '수행평가 성적 확인·서명 앱',
     users: ['나 혼자', '우리 반 학생'],
     devices: ['스마트폰', 'PC·노트북'],
@@ -902,6 +876,27 @@ const SAMPLES = {
     opts: ['sample', 'privacy'],
     preset: 'minimal',
   },
+  timer: {
+    label: '수업 집중 타이머',
+    topic: '수업 집중용 타이머',
+    users: ['우리 반 학생'],
+    devices: ['교실 전자칠판·빔프로젝터', 'PC·노트북'],
+    features: [{
+      name: '집중 타이머',
+      desc: '설정한 시간 동안 카운트다운하고, 시간이 끝나면 알림을 준다',
+      steps: [
+        '선생님이 분/초를 입력하고 시작 버튼을 누른다',
+        '화면에 남은 시간이 큰 숫자로 표시된다',
+        '시간이 끝나면 알림음이 울리고 화면이 깜빡인다',
+      ],
+    }],
+    extraText: '',
+    storage: 'local',
+    admin: 'none',
+    opts: ['sample'],
+    density: 'large',
+    preset: 'sky',
+  },
 };
 
 function fillSample(id) {
@@ -913,11 +908,11 @@ function fillSample(id) {
   renderFeatures();
   document.querySelector(`input[name="storage"][value="${sm.storage}"]`).checked = true;
   document.getElementById('needFiles').checked = false;
-  writeExtras({ users: sm.users, devices: sm.devices, admin: sm.admin, opts: sm.opts, extraText: sm.extraText });
+  writeExtras({ users: sm.users, devices: sm.devices, admin: sm.admin, opts: sm.opts, extraText: sm.extraText, density: sm.density });
   state.selectedPreset = sm.preset;
   setDesignMode('preset');
   renderPresets();
-  toast('견본을 채웠습니다. 고쳐서 써보세요 (교사 이메일은 AI가 물으면 알려주세요)');
+  toast(`견본 '${sm.label}'을 채웠습니다. 자유롭게 고쳐서 써보세요`);
   saveDraft();
 }
 
