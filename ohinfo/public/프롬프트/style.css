@@ -85,6 +85,7 @@
 
 .panel-head-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
 .panel-head-row .btn { flex-shrink: 0; }
+.head-btns { display: flex; gap: 8px; flex-wrap: wrap; }
 
 .feature-card-actions { display: flex; align-items: center; gap: 6px; }
 .icon-btn:disabled { opacity: 0.3; cursor: not-allowed; }
