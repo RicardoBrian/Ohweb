@@ -141,6 +141,11 @@ const STORAGE_TEXT = {
     NO_MANUAL_EDIT_TEXT,
     '그리고 아래 순서대로 단계별로 안내해주세요: (1) 새 구글 스프레드시트를 만들고 메뉴의 확장 프로그램 → Apps Script를 여는 방법, (2) 거기에 그대로 붙여넣을 Apps Script 전체 코드, (3) 배포 → 새 배포 → 유형 "웹 앱"을 고르고 실행 사용자 "나", 액세스 권한 "모든 사용자"로 배포한 뒤 권한을 승인하는 방법, (4) 배포 후 나온 웹 앱 URL을 저에게 알려달라고 요청하고, 제가 알려주면 웹앱 코드에 반영하기, (5) 나중에 Apps Script 코드를 바꿔야 할 때는 "배포 관리"에서 새 버전으로 업데이트해야 URL이 그대로 유지된다는 점, (6) 이 방식은 웹 앱 URL을 아는 사람이면 누구나 데이터에 접근할 수 있다는 보안상 한계.',
   ].join(' '),
+  studio: [
+    '데이터는 구글 스프레드시트에 저장하고 불러와주세요. Apps Script를 따로 만들거나 어딘가에 붙여넣게 하지 말고, AI Studio 안에서 구글 시트를 직접 연결하는 방식으로 구현해주세요.',
+    '시트 탭과 첫 줄 열 제목은 앱이 처음 실행될 때 없으면 직접 만들게 해서, 제가 시트에 미리 입력할 것이 없게 해주세요.',
+    '연결에 필요한 설정이 있으면 AI Studio 안에서 할 수 있는 순서로 하나씩 안내해주세요.',
+  ].join(' '),
   firebase: [
     '데이터는 Firebase(Firestore)에 저장하고 불러와주세요. Firebase JS SDK(CDN 방식)를 사용해서 구현해주세요.',
     'Firestore의 테스트 모드는 30일 뒤에 읽기·쓰기가 막히므로, 이 앱에 맞는 Firestore 보안 규칙도 함께 작성해주세요.',
@@ -164,8 +169,10 @@ const ADMIN_TEXT = {
   password: {
     local: '관리자 전용 화면도 따로 만들어주세요(예: admin.html). 일반 화면에는 관리 기능이 보이지 않게 하고, 관리자는 비밀번호를 입력해야 들어갈 수 있게 해주세요. 이 방식은 코드를 열어보면 비밀번호가 보이는 가벼운 잠금일 뿐이라는 점도 코드 작성 후 알려주세요.',
     sheets: '관리자 전용 화면도 따로 만들어주세요(예: admin.html). 일반 화면에는 관리 기능이 보이지 않게 하고, 관리자는 비밀번호를 입력해야 들어갈 수 있게 해주세요. 비밀번호는 웹앱 코드에 직접 쓰지 말고 Apps Script의 속성(PropertiesService)에 저장해서 Apps Script에서 확인하게 하고, 비밀번호를 처음 정하는 방법도 알려주세요.',
+    studio: '관리자 전용 화면도 따로 만들어주세요(예: admin.html). 일반 화면에는 관리 기능이 보이지 않게 하고, 관리자는 비밀번호를 입력해야 들어갈 수 있게 해주세요. 비밀번호는 웹앱 코드에 직접 쓰지 말고 서버 쪽에 저장해서 확인하게 하고, 비밀번호를 처음 정하는 방법도 알려주세요.',
     firebase: '관리자 전용 화면도 따로 만들어주세요(예: admin.html). 일반 화면에는 관리 기능이 보이지 않게 하고, 관리자는 Firebase Authentication의 이메일/비밀번호 로그인으로만 들어갈 수 있게 해주세요. 관리자 계정을 만드는 방법과, 관리자만 읽고 쓸 수 있도록 하는 보안 규칙도 알려주세요.',
   },
+  googleStudio: '관리자 전용 화면도 따로 만들어주세요(예: admin.html). 일반 화면에는 관리 기능이 보이지 않게 하고, 관리자는 구글 로그인으로 들어가며 제가 알려주는 구글 계정(이메일 목록)만 허용해주세요. 관리자인지는 화면(브라우저)이 아니라 서버 쪽에서 확인해주세요.',
   googleSheets: '관리자 전용 화면도 따로 만들어주세요(예: admin.html). 일반 화면에는 관리 기능이 보이지 않게 하고, 관리자는 구글 로그인(Google Identity Services)으로 들어갑니다. 로그인 후 받은 ID 토큰을 Apps Script가 서버에서 검증하고, 허용한 교사 이메일 목록과 일치할 때만 관리 기능을 열어주세요. 화면(브라우저)에서만 관리자 여부를 판단하면 안 됩니다. 허용할 이메일 목록은 코드에 쓰지 말고 Apps Script의 속성(PropertiesService)에 저장하고, 제가 알려드릴 이메일을 거기에 넣는 방법을 알려주세요.',
   google: '관리자 전용 화면도 따로 만들어주세요(예: admin.html). 일반 화면에는 관리 기능이 보이지 않게 하고, 관리자는 구글 로그인으로 들어가며 제가 알려주는 구글 계정(이메일 목록)만 허용해주세요. 이 로그인을 위해 Firebase Authentication을 함께 써야 한다면 먼저 저에게 물어봐주세요.',
 };
@@ -203,7 +210,7 @@ function writeExtras(x) {
 
 const state = {
   features: [],
-  storage: null, // 'local' | 'sheets' | 'firebase'
+  storage: null, // 'local' | 'sheets' | 'studio' | 'firebase'
   designMode: 'custom', // 'custom' | 'preset'
   selectedPreset: null,
 };
@@ -629,7 +636,7 @@ function buildPromptLines() {
     if (storage === 'sheets' && document.getElementById('needFiles').checked) { lines.push(FILE_TEXT); lines.push(''); }
   }
   if (ex.admin === 'password') { lines.push(ADMIN_TEXT.password[storage || 'local']); lines.push(''); }
-  else if (ex.admin === 'google') { lines.push(storage === 'sheets' ? ADMIN_TEXT.googleSheets : ADMIN_TEXT.google); lines.push(''); }
+  else if (ex.admin === 'google') { lines.push(storage === 'sheets' ? ADMIN_TEXT.googleSheets : storage === 'studio' ? ADMIN_TEXT.googleStudio : ADMIN_TEXT.google); lines.push(''); }
   const opts = ex.opts || [];
   const optLines = ['sample', 'csv', 'print', 'privacy', 'darkmode'].filter((k) => opts.includes(k)).map((k) => OPT_TEXT[k]);
   if (optLines.length) { lines.push(...optLines); lines.push(''); }
@@ -870,8 +877,8 @@ const SAMPLES = {
         ],
       },
     ],
-    extraText: '보안 조건: (1) 학생 화면에는 시트의 전체 명단을 내려보내지 말고, 학생이 코드를 입력하면 Apps Script가 그 학생 한 줄만 돌려주세요. (2) 학생 고유 코드는 6자 이상이어야 하고, 5번 연속 틀리면 5분 동안 입력을 막아주세요. (3) 서명 이미지는 가로 400px 이하의 PNG로 줄여서 시트 한 칸(5만 자) 안에 들어가게 저장해주세요. (4) 이 앱은 Cloudflare Pages로 배포할 예정이라, 학생 화면은 로그인 없이 누구나 열 수 있어야 합니다.',
-    storage: 'sheets',
+    extraText: '보안 조건: (1) 학생 화면에는 시트의 전체 명단을 내려보내지 말고, 학생이 코드를 입력하면 서버가 그 학생 한 줄만 돌려주세요. (2) 학생 고유 코드는 6자 이상이어야 하고, 5번 연속 틀리면 5분 동안 입력을 막아주세요. (3) 서명 이미지는 가로 400px 이하의 PNG로 줄여서 시트 한 칸(5만 자) 안에 들어가게 저장해주세요. (4) 이 앱은 Cloudflare Pages로 배포할 예정이라, 학생 화면은 로그인 없이 누구나 열 수 있어야 합니다.',
+    storage: 'studio',
     admin: 'google',
     opts: ['sample', 'privacy'],
     preset: 'minimal',
