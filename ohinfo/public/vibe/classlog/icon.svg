@@ -1,17 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <rect width="64" height="64" rx="14.5" fill="#1d1d1f"/>
-  <g stroke="#ffffff" stroke-linecap="round">
-    <circle cx="32" cy="32" r="10.5" fill="none" stroke-width="3.4"/>
-    <circle cx="32" cy="32" r="3.2" fill="#ffffff" stroke="none"/>
-    <g stroke-width="4.6">
-      <line x1="32" y1="21.5" x2="32" y2="17"/>
-      <line x1="32" y1="42.5" x2="32" y2="47"/>
-      <line x1="21.5" y1="32" x2="17" y2="32"/>
-      <line x1="42.5" y1="32" x2="47" y2="32"/>
-      <line x1="24.6" y1="24.6" x2="21.4" y2="21.4"/>
-      <line x1="39.4" y1="39.4" x2="42.6" y2="42.6"/>
-      <line x1="39.4" y1="24.6" x2="42.6" y2="21.4"/>
-      <line x1="24.6" y1="39.4" x2="21.4" y2="42.6"/>
-    </g>
-  </g>
+  <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#8aa3ff"/><stop offset="1" stop-color="#4553d4"/></linearGradient></defs>
+  <rect width="64" height="64" rx="14.5" fill="url(#g)"/>
+  <rect x="12.5" y="14.5" width="39" height="38" rx="6.5" fill="#fff"/>
+  <path d="M12.5 21a6.5 6.5 0 0 1 6.5-6.5h26a6.5 6.5 0 0 1 6.5 6.5v4.2h-39z" fill="#c9d3ff"/>
+  <rect x="21.2" y="9.8" width="4.8" height="9.6" rx="2.4" fill="#fff"/><rect x="38" y="9.8" width="4.8" height="9.6" rx="2.4" fill="#fff"/>
+  <rect x="15.9" y="28.2" width="9" height="9" rx="2.4" fill="#e4e9ff"/><rect x="27.5" y="28.2" width="9" height="9" rx="2.4" fill="#e4e9ff"/><rect x="39.1" y="28.2" width="9" height="9" rx="2.4" fill="#4656d6"/><path d="M41.300000000000004 32.8l2.1 2.1 4.3-4.6" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/><rect x="15.9" y="39.6" width="9" height="9" rx="2.4" fill="#e4e9ff"/><rect x="27.5" y="39.6" width="9" height="9" rx="2.4" fill="#e4e9ff"/><rect x="39.1" y="39.6" width="9" height="9" rx="2.4" fill="#e4e9ff"/>
 </svg>
