@@ -291,6 +291,16 @@
           <button class="btn accent" id="obSearch">검색</button>
         </div>
         <div class="pick-list" id="obSchools"></div>
+        <details class="ob-add" id="obAddBox">
+          <summary>목록에 내 학교가 없나요? 학교 코드로 추가</summary>
+          <p class="muted small">컴시간학생(<a href="http://컴시간학생.kr" target="_blank" rel="noopener">컴시간학생.kr</a>)을 PC에서 열어 학교를 검색한 뒤, 검색 결과의 학교 이름에서 마우스 오른쪽 → <b>검사</b>를 누르면 <code>sc_disp(43917)</code>처럼 보여요. 괄호 안 숫자가 학교 코드예요.</p>
+          <div class="row">
+            <input class="inp grow" id="obAddName" placeholder="학교 이름 (예: 관산중학교)">
+            <input class="inp" id="obAddCode" inputmode="numeric" placeholder="학교 코드" style="width:7.5em">
+            <button class="btn accent" id="obAdd">추가</button>
+          </div>
+          <div class="muted small" id="obAddMsg" style="margin-top:8px"></div>
+        </details>
       </div>
       <div id="obTeacher" class="hidden">
         <p class="muted small" id="obSchoolName" style="margin-bottom:10px"></p>
@@ -532,7 +542,7 @@
           <button data-f="pending" class="on">대기</button><button data-f="approved">승인</button><button data-f="rejected">거절</button><button data-f="all">전체</button>
         </div></div>
       </div>
-      <div class="card"><h2><span class="icon" data-ic="clock"></span><span class="ttl">컴시간 자동 확인<small>1시간마다 컴시간 접속 주소를 확인해요</small></span><button class="btn sm" data-act="comci-sync" style="margin-left:auto">지금 다시 확인</button></h2><div id="syncBox" class="muted small">확인 중…</div></div>
+      <div class="card"><h2><span class="icon" data-ic="clock"></span><span class="ttl">컴시간 자동 수집<small>30분마다 등록된 학교의 시간표를 받아요</small></span><button class="btn sm" data-act="comci-sync" style="margin-left:auto">지금 다시 확인</button></h2><div id="syncBox" class="muted small">확인 중…</div></div>
       <div class="card"><h2><span class="icon" data-ic="check"></span><span class="ttl">선생님 목록<small>승인해야 일지를 쓸 수 있어요</small></span></h2><div id="adminList"></div></div>
       <div class="card"><h2><span class="icon" data-ic="chat"></span><span class="ttl">받은 피드백<small>최근 30개 · 텔레그램 알림과 같은 내용</small></span></h2><div id="adminFeedback"></div></div>
     </section>

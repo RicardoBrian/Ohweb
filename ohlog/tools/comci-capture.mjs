@@ -1,92 +1,129 @@
-// 컴시간 접속 정보 자동 수집 (GitHub Actions 에서 매일 실행)
-// 컴시간 /st 스크립트가 난독화돼(2026-11) 글로는 읽을 수 없다 → 진짜 브라우저로 페이지를 열어
-// 학교를 검색·선택하게 하고, 그때 페이지가 보내는 요청에서 데이터 주소(route)·검색 꼬리(search)·PREFIX 를 알아낸다.
-//   사용: node comci-capture.mjs <저장할 comci-boot.js 경로>
-// 결과가 기존 값과 다를 때만 파일을 고친다(같으면 그대로 → 커밋·재배포 없음). 진단 자료는 ./out/ 에 남긴다.
+// 컴시간 시간표 자동 수집 (GitHub Actions comci-boot 에서 실행)
+// 2026-11-07: 컴시간이 시간표 응답을 'enc5:…' 로 암호화해 서버(Cloudflare)에서는 읽을 수 없다.
+// → 진짜 브라우저로 컴시간 /st 를 열어 학교를 검색·선택하고, 페이지가 스스로 푼 직후(JSON.parse)의 시간표를 가로챈다.
+//   사용: node comci-capture.mjs <데이터 폴더>                 등록된 학교 전부(폴더의 <코드>_<이름>.json)
+//         node comci-capture.mjs <데이터 폴더> <코드> <학교이름>  이 학교만(새로 등록)
+// 학교마다 <코드>_<학교이름>.json = { code, name, region, changedAt, weeks: [{ r, label, raw }] } 를 쓴다.
+// 시간표가 그대로면 파일을 건드리지 않는다(커밋 없음). 못 찾으면 { code, name, error } 를 쓴다(등록 실패 표시).
+// 진단 자료(화면·요청 기록)는 ./out/ 에 남긴다.
 import { chromium } from 'playwright';
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, readdirSync, unlinkSync, mkdirSync, existsSync } from 'node:fs';
+import path from 'node:path';
 
-const OUT = process.argv[2];
+const [DIR, ONE_CODE, ONE_NAME] = process.argv.slice(2);
 const HOST = process.env.COMCI_HOST || 'http://comci.net:4082';
-const SCHOOL = process.env.COMCI_SCHOOL || '관산중';
-const CODE = process.env.COMCI_CODE || '43917';
+if (!DIR) { console.error('사용: node comci-capture.mjs <데이터 폴더> [코드 학교이름]'); process.exit(2); }
 mkdirSync('out', { recursive: true });
-
-const reqs = [];
+mkdirSync(DIR, { recursive: true });
 const log = (...a) => console.log('[capture]', ...a);
-const b64 = (s) => { try { const t = Buffer.from(decodeURIComponent(s), 'base64').toString('latin1'); return /^[\w]+$/.test(t) ? t : null; } catch { return null; } };
+
+// 파일 이름: 43917_관산중학교.json (서버는 목록만 보고 이름으로 검색한다)
+const safe = (s) => String(s).replace(/[\\/:*?"<>|\s]+/g, '').slice(0, 40);
+const fileOf = (code, name) => path.join(DIR, `${code}_${safe(name)}.json`);
+function existing() {
+  const out = [];
+  for (const f of readdirSync(DIR)) {
+    const m = f.match(/^(\d{1,8})_(.+)\.json$/);
+    if (!m) continue;
+    try { out.push({ file: path.join(DIR, f), ...JSON.parse(readFileSync(path.join(DIR, f), 'utf8')) }); } catch {}
+  }
+  return out;
+}
 
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
-const page = await browser.newPage({ locale: 'ko-KR' });
-page.on('request', (r) => { if (r.url().startsWith(HOST)) reqs.push({ method: r.method(), url: r.url() }); });
-page.on('pageerror', (e) => log('page error:', e.message));
-// 시간표 데이터 응답의 모양을 남긴다(암호화 여부 확인용)
-const bodies = [];
-page.on('response', async (r) => {
-  const q = r.url().match(/^https?:\/\/[^/]+\/\d+\?(.+)$/)?.[1];
-  if (!q || /^\d+l/.test(q)) return;
-  try { const t = await r.text(); bodies.push({ url: r.url(), len: t.length, head: t.slice(0, 300) }); } catch {}
-});
 
-function analyze() {
-  let route, search, prefix, suffix;
-  for (const { url } of reqs) {
-    const m = url.match(/^https?:\/\/[^/]+\/(\d+)\?(.+)$/);
-    if (!m) continue;
-    const q = m[2];
-    const s = q.match(/^(\d+l)/); // 학교 검색: ./36179?17384l + EUC-KR 학교명
-    if (s) { route = m[1]; search = s[1]; continue; }
-    const d = b64(q); // 시간표: ./36179?btoa('73629_43917_0_1')
-    // 2026-11-05: 끝에 '_enc2' 같은 꼬리가 붙기 시작함 → 꼬리도 따로 기억한다
-    const p = d && d.match(new RegExp('^(.*?)' + CODE + '_0_\\d+(_\\w+)?$'));
-    if (p) { route = m[1]; prefix = p[1]; suffix = p[2] || ''; }
-  }
-  return { route, search, prefix, suffix };
-}
-
-let result = {};
-try {
-  await page.goto(HOST + '/st', { waitUntil: 'networkidle', timeout: 30000 });
-  await page.screenshot({ path: 'out/1-open.png', fullPage: true });
-  // 학교 검색창: 보이는 글자 입력칸 중 첫 번째
-  const input = page.locator('input[type=text]:visible, input:not([type]):visible').first();
-  await input.fill(SCHOOL);
-  await input.press('Enter').catch(() => {});
-  await page.waitForTimeout(2500);
-  if (!analyze().search) {
-    // Enter 로 안 되면 입력칸 옆 버튼(검색)을 누른다
-    const btn = page.locator('input[type=button]:visible, button:visible').first();
-    await btn.click().catch(() => {});
+// 학교 하나: 이름으로 검색 → onclick="sc_disp(코드)" 를 누름 → 일자 목록의 주마다 해독된 시간표를 모은다
+async function capture(code, query, tag) {
+  const page = await browser.newPage({ locale: 'ko-KR' });
+  const reqs = [];
+  page.on('request', (r) => { if (r.url().startsWith(HOST)) reqs.push(r.url()); });
+  page.on('pageerror', (e) => log(code, 'page error:', e.message));
+  await page.addInitScript(() => {
+    window.__comci = [];
+    const orig = JSON.parse;
+    JSON.parse = function (t, ...r) {
+      const v = orig.call(this, t, ...r);
+      try { if (v && (v['학급수'] || v['학교검색'])) window.__comci.push(v); } catch {}
+      return v;
+    };
+  });
+  const take = () => page.evaluate(() => window.__comci.splice(0)).catch(() => []);
+  try {
+    await page.goto(HOST + '/st', { waitUntil: 'networkidle', timeout: 30000 });
+    const input = page.locator('input[type=text]:visible, input:not([type]):visible').first();
+    await input.fill(query);
+    await input.press('Enter').catch(() => {});
     await page.waitForTimeout(2500);
-  }
-  await page.screenshot({ path: 'out/2-search.png', fullPage: true });
-  // 검색 결과에서 학교 이름을 누른다
-  const hit = page.getByText(SCHOOL, { exact: false }).filter({ hasNotText: '검색' });
-  const n = await hit.count();
-  for (let i = 0; i < n && !analyze().prefix; i++) {
-    await hit.nth(i).click({ timeout: 3000 }).catch(() => {});
+    const found = (await take()).find((v) => v['학교검색'])?.['학교검색'] || [];
+    const hit = page.locator(`[onclick="sc_disp(${code})"]`).first();
+    if (!(await hit.count())) {
+      await page.screenshot({ path: `out/${tag}-search.png`, fullPage: true });
+      return { error: `컴시간에서 '${query}'로 검색한 결과에 학교 코드 ${code}가 없어요`, results: found.length };
+    }
+    const name = (await hit.textContent()).trim() || query;
+    const region = found.find((x) => x[2] === name)?.[1] || '';
+    await hit.click({ timeout: 5000 });
     await page.waitForTimeout(3000);
+    const weeks = [];
+    const add = async () => {
+      const raw = (await take()).filter((v) => v['학급수']).at(-1);
+      if (!raw) return;
+      const label = await page.locator('select').filter({ hasText: '~' }).first().evaluate((s) => s.options[s.selectedIndex]?.text || '').catch(() => '');
+      const r = (raw['일자자료'] || []).find(([, l]) => String(l).trim() === label.trim())?.[0] ?? weeks.length + 1;
+      if (!weeks.some((w) => w.r === r)) weeks.push({ r: Number(r), label: label.trim(), raw });
+    };
+    await add();
+    const sel = page.locator('select').filter({ hasText: '~' }).first();
+    const n = await sel.locator('option').count().catch(() => 0);
+    for (let i = 0; i < n; i++) {
+      const before = weeks.length;
+      await sel.selectOption({ index: i }).catch(() => {});
+      await page.waitForTimeout(2500);
+      await add();
+      if (weeks.length === before) await page.waitForTimeout(1500).then(add);
+    }
+    await page.screenshot({ path: `out/${tag}-timetable.png`, fullPage: true });
+    if (!weeks.length) return { error: '학교를 골랐지만 시간표를 못 가로챘어요(컴시간 화면이 바뀌었을 수 있음)' };
+    weeks.sort((a, b) => a.r - b.r);
+    return { name, region, weeks };
+  } catch (e) {
+    await page.screenshot({ path: `out/${tag}-error.png`, fullPage: true }).catch(() => {});
+    return { error: e.message };
+  } finally {
+    writeFileSync(`out/${tag}-requests.json`, JSON.stringify(reqs, null, 2));
+    await page.close();
   }
-  await page.screenshot({ path: 'out/3-timetable.png', fullPage: true });
-  result = analyze();
-} catch (e) {
-  log('오류:', e.message);
-} finally {
-  writeFileSync('out/requests.json', JSON.stringify(reqs, null, 2));
-  writeFileSync('out/data-bodies.json', JSON.stringify(bodies, null, 2));
-  for (const b of bodies) log('데이터 응답', b.len, '자:', JSON.stringify(b.head.slice(0, 200)));
-  writeFileSync('out/page.html', await page.content().catch(() => ''));
-  await browser.close();
 }
 
-log('요청', reqs.length, '건:', reqs.map((r) => r.url).join('\n  '));
-log('결과:', JSON.stringify(result));
-if (!result.route || !result.search || result.prefix == null) {
-  console.error('[capture] 접속 정보를 다 찾지 못함 — out/ 의 화면·요청 기록을 확인할 것');
-  process.exit(1);
+const list = ONE_CODE
+  ? [{ code: ONE_CODE, name: ONE_NAME || '', query: ONE_NAME || '' }]
+  : existing().filter((s) => !s.error).map((s) => ({ code: String(s.code), name: s.name, query: s.query || s.name, prev: s }));
+if (!ONE_CODE && !list.length) list.push({ code: '43917', name: '관산중학교', query: '관산중' }); // 처음: 관산중부터
+if (ONE_CODE && !/^\d{1,8}$/.test(ONE_CODE)) { console.error('학교 코드 형식이 아님'); process.exit(2); }
+
+let failed = 0, changed = 0;
+for (const s of list) {
+  const prev = s.prev || existing().find((x) => String(x.code) === s.code);
+  const res = await capture(s.code, s.query, s.code);
+  if (res.error) {
+    failed++;
+    log(s.code, s.name, '실패:', res.error);
+    // 새로 등록하는 학교만 실패를 파일로 남긴다(앱이 '못 찾음'을 보여주게). 이미 있던 학교는 마지막 시간표를 그대로 둔다.
+    if (ONE_CODE && !(prev && !prev.error)) {
+      if (prev?.file && existsSync(prev.file)) unlinkSync(prev.file);
+      writeFileSync(fileOf(s.code, s.name || s.code), JSON.stringify({ code: Number(s.code), name: s.name, query: s.query, error: res.error, at: new Date().toISOString() }));
+      changed++;
+    }
+    continue;
+  }
+  const same = prev && !prev.error && JSON.stringify(prev.weeks) === JSON.stringify(res.weeks) && prev.name === res.name;
+  log(s.code, res.name, res.weeks.map((w) => `${w.r}주(${w.label})`).join(', '), same ? '그대로' : '바뀜');
+  if (same) continue;
+  if (prev?.file && existsSync(prev.file)) unlinkSync(prev.file); // 이름이 바뀌었으면 파일 이름도 바뀐다
+  writeFileSync(fileOf(s.code, res.name), JSON.stringify({ code: Number(s.code), name: res.name, region: res.region, query: s.query, changedAt: new Date().toISOString(), weeks: res.weeks }));
+  changed++;
 }
-const src = readFileSync(OUT, 'utf8');
-const prev = JSON.parse(src.slice(src.indexOf('{'), src.lastIndexOf('}') + 1));
-const same = prev.route === result.route && prev.search === result.search && prev.prefix === result.prefix && (prev.suffix || '') === result.suffix;
-log(same ? '기존 값과 같음(파일 그대로)' : '바뀜 → 파일 갱신');
-if (!same || !prev.capturedAt) writeFileSync(OUT, src.slice(0, src.indexOf('{')) + JSON.stringify({ ...prev, ...result, capturedAt: new Date().toISOString() }, null, 2) + ';\n');
+await browser.close();
+log(`학교 ${list.length}곳, 바뀜 ${changed}, 실패 ${failed}`);
+// 전부 실패면 실행을 실패로 표시(관리자 화면 경고). 등록 하나가 실패한 것은 정상(잘못된 코드일 수 있음).
+if (failed && failed === list.length && !ONE_CODE) process.exit(1);

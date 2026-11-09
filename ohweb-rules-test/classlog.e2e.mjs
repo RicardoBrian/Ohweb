@@ -1,5 +1,5 @@
 // 수업일지(ohlog) e2e — 실제 ohlog/public 을 브라우저(Chromium)로 띄우고, Firebase는 에뮬레이터,
-// /api/comci 는 실제 functions/api/comci.js 를 그대로 돌리되 컴시간 서버만 가짜 응답으로 바꾼다.
+// /api/comci·/api/comci-sync 는 실제 함수를 그대로 돌리되, 시간표 저장소(GitHub comci-data 브랜치)만 가짜로 바꾼다.
 // 흐름: 관리자 가입(바로 승인) → 교사 신청(대기) → 관리자 승인 → 교사 일지·진도 계획·보강 추가·주간·진도·내보내기.
 //   npm run test:classlog   (Java 필요)
 import { chromium } from 'playwright-core';
@@ -13,10 +13,9 @@ const FB = new URL('./.fbcdn', import.meta.url).pathname;
 const SHOTS = process.env.SHOTS; // 화면 캡처 저장 폴더(선택)
 if (SHOTS) mkdirSync(SHOTS, { recursive: true });
 
-// ── 가짜 컴시간 ──
+// ── 가짜 시간표 저장소(GitHub) ──
 const comci = await import(new URL('../ohlog/functions/api/comci.js', import.meta.url));
-const pct2bytes = (s) => { const out = []; for (let i = 0; i < s.length;) { if (s[i] === '%') { out.push(parseInt(s.slice(i + 1, i + 3), 16)); i += 3; } else { out.push(s.charCodeAt(i)); i++; } } return Buffer.from(out); };
-const ST_HTML = "<script>function school_ra(sc){$.ajax({ url:'./36179?17384l'+sc});} function sc_data(sc,sc2,r,nw){} sc_data('73629_',sc,1,'0'); 원자료=Q자료(자료.자료481[학년][반][요일][교시]);일일자료=Q자료(자료.자료147[학년][반][요일][교시]);var m3=자료.자료245[학년][반][요일][교시];성명=Q성명(자료.자료446[th]);과목명=Q과목명(자료.자료492[sb]);</script>";
+const comciSync = await import(new URL('../ohlog/functions/api/comci-sync.js', import.meta.url));
 const TEACHERS = ['', ...Array.from({ length: 28 }, (_, i) => `교사${i + 1}*`)];
 const SUBJECTS = [27, ...Array.from({ length: 27 }, (_, i) => `과목${i + 1}`)];
 SUBJECTS[10] = '수학'; SUBJECTS[12] = '과학A';
@@ -51,31 +50,37 @@ function weekJson(r) {
     일과시간: ['1(09:00)', '2(09:55)', '3(10:50)', '4(11:45)', '5(13:30)', '6(14:25)', '7(15:20)'],
     담임: [0, [0, 1, 2, 3, 4], [0, 5, 6, 7, 8, 9], [0, 10, 11, 12, 13, 14]], // 3학년 1반 담임 = 10번 교사
     자료446: TEACHERS, 자료492: SUBJECTS, 자료481: timetable(r), 자료147: timetable(r), 자료245: [3],
-  }) + '\0\0';
+  });
 }
-// 컴시간 상태: ok | 502(계속 502) | flaky(처음 한 번만 502) | newroute(접속 주소 규칙이 바뀜 — 옛 주소는 404)
-let upstream = 'ok', flakyLeft = 0;
-const stHtml = (no) => ST_HTML.replace('./36179?', `./${no}?`);
+// 저장소의 학교 파일(Actions 가 컴시간에서 받아 쓴 것과 같은 모양)
+const schoolFile = (code, name) => ({ code, name, region: '경기', query: name, changedAt: '2026-10-27T00:00:00Z',
+  weeks: [1, 2].map((r) => { const raw = JSON.parse(weekJson(r)); return { r, label: raw['일자자료'][r - 1][1], raw }; }) });
+const STORE = new Map([['43917_관산중학교.json', schoolFile(43917, '관산중학교')]]);
+const dispatched = []; // 워크플로 실행 요청(inputs)
+
+// 저장소 상태: ok | down(계속 503) | hang(아예 응답 없음)
+let upstream = 'ok';
 // Workers 의 Cache API 흉내(Node 에는 없음): max-age 까지만 보관
 const memCache = new Map();
 globalThis.caches = { default: {
   async match(req) { const e = memCache.get(req.url); return e && e.exp > Date.now() ? new Response(e.body) : undefined; },
+  async delete(req) { return memCache.delete(req.url); },
   async put(req, res) { const m = /max-age=(\d+)/.exec(res.headers.get('cache-control') || ''); memCache.set(req.url, { body: await res.text(), exp: Date.now() + Number(m?.[1] || 0) * 1000 }); },
 } };
 globalThis.fetch = (orig => async (url, opt) => {
   const u = String(url);
-  if (!u.startsWith('http://comci.net:4082')) return orig(url, opt);
-  if ((upstream === 'nomarkers' || upstream === 'broken') && u.endsWith('/st')) return new Response(pct2bytes(comci.eucKrPercent(`<!DOCTYPE html><html xmlns='http://www.w3.org/1999/xhtml' lang='ko'><head><meta http-equiv='Content-Type' content='text/html'></head><body>컴시간 안내 ${'x'.repeat(2000)}</body></html>`)));
-  if (upstream === 'broken') return new Response('not found', { status: 404 }); // 데이터 주소까지 바뀜
-  if (upstream === 'hang') return new Promise((_, rej) => opt?.signal?.addEventListener('abort', () => rej(new DOMException('The operation was aborted due to timeout', 'TimeoutError')))); // 아예 응답이 없음
-  if (upstream === '502') return new Response('<html><body>502 Bad Gateway</body></html>', { status: 502 });
-  if (upstream === 'flaky' && flakyLeft > 0) { flakyLeft--; return new Response('<html>502</html>', { status: 502 }); }
-  const routeNo = upstream === 'newroute' ? '99999' : '36179';
-  if (u.endsWith('/st')) return new Response(pct2bytes(comci.eucKrPercent(stHtml(routeNo))));
-  if (upstream === 'newroute' && !u.includes(`/${routeNo}?`)) return new Response('not found', { status: 404 }); // 옛 접속 주소
-  if (u.includes('?17384l')) return new Response(JSON.stringify({ 학교검색: [[24966, '경기', '관산중학교', 43917]] }));
-  const tok = atob(u.split('?')[1]);
-  return new Response(weekJson(Number(tok.split('_').pop())));
+  if (!u.startsWith('https://api.github.com/repos/')) return orig(url, opt);
+  const p = new URL(u).pathname.replace(/^\/repos\/[^/]+\/[^/]+/, '');
+  if (p.startsWith('/actions/')) {
+    if (p.endsWith('/dispatches')) { const b = JSON.parse(opt.body); dispatched.push(b.inputs || {}); if (b.inputs?.code === '55555') STORE.set(`55555_${b.inputs.name}.json`, schoolFile(55555, '새학교중학교')); return new Response(null, { status: 204 }); }
+    if (p.endsWith('/runs')) return new Response(JSON.stringify({ workflow_runs: [] }));
+    return new Response(JSON.stringify({ state: 'active' }));
+  }
+  if (upstream === 'hang') return new Promise((_, rej) => opt?.signal?.addEventListener('abort', () => rej(new DOMException('The operation was aborted due to timeout', 'TimeoutError'))));
+  if (upstream === 'down') return new Response('{}', { status: 503 });
+  if (p === '/contents/') return new Response(JSON.stringify([...STORE.keys()].map((name) => ({ name, sha: name + ':' + JSON.stringify(STORE.get(name)).length }))));
+  const f = decodeURIComponent(p.replace('/contents/', ''));
+  return STORE.has(f) ? new Response(JSON.stringify(STORE.get(f))) : new Response('{}', { status: 404 });
 })(globalThis.fetch);
 
 // ── 정적 서버 + /api/comci ──
@@ -93,8 +98,11 @@ const assets = { fetch: async (u) => { const f = path.join(ROOT, new URL(u).path
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml' };
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://localhost');
-  if (u.pathname === '/api/comci') {
-    const r = await comci.onRequestGet({ request: new Request('http://localhost' + req.url), env: { COMCI_BUDGET_MS: 3000 } });
+  if (u.pathname === '/api/comci' || u.pathname === '/api/comci-sync') {
+    const fn = u.pathname === '/api/comci' ? comci : comciSync;
+    const body = req.method === 'POST' ? await new Promise((ok) => { let d = ''; req.on('data', (c) => (d += c)); req.on('end', () => ok(d)); }) : undefined;
+    const request = new Request('http://localhost' + req.url, { method: req.method, body, headers: { 'content-type': 'application/json' } });
+    const r = await (req.method === 'POST' ? fn.onRequestPost : fn.onRequestGet)({ request, env: { GITHUB_TOKEN: 'test' } });
     res.writeHead(r.status, { 'content-type': 'application/json' }); res.end(await r.text()); return;
   }
   if (u.pathname === '/api/version') {
@@ -102,7 +110,7 @@ const server = http.createServer(async (req, res) => {
     const { v } = await r.json();
     res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(JSON.stringify({ v: v + '-' + deploySalt })); return;
   }
-  if (u.pathname === '/__upstream') { upstream = u.searchParams.get('mode'); flakyLeft = upstream === 'flaky' ? 1 : 0; if (u.searchParams.get('clear')) memCache.clear(); res.writeHead(204); res.end(); return; }
+  if (u.pathname === '/__upstream') { upstream = u.searchParams.get('mode'); if (u.searchParams.get('clear')) memCache.clear(); res.writeHead(204); res.end(); return; }
   if (u.pathname === '/__deploy') { deploySalt++; res.writeHead(204); res.end(); return; }
   if (u.pathname === '/firebase-config.js') { res.writeHead(200, { 'content-type': 'text/javascript' }); res.end(fbconf); return; }
   const f = path.join(ROOT, u.pathname === '/' ? 'index.html' : u.pathname);
@@ -121,6 +129,7 @@ let fails = 0;
 const ok = (label, cond, extra = '') => { if (cond) console.log('✅ ' + label); else { fails++; console.log('❌ ' + label + (extra ? ' — ' + extra : '')); } };
 async function open(email, viewport = { width: 1440, height: 1000 }) {
   const ctx = await browser.newContext({ viewport, acceptDownloads: true, timezoneId: 'Asia/Seoul' });
+  await ctx.addInitScript(() => { window.__obPoll = [200, 200]; }); // 새 학교 등록 확인 간격(앱은 20·15초)
   await ctx.route('**/*', (route) => {
     const u = route.request().url();
     const m = u.match(/^https:\/\/www\.gstatic\.com\/firebasejs\/10\.12\.2\/([A-Za-z0-9_-]+\.js)$/);
@@ -459,49 +468,41 @@ await p.click('.side-item[data-go="class"]');
 await p.waitForSelector('#clsTitle:has-text("3학년 1반")');
 ok('지정을 풀면 컴시간에서 찾은 담임 반(3학년 1반)으로 돌아감', true);
 
-// 8c5) 컴시간이 안 될 때: 502 대신 저장해 둔 시간표, 순간 실패는 재시도, 접속 주소 규칙이 바뀌면 자동 복구
+// 8c5) 시간표 저장소(GitHub — Actions 가 컴시간에서 받아 둔 것)가 안 될 때, 등록 안 된 학교, 이름 찾기
 const capi = (qs) => p.evaluate(async (q) => { const r = await fetch('/api/comci?' + q); return { status: r.status, body: await r.json().catch(() => null) }; }, qs);
 const upMode = (m, clear) => fetch(`http://localhost:8098/__upstream?mode=${m}${clear ? '&clear=1' : ''}`);
-await upMode('ok'); await capi('code=43917&teacher=10&week=1&fresh=1'); // 정상 응답을 받아 저장해 둠
-await upMode('502');
+await upMode('ok'); await capi('code=43917&teacher=10&week=1&fresh=1'); // 정상 응답을 읽어 보관해 둠
+await upMode('down');
 const st = await capi('code=43917&teacher=10&week=1&fresh=1');
-ok('컴시간이 502여도(다시 받기) 저장해 둔 시간표를 내려줌 — 502가 아니라 200 + stale', st.status === 200 && st.body.stale === true && st.body.lessons.length > 0, JSON.stringify({ s: st.status, stale: st.body?.stale }));
+ok('저장소가 503이어도(다시 받기) 마지막으로 읽어 둔 시간표를 내려줌 — 200 + stale', st.status === 200 && st.body.stale === true && st.body.lessons.length > 0, JSON.stringify({ s: st.status, stale: st.body?.stale }));
 await p.click('.side-item[data-go="settings"]');
 await p.click('#ttRefresh');
 await p.waitForFunction(() => document.getElementById('toast').textContent.includes('마지막으로 받아 둔'));
-ok('다시 받기: 컴시간이 502면 "마지막으로 받아 둔 시간표를 보여드려요"라고 안내', true);
-await upMode('502', true); // 저장해 둔 것까지 없는 최악의 경우
+ok('다시 받기: 저장소가 안 되면 "마지막으로 받아 둔 시간표를 보여드려요"라고 안내', true);
+await upMode('down', true); // 보관해 둔 것까지 없는 최악의 경우
 const hard = await capi('code=43917&teacher=10&week=1&fresh=1');
-ok('저장해 둔 것도 없으면 424(5xx 아님 — gwansan.com 이 가리지 않게) + 오류 메시지', hard.status === 424 && !!hard.body?.error, JSON.stringify(hard));
+ok('보관해 둔 것도 없으면 424(5xx 아님 — gwansan.com 이 가리지 않게) + 오류 메시지', hard.status === 424 && !!hard.body?.error, JSON.stringify(hard));
 await p.click('#ttRefresh');
 await p.waitForFunction(() => document.getElementById('toast').textContent.includes('컴시간이 지금 응답하지 않아요'));
 ok('다시 받기 실패: 영어 HTTP 코드 대신 짧은 한국어 안내', !(await p.textContent('#toast')).includes('HTTP'));
 await p.click('.side-item[data-go="week"]');
 ok('다시 받기가 실패해도 화면의 시간표는 지워지지 않음', (await p.locator('#weekGrid .slot').count()) > 0);
-await upMode('flaky', true); // 처음 한 번만 502
-const fl = await capi('code=43917&teacher=10&week=1&fresh=1');
-ok('컴시간이 순간적으로만 502면 서버가 한 번 더 시도해 정상 응답(stale 아님)', fl.status === 200 && !fl.body.stale && fl.body.lessons.length > 0, JSON.stringify({ s: fl.status, stale: fl.body?.stale }));
-await upMode('ok', true); await capi('code=43917&teacher=10&week=1'); // 옛 접속 정보(주소 36179)가 저장된 상태
-await upMode('newroute'); // 컴시간이 접속 주소 규칙을 바꿈 — 저장해 둔 옛 접속 정보로는 404
-const nr = await capi('code=22222&teacher=10&week=1');
-ok('컴시간이 접속 주소 규칙을 바꿔도 접속 정보를 새로 받아 자동 복구(다시 받기를 안 눌러도)', nr.status === 200 && nr.body.lessons.length > 0, JSON.stringify({ s: nr.status, e: nr.body?.error }));
 await upMode('ok', true);
-const pr = await capi('code=43917&week=1&probe=full');
-ok('단계별 진단(?probe=full): 접속 정보 → 받기 → 읽기 → 해석 네 단계의 시간·크기를 돌려줌', pr.status === 200 && pr.body.steps.length === 4 && pr.body.steps.every((x) => typeof x.ms === 'number') && pr.body.steps[3].cells > 0, JSON.stringify(pr.body?.steps?.map((x) => x.name)));
-const pb = await capi('code=43917&week=1&probe=boot');
-ok('probe=boot 는 1단계에서 멈춤', pb.status === 200 && pb.body.steps.length === 1, JSON.stringify(pb.body?.steps?.length));
-await upMode('hang', true); // 컴시간이 아예 응답하지 않음(연결만 붙들고 있음)
+const cur = await capi('code=43917&teacher=10');
+ok('주를 안 주면 저장된 주 중 오늘이 속한 주(오늘r)', cur.status === 200 && cur.body.week === 1 && cur.body.weeks.length === 2 && cur.body.school?.name === '관산중학교', JSON.stringify({ w: cur.body?.week, n: cur.body?.weeks?.length, school: cur.body?.school }));
+const w2 = await capi('code=43917&teacher=10&week=2');
+ok('week=2 는 저장된 다음 주 시간표', w2.status === 200 && w2.body.week === 2 && w2.body.lessons.every((x) => x.date >= '2026-11-02'), JSON.stringify(w2.body?.lessons?.[0]));
+const un = await capi('code=12345&teacher=10');
+ok('등록 안 된 학교: 424 + diag.unregistered(앱이 등록을 안내)', un.status === 424 && un.body?.diag?.unregistered === true, JSON.stringify(un.body));
+const sq = await capi('q=' + encodeURIComponent('관 산'));
+const sn = await capi('q=' + encodeURIComponent('없는학교'));
+ok('이름 찾기: 등록된 학교 중에서 찾음(띄어쓰기 무시), 없으면 빈 목록', sq.body?.schools?.[0]?.sccode === 43917 && sn.body?.schools?.length === 0, JSON.stringify([sq.body, sn.body]));
+await upMode('hang', true); // 저장소가 아예 응답하지 않음(연결만 붙들고 있음)
 const t1 = Date.now();
 const hg = await capi('code=43917&teacher=10&week=1');
 const took = Date.now() - t1;
-ok('컴시간이 아예 응답하지 않아도 전체 대기 시간에 상한(테스트는 3초)이 있어 오래 붙잡지 않음', hg.status === 424 && took < 6500, `${took}ms ${hg.status}`);
-// 이번 장애 재현: 컴시간이 스크립트(sc_data 등)가 없는 페이지를 준다
-await upMode('nomarkers', true);
-const nm = await capi('code=43917&teacher=10&week=1&fresh=1');
-ok('이번 장애(스크립트를 못 읽음, 데이터 주소는 그대로): 마지막 정상 접속 정보로 시간표를 정상으로 받음', nm.status === 200 && nm.body.lessons?.length > 0 && ['known', 'lastgood', 'captured'].includes(nm.body.debug?.boot), JSON.stringify({ s: nm.status, boot: nm.body?.debug?.boot, e: nm.body?.error }));
-await upMode('broken', true); // 데이터 주소까지 바뀐 최악의 경우
-const bk = await capi('code=43917&teacher=10&week=1&fresh=1');
-ok('데이터 주소까지 바뀌면: 424 + "마지막 정상 접속 정보로 시도했지만 실패" + 받은 페이지 모양 진단(diag)', bk.status === 424 && bk.body?.error?.includes('마지막 정상 접속 정보') && bk.body?.diag?.has?.sc_data === false && Array.isArray(bk.body?.diag?.tags), JSON.stringify(bk.body).slice(0, 300));
+ok('저장소가 아예 응답하지 않아도 대기 시간에 상한(5초)이 있어 오래 붙잡지 않음', hg.status === 424 && took < 6500, `${took}ms ${hg.status}`);
+await upMode('down', true); // 아래: 앱의 대체 시간표·자동 보고
 // 앱: 기기에 보관된 주가 이번 주를 덮지 않는 상황(보관된 주를 2주 전으로 옮김) + 컴시간 고장 → 최근 주 시간표로 대신 보여주고 자동 보고
 await p.evaluate(() => {
   for (const k of Object.keys(localStorage).filter((x) => x.startsWith('classlog:tt:'))) {
@@ -517,11 +518,11 @@ await p.reload(); // 앱을 실제로 다시 시작(같은 주소로 goto 하면
 await p.waitForSelector('#weekGrid .fallback-note', { timeout: 15000 });
 ok('컴시간이 안 되면 최근 주 시간표를 이번 주 날짜에 맞춰 보여주고, 그렇다고 안내함', (await p.locator('#weekGrid .slot').count()) > 0 && (await p.textContent('#weekGrid .fallback-note')).includes('컴시간에 연결할 수 없어'));
 let autoRep = [];
-for (let i = 0; i < 20 && !autoRep.some((d) => d.text.includes('마지막 정상 접속 정보')); i++) {
+for (let i = 0; i < 20 && !autoRep.some((d) => d.text.includes('시간표 저장소')); i++) {
   await env.withSecurityRulesDisabled(async (c) => { autoRep = (await c.firestore().collection('classlog_feedback').get()).docs.map((d) => d.data()).filter((d) => d.view === 'auto'); });
-  if (!autoRep.some((d) => d.text.includes('마지막 정상 접속 정보'))) await new Promise((r) => setTimeout(r, 300));
+  if (!autoRep.some((d) => d.text.includes('시간표 저장소'))) await new Promise((r) => setTimeout(r, 300));
 }
-ok('실패 원인(받은 페이지 모양 포함)을 자동으로 보고(텔레그램 알림과 같은 기록) — 오프라인(Failed to fetch)은 보고 안 함', autoRep.some((d) => d.text.includes('자동 진단') && d.text.includes('마지막 정상 접속 정보') && d.text.includes('"sc_data":false')) && !autoRep.some((d) => d.text.includes('Failed to fetch')), JSON.stringify(autoRep.map((d) => d.text.slice(0, 200))));
+ok('실패 원인을 자동으로 보고(텔레그램 알림과 같은 기록) — 오프라인(Failed to fetch)은 보고 안 함', autoRep.some((d) => d.text.includes('자동 진단') && d.text.includes('시간표 저장소')) && !autoRep.some((d) => d.text.includes('Failed to fetch')), JSON.stringify(autoRep.map((d) => d.text.slice(0, 200))));
 await upMode('ok', true);
 await p.click('.side-item[data-go="settings"]');
 await p.click('#ttRefresh');
@@ -560,6 +561,24 @@ await p.waitForSelector('#fbModal.show', { state: 'detached' });
 let fbDocs = [];
 await env.withSecurityRulesDisabled(async (c) => { fbDocs = (await c.firestore().collection('classlog_feedback').get()).docs.map((d) => d.data()).filter((d) => d.view !== 'auto'); }); // 자동 진단 보고는 빼고
 ok('피드백이 Firestore에 저장됨(종류·내용·보낸 사람)', fbDocs.length === 1 && fbDocs[0].kind === 'bug' && fbDocs[0].text.includes('선택과목') && fbDocs[0].teacherName === '교사10*', JSON.stringify(fbDocs));
+
+// 8e) 목록에 없는 학교: 이름+코드로 추가 → 워크플로가 그 학교만 받아 오면 이름 고르기로 넘어감
+{
+  const N = await open('newschool@test.com', { width: 390, height: 844 });
+  await N.page.waitForSelector('#screenOnboard.show');
+  await N.page.fill('#obQuery', '새학교');
+  await N.page.click('#obSearch');
+  await N.page.waitForSelector('#obSchools .empty-state');
+  ok('등록된 학교 중에 없으면 "학교 코드로 추가"가 열리고 이름이 채워짐', (await N.page.$eval('#obAddBox', (d) => d.open)) && (await N.page.inputValue('#obAddName')) === '새학교');
+  await N.page.fill('#obAddName', '새학교중');
+  await N.page.fill('#obAddCode', '55555');
+  await N.page.click('#obAdd');
+  await N.page.waitForSelector('#obTeacherSel option[value="10"]', { state: 'attached', timeout: 15000 });
+  ok('코드로 추가: 워크플로에 그 학교만 받기를 요청하고(이름·코드), 받아지면 이름 고르기로 넘어감',
+    dispatched.some((x) => x.code === '55555' && x.name === '새학교중') && (await N.page.textContent('#obSchoolName')).includes('새학교중학교'), JSON.stringify(dispatched));
+  await shot(N.page, '11-add-school-m');
+  await N.ctx.close();
+}
 
 // 9) 다른 사람 데이터는 안 보임(관리자 일지 0건)
 await P.click('.side-item[data-go="export"]');

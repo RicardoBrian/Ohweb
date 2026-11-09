@@ -1,29 +1,49 @@
-# 수업일지: 컴시간 접속 정보 자동 갱신
-# 컴시간 스크립트가 난독화돼 서버(Cloudflare)에서는 읽을 수 없으므로, 여기서 진짜 브라우저로 열어 알아낸다.
-# 값이 바뀌었을 때만 ohlog/lib/comci-boot.js 을 main 에 커밋한다 → Cloudflare Pages 가 자동 재배포.
+# 수업일지: 컴시간 시간표 자동 수집
+# 컴시간이 시간표를 암호화해(2026-11-07, enc5) 서버(Cloudflare)에서는 읽을 수 없으므로, 여기서 진짜 브라우저로 열어
+# 페이지가 푼 시간표를 가로챈다. 결과는 main 이 아니라 데이터 전용 브랜치 comci-data 에 학교별 파일로 커밋한다
+# (main 이 안 바뀌니 재배포도 없다). 서버(ohlog/functions/api/comci.js)는 그 파일을 GitHub 에서 바로 읽는다.
+#   schedule: 등록된 학교 전부 · workflow_dispatch(code, name): 그 학교만(새 학교 등록, 서버가 실행시킨다)
 name: comci-boot
 on:
   workflow_dispatch:
+    inputs:
+      code: { description: '학교 코드(비우면 등록된 학교 전부)', required: false, default: '' }
+      name: { description: '학교 이름(검색어)', required: false, default: '' }
   schedule:
-    - cron: '23 * * * *' # 1시간마다(매시 23분). 값이 바뀔 때만 커밋하므로 평소엔 아무것도 안 바뀐다
+    - cron: '7,37 * * * *' # 30분마다. 시간표가 바뀐 학교만 커밋한다
 permissions:
   contents: write
-concurrency: comci-boot
+concurrency:
+  group: comci-${{ inputs.code || 'all' }} # 등록 실행이 전체 실행 뒤에서 밀려 사라지지 않게 따로 줄을 선다
 jobs:
   capture:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+      - name: 데이터 브랜치(comci-data) 가져오기
+        run: |
+          git config --global user.name "comci-boot bot"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin comci-data >/dev/null; then
+            git clone --depth 1 --branch comci-data "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" data
+          else
+            mkdir data && cd data && git init -b comci-data && git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+            printf '# 수업일지 컴시간 시간표(자동 생성)\n.github/workflows/comci-boot.yml 이 학교별로 쓴다. 손으로 고치지 말 것.\n' > README.md
+          fi
       - uses: actions/setup-node@v4
         with:
           node-version: 20
       - name: 브라우저 준비
         working-directory: ohlog/tools
         run: npm i --no-save --no-package-lock playwright@1.48.2 && npx playwright install --with-deps chromium
-      - name: 컴시간 열어서 접속 정보 알아내기
+      - name: 컴시간 열어서 시간표 받기
         working-directory: ohlog/tools
-        run: node comci-capture.mjs ../lib/comci-boot.js
+        env:
+          CODE: ${{ inputs.code }}
+          NAME: ${{ inputs.name }}
+        run: |
+          if [ -n "$CODE" ]; then node comci-capture.mjs ../../data "$CODE" "$NAME"; else node comci-capture.mjs ../../data; fi
       - name: 진단 자료 보관(화면·요청 기록)
         if: always()
         uses: actions/upload-artifact@v4
@@ -32,10 +52,16 @@ jobs:
           path: ohlog/tools/out/
           retention-days: 7
       - name: 바뀌었으면 커밋
+        if: always()
+        working-directory: data
         run: |
-          if git diff --quiet -- ohlog/lib/comci-boot.js; then echo "변경 없음"; exit 0; fi
-          git config user.name "comci-boot bot"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add ohlog/lib/comci-boot.js
-          git commit -m "ohlog: 컴시간 접속 정보 자동 갱신"
-          git push
+          git add -A
+          if git diff --cached --quiet; then echo "변경 없음"; exit 0; fi
+          git commit -q -m "컴시간 시간표 갱신${{ inputs.code && format(' ({0})', inputs.code) || '' }}"
+          # 다른 실행(등록)이 먼저 올렸으면 그 위에 얹는다 — 학교마다 파일이 달라 충돌하지 않는다
+          for i in 1 2 3 4 5; do
+            git push -q origin comci-data && exit 0
+            git pull -q --rebase origin comci-data || { git rebase --abort; exit 1; }
+            sleep $((i * 3))
+          done
+          exit 1
