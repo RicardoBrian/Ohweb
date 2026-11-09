@@ -37,7 +37,7 @@
 
 | 레포 | DB | 성격 |
 |---|---|---|
-| gwansanattend (출결) | Firebase `gwsattend` — `students`, `classes`, `records`, `reports`, `requests`, `allowed`, `admins`, `logs` | 학교 |
+| gwansanattend (출결) | **Firebase `gwansan-work`**(2026-11-09 전환) — `apps/attend/…`(반·기록·신고서·보호자·허용·신청·접속 기록), 공용 명렬표 `years/{연도}/students`. 예전 `gwsattend` 는 백업으로 남김 | 학교 |
 | GWBS (방송부) | Firebase `gwbs-3ec22` — `students`, `broadcasts`, `songs`, `attendance`, `manuals`, `settings` | 학교 |
 | GWVS (봉사활동) | **Firebase `gwansan-work`**(업무용 통합, 2026-11-09 전환) — 공용 `staff`·`admins`·`years/{학년도}/students`, 봉사 `apps/volunteer/…`. 예전 `gwvs-77114` 는 백업으로 남김 | 학교 |
 | snakeiogwansan | Firebase 실시간 DB (주소는 Cloudflare 비밀값 `FIREBASE_DATABASE_URL`) | 행사 |
@@ -49,6 +49,6 @@
 | OHktx, OHsplan, ohplayer, asdebate, appinventorcheck | 없음(기기 저장만) | – |
 
 ## 알려진 문제 (나중에 정리 — 3단계)
-- `students` 가 여러 곳(ohweb-93062, gwsattend, gwbs, gwansan-work)에 따로 있다. 업무용 3개는 `gwansan-work` 의 `years/{학년도}/students` 하나로 모으는 중(봉사 완료, 출결·방송부 남음).
+- `students` 가 여러 곳(ohweb-93062, gwsattend, gwbs, gwansan-work)에 따로 있다. 업무용 3개는 `gwansan-work` 의 `years/{학년도}/students` 하나로 모으는 중(봉사·출결 완료, 방송부 남음). 명렬표 관리: students.kakainfo.com(레포 gwstudents).
 - 학교 관리자 화면(ohweb)이 개인용 정산 DB(ohsettle-10d43)에도 붙어 있다(`settle.html`).
 - 쓰지 않는 Cloudflare 자원: KV `LINKS`, KV `ohshrt-links`(옛 단축 URL 레포), Worker·D1 `ssoswitch`, Worker `ptvibecoding`.
