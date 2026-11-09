@@ -26,14 +26,17 @@ VIBE = ROOT / 'ohinfo/public/vibe'
 EXTERNAL = Path(os.environ.get('VIBE_SRC', '/tmp/vibe-src'))  # 다른 저장소를 받아 둘 곳
 
 
-def external(name: str) -> Path:
-    """다른 저장소(RicardoBrian/<name>)를 EXTERNAL 아래에 받아 두고(없으면 clone, 있으면 pull) 경로를 돌려준다."""
+def external(name: str, private: bool = False) -> Path:
+    """다른 저장소(RicardoBrian/<name>)를 EXTERNAL 아래에 받아 두고(없으면 clone, 있으면 pull) 경로를 돌려준다.
+    비공개 저장소(private=True)는 환경변수 VIBE_READ_TOKEN(Actions 비밀값)으로 받는다."""
     d = EXTERNAL / name
     if d.exists():
         subprocess.run(['git', '-C', str(d), 'pull', '-q'], check=False)
     else:
         EXTERNAL.mkdir(parents=True, exist_ok=True)
-        subprocess.run(['git', 'clone', '-q', '--depth', '1', f'https://github.com/RicardoBrian/{name}.git', str(d)], check=True)
+        token = os.environ.get('VIBE_READ_TOKEN', '') if private else ''
+        auth = f'x-access-token:{token}@' if token else ''
+        subprocess.run(['git', 'clone', '-q', '--depth', '1', f'https://{auth}github.com/RicardoBrian/{name}.git', str(d)], check=True)
     return d
 
 FAKE = '/vibe/shared/fake-firebase/'
@@ -96,7 +99,7 @@ def copy_tree(src_dir: Path, dst_dir: Path, include=None, exclude=(), keep=()):
 def build_teacher():
     """관리자 화면 (ohweb/public) → vibe/teacher. 학생 화면과 같은 저장 공간(vibe-school)."""
     copy_tree(ROOT / 'ohweb/public', VIBE / 'teacher',
-              exclude=['_headers', 'settle.html', 'settle-firebase-config.js'],
+              exclude=['_headers'],
               keep=['firebase-config.js'])
 
 
@@ -146,8 +149,14 @@ def build_shortener():
 
 
 def build_settle():
-    """모임 정산 (ohsettle/public) → vibe/settle."""
-    copy_tree(ROOT / 'ohsettle/public', VIBE / 'settle', keep=['firebase-config.js'])
+    """모임 정산 (비공개 저장소 ohsettle 의 public) → vibe/settle. 참여자 화면만 — 관리 화면(admin.html)은 빼고.
+    VIBE_READ_TOKEN 이 없거나 받기에 실패하면 기존 견본을 그대로 두고 넘어간다(다른 견본 빌드는 계속)."""
+    try:
+        src = external('ohsettle', private=True)
+    except subprocess.CalledProcessError:
+        print('ohsettle 저장소를 받지 못해 settle 견본은 건너뜁니다 (Actions 비밀값 VIBE_READ_TOKEN 확인).')
+        return
+    copy_tree(src / 'public', VIBE / 'settle', exclude=['_headers', 'admin.html', 'admin-sky.css'], keep=['firebase-config.js'])
 
 
 def build_activation():

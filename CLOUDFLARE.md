@@ -12,7 +12,6 @@ Cloudflare 대시보드 → Workers & Pages → Create → Pages → Connect to 
 |---|---|---|---|---|
 | `ohinfo` | `ohinfo` | *(비움)* | `public` | `kakainfo.com` (학생용, 루트 도메인) |
 | `ohweb` | `ohweb` | *(비움)* | `public` | `admin.kakainfo.com` |
-| `ohsettle` | `ohsettle` | *(비움)* | `public` | `settle.kakainfo.com` |
 | `ohlog` | `ohlog` | *(비움)* | `public` | `classnote.gwansan.com` (수업일지) |
 
 - **Build command는 반드시 비운다.** 빌드 스텝이 없는 정적 사이트다. 프레임워크 프리셋은 `None`.
@@ -28,7 +27,6 @@ Cloudflare 대시보드 → Workers & Pages → Create → Pages → Connect to 
 |---|---|
 | `ohinfo` | `ohinfo/*` |
 | `ohweb` | `ohweb/*` |
-| `ohsettle` | `ohsettle/*` |
 
 Vercel의 Ignored Build Step에 대응하는 설정이다.
 
@@ -119,6 +117,8 @@ curl -X POST https://admin.kakainfo.com/api/translate \
 **완료됨.** 4개 앱 전부 `kakainfo.com` 하위 서브도메인(Cloudflare에서 구입한
 도메인)에 연결돼 있고, Vercel 프로젝트·`vercel.json`·`api/`는 레포에서 모두
 제거했다.
+
+> `ohsettle`(정산)은 2026-11 비공개 레포 `RicardoBrian/ohsettle` 로 분리했다. Cloudflare 설정은 그 레포의 `CLAUDE.md`.
 
 ## 6. seatchange (삭제됨)
 

@@ -10,9 +10,9 @@
 | `ohlog/` | 수업일지 | classnote.gwansan.com |
 | `ohnotion/` | 노션 페이지 공개 | – |
 | `ohshrt/` | 단축 URL | – |
-| `ohsettle/` | 정산(개인용, DB 따로) | settle.kakainfo.com |
 | `ohweb-rules-test/` | Firestore 규칙·화면 테스트 (`npm run test`) | – |
 
+- 정산(ohsettle)은 개인용이라 비공개 레포 `RicardoBrian/ohsettle` 로 옮겼다(2026-11). 관리자 메뉴의 "정산 관리"는 `settle.kakainfo.com/admin.html` 로 나간다.
 - **DB: `DB.md`** — 어느 앱이 어느 컬렉션을 쓰는지. 컬렉션을 새로 만들면 거기도 고친다.
 - `ohinfo/public/vibe/` 는 견본으로, `ohinfo/tools/vibe/build.py` 가 실제 앱에서 **자동 생성**한다(Actions `vibe-build`). **손으로 고치지 말고** 원본을 고친다. 검색할 때도 `vibe/` 는 빼고 본다(같은 이름 파일이 있어 헷갈린다).
 - 큰 파일(`ohweb/public/admin.html` 4300줄, `ohinfo/public/ohdlet.html`·`exam.html`, `ohinfo/public/ai-i18n.js`)은 통째로 읽지 말고, 각 폴더 CLAUDE.md 의 구역 이름으로 검색해 그 부분만 읽는다.
