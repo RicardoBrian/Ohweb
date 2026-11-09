@@ -20,16 +20,14 @@ const now = new Date();
 const YEAR = now.getMonth() < 2 ? now.getFullYear() - 1 : now.getFullYear(); // 3월에 새 학년도
 const CID = `${YEAR}-1-1`;
 
-// 출결 앱이 통합 프로젝트 구조로 바뀌는 중이라(2026-11) 예전·새 경로에 같은 견본을 둘 다 넣는다.
-// 예전: allowed·requests·classes 맨 위, 반 아래 students   새: apps/attend/…, 명렬표 years/{연도}/students, 보호자 guardians
-// 출결 전환이 끝나면 예전 경로(P = '')는 지운다.
+// 출결 앱은 통합 프로젝트(gwansan-work) 구조: apps/attend/…, 명렬표 years/{연도}/students, 보호자 반 아래 guardians
 F.seed(NS, (put) => {
   put(`admins/${U.email}`, { email: U.email });
   const roster = [
     [1, '김하늘', '', '김보호'], [2, '이바다', '', '이보호'], [3, '박서준', '', '박보호'], [4, '최은비', '', '최보호'],
     [5, '정도윤', '', '정보호'], [6, '한지우', '', '한보호'], [7, 'Emma Lee', '이엠마', 'Lee'], [8, '오하린', '', '오보호'],
   ];
-  for (const P of ['', 'apps/attend/']) {
+  for (const P of ['apps/attend/']) {
     put(`${P}allowed/${U.email}`, { email: U.email, note: '1-1 견본 선생님', addedAt: ts(30) });
     put(`${P}classes/${CID}`, {
       year: YEAR, grade: 1, cls: 1, ownerUid: U.uid, ownerEmail: U.email, teacherName: '견본 선생님', offDays: [],
@@ -37,7 +35,6 @@ F.seed(NS, (put) => {
     });
   }
   for (const [no, name, koName, guardian] of roster) {
-    put(`classes/${CID}/students/${no}`, { no, name, koName, guardian, updatedAt: ts(60) });
     put(`years/${YEAR}/students/${CID}-${no}`, { grade: 1, klass: 1, number: no, name, koreanName: koName, updatedAt: ts(60) });
     put(`apps/attend/classes/${CID}/guardians/${CID}-${no}`, { number: no, guardian, updatedAt: ts(60) });
   }
@@ -52,7 +49,7 @@ F.seed(NS, (put) => {
     { no: 2, name: '이바다', kind: '결과', cause: '출석인정', start: schoolDayAgo(1), end: schoolDayAgo(1), period: '3~4', days: null,
       reason: '학교 대표 정보 대회 참가', docs: ['참가확인서'], docsIn: true },
   ];
-  for (const P of ['', 'apps/attend/']) {
+  for (const P of ['apps/attend/']) {
     recs.forEach((r, i) => put(`${P}classes/${CID}/records/rec${i + 1}`, { ...base, ...r, createdAt: ts(5 - i), updatedAt: ts(5 - i) }));
     // 관리 탭에 보이는 승인 신청 하나
     put(`${P}requests/demo-other`, { email: 'other@example.com', name: '다른 견본 선생님', year: YEAR, grade: 1, cls: 2, createdAt: ts(0) });

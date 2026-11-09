@@ -26,14 +26,16 @@ VIBE = ROOT / 'ohinfo/public/vibe'
 EXTERNAL = Path(os.environ.get('VIBE_SRC', '/tmp/vibe-src'))  # 다른 저장소를 받아 둘 곳
 
 
-def external(name: str) -> Path:
-    """다른 저장소(RicardoBrian/<name>)를 EXTERNAL 아래에 받아 두고(없으면 clone, 있으면 pull) 경로를 돌려준다."""
+def external(name: str, branch: str = '') -> Path:
+    """다른 저장소(RicardoBrian/<name>)를 EXTERNAL 아래에 받아 두고(없으면 clone, 있으면 pull) 경로를 돌려준다.
+    branch: 기본 브랜치가 아닌 브랜치를 받을 때(기본 브랜치가 예전 claude/… 로 남아 있는 저장소)."""
     d = EXTERNAL / name
     if d.exists():
         subprocess.run(['git', '-C', str(d), 'pull', '-q'], check=False)
     else:
         EXTERNAL.mkdir(parents=True, exist_ok=True)
-        subprocess.run(['git', 'clone', '-q', '--depth', '1', f'https://github.com/RicardoBrian/{name}.git', str(d)], check=True)
+        extra = ['--branch', branch] if branch else []
+        subprocess.run(['git', 'clone', '-q', '--depth', '1', *extra, f'https://github.com/RicardoBrian/{name}.git', str(d)], check=True)
     return d
 
 FAKE = '/vibe/shared/fake-firebase/'
@@ -162,8 +164,8 @@ def build_activation():
 
 
 def build_attend():
-    """출결 관리 (gwansanattend/public) → vibe/attend."""
-    copy_tree(external('gwansanattend') / 'public', VIBE / 'attend', exclude=['_headers'], keep=['firebase-config.js'])
+    """출결 관리 (gwansanattend/public) → vibe/attend. 실제 사이트는 main 에서 배포된다(기본 브랜치는 예전 claude/… 라 main 을 지정)."""
+    copy_tree(external('gwansanattend', branch='main') / 'public', VIBE / 'attend', exclude=['_headers'], keep=['firebase-config.js'])
 
 
 def build_broadcast():
