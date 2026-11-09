@@ -5,7 +5,11 @@
      수정하면 됩니다.
    ───────────────────────────────────────────────────────────── */
 
+// 업무용 통합 프로젝트 gwansan-work (출결·방송부·봉사). 예전 프로젝트 gwbs-3ec22 는 백업으로 남겨 둔다.
+// 방송부 데이터는 apps/broadcast/ 아래(BC 경로). 부원은 members(공용 명렬표 학생 ID 를 studentId 로 가진다).
+// Cloudflare 비밀값 FIREBASE_SERVICE_ACCOUNT 도 gwansan-work 의 키여야 한다(입장 토큰 서명).
 window.FB_CONFIG = { projectId: 'vibe-broadcast' }; // 견본: 가짜 Firebase
+window.BC = 'apps/broadcast/';
 
 (function () {
   'use strict';

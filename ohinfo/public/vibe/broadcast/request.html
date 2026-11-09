@@ -255,7 +255,7 @@ async function submitRequest() {
   btn.textContent = '신청 중...';
 
   try {
-    await db.collection('songs').add({
+    await db.collection(BC + 'songs').add({
       grade,
       classInfo: cls,
       name,

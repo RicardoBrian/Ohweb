@@ -1101,10 +1101,10 @@ async function loadDashboard() {
   document.getElementById('stat-absent').textContent = '…';
   try {
     const [bc, st, sg, at] = await Promise.all([
-      db.collection('broadcasts').get(),
-      db.collection('students').get(),
-      db.collection('songs').where('isDone','==',false).get(),
-      db.collection('attendance').where('absent','==',true).get()
+      db.collection(BC + 'broadcasts').get(),
+      db.collection(BC + 'members').get(),
+      db.collection(BC + 'songs').where('isDone','==',false).get(),
+      db.collection(BC + 'attendance').where('absent','==',true).get()
     ]);
     document.getElementById('stat-broadcasts').textContent = bc.size;
     document.getElementById('stat-students').textContent = st.size;
@@ -1122,7 +1122,7 @@ let selectedBcTaskId = null;
 
 async function loadBroadcasts() {
   try {
-    const snap = await db.collection('broadcasts').orderBy('dateValue','desc').get();
+    const snap = await db.collection(BC + 'broadcasts').orderBy('dateValue','desc').get();
     broadcastDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     renderBroadcastList();
   } catch(e) {
@@ -1205,7 +1205,7 @@ async function saveBroadcast() {
     notice: document.getElementById('bc-notice').value.trim()
   };
   try {
-    const ref = db.collection('broadcasts').doc(dateKey);
+    const ref = db.collection(BC + 'broadcasts').doc(dateKey);
     const snap = await ref.get();
     let tasks = [];
     if (snap.exists) tasks = (snap.data().tasks || []).filter(t => t.id !== taskId);
@@ -1225,7 +1225,7 @@ async function deleteBroadcast() {
   const ok = await showConfirm('항목 삭제', '이 방송 항목을 삭제하시겠습니까?');
   if (!ok) return;
   try {
-    const ref = db.collection('broadcasts').doc(selectedBcDateKey);
+    const ref = db.collection(BC + 'broadcasts').doc(selectedBcDateKey);
     const snap = await ref.get();
     if (!snap.exists) return;
     const tasks = (snap.data().tasks || []).filter(t => t.id !== selectedBcTaskId);
@@ -1254,7 +1254,7 @@ async function openPicker(grade, fieldId) {
   list.innerHTML = '<span style="color:var(--text-3);font-size:13px;">로딩 중...</span>';
   document.getElementById('picker-modal').classList.add('open');
   try {
-    const snap = await db.collection('students').where('grade','==',grade).get();
+    const snap = await db.collection(BC + 'members').where('grade','==',grade).get();
     const students = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => a.name.localeCompare(b.name, 'ko'));
     if (students.length === 0) {
       list.innerHTML = '<span style="color:var(--text-3);font-size:13px;">등록된 학생이 없습니다</span>';
@@ -1285,7 +1285,7 @@ const studentUnsubs = {};
 function loadStudents() {
   ['1','2','3'].forEach(grade => {
     if (studentUnsubs[grade]) return; // already listening
-    studentUnsubs[grade] = db.collection('students')
+    studentUnsubs[grade] = db.collection(BC + 'members')
       .where('grade','==',grade)
       .onSnapshot(snap => {
         const chips = document.getElementById(`chips-${grade}`);
@@ -1310,7 +1310,7 @@ async function addStudent(grade) {
   const name = inp.value.trim();
   if (!name) { showToast('이름을 입력해 주세요', 'warn'); return; }
   try {
-    await db.collection('students').add({ name, grade, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    await db.collection(BC + 'members').add({ name, grade, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
     inp.value = '';
     showToast(`${name} 추가됨`, 'success');
   } catch(e) {
@@ -1322,7 +1322,7 @@ async function deleteStudent(id) {
   const ok = await showConfirm('학생 삭제', '이 학생을 목록에서 삭제하시겠습니까?');
   if (!ok) return;
   try {
-    await db.collection('students').doc(id).delete();
+    await db.collection(BC + 'members').doc(id).delete();
     showToast('삭제되었습니다', 'success');
   } catch(e) {
     showToast('삭제 실패: ' + FBGuard.message(e), 'error');
@@ -1334,7 +1334,7 @@ let attAll = [];
 
 function loadAttendance() {
   if (sectionUnsubscribers['attendance']) return;
-  sectionUnsubscribers['attendance'] = db.collection('attendance')
+  sectionUnsubscribers['attendance'] = db.collection(BC + 'attendance')
     .orderBy('updatedAt','desc')
     .onSnapshot(snap => {
       attAll = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -1368,7 +1368,7 @@ async function deleteAttendance(id) {
   const ok = await showConfirm('기록 삭제', '이 출결 기록을 삭제하시겠습니까?');
   if (!ok) return;
   try {
-    await db.collection('attendance').doc(id).delete();
+    await db.collection(BC + 'attendance').doc(id).delete();
     showToast('삭제 완료', 'success');
   } catch(e) {
     showToast('삭제 실패: ' + FBGuard.message(e), 'error');
@@ -1378,7 +1378,7 @@ async function deleteAttendance(id) {
 // ── Songs ─────────────────────────────────────────────────
 function loadSongs() {
   if (sectionUnsubscribers['songs']) return;
-  sectionUnsubscribers['songs'] = db.collection('songs')
+  sectionUnsubscribers['songs'] = db.collection(BC + 'songs')
     .orderBy('createdAt','desc')
     .onSnapshot(snap => {
       const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -1431,7 +1431,7 @@ async function addSong() {
   const artist = document.getElementById('song-artist').value.trim();
   if (!song) { showToast('신청곡 제목을 입력해 주세요', 'warn'); return; }
   try {
-    await db.collection('songs').add({ grade, classInfo, name, song, artist, isDone: false, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    await db.collection(BC + 'songs').add({ grade, classInfo, name, song, artist, isDone: false, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
     document.getElementById('song-grade').value = '';
     document.getElementById('song-class').value = '';
     document.getElementById('song-name').value = '';
@@ -1503,7 +1503,7 @@ function closeYtPicker() {
 async function ytSaveVideoId(videoId) {
   if (!ytTargetId) return;
   try {
-    await db.collection('songs').doc(ytTargetId).update({ videoId });
+    await db.collection(BC + 'songs').doc(ytTargetId).update({ videoId });
     showToast(videoId ? '영상이 연결되었습니다' : '연결을 해제했습니다', 'success');
     closeYtPicker();
   } catch (e) {
@@ -1542,7 +1542,7 @@ async function ytAutoLink(id, btn) {
   try {
     const results = await YTLink.search(YTLink.query(song.song, song.artist), 1);
     if (!results.length) { showToast(`검색 결과 없음: ${song.song}`, 'warn'); return; }
-    await db.collection('songs').doc(id).update({ videoId: results[0].videoId });
+    await db.collection(BC + 'songs').doc(id).update({ videoId: results[0].videoId });
   } catch (e) {
     showToast(`${song.song}: ${e.message}`, 'error');
   } finally {
@@ -1560,7 +1560,7 @@ async function ytAutoLinkAll() {
     try {
       const results = await YTLink.search(YTLink.query(song.song, song.artist), 1);
       if (!results.length) { fail++; continue; }
-      await db.collection('songs').doc(song.id).update({ videoId: results[0].videoId });
+      await db.collection(BC + 'songs').doc(song.id).update({ videoId: results[0].videoId });
       ok++;
     } catch (e) {
       fail++;
@@ -1577,7 +1577,7 @@ async function ytAutoLinkAll() {
 
 async function toggleSong(id, isDone) {
   try {
-    await db.collection('songs').doc(id).update({ isDone: !isDone });
+    await db.collection(BC + 'songs').doc(id).update({ isDone: !isDone });
   } catch(e) {
     showToast('업데이트 실패: ' + FBGuard.message(e), 'error');
   }
@@ -1587,7 +1587,7 @@ async function deleteSong(id) {
   const ok = await showConfirm('신청곡 삭제', '이 신청곡을 삭제하시겠습니까?');
   if (!ok) return;
   try {
-    await db.collection('songs').doc(id).delete();
+    await db.collection(BC + 'songs').doc(id).delete();
     showToast('삭제되었습니다', 'success');
   } catch(e) {
     showToast('삭제 실패: ' + FBGuard.message(e), 'error');
@@ -1598,7 +1598,7 @@ async function resetAllSongs() {
   const ok = await showConfirm('전체 초기화', '모든 신청곡을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.');
   if (!ok) return;
   try {
-    const snap = await db.collection('songs').get();
+    const snap = await db.collection(BC + 'songs').get();
     const batch = db.batch();
     snap.docs.forEach(d => batch.delete(d.ref));
     await batch.commit();
@@ -1615,7 +1615,7 @@ let _subItemCtr = 0;
 
 function loadManuals() {
   if (sectionUnsubscribers['manuals']) return;
-  sectionUnsubscribers['manuals'] = db.collection('manuals')
+  sectionUnsubscribers['manuals'] = db.collection(BC + 'manuals')
     .orderBy('createdAt', 'asc')
     .onSnapshot(snap => {
       manualDocs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -1714,10 +1714,10 @@ async function saveManual() {
   const subItems = getSubItemsFromForm();
   try {
     if (selectedManualId) {
-      await db.collection('manuals').doc(selectedManualId).update({ mainTitle, mainDesc, subItems });
+      await db.collection(BC + 'manuals').doc(selectedManualId).update({ mainTitle, mainDesc, subItems });
       showToast('수정되었습니다', 'success');
     } else {
-      await db.collection('manuals').add({ mainTitle, mainDesc, subItems, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      await db.collection(BC + 'manuals').add({ mainTitle, mainDesc, subItems, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
       showToast('저장되었습니다', 'success');
     }
   } catch(e) { showToast('저장 실패: ' + FBGuard.message(e), 'error'); }
@@ -1728,7 +1728,7 @@ async function deleteManual() {
   const ok = await showConfirm('매뉴얼 삭제', '이 매뉴얼 항목을 삭제하시겠습니까?');
   if (!ok) return;
   try {
-    await db.collection('manuals').doc(selectedManualId).delete();
+    await db.collection(BC + 'manuals').doc(selectedManualId).delete();
     showToast('삭제되었습니다', 'success');
     clearManualForm();
   } catch(e) { showToast('삭제 실패: ' + FBGuard.message(e), 'error'); }

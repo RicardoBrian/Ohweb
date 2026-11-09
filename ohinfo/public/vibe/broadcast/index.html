@@ -1392,7 +1392,7 @@ let teStudentsCache = null; // { '1': [...names], '2': [...], '3': [...] }
 async function teLoadStudents() {
   if (teStudentsCache) return teStudentsCache;
   try {
-    const snap = await db.collection('students').get();
+    const snap = await db.collection(BC + 'members').get();
     teStudentsCache = { '1': [], '2': [], '3': [] };
     snap.forEach(d => {
       const g = String(d.data().grade);
@@ -1540,7 +1540,7 @@ function openTaskEditModal(task, dateKey) {
 
 async function saveTaskEdit(dateKey, newTask, isNew) {
   try {
-    const docRef = db.collection('broadcasts').doc(dateKey);
+    const docRef = db.collection(BC + 'broadcasts').doc(dateKey);
     const snap = await docRef.get();
     let tasks = snap.exists ? (snap.data().tasks || []) : [];
     if (isNew) {
@@ -1570,7 +1570,7 @@ async function saveTaskEdit(dateKey, newTask, isNew) {
 async function deleteTask(dateKey, taskId) {
   showModal('일정 삭제', '이 일정을 삭제하시겠습니까?', async () => {
     try {
-      const docRef = db.collection('broadcasts').doc(dateKey);
+      const docRef = db.collection(BC + 'broadcasts').doc(dateKey);
       const snap = await docRef.get();
       if (!snap.exists) return;
       const tasks = (snap.data().tasks || []).filter(t => t.id !== taskId);
@@ -1586,7 +1586,7 @@ async function deleteTask(dateKey, taskId) {
 async function loadBroadcastDates() {
   try {
     const todayStr = new Date().toISOString().slice(0,10);
-    const snap = await db.collection('broadcasts').orderBy('dateValue', 'asc').get();
+    const snap = await db.collection(BC + 'broadcasts').orderBy('dateValue', 'asc').get();
     const sel = document.getElementById('date-select');
     sel.innerHTML = '<option value="">날짜를 선택하세요</option>';
     let autoSelect = null;
@@ -1638,8 +1638,8 @@ async function loadBroadcastForDate(dateKey) {
   taskList.innerHTML = '<div class="loading-row"><span class="spinner"></span> 방송 일정 불러오는 중…</div>';
   try {
     const [docSnap, attSnap] = await Promise.all([
-      db.collection('broadcasts').doc(dateKey).get(),
-      db.collection('attendance').where('date', '==', dateKey).get()
+      db.collection(BC + 'broadcasts').doc(dateKey).get(),
+      db.collection(BC + 'attendance').where('date', '==', dateKey).get()
     ]);
 
     currentAttendance = {};
@@ -1777,7 +1777,7 @@ async function toggleAbsent(tagEl, dateKey, taskId, period, name) {
   tagEl.style.opacity = '0.5';
   tagEl.style.pointerEvents = 'none';
   try {
-    await db.collection('attendance').doc(docId).set({
+    await db.collection(BC + 'attendance').doc(docId).set({
       date: dateKey,
       period: period,
       name: name,
@@ -1814,7 +1814,7 @@ let songsUnsubscribe = null;
 
 function initSongs() {
   songsLoaded = true;
-  songsUnsubscribe = db.collection('songs').orderBy('createdAt', 'desc')
+  songsUnsubscribe = db.collection(BC + 'songs').orderBy('createdAt', 'desc')
     .onSnapshot(snap => {
       const pending = [], done = [];
       snap.forEach(doc => {
@@ -1860,7 +1860,7 @@ function renderSongList(container, items, isDone) {
     btn.addEventListener('click', async () => {
       btn.disabled = true;
       try {
-        await db.collection('songs').doc(item.id).update({ isDone: !isDone });
+        await db.collection(BC + 'songs').doc(item.id).update({ isDone: !isDone });
       } catch (e) {
         console.error(e);
         showToast('업데이트 실패: ' + FBGuard.message(e), 'error');
@@ -1919,7 +1919,7 @@ document.getElementById('reset-songs-btn').addEventListener('click', () => {
     '모든 신청곡을 삭제합니다. 되돌릴 수 없습니다.',
     async () => {
       try {
-        const snap = await db.collection('songs').get();
+        const snap = await db.collection(BC + 'songs').get();
         if (snap.empty) { showToast('삭제할 신청곡이 없습니다.', 'info'); return; }
         const batch = db.batch();
         snap.forEach(doc => batch.delete(doc.ref));
@@ -1941,7 +1941,7 @@ async function loadManuals() {
   const container = document.getElementById('manual-groups');
   container.innerHTML = '<div class="loading-row"><span class="spinner"></span> 매뉴얼을 불러오는 중…</div>';
   try {
-    const snap = await db.collection('manuals').orderBy('createdAt', 'asc').get();
+    const snap = await db.collection(BC + 'manuals').orderBy('createdAt', 'asc').get();
     if (snap.empty) {
       container.innerHTML = '<div class="empty-state"><span class="empty-icon">📖</span>등록된 매뉴얼이 없습니다.</div>';
       return;
@@ -2118,8 +2118,11 @@ function openYouTubePlaylist() {
 }
 
 /* ─── Boot ────────────────────────────────────────────────────── */
-loadBroadcastDates();
-initSongs(); // start realtime listener immediately
+// 읽기도 방송부원(입장 토큰)·관리자만 된다 — 로그인이 끝난 뒤에 불러온다.
+FBGuard.ready().then(() => {
+  loadBroadcastDates();
+  initSongs(); // start realtime listener immediately
+});
 </script>
 </body>
 </html>
