@@ -20,6 +20,22 @@ const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePa
 const page = await browser.newPage({ locale: 'ko-KR' });
 page.on('request', (r) => { if (r.url().startsWith(HOST)) reqs.push({ method: r.method(), url: r.url() }); });
 page.on('pageerror', (e) => log('page error:', e.message));
+// 2026-11-07: 시간표 응답이 'enc5:…' 로 암호화됨 → 페이지가 스스로 푼 직후(JSON.parse)의 시간표를 가로챈다
+await page.addInitScript(() => {
+  window.__comciRaw = [];
+  const orig = JSON.parse;
+  JSON.parse = function (t, ...r) {
+    const v = orig.call(this, t, ...r);
+    try { if (typeof t === 'string' && t.length > 2000 && v && v['학급수']) window.__comciRaw.push(t); } catch {}
+    return v;
+  };
+});
+const raws = new Map(); // 주(r) → 해독된 시간표 글
+async function grabRaw() {
+  for (const t of await page.evaluate(() => window.__comciRaw.splice(0)).catch(() => [])) {
+    try { const v = JSON.parse(t); if (![...raws.values()].includes(t)) raws.set(String(raws.size + 1), t); } catch {}
+  }
+}
 // 시간표 데이터 응답의 모양을 남긴다(암호화 여부 확인용)
 const bodies = [];
 page.on('response', async (r) => {
@@ -68,6 +84,16 @@ try {
     await page.waitForTimeout(3000);
   }
   await page.screenshot({ path: 'out/3-timetable.png', fullPage: true });
+  await grabRaw();
+  // 다음 주: 일자 목록(select)에서 두 번째 주를 고른다
+  const sel = page.locator('select').filter({ hasText: '~' }).first();
+  const opts = await sel.locator('option').allTextContents().catch(() => []);
+  log('일자 목록:', JSON.stringify(opts));
+  for (let i = 1; i < opts.length; i++) {
+    await sel.selectOption({ index: i }).catch((e) => log('주 선택 실패:', e.message));
+    await page.waitForTimeout(3000);
+    await grabRaw();
+  }
   result = analyze();
 } catch (e) {
   log('오류:', e.message);
@@ -81,6 +107,12 @@ try {
 
 log('요청', reqs.length, '건:', reqs.map((r) => r.url).join('\n  '));
 log('결과:', JSON.stringify(result));
+for (const [r, t] of raws) {
+  writeFileSync(`out/raw-week${r}.json`, t);
+  const v = JSON.parse(t);
+  log(`해독된 시간표 ${r}주:`, t.length, '자, 학교', v['학교명'], '일자', JSON.stringify(v['일자자료']));
+}
+if (!raws.size) log('해독된 시간표를 못 가로챔');
 if (!result.route || !result.search || result.prefix == null) {
   console.error('[capture] 접속 정보를 다 찾지 못함 — out/ 의 화면·요청 기록을 확인할 것');
   process.exit(1);
