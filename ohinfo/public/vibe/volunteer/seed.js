@@ -11,12 +11,8 @@
   const [Y, S] = TERM.split('-').map(Number);
   const termStart = S === 1 ? `${Y}-03-02` : `${Y}-08-20`;
   const termEnd = S === 1 ? `${Y}-07-20` : `${Y + 1}-02-10`;
-  // GWVS 가 통합 프로젝트 구조로 바뀌는 중이라(2026-11) 예전·새 경로에 같은 견본을 둘 다 넣는다.
-  // 예전: artifacts/.../data, teachers/{uid}, 학기별 roster   새: apps/volunteer, staff/{이메일}, years/{학년도}/students
-  // GWVS 전환이 끝나면 예전 경로 부분(old)은 지운다.
+  // GWVS 는 통합 프로젝트(gwansan-work) 구조: apps/volunteer, 교사 staff/{이메일}, 명렬표 years/{학년도}/students
   const LAYOUTS = [
-    { D: 'artifacts/volunteer-portal-gwvs/public/data', teacherDoc: (uid, email) => `teachers/${uid}`, teacherId: U.uid,
-      rosterCol: (D) => `${D}/roster`, rid: (n) => `${TERM}_1-1-${n}` },
     { D: 'apps/volunteer', teacherDoc: (uid, email) => `staff/${email}`, teacherId: U.email,
       rosterCol: () => `years/${Y}/students`, rid: (n) => `${Y}-1-1-${n}` },
   ];
