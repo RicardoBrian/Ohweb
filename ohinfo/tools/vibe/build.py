@@ -124,7 +124,15 @@ def build_student():
 
 def build_classlog():
     """수업일지 (ohlog/public) → vibe/classlog. 시간표는 shared/api/comci.js가 가상으로 만든다."""
-    copy_tree(ROOT / 'ohlog/public', VIBE / 'classlog', exclude=['_headers'], keep=['firebase-config.js'])
+    copy_tree(ROOT / 'ohlog/public', VIBE / 'classlog', exclude=['_headers', 'sw.js'], keep=['firebase-config.js'])
+    # 수업일지의 서비스 워커는 사이트 맨 위(/sw.js)에 등록된다. 견본(kakainfo.com/vibe/classlog)에서
+    # 등록되면 kakainfo.com 전체를 건드릴 수 있으니 견본에서는 등록하지 않는다.
+    app = VIBE / 'classlog/app.js'
+    src = app.read_text(encoding='utf-8')
+    reg = "navigator.serviceWorker.register('/sw.js')"
+    if reg not in src:
+        sys.exit('build_classlog: 서비스 워커 등록 줄을 못 찾음 — ohlog/public/app.js 가 바뀌었으면 여기를 맞출 것')
+    app.write_text(src.replace(reg, "Promise.resolve() /* 견본: 서비스 워커 안 씀 */"), encoding='utf-8')
 
 
 def build_shortener():

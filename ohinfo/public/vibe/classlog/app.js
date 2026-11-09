@@ -19,6 +19,8 @@ const sdkReady = (async () => {
 })();
 
 const ADMIN_EMAIL = 'teacher@example.com';
+// 출석 관리(별도 사이트·별도 Firebase)는 데이터를 합치지 않고 링크로만 연결한다. 통합(내년 다음 학기)할 때 여기부터 바꾼다.
+const ATTEND_URL = 'https://attend.gwansan.com';
 const DAYS = ['일', '월', '화', '수', '목', '금', '토'];
 const STATUS = { normal: '정상', makeup: '보강', self: '자습', cancel: '결강' };
 const KIND = { makeup: '보강', swap: '교환', etc: '기타' };
@@ -82,10 +84,21 @@ function ask(title, msg, okLabel = '확인') {
     $('askYes').onclick = () => done(true); $('askNo').onclick = () => done(false);
   });
 }
+// 컴시간 오류는 영어 코드·긴 줄 대신 짧은 한국어로 (원문은 콘솔에)
+function ttError(e) {
+  console.warn('[comci]', e);
+  const raw = String(e?.message || e);
+  const first = raw.split('\n').map((x) => x.trim()).filter(Boolean).at(-1) || raw; // 맨 마지막 줄이 가장 구체적인 원인
+  const msg = e?.diag?.recheck ? '컴시간 주소가 바뀌어 새 주소를 찾는 중이에요. 1~2분 뒤 자동으로 다시 받아요(그동안은 저장해 둔 시간표).'
+    : /컴시간 접속 실패|못 찾음|HTTP 5\d\d|HTTP 424|Failed to fetch|Timeout|aborted|NetworkError|Load failed/i.test(raw)
+    ? '컴시간이 지금 응답하지 않아요. 저장해 둔 시간표를 보여드려요. 잠시 뒤 다시 눌러주세요.'
+    : `시간표를 불러오지 못했어요: ${raw.split('\n')[0]}`;
+  return S.admin ? `${msg} [${first.slice(0, 110)}]` : msg; // 관리자에게는 원인을 짧게 덧붙인다
+}
 async function api(qs) {
   const r = await fetch('/api/comci?' + qs);
   const d = await r.json().catch(() => ({ error: `HTTP ${r.status}` }));
-  if (d.error) throw new Error(d.error);
+  if (d.error) { const err = new Error(d.error); err.diag = d.diag; err.status = r.status; throw err; }
   return d;
 }
 function show(screen) {
@@ -110,9 +123,28 @@ let CODE_V = null, PENDING_V = null, updating = false;
 if (location.search.includes('v=')) history.replaceState(null, '', location.pathname + location.hash); // 새로고침 때 붙인 ?v= 정리
 async function fetchVersion() { return (await (await fetch('/api/version', { cache: 'no-store' })).json()).v; }
 const busy = () => document.querySelector('.modal-overlay.show') || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
-function reloadFresh(v) { updating = true; location.replace(`${location.pathname}?v=${v}${location.hash}`); } // 주소가 달라서 캐시 없이 새로 받는다
+function reloadFresh(v) {
+  updating = true;
+  const sw = navigator.serviceWorker?.controller;
+  if (!sw) { location.replace(`${location.pathname}?v=${v}${location.hash}`); return; } // 주소가 달라서 캐시 없이 새로 받는다
+  // 화면 파일을 폰에 보관하는 경우: 보관본부터 새로 받게 하고(최대 8초) 다시 연다
+  const ch = new MessageChannel();
+  const done = () => location.reload();
+  const t = setTimeout(done, 8000);
+  ch.port1.onmessage = () => { clearTimeout(t); done(); };
+  sw.postMessage({ type: 'refresh' }, [ch.port2]);
+}
+// 서비스 워커(sw.js): 화면 파일을 폰에 보관해 켤 때 바로 뜨게 한다. 뒤에서 새 버전을 받으면 'updated' 를 알려 준다.
+if ('serviceWorker' in navigator) {
+  Promise.resolve() /* 견본: 서비스 워커 안 씀 */.catch((e) => console.warn('[sw]', e));
+  navigator.serviceWorker.addEventListener('message', (e) => {
+    if (e.data?.type !== 'updated' || updating) return;
+    if (!busy()) { updating = true; location.reload(); } else $('updateBar').classList.remove('hidden');
+  });
+}
 async function checkUpdate(manual = false) {
   if (updating) return;
+  navigator.serviceWorker?.controller?.postMessage({ type: 'check' }); // 보관한 화면 파일도 뒤에서 새 버전 확인
   try {
     const v = await fetchVersion();
     if (!v) throw new Error('no version');
@@ -168,9 +200,27 @@ function bootFromCache() {
 }
 
 // 프로필 상태에 맞는 화면으로
+// 개인정보 처리방침 버전(privacy.html 시행일). 바꾸면 모두에게 다시 동의를 받는다.
+const PRIVACY_VER = '2026-11-04';
+const privacyFields = () => ({ privacyVersion: PRIVACY_VER, privacyAgreedAt: serverTimestamp() });
 function route(before) {
   const p = S.profile;
   if (S.forceOnboard || !p) { startOnboard(); return; }
+  // 이미 가입한 선생님: 동의 기록이 없으면 한 번 받는다
+  if (p.privacyVersion !== PRIVACY_VER && store.get('classlog:privacy') !== PRIVACY_VER + ':' + S.user.uid) {
+    $('privacyModal').classList.add('show');
+    $('privacyYes').onclick = async () => {
+      $('privacyYes').disabled = true;
+      await sdkReady;
+      try { await setDoc(userRef(), { ...privacyFields(), updatedAt: serverTimestamp() }, { merge: true }); }
+      catch (e) { console.warn('[동의 저장 실패]', e); store.set('classlog:privacy', PRIVACY_VER + ':' + S.user.uid); } // 저장이 막혀도(규칙 게시 전) 쓰는 건 막지 않는다
+      $('privacyYes').disabled = false;
+      $('privacyModal').classList.remove('show');
+      p.privacyVersion = PRIVACY_VER;
+      route(before);
+    };
+    return;
+  }
   if (p.status !== 'approved') {
     stopApp();
     $('pendTitle').textContent = p.status === 'rejected' ? '승인되지 않았어요' : '승인 대기 중';
@@ -231,9 +281,10 @@ async function pickSchool(s) {
 }
 $('obBack').onclick = () => { steps(1); $('obSchool').classList.remove('hidden'); $('obTeacher').classList.add('hidden'); };
 $('obTeacherSel').onchange = previewTeacher;
+$('obAgree').onchange = () => { $('obSubmit').disabled = !Number($('obTeacherSel').value) || !$('obAgree').checked; };
 async function previewTeacher() {
   const id = Number($('obTeacherSel').value);
-  $('obSubmit').disabled = !id;
+  $('obSubmit').disabled = !id || !$('obAgree').checked;
   if (!id) { $('obPreview').innerHTML = ''; return; }
   steps(3);
   $('obPreview').innerHTML = '<div class="spinner"></div>';
@@ -261,6 +312,7 @@ $('obSubmit').onclick = async () => {
     teacherId: id, teacherName: t.name,
     // 관리자 본인은 바로 승인. 이미 승인된 사람이 같은 이름을 다시 고르면 그대로 둔다.
     status: S.admin || (same && p.status === 'approved') ? 'approved' : 'pending',
+    ...privacyFields(),
     updatedAt: serverTimestamp(),
   };
   if (!p) data.createdAt = serverTimestamp();
@@ -303,6 +355,7 @@ async function startApp() {
   }, (e) => toast(`${name} 읽기 실패: ${e.code}`));
   S.unsub.push(live('logs', S.logs), live('plans', S.plans), live('extras', S.extras));
   if (S.admin) {
+    checkComciSync();
     S.unsub.push(onSnapshot(collection(db, 'classlog_users'), (snap) => {
       S.users = snap.docs.map((d) => ({ uid: d.id, ...d.data() })); renderAdmin(); buildMenu();
     }, (e) => toast('사용자 목록 실패: ' + e.code)));
@@ -314,7 +367,7 @@ async function startApp() {
   const cached = restoreTt();
   go(location.hash.slice(1) || defaultView(), true);
   if (cached) renderAll();
-  try { await loadWeek(null); } catch (e) { toast('시간표 불러오기 실패: ' + e.message); }
+  try { await loadWeek(null); } catch (e) { toast(ttError(e)); reportComciFailure(e); applyFallback(); }
   // 주말이면 다음 주를 먼저 보여준다
   if ([0, 6].includes(dow(todayISO()))) {
     const nx = S.weeks[S.weeks.findIndex((w) => w.r === S.curWeek) + 1];
@@ -327,7 +380,26 @@ async function startApp() {
 // 시간표 보관(localStorage): 컴시간이 느리거나 끊겨도 마지막 시간표가 바로 보이게
 const ttKey = () => `classlog:tt:${S.profile.schoolCode}:${S.profile.teacherId}`;
 function saveTt() {
-  store.set(ttKey(), JSON.stringify({ weeks: S.weeks, times: S.times, cur: S.curWeek, classCount: S.classCount, homeroom: S.homeroom, teachers: S.teachers, debug: S.ttDebug, tt: Object.fromEntries(S.tt) }));
+  store.set(ttKey(), JSON.stringify({ weeks: S.weeks.filter((w) => !w.arch), times: S.times, cur: S.curWeek, classCount: S.classCount, homeroom: S.homeroom, teachers: S.teachers, debug: S.ttDebug,
+    tt: Object.fromEntries([...S.tt].filter(([r]) => r >= 0)) }));
+}
+// 지난 주 보관: 컴시간은 지난 주를 주지 않는다 → 받아 본 주의 내 시간표를 기기에 남겨 두고(최근 12주)
+// 주 목록 앞에 '저장본'으로 붙인다. 번호(r)는 음수로 따로 둬서 컴시간 주 번호와 섞이지 않게 한다.
+const archKey = () => `classlog:arch:${S.profile.schoolCode}:${S.profile.teacherId}`;
+function mergeArchive() {
+  let a = {};
+  try { a = JSON.parse(store.get(archKey()) || '{}') || {}; } catch {}
+  if (!S.fallbackFrom) for (const w of S.weeks) if (w.start && !w.arch && w.r >= 0 && S.tt.get(w.r)?.length) a[w.start] = S.tt.get(w.r);
+  const keep = Object.keys(a).sort().slice(-12);
+  a = Object.fromEntries(keep.map((k) => [k, a[k]]));
+  store.set(archKey(), JSON.stringify(a));
+  for (const w of S.weeks) if (w.arch) S.tt.delete(w.r);
+  S.weeks = S.weeks.filter((w) => !w.arch);
+  const first = S.weeks.map((w) => w.start).filter(Boolean).sort()[0];
+  const old = keep.filter((k) => !first || k < first);
+  const arch = old.map((k, i) => ({ r: i - old.length, label: k, start: k, arch: true }));
+  arch.forEach((w) => S.tt.set(w.r, a[w.start]));
+  S.weeks = [...arch, ...S.weeks];
 }
 function restoreTt() {
   try {
@@ -335,7 +407,8 @@ function restoreTt() {
     if (!c?.tt) return false;
     S.weeks = c.weeks || []; S.times = c.times || []; S.curWeek = c.cur ?? null; S.week = S.week ?? c.cur ?? null;
     S.classCount = c.classCount || []; S.homeroom = c.homeroom || []; S.teachers = c.teachers || []; S.ttDebug = c.debug || null;
-    for (const [r, v] of Object.entries(c.tt)) { S.tt.set(Number(r), v); S.stale.add(Number(r)); }
+    for (const [r, v] of Object.entries(c.tt)) { if (Number(r) < 0) continue; S.tt.set(Number(r), v); S.stale.add(Number(r)); }
+    mergeArchive();
     return S.tt.size > 0;
   } catch { return false; }
 }
@@ -347,11 +420,15 @@ function loadWeek(r, force) {
   const key = r ?? 'now';
   if (S.ttLoading.has(key)) return S.ttLoading.get(key);
   const p = S.profile;
-  const job = api(`code=${p.schoolCode}&teacher=${p.teacherId}` + (r != null ? `&week=${r}` : ''))
+  const job = api(`code=${p.schoolCode}&teacher=${p.teacherId}` + (r != null ? `&week=${r}` : '') + (force ? '&fresh=1' : ''))
     .then((d) => {
+      S.ttStale = !!d.stale;
+      if (S.fallbackFrom) { S.fallbackFrom = null; S.tt.delete(0); }
       S.weeks = d.weeks; S.times = d.times; S.ttDebug = d.debug; S.classCount = d.classCount || []; S.homeroom = d.homeroom || []; S.teachers = d.teachers || [];
       S.tt.set(r ?? d.week, d.lessons.map(fromComci));
       S.ttFail.delete(r ?? d.week); S.stale.delete(r ?? d.week);
+      mergeArchive();
+      if (!S.weeks.some((w) => w.r === S.week)) S.week = S.curWeek ?? d.week; // (대체 시간표 주 등) 없어진 주를 보고 있었으면 이번 주로
       saveTt();
       // '오늘이 속한 주'는 week 를 안 주고 받았을 때만 알 수 있다(다른 주를 받은 응답으로 정하면 안 됨)
       if (r == null) S.curWeek = d.week;
@@ -362,6 +439,62 @@ function loadWeek(r, force) {
     .finally(() => S.ttLoading.delete(key));
   S.ttLoading.set(key, job);
   return job;
+}
+// ── 컴시간이 안 될 때 ──
+// ① 최근에 받아 둔 주(기기 보관)의 시간표를 이번 주 날짜에 맞춰 보여준다(시간표는 대개 매주 같다). 화면에 그렇다고 알린다.
+const mondayOf = (iso) => addDays(iso, -((dow(iso) + 6) % 7));
+function applyFallback() {
+  const today = todayISO();
+  const w = weekOf(today);
+  if (w && S.tt.get(w.r)?.length) return; // 이번 주 시간표가 이미 있으면 그대로
+  const base = S.weeks.filter((x) => x.start && S.tt.get(x.r)?.length).sort((a, b) => b.start.localeCompare(a.start))[0];
+  if (!base) return;
+  const mon = mondayOf([0, 6].includes(dow(today)) ? addDays(today, 2) : today); // 주말이면 다음 주
+  S.tt.set(0, S.tt.get(base.r).map((l) => ({ ...l, date: addDays(mon, l.day - 1), changed: false })));
+  S.weeks = [{ r: 0, label: `${md(mon)} ~ ${md(addDays(mon, 5))}`, start: mon }];
+  S.curWeek = S.week = 0; S.date = [0, 6].includes(dow(today)) ? mon : today;
+  S.fallbackFrom = base.start;
+  mergeArchive();
+  renderAll();
+}
+const fallbackNote = () => (S.fallbackFrom
+  ? `<p class="fallback-note">컴시간에 연결할 수 없어 <b>${md(S.fallbackFrom)} 주</b> 시간표를 이번 주에 맞춰 보여드려요. 바뀐 수업은 반영되지 않았을 수 있어요.</p>` : '');
+// ② 무엇이 실패했는지(서버가 받은 컴시간 페이지 모양 포함) 관리자 텔레그램으로 자동 보고한다 — 하루 한 번, 기기마다.
+// 컴시간이 접속 주소를 바꾼 직후면 서버가 자동 확인을 돌려 둔다(diag.recheck) → 1~2분 뒤 알아서 다시 받는다.
+// 세 번(약 7분) 다시 받아도 안 되면 그때 보고한다.
+let recheckTimer = null, recheckN = 0;
+function scheduleRecheck() {
+  if (recheckN >= 3) { recheckN = 0; return false; }
+  clearTimeout(recheckTimer);
+  recheckTimer = setTimeout(async () => {
+    recheckN++;
+    try {
+      await loadWeek(null, true);
+      recheckN = 0; S.ttFail.clear(); S.clsTT.clear();
+      toast('컴시간의 새 주소로 시간표를 다시 받았어요'); renderAll();
+    } catch (err) { reportComciFailure(err); }
+  }, [90, 120, 180][recheckN] * 1000);
+  return true;
+}
+async function reportComciFailure(e) {
+  if (!e?.status) return; // 서버가 컴시간 실패를 알려준 경우만(폰이 잠깐 오프라인인 건 보고하지 않음)
+  if (e?.diag?.recheck && scheduleRecheck()) return;
+  try {
+    const day = todayISO();
+    if (store.get('classlog:comci-report') === day) return;
+    store.set('classlog:comci-report', day);
+    await sdkReady;
+    const p = S.profile;
+    const text = (`[자동 진단] 시간표 불러오기 실패\n${String(e?.message || e).slice(0, 300)}\n`
+      + `진단: ${JSON.stringify(e?.diag || { status: e?.status })}`).slice(0, 1000);
+    await addDoc(collection(db, 'classlog_feedback'), {
+      uid: S.user.uid, email: S.user.email, teacherName: p.teacherName, schoolName: p.schoolName,
+      kind: 'bug', text, view: 'auto', ua: navigator.userAgent.slice(0, 160), createdAt: serverTimestamp(),
+    });
+    fetch(GAS_URL, { method: 'POST', body: JSON.stringify({
+      secret: GAS_SECRET, action: 'notify', studentName: `[수업일지 자동 진단] ${p.teacherName}`, school: p.schoolName, grade: '', class: '', number: '', preview: text,
+    }) }).catch(() => {});
+  } catch (err) { console.warn('[comci 자동 보고 실패]', err); }
 }
 const needWeek = (w) => w && !S.tt.has(w.r) && !S.ttFail.has(w.r);
 const fromComci = (x) => ({
@@ -387,6 +520,19 @@ function slotsFor(date) {
 const PREFS_ID = '_prefs';
 const prefs = () => S.plans.get(PREFS_ID) || {};
 const planDocs = () => [...S.plans.values()].filter((p) => p.id !== PREFS_ID && Array.isArray(p.items));
+const myHomeroom = () => {
+  const h = prefs().homeroom;
+  if (h?.grade && h?.cls) return { grade: h.grade, cls: h.cls, manual: true };
+  const c = S.homeroom[0]; // 컴시간 '담임' 표에서 찾은 반(추측이라 직접 등록이 우선)
+  return c ? { grade: c.grade, cls: c.class } : null;
+};
+async function saveHomeroom(h) {
+  await sdkReady;
+  try {
+    await setDoc(doc(sub('plans'), PREFS_ID), { homeroom: h, updatedAt: serverTimestamp() }, { merge: true });
+    toast(h ? '내 학급으로 설정했어요' : '내 학급 지정을 풀었어요');
+  } catch (e) { toast('저장 실패: ' + e.code); }
+}
 const noPlan = (subject) => (prefs().noPlan || []).includes(subject);
 const subjIdx = (subject) => { const i = (prefs().subjectOrder || []).indexOf(subject); return i < 0 ? 1000 : i; };
 const bySubject = (a, b) => subjIdx(a.subject) - subjIdx(b.subject) || a.subject.localeCompare(b.subject);
@@ -421,7 +567,7 @@ const MENU = [
   ['관리', [['plan', '진도 계획', 'list'], ['export', '내보내기', 'download'], ['settings', '설정', 'gear'], ['admin', '승인 관리', 'check', true]]],
 ];
 // 폰 하단 탭: 시간표가 맨 앞(처음 열면 시간표). 진도 계획·내보내기는 설정의 바로가기에서도 열 수 있다
-const TABS = [['week', '시간표', 'calendar'], ['today', '오늘', 'sun'], ['progress', '진도', 'chart'], ['class', '학급·교사', 'people'], ['settings', '설정', 'gear']];
+const TABS = [['week', '시간표', 'calendar'], ['today', '오늘', 'sun'], ['progress', '진도', 'chart'], ['class', '학급', 'people'], ['settings', '설정', 'gear']];
 const ICONS = {
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/>',
   calendar: '<rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
@@ -440,6 +586,7 @@ const ICONS = {
   text: '<path d="M4 19 9.5 5 15 19M6 14h7M16.5 19l2.5-6 2.5 6M17.4 17h3.2"/>',
   ig: '<rect x="4" y="4" width="16" height="16" rx="4.5"/><circle cx="12" cy="12" r="3.6"/><circle cx="16.6" cy="7.4" r=".6"/>',
   mail: '<rect x="3.5" y="5.5" width="17" height="13" rx="2"/><path d="m4 7 8 6 8-6"/>',
+  shield: '<path d="M12 3 5 6v5.5c0 4.3 3 8 7 9.5 4-1.5 7-5.2 7-9.5V6z"/><path d="m9 12 2 2 4-4"/>',
 };
 const icon = (n, s) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]}</svg>`;
 // 카드 머리글: 아이콘 + 제목 + 한 줄 설명 (+ 오른쪽 버튼) — 상자마다 역할이 보이게
@@ -451,14 +598,19 @@ function fillCredit() {
     el.innerHTML = `<div>© ${new Date().getFullYear()} 견본중학교 견본 선생님 · 수업일지</div><div class="links">
       <a href="https://www.instagram.com/" target="_blank" rel="noopener" aria-label="인스타그램 (견본)" title="인스타그램 (견본)">${icon('ig', 18)}</a>
       <a href="mailto:teacher@example.com" aria-label="메일 teacher@example.com" title="메일 teacher@example.com">${icon('mail', 18)}</a>
+      <a href="privacy.html" target="_blank" rel="noopener" aria-label="개인정보 처리방침" title="개인정보 처리방침">${icon('shield', 18)}</a>
       ${el.dataset.fb ? `<button type="button" class="link-btn" data-act="feedback" aria-label="피드백 남기기" title="피드백 남기기">${icon('chat', 18)}</button>` : ''}</div>`;
   });
 }
 function buildMenu() {
   const pending = S.users.filter((u) => u.status === 'pending').length;
   $('sideMenu').innerHTML = MENU.map(([head, items]) => `<div class="side-head">${head}</div>` + items.map(([id, label, ic, adminOnly]) =>
-    `<button type="button" class="side-item${adminOnly ? ' admin-only' : ''}" data-go="${id}">${icon(ic, 18)}${label}${id === 'admin' && pending ? ` <span class="badge off" style="margin-left:auto">${pending}</span>` : ''}</button>`).join('')).join('');
-  $('tabbar').innerHTML = TABS.map(([id, label, ic]) => `<button type="button" class="tab" data-go="${id}">${icon(ic, 22)}${label}</button>`).join('');
+    `<button type="button" class="side-item${adminOnly ? ' admin-only' : ''}" data-go="${id}">${icon(ic, 18)}${label}${id === 'admin' && (pending || S.sync?.warn) ? ` <span class="badge off" style="margin-left:auto">${pending || '!'}</span>` : ''}</button>`).join('')).join('');
+  // 출석 관리(별도 사이트)는 설정 앞에 외부 링크 탭으로 — 누르면 새 창(홈 화면 앱에서는 Safari 시트)으로 열린다
+  const tab = ([id, label, ic]) => `<button type="button" class="tab" data-go="${id}">${icon(ic, 22)}${label}</button>`;
+  $('tabbar').innerHTML = TABS.slice(0, -1).map(tab).join('')
+    + `<a class="tab" href="${ATTEND_URL}" target="_blank" rel="noopener">${icon('check', 22)}출석</a>` + tab(TABS.at(-1));
+  $('sideMenu').insertAdjacentHTML('beforeend', `<div class="side-head">연결</div><a class="side-item" href="${ATTEND_URL}" target="_blank" rel="noopener">${icon('check', 18)}출석 관리<span class="ext">↗</span></a>`);
   document.querySelectorAll('.admin-link').forEach((el) => el.classList.toggle('hidden', !S.admin));
   markMenu();
 }
@@ -468,6 +620,7 @@ function markMenu() {
 }
 function go(view, replace) {
   if (!$('sec-' + view) || (view === 'admin' && !S.admin)) view = defaultView();
+  if (view === 'class' && S.view !== 'class') { S.cls = null; S.clsMode = 'class'; } // 탭을 열면 내 학급이 제일 먼저
   S.view = view;
   document.querySelectorAll('.section').forEach((s) => s.classList.toggle('active', s.id === 'sec-' + view));
   const title = { today: '오늘 수업', week: '시간표', class: '학급·교사 시간표', progress: '반별 진도', plan: '진도 계획', export: '내보내기', settings: '설정', admin: '승인 관리' }[view];
@@ -493,7 +646,7 @@ async function renderToday() {
   const w = weekOf(date);
   if (needWeek(w)) {
     $('todayList').innerHTML = '<div class="spinner"></div>';
-    try { await loadWeek(w.r); } catch (e) { toast('시간표 불러오기 실패: ' + e.message); }
+    try { await loadWeek(w.r); } catch (e) { toast(ttError(e)); }
     if (S.date === date && S.view === 'today') renderToday();
     return;
   }
@@ -501,7 +654,7 @@ async function renderToday() {
   const slots = slotsFor(date);
   const written = slots.filter((s) => S.logs.has(logId(s))).length;
   $('todayCount').textContent = slots.length ? `수업 ${slots.length} · 작성 ${written}` : '수업';
-  $('todayNote').innerHTML = !S.weeks.length ? ''
+  $('todayNote').innerHTML = S.fallbackFrom ? fallbackNote() : !S.weeks.length ? ''
     : !w ? '<p class="muted small" style="margin-bottom:8px">컴시간에 이 날짜 시간표가 없어요(컴시간은 이번 주·다음 주 정도만 보여줘요). 기록한 수업과 직접 추가한 수업만 보여요.</p>' : '';
   if (!slots.length) {
     $('todayList').innerHTML = `<div class="empty-state">${[0, 6].includes(dow(date)) ? '주말이에요.' : '수업이 없어요.'}</div>`;
@@ -574,7 +727,7 @@ $('todayDate').onchange = (e) => { if (e.target.value) { S.date = e.target.value
 // 주 선택(내 시간표·학급 시간표가 같은 주를 본다): 이전·다음 버튼과 목록
 function syncWeekControls() {
   // 폰에서 잘리지 않게 "10/26 ~ 10/31" 짧은 모양으로
-  const opts = S.weeks.map((w) => `<option value="${w.r}">${w.start ? `${md(w.start)} ~ ${md(addDays(w.start, 5))}` : esc(w.label)}${w.r === S.curWeek ? ' · 이번 주' : ''}</option>`).join('');
+  const opts = S.weeks.map((w) => `<option value="${w.r}">${w.start ? `${md(w.start)} ~ ${md(addDays(w.start, 5))}` : esc(w.label)}${w.r === S.curWeek ? ' · 이번 주' : ''}${w.arch ? ' · 저장본' : ''}</option>`).join('');
   for (const id of ['weekSel', 'clsWeekSel']) { $(id).innerHTML = opts; if (S.week != null) $(id).value = S.week; }
   const i = S.weeks.findIndex((w) => w.r === S.week);
   document.querySelectorAll('[data-act="wk"]').forEach((b) => {
@@ -585,16 +738,16 @@ function syncWeekControls() {
 async function renderWeek() {
   syncWeekControls();
   if (!S.weeks.length) { $('weekGrid').innerHTML = '<div class="spinner"></div>'; return; }
-  const w = S.weeks.find((x) => x.r === S.week) || S.weeks[0];
+  const w = S.weeks.find((x) => x.r === S.week) || S.weeks.find((x) => x.r === S.curWeek) || S.weeks.find((x) => !x.arch) || S.weeks[0];
   if (needWeek(w)) {
     $('weekGrid').innerHTML = '<div class="spinner"></div>';
-    try { await loadWeek(w.r); } catch (e) { toast('시간표 불러오기 실패: ' + e.message); }
+    try { await loadWeek(w.r); } catch (e) { toast(ttError(e)); }
     if (S.view === 'week') renderWeek();
     return;
   }
   const slots = [];
   for (let d = 0; d < 5; d++) slots.push(...slotsFor(addDays(w.start, d)));
-  $('weekGrid').innerHTML = weekTable(slots, w.start);
+  $('weekGrid').innerHTML = fallbackNote() + weekTable(slots, w.start);
   $('weekGrid').querySelectorAll('.slot').forEach((b) => (b.onclick = () => openLog(slots[b.dataset.i])));
 }
 for (const id of ['weekSel', 'clsWeekSel']) $(id).onchange = (e) => { S.week = Number(e.target.value); renderView(); };
@@ -638,7 +791,8 @@ async function renderClass() {
   $('clsMode').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === (teacherMode ? 'teacher' : 'class')));
   for (const id of ['clsGrade', 'clsNum']) $(id).classList.toggle('hidden', teacherMode);
   $('clsTeacher').classList.toggle('hidden', !teacherMode);
-  const w = S.weeks.find((x) => x.r === S.week) || S.weeks[0];
+  const w = S.weeks.find((x) => x.r === S.week) || S.weeks.find((x) => x.r === S.curWeek) || S.weeks.find((x) => !x.arch) || S.weeks[0];
+  if (w.arch) { $('clsGrid').innerHTML = '<div class="card"><div class="empty-state">지난 주 저장본에는 내 시간표만 있어요.<br>학급·교사 시간표는 컴시간이 주는 주(이번 주부터)만 볼 수 있어요.</div></div>'; return; }
   let key, qs, title, badge = '', sub;
   if (teacherMode) {
     if (!S.teachers.length) { $('clsGrid').innerHTML = '<div class="spinner"></div>'; return; }
@@ -651,8 +805,8 @@ async function renderClass() {
     key = `${w.r}|t${t.id}`; qs = `code=${S.profile.schoolCode}&week=${w.r}&teacher=${t.id}`;
   } else {
     if (!S.cls) {
-      const hr = S.homeroom[0], mine = myClasses()[0];
-      S.cls = hr ? { grade: hr.grade, cls: hr.class } : mine ? { grade: mine.grade, cls: mine.cls } : { grade: 1, cls: 1 };
+      const hr = myHomeroom(), mine = myClasses()[0];
+      S.cls = hr ? { grade: hr.grade, cls: hr.cls } : mine ? { grade: mine.grade, cls: mine.cls } : { grade: 1, cls: 1 };
     }
     const grades = []; for (let g = 1; g < cc.length; g++) if (cc[g] > 0) grades.push(g);
     if (!grades.includes(S.cls.grade)) S.cls = { grade: grades[0] || 1, cls: 1 };
@@ -663,7 +817,8 @@ async function renderClass() {
     $('clsNum').value = S.cls.cls;
     const { grade, cls } = S.cls;
     title = `${grade}학년 ${cls}반 시간표`; sub = '과목 · 선생님 (컴시간 기준)';
-    badge = S.homeroom.some((h) => h.grade === grade && h.class === cls) ? '<span class="badge on">내 담임 반</span>' : '<span class="badge muted">보기 전용</span>';
+    const hr = myHomeroom();
+    badge = hr && hr.grade === grade && hr.cls === cls ? '<span class="badge on">내 학급</span>' : '<button type="button" class="btn sm" data-act="set-homeroom">내 학급으로 설정</button>';
     key = `${w.r}|${grade}-${cls}`; qs = `code=${S.profile.schoolCode}&week=${w.r}&grade=${grade}&class=${cls}`;
   }
   $('clsTitle').textContent = title; $('clsSub').textContent = sub; $('clsBadge').innerHTML = badge;
@@ -1092,7 +1247,7 @@ $('orderSave').onclick = async () => {
   await sdkReady;
   $('orderSave').disabled = true;
   try {
-    await setDoc(doc(sub('plans'), PREFS_ID), { subjectOrder: OD.order, noPlan: [...OD.off], updatedAt: serverTimestamp() });
+    await setDoc(doc(sub('plans'), PREFS_ID), { subjectOrder: OD.order, noPlan: [...OD.off], updatedAt: serverTimestamp() }, { merge: true });
     $('orderModal').classList.remove('show'); toast('순서를 저장했어요');
     PLAN_DRAFT = null; S.planKey = null; // 새 순서의 맨 위 과목으로
   } catch (e) { toast('저장 실패: ' + e.code); }
@@ -1143,6 +1298,14 @@ function renderSettings() {
   const d = S.ttDebug;
   $('ttDebugBox').classList.toggle('hidden', !(S.admin && d)); // 개발용 진단은 관리자에게만, 접어서
   $('ttDebug').textContent = d ? `해석: ${d.mode} · 분리 ${d.sep} · 겹침 ${d.clashes} · 전체 수업 ${d.cells}칸 · 담임표 ${d.homeroom}` : '';
+  // 내 학급: 학년·반을 고르면 바로 저장
+  const cc = S.classCount, h = prefs().homeroom;
+  $('hrGrade').innerHTML = '<option value="">지정 안 함</option>' + cc.map((n, g) => (g > 0 && n > 0 ? `<option value="${g}">${g}학년</option>` : '')).join('');
+  $('hrGrade').value = h?.grade ?? '';
+  $('hrNum').classList.toggle('hidden', !h?.grade);
+  if (h?.grade) { $('hrNum').innerHTML = Array.from({ length: cc[h.grade] || 1 }, (_, i) => `<option value="${i + 1}">${i + 1}반</option>`).join(''); $('hrNum').value = h.cls; }
+  const auto = !h && S.homeroom[0];
+  $('hrHint').textContent = auto ? `컴시간에서 담임 반(${auto.grade}학년 ${auto.class}반)을 찾아 임시로 쓰고 있어요. 맞지 않으면 직접 지정해 주세요.` : '학급·교사 시간표 탭을 열면 이 학급이 제일 먼저 나와요.';
   const tm = themeMode();
   $('themeSeg').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === tm));
   const fs = store.get('classlog-fs') || '1';
@@ -1151,13 +1314,46 @@ function renderSettings() {
   const standalone = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
   $('iosTip').classList.toggle('hidden', !(ios && !standalone));
 }
+$('hrGrade').onchange = (e) => saveHomeroom(e.target.value ? { grade: Number(e.target.value), cls: 1 } : null);
+$('hrNum').onchange = (e) => saveHomeroom({ grade: Number($('hrGrade').value), cls: Number(e.target.value) });
 $('themeSeg').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; store.set('classlog-theme', b.dataset.v); applyTheme(); renderSettings(); };
 $('fsSeg').onclick = (e) => { const b = e.target.closest('button'); if (!b) return; store.set('classlog-fs', b.dataset.v); applyFs(b.dataset.v); renderSettings(); };
+
+/* ───────── 컴시간 자동 확인(GitHub Actions) 상태 — 관리자만 ───────── */
+// 꺼지거나(60일 무변경 등) 멈추거나 실패하면: 승인 관리 메뉴에 표시 + 알림 + 텔레그램(하루 한 번)
+S.sync = null;
+async function checkComciSync() {
+  try {
+    const r = await fetch('/api/comci-sync', { cache: 'no-store' });
+    S.sync = await r.json();
+  } catch { return; }
+  renderSync(); buildMenu();
+  if (!S.sync.warn) return;
+  toast('⚠ ' + S.sync.warn + ' — 승인 관리에서 확인');
+  const day = todayISO();
+  if (store.get('classlog:sync-warn') === day) return;
+  store.set('classlog:sync-warn', day);
+  fetch(GAS_URL, { method: 'POST', body: JSON.stringify({
+    secret: GAS_SECRET, action: 'notify', studentName: '[수업일지 경고] 컴시간 자동 확인', school: '', grade: '', class: '', number: '',
+    preview: S.sync.warn + '\n앱 → 승인 관리 → "지금 다시 확인"을 누르면 다시 켜고 실행해요.',
+  }) }).catch(() => {});
+}
+function renderSync() {
+  const box = $('syncBox'); const s = S.sync;
+  if (!box || !s) return;
+  const when = (iso) => { if (!iso) return '없음'; const d = new Date(iso); return `${md(todayISO(d))} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+  const res = { success: '성공', failure: '실패', cancelled: '취소' }[s.lastRun?.conclusion] || (s.lastRun?.status === 'completed' ? s.lastRun?.conclusion : '진행 중');
+  box.innerHTML = (s.warn ? `<div class="badge off" style="margin-bottom:6px">⚠ ${esc(s.warn)}</div>` : '<div class="badge ok" style="margin-bottom:6px">정상</div>')
+    + `<div>마지막 확인: ${s.lastRun ? `${when(s.lastRun.at)} · ${esc(res)}` : '없음'}${s.lastRun?.url ? ` · <a href="${esc(s.lastRun.url)}" target="_blank" rel="noopener">기록</a>` : ''}</div>`
+    + `<div>현재 접속 주소: ${esc(s.captured?.route || '-')} (바뀐 날: ${when(s.captured?.capturedAt)})</div>`
+    + (s.token ? '' : '<div>Cloudflare 환경 변수 GITHUB_TOKEN 이 없어 "지금 다시 확인"을 쓸 수 없어요</div>');
+}
 
 /* ───────── 승인 관리(관리자) ───────── */
 const FB_KIND = { idea: '기능 제안', ux: '불편한 점', bug: '오류 신고', etc: '기타' };
 function renderAdmin() {
   if (!S.admin || S.view !== 'admin') return;
+  renderSync();
   $('adminFeedback').innerHTML = S.feedback.length ? S.feedback.map((f) => `<div class="user-row"><div style="min-width:0">
     <div class="nm">${esc(FB_KIND[f.kind] || '기타')} <span class="muted small" style="font-weight:500">${esc(f.teacherName)} · ${esc(f.schoolName)}${f.createdAt?.toDate ? ` · ${md(todayISO(f.createdAt.toDate()))}` : ''}</span></div>
     <div style="white-space:pre-wrap;font-size:0.92rem;margin-top:2px">${esc(f.text)}</div></div></div>`).join('') : '<div class="empty-state">아직 받은 피드백이 없어요.</div>';
@@ -1238,6 +1434,7 @@ document.addEventListener('click', async (e) => {
   else if (act === 'feedback') openFeedback();
   else if (act === 'check-update') checkUpdate(true);
   else if (act === 'order') openOrder();
+  else if (act === 'set-homeroom') saveHomeroom({ grade: S.cls.grade, cls: S.cls.cls });
   else if (act === 'wk') {
     const n = Number(a.dataset.n), i = S.weeks.findIndex((w) => w.r === S.week);
     S.week = n === 0 ? S.curWeek : S.weeks[i + n]?.r ?? S.week;
@@ -1246,10 +1443,25 @@ document.addEventListener('click', async (e) => {
   else if (act === 'csv') downloadCsv();
   else if (act === 'print') window.print();
   else if (act === 'export-class') { go('export'); $('exClass').value = S.progressKey; $('exFrom').value = ''; renderExport(); }
+  else if (act === 'comci-sync') {
+    e.target.closest('button')?.setAttribute('disabled', '');
+    try {
+      const r = await fetch('/api/comci-sync', { method: 'POST' });
+      const j = await r.json();
+      toast(j.ok ? `${j.enabled ? '꺼져 있던 자동 확인을 다시 켜고 ' : ''}지금 확인을 시작했어요(1분쯤 걸려요. 주소가 바뀌었으면 몇 분 뒤 반영)` : j.error);
+    } catch (err) { toast('실패: ' + err.message); }
+    e.target.closest('button')?.removeAttribute('disabled');
+    setTimeout(checkComciSync, 90000);
+  }
   else if (act === 'reload-tt') {
     const r = S.week ?? S.curWeek;
-    S.tt.clear(); S.ttFail.clear(); S.clsTT.clear();
-    try { await loadWeek(r, true); toast('시간표를 다시 받았어요(최대 10분 전 자료일 수 있어요)'); } catch (err) { toast('실패: ' + err.message); }
+    S.ttFail.clear(); S.clsTT.clear(); // 화면의 시간표는 지우지 않는다 — 받기에 실패해도 보던 시간표가 남게
+    $('ttRefresh')?.setAttribute('disabled', '');
+    try {
+      await loadWeek(r, true);
+      toast(S.ttStale ? '컴시간이 응답하지 않아 마지막으로 받아 둔 시간표를 보여드려요' : '시간표를 컴시간에서 새로 받았어요');
+    } catch (err) { toast(ttError(err)); reportComciFailure(err); applyFallback(); }
+    $('ttRefresh')?.removeAttribute('disabled');
     renderAll();
   }
 });

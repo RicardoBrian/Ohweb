@@ -20,8 +20,10 @@
   <link rel="modulepreload" href="/vibe/shared/fake-firebase/firebase-auth.js" crossorigin>
   <link rel="modulepreload" href="/vibe/shared/fake-firebase/firebase-firestore.js" crossorigin>
   <title>수업일지 — kakainfo</title>
-  <link rel="icon" type="image/svg+xml" href="icon.svg">
-  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <!-- 아이콘: 달력에 체크(시간표 + 일지). 브라우저·iOS 가 아이콘을 오래 붙잡고 있어 주소에 버전(?v=)을 붙인다 -->
+  <link rel="icon" type="image/svg+xml" href="icon.svg?v=2">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=2">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png?v=2">
   <link rel="stylesheet" href="theme.css">
   <style>
     /* 기본 부품 — admin.html과 같은 값(하늘 모양은 admin-sky.css·theme.css의 body.ui-sky가 덮는다) */
@@ -299,6 +301,10 @@
         </div>
         <p class="muted small">같은 이름이 여럿이면 아래 시간표를 보고 내 것을 고르세요.</p>
         <div id="obPreview" style="margin-top:12px"></div>
+        <div class="privacy-sum"><b>개인정보 수집·이용 동의</b>
+          <ul><li>항목: 구글 이메일·이름, 학교, 교사 이름, 직접 쓴 일지·계획</li><li>목적: 로그인·승인, 시간표 표시, 기록 저장</li><li>보관: 탈퇴(삭제 요청) 때까지</li><li>Google·Cloudflare(해외 서버)에 저장돼요</li><li>동의하지 않을 수 있지만, 그러면 쓸 수 없어요</li></ul>
+          <a href="privacy.html" target="_blank" rel="noopener">개인정보 처리방침 전체 보기</a></div>
+        <label class="agree"><input type="checkbox" id="obAgree"> 위 내용에 동의합니다</label>
         <div class="modal-actions">
           <button class="btn ghost" id="obBack">학교 다시 고르기</button>
           <button class="btn accent" id="obSubmit" disabled>이 이름으로 신청</button>
@@ -482,6 +488,11 @@
           </div>
         </div>
         <div class="card">
+          <h2><span class="icon" data-ic="people"></span><span class="ttl">내 학급<small>담임을 맡은 반</small></span></h2>
+          <div class="row" style="margin-bottom:10px"><select class="inp" id="hrGrade" aria-label="학년" style="flex:1"></select><select class="inp hidden" id="hrNum" aria-label="반" style="flex:1"></select></div>
+          <p class="muted small" id="hrHint"></p>
+        </div>
+        <div class="card">
           <h2><span class="icon" data-ic="text"></span><span class="ttl">화면<small>밝기와 글자 크기를 내 눈에 맞춰요</small></span></h2>
           <div class="field"><span>화면 모드</span>
             <div class="seg" id="themeSeg"><button data-v="auto" class="on">자동</button><button data-v="light">라이트</button><button data-v="dark">다크</button></div>
@@ -507,8 +518,8 @@
         </div>
         <div class="card">
           <h2><span class="icon" data-ic="clock"></span><span class="ttl">새로 받기<small>시간표나 앱이 안 바뀐 것 같을 때</small></span></h2>
-          <p class="muted small" style="margin-bottom:12px">시간표는 10분 저장해 두고 써요. 앱은 열 때마다 새 버전을 확인하지만, 바로 확인해 볼 수도 있어요.</p>
-          <div class="row"><button class="btn" data-act="reload-tt">시간표 다시 받기</button><button class="btn" data-act="check-update">앱 업데이트 확인</button></div>
+          <p class="muted small" style="margin-bottom:12px">시간표는 10분 저장해 두고 써요. "다시 받기"는 저장분을 건너뛰고 컴시간에서 새로 받아요. 컴시간이 응답하지 않으면 마지막으로 받아 둔 시간표를 보여줘요.</p>
+          <div class="row"><button class="btn" id="ttRefresh" data-act="reload-tt">시간표 다시 받기</button><button class="btn" data-act="check-update">앱 업데이트 확인</button></div>
           <details id="ttDebugBox" class="hidden" style="margin-top:12px"><summary class="muted small" style="cursor:pointer">진단 정보 (관리자)</summary><p class="muted small" id="ttDebug" style="margin-top:6px"></p></details>
         </div>
       </div>
@@ -522,6 +533,7 @@
           <button data-f="pending" class="on">대기</button><button data-f="approved">승인</button><button data-f="rejected">거절</button><button data-f="all">전체</button>
         </div></div>
       </div>
+      <div class="card"><h2><span class="icon" data-ic="clock"></span><span class="ttl">컴시간 자동 확인<small>1시간마다 컴시간 접속 주소를 확인해요</small></span><button class="btn sm" data-act="comci-sync" style="margin-left:auto">지금 다시 확인</button></h2><div id="syncBox" class="muted small">확인 중…</div></div>
       <div class="card"><h2><span class="icon" data-ic="check"></span><span class="ttl">선생님 목록<small>승인해야 일지를 쓸 수 있어요</small></span></h2><div id="adminList"></div></div>
       <div class="card"><h2><span class="icon" data-ic="chat"></span><span class="ttl">받은 피드백<small>최근 30개 · 텔레그램 알림과 같은 내용</small></span></h2><div id="adminFeedback"></div></div>
     </section>
@@ -563,7 +575,8 @@
     </div>
     <div class="field">
       <span>특이사항</span>
-      <textarea class="inp" id="lmNote" style="min-height:60px" placeholder="결석생, 학생 메모 등"></textarea>
+      <textarea class="inp" id="lmNote" style="min-height:60px" placeholder="다음 시간 준비, 수업 특이사항 등"></textarea>
+      <p class="muted small" style="margin:4px 0 0">학생 실명·연락처·건강 등 민감한 내용은 쓰지 마세요.</p>
     </div>
     <div class="modal-actions sticky">
       <button class="btn danger left hidden" id="lmDelete">삭제</button>
@@ -635,6 +648,19 @@
 </div>
 
 <!-- 확인 -->
+<div class="modal-overlay" id="privacyModal">
+  <div class="modal-box sm">
+    <h3>개인정보 수집·이용 동의</h3>
+    <p class="sub">계속 쓰시려면 아래 내용에 동의해 주세요.</p>
+    <div class="privacy-sum"><b>개인정보 수집·이용 동의</b>
+          <ul><li>항목: 구글 이메일·이름, 학교, 교사 이름, 직접 쓴 일지·계획</li><li>목적: 로그인·승인, 시간표 표시, 기록 저장</li><li>보관: 탈퇴(삭제 요청) 때까지</li><li>Google·Cloudflare(해외 서버)에 저장돼요</li><li>동의하지 않을 수 있지만, 그러면 쓸 수 없어요</li></ul>
+          <a href="privacy.html" target="_blank" rel="noopener">개인정보 처리방침 전체 보기</a></div>
+    <div class="modal-actions">
+      <button class="btn ghost" data-act="logout">로그아웃</button>
+      <button class="btn accent" id="privacyYes">동의하고 계속</button>
+    </div>
+  </div>
+</div>
 <div class="modal-overlay" id="askModal">
   <div class="modal-box sm">
     <h3 id="askTitle"></h3>

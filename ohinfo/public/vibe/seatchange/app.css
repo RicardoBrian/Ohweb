@@ -1,7 +1,7 @@
 /* ============================================================
    SeatChange — 페이지 전용 스타일
    theme.css의 토큰만 쓰고 새 색을 만들지 않는다.
-   inset-group / icon-action / sw는 design-reference의 공용 패턴을
+   inset-group / icon-action / sw는 (옛 design-reference 폴더의) 공용 패턴을
    그대로 가져온 것 — 규격이 바뀌면 그쪽을 기준으로 맞춘다.
 
    예외 하나: 책상과 칠판만은 실제 사물 색을 쓴다("책상은 책상색,
@@ -25,7 +25,7 @@ body.dark {
   padding: 18px; margin-bottom: 14px;
 }
 
-/* ---- 공용 패턴 (design-reference/reference.html 발췌) ---- */
+/* ---- 공용 패턴 (옛 design-reference/reference.html 발췌, 커밋 e1d55f6 에 있음) ---- */
 .icon-action {
   width: 34px; height: 34px; border-radius: 50%; border: none; background: none; cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center; color: var(--sub); flex-shrink: 0;
