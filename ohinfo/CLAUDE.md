@@ -4,7 +4,7 @@
 
 ## 견본(`public/vibe/`) — 손으로 고치지 않는다
 - `public/vibe/` 는 바이브 코딩 견본 모음(kakainfo.com/vibe)이다. 대부분 `tools/vibe/build.py` 가 실제 앱을 복사해 만든다:
-  teacher←`ohweb/public`, student←`ohinfo/public`, classlog←`ohlog/public`, shortener←`ohshrt/public`, settle←`ohsettle/public`,
+  teacher←`ohweb/public`, student←`ohinfo/public`, classlog←`ohlog/public`, shortener←`ohshrt/public`, settle←레포 `ohsettle`(비공개, `VIBE_READ_TOKEN`)의 `public`,
   attend←gwansanattend, broadcast←GWBS, volunteer←GWVS, travel←oHtravel, aia←appinventorcheck, roadmap←gwresearch (다른 레포).
 - 복사하면서 Firebase 를 가짜(`vibe/shared/fake-firebase/`, 브라우저에만 저장)로 바꾸고 실제 이메일·키·이름을 지운다. 끝에 금지 값 검사를 하고, 남아 있으면 실패한다.
 - **Actions `vibe-build` 가 main 에 원본이 바뀔 때와 매일 새벽에 자동으로 돌려 커밋한다.** 그러니 견본이 이상하면 원본이나 `build.py` 를 고친다.

@@ -23,10 +23,10 @@
 | `notion_pages`, `notion_stats`, `notion_secrets` | ohnotion | 노션 공개 페이지 |
 | `short_links` | ohshrt | 단축 URL |
 
-### Firebase `ohsettle-10d43` — 정산(개인용)
+### Firebase `ohsettle-10d43` — 정산(개인용, 다른 레포)
 | 컬렉션 | 쓰는 앱 |
 |---|---|
-| `settle_trips` | ohsettle, **ohweb `settle.html`(+`settle-firebase-config.js`)** |
+| `settle_trips`(+하위 `expenses`, `transfers`) | ohsettle — **비공개 레포 `RicardoBrian/ohsettle`** 로 분리(2026-11). 규칙은 그 레포 `firestore.rules` |
 
 ### 그 밖
 - 견본(`ohinfo/public/vibe/`)은 진짜 DB를 쓰지 않는다. `vibe/shared/fake-firebase/` 가 브라우저 안에만 저장한다.
@@ -50,5 +50,4 @@
 
 ## 알려진 문제 (나중에 정리 — 3단계)
 - `students` 가 4곳(ohweb-93062, gwsattend, gwbs, gwvs)에 따로 있다. 학생 명단을 바꾸면 따로따로 고쳐야 한다.
-- 학교 관리자 화면(ohweb)이 개인용 정산 DB(ohsettle-10d43)에도 붙어 있다(`settle.html`).
 - 쓰지 않는 Cloudflare 자원: KV `LINKS`, KV `ohshrt-links`(옛 단축 URL 레포), Worker·D1 `ssoswitch`, Worker `ptvibecoding`.

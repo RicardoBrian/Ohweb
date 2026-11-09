@@ -1,5 +1,5 @@
 # 견본(kakainfo.com/vibe) 자동 갱신.
-# 실제 앱(이 레포의 ohweb·ohinfo·ohlog·ohshrt·ohsettle, 다른 레포의 gwansanattend·GWBS·GWVS·oHtravel·
+# 실제 앱(이 레포의 ohweb·ohinfo·ohlog·ohshrt, 다른 레포의 ohsettle(비공개)·gwansanattend·GWBS·GWVS·oHtravel·
 # appinventorcheck·gwresearch)이 바뀌면 ohinfo/tools/vibe/build.py 로 견본을 다시 만들어 커밋한다.
 # 다른 레포의 변경은 여기서 알 수 없으므로 하루 한 번도 돈다. 바뀐 게 없으면 커밋하지 않는다.
 # build.py 가 실제 키·이메일이 남았는지 검사하고, 남아 있으면 실패해서 커밋하지 않는다.
@@ -16,7 +16,6 @@ on:
       - '!ohinfo/public/vibe/**'
       - 'ohlog/public/**'
       - 'ohshrt/public/**'
-      - 'ohsettle/public/**'
       - 'ohinfo/tools/vibe/**'
 permissions:
   contents: write
@@ -28,6 +27,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: 견본 만들기
+        env:
+          VIBE_READ_TOKEN: ${{ secrets.VIBE_READ_TOKEN }} # 비공개 저장소 ohsettle 읽기용
         run: VIBE_SRC=$RUNNER_TEMP/vibe-src python3 ohinfo/tools/vibe/build.py
       - name: 바뀌었으면 커밋
         run: |

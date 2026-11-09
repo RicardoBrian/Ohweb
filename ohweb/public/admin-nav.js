@@ -10,7 +10,7 @@
     ['도구', [['timer', '타이머', 'timer'], ['notice', '공지 메모', 'notice'], ['settle', '정산 관리', 'wallet']]],
   ];
   var TABS = [['students', '학생', 'people'], ['schools', '학교', 'school'], ['exam', '시험', 'clipboard'], ['messages', '질문', 'chat']];
-  var PAGES = { forms: 'forms.html', messages: 'messages.html', timer: 'timer.html', notice: 'notice.html', settle: 'settle.html' };
+  var PAGES = { forms: 'forms.html', messages: 'messages.html', timer: 'timer.html', notice: 'notice.html', settle: 'https://settle.kakainfo.com/admin.html' };
 
   // 메뉴 아이콘 (페이지마다 가진 아이콘이 달라서 따로 둔다)
   var ICONS = {

@@ -1,6 +1,6 @@
 # 관리자 화면(ohweb) 작업 지침
 
-교사용 관리자 화면. 주소 `admin.kakainfo.com`. DB는 Firebase `ohweb-93062`(정산 화면만 `ohsettle-10d43`) — 컬렉션은 루트 `DB.md`.
+교사용 관리자 화면. 주소 `admin.kakainfo.com`. DB는 Firebase `ohweb-93062` — 컬렉션은 루트 `DB.md`.
 `ohweb/public/` 을 바꾸면 견본(`ohinfo/public/vibe/teacher`)은 Actions `vibe-build` 가 자동으로 맞춘다.
 
 ## 파일
@@ -14,7 +14,6 @@
 | `public/exam-qcsv.js` | 시험 문항 CSV |
 | `public/forms.html` | 설문 만들기·결과 |
 | `public/messages.html`, `notice.html` | 메시지·공지 |
-| `public/settle.html` + `settle-firebase-config.js` | 정산(개인용, DB `ohsettle-10d43`) |
 | `public/timer.html` | 타이머 |
 | `functions/api/reset-student-password.js` | 학생 비밀번호 초기화(서버, `FIREBASE_SERVICE_ACCOUNT_KEY`) |
 | `functions/api/translate.js` | 번역(서버, `GOOGLE_TRANSLATE_KEY`) |
