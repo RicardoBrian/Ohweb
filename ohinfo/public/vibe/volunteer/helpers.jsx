@@ -3,7 +3,7 @@
 // 역할마다 담당 교사가 1명 있고, 담당 교사는 자기 역할 학생의 인정 시간만 고칠 수 있다.
 (function () {
   const { useState, useMemo } = React;
-  const { db, FieldValue, PATHS, AREAS, GRADES, toInt, classLabel, studentKey, rosterId, normName, displayName, termLabel,
+  const { db, FieldValue, PATHS, rosterDoc, AREAS, GRADES, toInt, classLabel, studentKey, rosterId, normName, displayName, termLabel,
     commitInChunks, downloadCsv, toast, useCollection, useMedia, Icon, IconBtn, Modal, PageHead, Empty, MoreMenu, Seg } = window.GW;
 
   const sortByStudent = (list) => [...list].sort((a, b) => (a.grade - b.grade) || (a.class - b.class) || (a.number - b.number));
@@ -75,7 +75,7 @@
       neisName: r.name, name: (r.koreanName || "").trim() || (normName(x.neisName) === normName(r.name) ? x.name : r.name),
     })),
     // 명단을 배정 학생의 이름대로
-    useMine: (all, a, r) => [(b) => b.update(db.collection(PATHS.roster).doc(r.id), {
+    useMine: (all, a, r) => [(b) => b.update(rosterDoc(r.id), {
       name: a.neisName, koreanName: normName(a.name) !== normName(a.neisName) ? a.name : (r.koreanName || ""), updatedAt: FieldValue.serverTimestamp(),
     })],
     // 배정 학생을 명단의 다른 학번으로 옮긴다
@@ -84,7 +84,7 @@
       neisName: alt.name, name: (alt.koreanName || "").trim() || a.name,
     })],
     // 명단에 이 학생을 추가
-    addRoster: (all, a, term) => [(b) => b.set(db.collection(PATHS.roster).doc(rosterId(term, a.grade, a.class, a.number)), {
+    addRoster: (all, a, term) => [(b) => b.set(rosterDoc(rosterId(term, a.grade, a.class, a.number)), {
       term, grade: a.grade, klass: a.class, number: a.number, name: a.neisName,
       koreanName: normName(a.name) !== normName(a.neisName) ? a.name : "", updatedAt: FieldValue.serverTimestamp(),
     })],

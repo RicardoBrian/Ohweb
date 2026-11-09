@@ -1,7 +1,7 @@
 // 학기: 처음 설정(기존 데이터를 새 구조로 옮기기) · 학기 고르기(지난 학기는 읽기 전용) · 새 학기 시작
 (function () {
   const { useState } = React;
-  const { db, FieldValue, PATHS, AREAS, GRADES, toInt, studentKey, rosterId, guessTerm, termLabel, nextTerm,
+  const { db, FieldValue, PATHS, rosterPath, rosterYear, AREAS, GRADES, toInt, studentKey, rosterId, guessTerm, termLabel, nextTerm,
     commitInChunks, toast, Icon, IconBtn, Modal, Empty } = window.GW;
 
   const TERM_RE = /^\d{4}-[12]$/;
@@ -30,24 +30,10 @@
     const idMap = {};
     const PASSES = 6;
 
-    // 전교생 명단: 문서 ID 학년-반-번호 → 학기_학년-반-번호
-    for (let pass = 0; pass < PASSES; pass++) {
-      const docs = await legacyDocs(PATHS.roster);
-      if (!docs.length) break;
-      const ops = [];
-      docs.forEach((d) => {
-        const r = d.data();
-        const id = rosterId(term, r.grade, r.klass, r.number);
-        idMap[d.id] = id;
-        ops.push((b) => b.set(db.collection(PATHS.roster).doc(id), { ...r, term, koreanName: r.koreanName || "" }));
-        ops.push((b) => b.delete(d.ref));
-      });
-      await commitInChunks(ops);
-      report.roster += docs.length;
-    }
+    // 전교생 명단은 학년도 공용 명렬표(years/{학년도}/students)라 여기서 옮기지 않는다.
 
     // 교육과정 내 활동·출결 (출결의 불참 학생 ID도 새 명단 ID로)
-    const rosterNewId = (id) => idMap[id] || (/^\d+-\d+-\d+$/.test(id) ? `${term}_${id}` : id);
+    const rosterNewId = (id) => idMap[id] || (/^\d+-\d+-\d+$/.test(id) ? `${rosterYear(term)}-${id}` : id);
     for (let pass = 0; pass < PASSES; pass++) {
       const [evs, atts] = await Promise.all([legacyDocs(PATHS.events), legacyDocs(PATHS.attendance)]);
       if (!evs.length && !atts.length) break;
@@ -119,7 +105,7 @@
     }
 
     // 그래도 남은 예전 문서가 있으면 알린다(다시 실행하면 이어서 옮긴다).
-    const left = await Promise.all([PATHS.roster, PATHS.students, PATHS.events, PATHS.attendance, PATHS.logs].map(legacyDocs));
+    const left = await Promise.all([PATHS.students, PATHS.events, PATHS.attendance, PATHS.logs].map(legacyDocs));
     report.left = left.reduce((n, l) => n + l.length, 0);
     return report;
   }
@@ -184,7 +170,9 @@
   function RolloverModal({ current, terms, onClose, onDone }) {
     const [term, setTerm] = useState(nextTerm(current));
     const [copyRoles, setCopyRoles] = useState(true);
-    const [copyRoster, setCopyRoster] = useState(String(current).slice(0, 4) === String(nextTerm(current)).slice(0, 4));
+    // 명렬표는 학년도 공용이라 같은 학년도 안에서는 그대로 이어진다. 새 학년도로 넘어갈 때만 복사할지 고른다.
+    const sameYear = (t) => rosterYear(t) === rosterYear(current);
+    const [copyRoster, setCopyRoster] = useState(false);
     const [busy, setBusy] = useState(false);
     const run = async () => {
       if (!TERM_RE.test(term)) return toast("학기는 2026-2처럼 적어 주세요.", "danger");
@@ -194,7 +182,7 @@
       try {
         const [roles, roster] = await Promise.all([
           copyRoles ? db.collection(PATHS.roles).where("term", "==", current).get() : null,
-          copyRoster ? db.collection(PATHS.roster).where("term", "==", current).get() : null,
+          copyRoster && !sameYear(term) ? db.collection(rosterPath(current)).get() : null,
         ]);
         await db.doc(PATHS.term).set({ current: term, terms: FieldValue.arrayUnion(term), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
         const ops = [];
@@ -208,7 +196,7 @@
         });
         if (roster) roster.docs.forEach((d) => {
           const r = d.data();
-          ops.push((b) => b.set(db.collection(PATHS.roster).doc(rosterId(term, r.grade, r.klass, r.number)), { ...r, term, updatedAt: FieldValue.serverTimestamp() }));
+          ops.push((b) => b.set(db.collection(rosterPath(term)).doc(rosterId(term, r.grade, r.klass, r.number)), { ...r, term, updatedAt: FieldValue.serverTimestamp() }));
         });
         await commitInChunks(ops);
         toast(`${termLabel(term)}를 시작했습니다.`);
@@ -231,10 +219,14 @@
             <input type="checkbox" checked={copyRoles} onChange={(e) => setCopyRoles(e.target.checked)} />
             역할 이어 가기 <span className="faint">(이름·내용·담당 교사, 기간은 비움, 배정 학생은 비움)</span>
           </label>
-          <label className="flex items-center gap-2" style={{ fontSize: "0.9rem" }}>
-            <input type="checkbox" checked={copyRoster} onChange={(e) => setCopyRoster(e.target.checked)} />
-            전교생 명단 이어 가기 <span className="faint">(같은 학년도 2학기일 때)</span>
-          </label>
+          {sameYear(term) ? (
+            <p className="faint" style={{ fontSize: "0.85rem" }}>전교생 명단은 같은 학년도라 그대로 이어집니다.</p>
+          ) : (
+            <label className="flex items-center gap-2" style={{ fontSize: "0.9rem" }}>
+              <input type="checkbox" checked={copyRoster} onChange={(e) => setCopyRoster(e.target.checked)} />
+              지난 학년도 명단 복사 <span className="faint">(학년·반이 바뀌므로 보통은 새로 올립니다)</span>
+            </label>
+          )}
           {busy && <p className="field-hint">준비하는 중입니다…</p>}
         </div>
       </Modal>

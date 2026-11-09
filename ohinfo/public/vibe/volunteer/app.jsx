@@ -1,7 +1,7 @@
 // 앱 틀: 로그인 상태 · 역할 · 메뉴(사이드바/상단 바/하단 탭바) · 화면 전환(#주소)
 (function () {
   const { useState, useEffect } = React;
-  const { db, auth, PATHS, classLabel, termLabel, useCollection, Icon, IconBtn, Toast, Empty,
+  const { db, auth, PATHS, rosterPath, classLabel, termLabel, useCollection, Icon, IconBtn, Toast, Empty,
     TermSetup, TermSwitcher, ArchiveBanner, LoginScreen, StampModal, ApplyScreen, TeachersPage, HelpersPage, RosterPage, AttendancePage, EventsPage } = window.GW;
 
   const parseHash = () => {
@@ -50,7 +50,7 @@
       setUser(u || null);
       if (!u) return;
       try {
-        const snap = await db.collection("admins").doc(u.email).get();
+        const snap = await db.collection(PATHS.admins).doc(u.email).get();
         setIsAdmin(snap.exists);
       } catch (err) {
         setIsAdmin(false);
@@ -67,7 +67,8 @@
 
     useEffect(() => {
       if (!user) return;
-      return db.collection("teachers").doc(user.uid).onSnapshot(
+      // 교사는 이메일로 찾는다(프로젝트가 바뀌어도 uid 를 다시 이을 필요가 없게).
+      return db.collection(PATHS.staff).doc(user.email).onSnapshot(
         (snap) => setTeacher(snap.exists ? { id: snap.id, ...snap.data() } : null),
         (err) => { console.error("교사 정보 수신 실패:", err); setTeacher(null); }
       );
@@ -98,9 +99,10 @@
     const approved = teacher && teacher.status === "approved";
     const homeroom = approved && teacher.homeroom && teacher.grade && teacher.klass ? { grade: teacher.grade, klass: teacher.klass } : null;
     const canClass = isAdmin || !!homeroom;
-    const roster = useCollection(canClass && term ? PATHS.roster : null, null, term);
+    // 명렬표는 학년도 공용이라 학기로 거르지 않는다.
+    const roster = useCollection(canClass && term ? rosterPath(term) : null, null);
     const events = useCollection(canClass && term ? PATHS.events : null, byDateDesc, term);
-    const teachers = useCollection(isAdmin ? "teachers" : null);
+    const teachers = useCollection(isAdmin ? PATHS.staff : null);
     const pending = (teachers || []).filter((t) => t.status === "pending").length;
     const me = (teacher && teacher.name) || user.displayName || user.email;
     const roleText = isAdmin ? "관리자" : homeroom ? `${classLabel(homeroom.grade, homeroom.klass)} 담임` : "교사";
@@ -126,7 +128,7 @@
     if (!current || setupOpen) page = isAdmin
       ? <TermSetup onDone={(t) => { setJustSet(t); setSetupOpen(false); }} />
       : <div className="card"><Empty title="학기 설정을 기다리는 중입니다." sub="관리자가 학기를 설정하면 쓸 수 있습니다." /></div>;
-    else if (sec === "helpers") page = <HelpersPage {...tp} isAdmin={isAdmin} me={me} uid={user.uid} operator={`${me} (${roleText})`} roster={roster} teachers={teachers} homeroom={homeroom} />;
+    else if (sec === "helpers") page = <HelpersPage {...tp} isAdmin={isAdmin} me={me} uid={user.email} operator={`${me} (${roleText})`} roster={roster} teachers={teachers} homeroom={homeroom} />;
     else if (sec === "attendance") page = <AttendancePage {...tp} isAdmin={isAdmin} homeroom={homeroom} me={me} myStamp={(teacher && teacher.stamp) || ""} roster={roster} events={events} route={{ eventId: route.a, cls: route.b }} go={go} />;
     else if (sec === "roster") page = <RosterPage {...tp} key={(isAdmin ? "a" : route.a) + term} isAdmin={isAdmin} homeroom={homeroom} roster={roster} route={{ cls: route.a }} go={go} />;
     else if (sec === "events") page = <EventsPage {...tp} roster={roster} events={events} teachers={teachers} route={{ eventId: route.a }} go={go} />;

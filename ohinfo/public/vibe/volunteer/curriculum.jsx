@@ -2,7 +2,7 @@
 // 전교생이 참여하고, 관리자가 정한 날짜·교시에 없었던 학생만 빠진다. 참여하면 활동의 인정 시간 전부, 빠지면 0시간.
 (function () {
   const { useState, useMemo, useEffect, useRef } = React;
-  const { db, FieldValue, PATHS, AREAS, GRADES, PERIODS, toInt, classKey, classLabel, rosterId, attendanceId,
+  const { db, FieldValue, PATHS, rosterDoc, AREAS, GRADES, PERIODS, toInt, classKey, classLabel, rosterId, attendanceId,
     byGradeClassNo, normName, displayName, todayKey, fmtDate, fmtPeriods, fmtTime, readTextFile, downloadCsv, commitInChunks, toast,
     useWide, useMedia, useCollection, Icon, IconBtn, Modal, Inspector, PageHead, Empty, Stat, MoreMenu, Seg, GradeClassSelect } = window.GW;
 
@@ -137,12 +137,11 @@
   }
 
   async function replaceClassRoster(term, roster, grade, klass, rows) {
-    const col = db.collection(PATHS.roster);
     const keep = new Set(rows.map((r) => rosterId(term, grade, klass, r.number)));
     const old = roster.filter((s) => s.grade === grade && s.klass === klass && !keep.has(s.id));
     await commitInChunks([
-      ...old.map((s) => (b) => b.delete(col.doc(s.id))),
-      ...rows.map((r) => (b) => b.set(col.doc(rosterId(term, grade, klass, r.number)), {
+      ...old.map((s) => (b) => b.delete(rosterDoc(s.id))),
+      ...rows.map((r) => (b) => b.set(rosterDoc(rosterId(term, grade, klass, r.number)), {
         term, grade, klass, number: r.number, name: r.name, koreanName: r.koreanName || "", updatedAt: FieldValue.serverTimestamp(),
       })),
     ]);
@@ -284,7 +283,7 @@
 
   async function removeStudent(s) {
     if (!window.confirm(`${s.number}번 ${s.name} 학생을 명단에서 뺄까요? (전출 등)`)) return;
-    await db.collection(PATHS.roster).doc(s.id).delete();
+    await rosterDoc(s.id).delete();
     toast("명단에서 뺐습니다.");
   }
 
@@ -301,7 +300,7 @@
       const n = toInt(no);
       if (!n || !name.trim()) return toast("번호와 성명을 입력하세요.", "danger");
       if (students.some((s) => s.number === n)) return toast(`${n}번은 이미 있습니다.`, "danger");
-      await db.collection(PATHS.roster).doc(rosterId(term, grade, klass, n)).set({ term, grade, klass, number: n, name: name.trim(), koreanName: korean.trim(), updatedAt: FieldValue.serverTimestamp() });
+      await rosterDoc(rosterId(term, grade, klass, n)).set({ term, grade, klass, number: n, name: name.trim(), koreanName: korean.trim(), updatedAt: FieldValue.serverTimestamp() });
       toast(`${n}번 ${name.trim()} 학생을 추가했습니다.`);
       setNo(String(n + 1));
       setName("");
@@ -399,10 +398,9 @@
       if (!n || !name.trim()) return toast("번호와 성명을 입력하세요.", "danger");
       if (n !== s.number && students.some((x) => x.number === n)) return toast(`${n}번은 이미 있습니다.`, "danger");
       setBusy(true);
-      const col = db.collection(PATHS.roster);
       const data = { term, grade: s.grade, klass: s.klass, number: n, name: name.trim(), koreanName: korean.trim(), updatedAt: FieldValue.serverTimestamp() };
-      if (n === s.number) await col.doc(s.id).set(data);
-      else await commitInChunks([(b) => b.delete(col.doc(s.id)), (b) => b.set(col.doc(rosterId(term, s.grade, s.klass, n)), data)]);
+      if (n === s.number) await rosterDoc(s.id).set(data);
+      else await commitInChunks([(b) => b.delete(rosterDoc(s.id)), (b) => b.set(rosterDoc(rosterId(term, s.grade, s.klass, n)), data)]);
       toast("저장했습니다.");
       onClose();
     };

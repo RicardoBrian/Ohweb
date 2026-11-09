@@ -85,7 +85,7 @@
     );
   }
 
-  // 가입 신청 / 승인 대기 / 거절. teacher: teachers/{uid} 문서(없으면 null)
+  // 가입 신청 / 승인 대기 / 거절. teacher: staff/{이메일} 문서(없으면 null)
   function ApplyScreen({ user, teacher, term }) {
     const roles = useCollection(term ? PATHS.roles : null, sortRoles, term);
     const [myRoles, setMyRoles] = useState(teacher?.roles || []);
@@ -114,7 +114,7 @@
         if (homeroom) Object.assign(data, { grade, klass });
         if (!teacher) data.createdAt = FieldValue.serverTimestamp();
         // 담임이 아니게 바뀌면 예전 학급 값을 지운다.
-        await db.collection("teachers").doc(user.uid).set(
+        await db.collection(PATHS.staff).doc(user.email).set(
           homeroom ? data : { ...data, grade: FieldValue.delete(), klass: FieldValue.delete() },
           { merge: true }
         );
@@ -256,7 +256,7 @@
     const save = async () => {
       setBusy(true);
       try {
-        await db.collection("teachers").doc(uid).update(value
+        await db.collection(PATHS.staff).doc(uid).update(value
           ? { stamp: value, stampUpdatedAt: FieldValue.serverTimestamp() }
           : { stamp: FieldValue.delete(), stampUpdatedAt: FieldValue.serverTimestamp() });
         toast(value ? "도장을 저장했습니다." : "도장을 지웠습니다.");
@@ -382,7 +382,7 @@
         const taken = myRoles.filter((k) => owners[k]);
         if (status === "approved" && taken.length && !window.confirm(`${taken.map((k) => `${roleList.find((r) => r.key === k).name}(지금 ${owners[k]})`).join(", ")}의 담당 교사를 ${name.trim()} 선생님으로 바꿉니다. 계속할까요?`)) { setBusy(false); return; }
         const batch = db.batch();
-        batch.set(db.collection("teachers").doc(t.id), {
+        batch.set(db.collection(PATHS.staff).doc(t.id), {
           name: name.trim(),
           homeroom,
           grade: homeroom ? grade : FieldValue.delete(),
@@ -412,7 +412,7 @@
     const remove = async () => {
       if (!window.confirm(`${t.name} 선생님의 가입 정보를 지울까요? 다시 로그인하면 새로 신청하게 됩니다.`)) return;
       const batch = db.batch();
-      batch.delete(db.collection("teachers").doc(t.id));
+      batch.delete(db.collection(PATHS.staff).doc(t.id));
       if (!readOnly) roleList.filter((r) => r.teacherUid === t.id).forEach((r) => batch.update(db.collection(PATHS.roles).doc(r.id), { teacherUid: "", teacherName: "" }));
       await batch.commit();
       toast("지웠습니다.");

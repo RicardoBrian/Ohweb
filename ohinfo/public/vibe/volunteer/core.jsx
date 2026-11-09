@@ -3,10 +3,21 @@
 (function () {
   const { useState, useEffect, useRef } = React;
 
+  // 업무용 앱(출결·방송부·봉사) 통합 프로젝트. 예전 프로젝트 gwvs-77114 는 백업으로 그대로 둔다.
+  // 로컬 시험: http://localhost:8000/?emu → Firebase 에뮬레이터(127.0.0.1:8080, 9099)에 붙는다.
+  // (Ohweb 견본 빌드가 아래 firebaseConfig 한 덩어리를 가짜 값으로 바꾼다 — 모양을 바꾸면 ohinfo/tools/vibe/build.py 도 확인)
   const firebaseConfig = { projectId: "vibe-volunteer" }; // 견본: 가짜 Firebase
-  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  const USE_EMULATOR = /^(localhost|127\.0\.0\.1)$/.test(location.hostname) && new URLSearchParams(location.search).has("emu");
+  const EMULATOR_CONFIG = { apiKey: "demo-key", authDomain: "demo-gwansan-work.firebaseapp.com", projectId: "demo-gwansan-work" };
+  if (!firebase.apps.length) firebase.initializeApp(USE_EMULATOR ? EMULATOR_CONFIG : firebaseConfig);
   const db = firebase.firestore();
   const auth = firebase.auth();
+  if (USE_EMULATOR) {
+    // 시험용 창이 뒤에 있을 때 실시간 연결이 멈추는 일이 있어 에뮬레이터에서만 long polling 을 쓴다.
+    db.settings({ experimentalForceLongPolling: true, merge: true });
+    db.useEmulator("127.0.0.1", 8080);
+    auth.useEmulator("http://127.0.0.1:9099");
+  }
   const FieldValue = firebase.firestore.FieldValue;
 
   // 접속·승인 문의처. 로그인·승인 대기 화면에 그대로 나온다.
@@ -15,19 +26,24 @@
     how: "교내 메신저",
   };
 
-  const APP_ID = "volunteer-portal-gwvs";
-  const DATA = `artifacts/${APP_ID}/public/data`;
-  // 모든 기록에는 학기(term, 예: "2026-2")가 붙는다. 화면은 고른 학기만 보여 주고, 지금 학기만 고칠 수 있다.
+  // 봉사 데이터는 apps/volunteer 아래. 교사(staff)·관리자(admins)·명렬표(years)는 세 앱이 같이 쓴다.
+  const DATA = "apps/volunteer";
+  // 모든 봉사 기록에는 학기(term, 예: "2026-2")가 붙는다. 화면은 고른 학기만 보여 주고, 지금 학기만 고칠 수 있다.
   const PATHS = {
     term: `${DATA}/settings/term`,     // { current: "2026-2", terms: [...] }
-    roles: `${DATA}/roles`,            // 교육과정 외: 역할 (문서 ID = 학기_역할키)
+    roles: `${DATA}/roles`,            // 교육과정 외: 역할 (문서 ID = 학기_역할키). teacherUid 값은 담당 교사 이메일
     students: `${DATA}/students`,      // 교육과정 외: 역할에 배정된 학생
     logs: `${DATA}/logs`,              // 교육과정 외: 인정 시간 변경 이력
     certSettings: `${DATA}/settings/certificate`,
-    roster: `${DATA}/roster`,          // 전교생 명단 (문서 ID = 학기_학년-반-번호)
     events: `${DATA}/events`,          // 교육과정 내 활동
-    attendance: `${DATA}/attendance`,  // 활동별·학급별 불참 학생 (문서 ID = 활동ID_학년-반)
+    attendance: `${DATA}/attendance`,  // 활동별·학급별 불참 학생 (문서 ID = 활동ID_학년-반, absent = 명렬표 문서 ID 목록)
+    staff: "staff",                    // 교사 (문서 ID = 이메일) — 세 앱 공용
+    admins: "admins",                  // 관리자 (문서 ID = 이메일) — 세 앱 공용
   };
+  // 전교생 명렬표는 학년도별 공용: years/{학년도}/students/{학년도-학년-반-번호}. 학기 "2026-2" 의 학년도는 2026.
+  const rosterYear = (term) => String(term || "").slice(0, 4);
+  const rosterPath = (term) => `years/${rosterYear(term)}/students`;
+  const rosterDoc = (id) => db.doc(`years/${String(id).slice(0, 4)}/students/${id}`);
 
   const AREAS = ["이웃돕기활동", "환경보호활동", "캠페인활동"];
   const GRADES = [1, 2, 3];
@@ -41,7 +57,7 @@
   };
   const classKey = (g, k) => `${g}-${k}`;
   const classLabel = (g, k) => `${g}학년 ${k}반`;
-  const rosterId = (term, g, k, n) => `${term}_${g}-${k}-${n}`;
+  const rosterId = (term, g, k, n) => `${rosterYear(term)}-${g}-${k}-${n}`;
   const studentKey = (g, k, n) => `${g}-${k}-${n}`;
   // 이름은 띄어쓰기·대소문자를 무시하고 비교한다.
   const normName = (v) => String(v || "").replace(/\s+/g, "").toUpperCase();
@@ -362,6 +378,7 @@
 
   window.GW = {
     db, auth, FieldValue, CONTACT, PATHS, AREAS, GRADES, PERIODS, MAX_CLASS,
+    rosterYear, rosterPath, rosterDoc,
     toInt, classKey, classLabel, rosterId, studentKey, normName, displayName, guessTerm, termLabel, nextTerm, attendanceId, byGradeClassNo, todayKey, fmtDate, fmtPeriods, fmtTime,
     readTextFile, downloadCsv, commitInChunks, toast,
     useMedia, useWide, useCollection,

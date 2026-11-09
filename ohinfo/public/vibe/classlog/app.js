@@ -4,7 +4,7 @@
 //   classlog_users/{uid}/logs/{id}        일지 한 칸. id = 날짜_교시_학년-반
 //   classlog_users/{uid}/plans/{id}       진도 계획(학년·과목별 단원·차시 목록). id = 학년_과목
 //   classlog_users/{uid}/extras/{id}      직접 추가한 수업(보강·교환)
-// 시간표는 /api/comci 가 컴시간에서 받아온다(Firestore에 저장하지 않음).
+// 시간표는 /api/comci 가 준다(GitHub Actions 가 컴시간에서 받아 둔 것을 해석 — Firestore에 저장하지 않음).
 
 // Firebase SDK(수백 KB)는 첫 화면을 그린 뒤에 받는다 — 앱을 켜면 저장해 둔 시간표가 먼저 보이고(bootFromCache),
 // SDK 는 그동안 index.html 의 modulepreload 로 이미 받는 중이다. SDK 를 쓰는 곳은 sdkReady 뒤에서만 실행된다.
@@ -90,7 +90,7 @@ function ttError(e) {
   const raw = String(e?.message || e);
   const first = raw.split('\n').map((x) => x.trim()).filter(Boolean).at(-1) || raw; // 맨 마지막 줄이 가장 구체적인 원인
   const msg = e?.diag?.recheck ? '컴시간 주소가 바뀌어 새 주소를 찾는 중이에요. 1~2분 뒤 자동으로 다시 받아요(그동안은 저장해 둔 시간표).'
-    : /컴시간 접속 실패|못 찾음|HTTP 5\d\d|HTTP 424|Failed to fetch|Timeout|aborted|NetworkError|Load failed/i.test(raw)
+    : /컴시간 접속 실패|시간표 저장소|못 찾음|HTTP 5\d\d|HTTP 424|Failed to fetch|Timeout|aborted|NetworkError|Load failed/i.test(raw)
     ? '컴시간이 지금 응답하지 않아요. 저장해 둔 시간표를 보여드려요. 잠시 뒤 다시 눌러주세요.'
     : `시간표를 불러오지 못했어요: ${raw.split('\n')[0]}`;
   return S.admin ? `${msg} [${first.slice(0, 110)}]` : msg; // 관리자에게는 원인을 짧게 덧붙인다
@@ -243,6 +243,7 @@ function startOnboard() {
   OB.school = null;
   $('obSchool').classList.remove('hidden'); $('obTeacher').classList.add('hidden');
   $('obSchools').innerHTML = ''; $('obQuery').value = S.profile?.schoolName || '';
+  $('obAddMsg').textContent = ''; $('obAdd').disabled = false;
   $('obCancel').classList.toggle('hidden', !S.profile);
   steps(1);
   show('screenOnboard');
@@ -258,11 +259,50 @@ $('obSearch').onclick = async () => {
     const d = await api('q=' + encodeURIComponent(q));
     $('obSchools').innerHTML = d.schools.length
       ? d.schools.map((s, i) => `<button class="pick-item" data-i="${i}"><b>${esc(s.name)}</b><span class="muted small">${esc(s.region)}</span></button>`).join('')
-      : '<div class="empty-state">검색 결과가 없어요. 학교 이름을 줄여서 검색해 보세요.</div>';
+      : '<div class="empty-state">등록된 학교 중에 없어요. 이름을 줄여서 다시 찾거나, 아래에서 학교 코드로 추가해 주세요.</div>';
+    if (!d.schools.length) { $('obAddBox').open = true; if (!$('obAddName').value) $('obAddName').value = q; }
     $('obSchools').querySelectorAll('.pick-item').forEach((b) => (b.onclick = () => pickSchool(d.schools[b.dataset.i])));
   } catch (e) {
-    $('obSchools').innerHTML = `<div class="empty-state">컴시간 연결 실패: ${esc(e.message)}</div>`;
+    $('obSchools').innerHTML = `<div class="empty-state">학교 목록을 못 불러왔어요: ${esc(e.message)}</div>`;
   }
+};
+// 목록에 없는 학교: 이름+코드로 등록 → GitHub Actions 가 그 학교 시간표를 받아 오면(1~3분) 이어서 진행
+const OB_POLL = window.__obPoll || [20000, 15000]; // 처음 기다림·다시 확인 간격(ms). 테스트는 짧게 바꾼다
+$('obAddCode').onkeydown = (e) => { if (e.key === 'Enter') $('obAdd').click(); };
+$('obAdd').onclick = async () => {
+  const name = $('obAddName').value.trim(), code = $('obAddCode').value.trim();
+  const msg = (t) => { $('obAddMsg').textContent = t; };
+  if (name.length < 2) return msg('학교 이름을 적어 주세요.');
+  if (!/^\d{1,8}$/.test(code)) return msg('학교 코드는 숫자예요(예: 43917).');
+  $('obAdd').disabled = true;
+  const done = (s) => { $('obAdd').disabled = false; msg(''); pickSchool(s); };
+  const asSchool = (d) => ({ region: d.school?.region || '', name: d.school?.name || name, sccode: Number(code) });
+  let prevFail = null; // 이번 등록 전에 남아 있던 실패 기록(그것과 다른 실패만 이번 결과로 본다)
+  try { return done(asSchool(await api(`code=${code}`))); } // 이미 등록된 학교
+  catch (e) {
+    if (!e.diag?.unregistered && !e.diag?.registerFailed) { $('obAdd').disabled = false; return msg('확인 실패: ' + e.message); }
+    prevFail = e.diag?.at || null;
+  }
+  try {
+    const r = await fetch('/api/comci-sync', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code, name }) });
+    const j = await r.json().catch(() => ({}));
+    if (!j.ok) { $('obAdd').disabled = false; return msg('추가 요청 실패: ' + (j.error || r.status)); }
+  } catch (e) { $('obAdd').disabled = false; return msg('추가 요청 실패: ' + e.message); }
+  const t0 = Date.now();
+  let tries = 0;
+  const tick = async () => {
+    tries++;
+    const sec = Math.round((Date.now() - t0) / 1000);
+    msg(`컴시간에서 ${name} 시간표를 받는 중이에요… ${sec}초 (보통 1~3분)`);
+    try { return done(asSchool(await api(`code=${code}&fresh=1`))); }
+    catch (e) {
+      if (e.diag?.registerFailed && e.diag.at !== prevFail) { $('obAdd').disabled = false; return msg(`${e.message} — 학교 이름과 코드를 다시 확인해 주세요.`); }
+      if (tries > 24) { $('obAdd').disabled = false; return msg('시간이 오래 걸려요. 잠시 뒤 다시 [추가]를 눌러 주세요.'); }
+    }
+    setTimeout(tick, OB_POLL[1]);
+  };
+  setTimeout(tick, OB_POLL[0]);
+  msg(`컴시간에서 ${name} 시간표를 받는 중이에요… (보통 1~3분)`);
 };
 async function pickSchool(s) {
   OB.school = s; steps(2);
@@ -1345,7 +1385,7 @@ function renderSync() {
   const res = { success: '성공', failure: '실패', cancelled: '취소' }[s.lastRun?.conclusion] || (s.lastRun?.status === 'completed' ? s.lastRun?.conclusion : '진행 중');
   box.innerHTML = (s.warn ? `<div class="badge off" style="margin-bottom:6px">⚠ ${esc(s.warn)}</div>` : '<div class="badge ok" style="margin-bottom:6px">정상</div>')
     + `<div>마지막 확인: ${s.lastRun ? `${when(s.lastRun.at)} · ${esc(res)}` : '없음'}${s.lastRun?.url ? ` · <a href="${esc(s.lastRun.url)}" target="_blank" rel="noopener">기록</a>` : ''}</div>`
-    + `<div>현재 접속 주소: ${esc(s.captured?.route || '-')} (바뀐 날: ${when(s.captured?.capturedAt)})</div>`
+    + `<div>등록된 학교: ${s.schools ?? '-'}곳</div>`
     + (s.token ? '' : '<div>Cloudflare 환경 변수 GITHUB_TOKEN 이 없어 "지금 다시 확인"을 쓸 수 없어요</div>');
 }
 
@@ -1448,7 +1488,7 @@ document.addEventListener('click', async (e) => {
     try {
       const r = await fetch('/api/comci-sync', { method: 'POST' });
       const j = await r.json();
-      toast(j.ok ? `${j.enabled ? '꺼져 있던 자동 확인을 다시 켜고 ' : ''}지금 확인을 시작했어요(1분쯤 걸려요. 주소가 바뀌었으면 몇 분 뒤 반영)` : j.error);
+      toast(j.ok ? `${j.enabled ? '꺼져 있던 자동 수집을 다시 켜고 ' : ''}지금 시간표 받기를 시작했어요(학교 수에 따라 몇 분 걸려요)` : j.error);
     } catch (err) { toast('실패: ' + err.message); }
     e.target.closest('button')?.removeAttribute('disabled');
     setTimeout(checkComciSync, 90000);
