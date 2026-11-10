@@ -6,7 +6,7 @@
 //  ④ 평가: 테스트 문장 채점 + 틀린 문장의 "영향 준 단어" 색칠, 직접 써 보기.
 // 문장 기록은 사진과 같은 자리(ai_projects/{pid}/images)에 thumb 없이 text로 둔다 — 장수 세기·단계 열림이 그대로 된다.
 
-import * as X_ from './ai-text-core.js?v=202610220501';
+import * as X_ from './ai-text-core.js?v=202611100001';
 
 export function makeText(X) {
   const { S, E } = X;
@@ -33,7 +33,8 @@ export function makeText(X) {
   function step2() {
     const labels = X.labelsOf(), min = X.minTrain();
     const counts = labels.map(l => texts('train', l.id).length);
-    let h = lead('xs2Lead') + `<div class="two"><div class="howto"><b>${E(t('howTo'))}</b><ol>${t('xHowTo').map(x => `<li>${E(x)}</li>`).join('')}</ol></div>${X.tipsHtml(t('xs2Tips'))}</div>`;
+    const side = `<div class="two"><div class="howto"><b>${E(t('howTo'))}</b><ol>${t('xHowTo').map(x => `<li>${E(x)}</li>`).join('')}</ol></div>${X.tipsHtml(t('xs2Tips'))}</div>`;
+    let h = '';
     if (meanMode()) h += `<div class="note">🌏 ${E(t('xLangNote'))}</div>`;
     if (X.C.isUnbalanced(counts)) h += `<div class="note warn">⚖️ ${E(t('xUnbalanced'))}</div>`;
     h += `<div class="lgrid">${labels.map(l => {
@@ -48,6 +49,7 @@ export function makeText(X) {
         ${listHtml('train', l.id, i => i.owner === S.me || X.isLeader())}
       </div>`;
     }).join('')}</div>`;
+    h = lead('xs2Lead') + X.cols(h, side);
     if (P().step >= 3) h += X.nextBtn(3, 's2Next');
     return h;
   }
@@ -99,12 +101,12 @@ export function makeText(X) {
   function trainTab(leader) {
     const p = P(), labels = X.labelsOf(), m = model(), v = p.modelVersion || 0;
     let h = leader ? '' : `<div class="note">${E(t('leaderOnly', { name: X.leaderName() }))}</div>`;
-    h += `<div class="card"><h3>${E(t('xTrainData'))}</h3><div class="tdata">${labels.map(l => `<div class="trow"><b>${E(l.name)}</b><span class="cnt">${E(t('xCountOf', { c: texts('train', l.id).length, m: X.minTrain() }))}</span></div>`).join('')}</div>
+    let side = `<div class="card"><h3>${E(t('xTrainData'))}</h3><div class="tdata">${labels.map(l => `<div class="trow"><b>${E(l.name)}</b><span class="cnt">${E(t('xCountOf', { c: texts('train', l.id).length, m: X.minTrain() }))}</span></div>`).join('')}</div>
       ${newSince() ? `<div class="note warn">${E(t('xNewSince', { n: newSince() }))}</div>` : ''}</div>`;
     h += `<div class="note">${E(t(meanMode() ? 'xModeMeanNote' : 'xModeWordsNote'))}</div>`;
     // AI가 문장을 읽는 법: 단어 + 두 글자 조각(단어 조각 AI)
     const ex = trainSamples()[0];
-    if (ex && !meanMode()) h += `<div class="card"><h3>✂️ ${E(t('xPiecesTitle'))}</h3><p class="muted sm">${E(t('xPiecesHelp'))}</p>
+    if (ex && !meanMode()) side += `<div class="card"><h3>✂️ ${E(t('xPiecesTitle'))}</h3><p class="muted sm">${E(t('xPiecesHelp'))}</p>
       <div class="xpieces">${X_.pieces(ex.text).map(x => `<div class="xpc"><b>${E(x.w)}</b>${x.f.map(f => `<span>${E(f)}</span>`).join('')}</div>`).join('')}</div></div>`;
     h += '<div class="card train-box">';
     if (leader) h += `<button class="btn primary big" data-act="xtrain" ${S.xTraining ? 'disabled' : ''}>🧠 ${E(v ? t('retrain', { n: v + 1 }) : t('trainStart'))}</button>`;
@@ -122,7 +124,7 @@ export function makeText(X) {
       h += `<div class="card"><h3>🔎 ${E(t('xCluesTitle'))}</h3><p class="muted sm">${E(t('xCluesHelp'))}</p>
         ${labels.map(l => `<div class="xclue"><b style="color:${colorOf(l.id)}">${E(l.name)}</b>${(tw[l.id] || []).map(w => `<span class="xw" style="--c:${colorOf(l.id)};--s:.55">${E(w)}</span>`).join('') || '<span class="muted">-</span>'}</div>`).join('')}</div>`;
     }
-    return h;
+    return X.cols(h, side);
   }
   // 뜻 지도: 학습 문장의 뜻 숫자를 2차원으로 — 같은 레이블 문장이 모이는지, 레이블 중심(★)은 어디인지
   function mapCard() {
@@ -175,12 +177,11 @@ export function makeText(X) {
     const tests = texts('test');
     if (!tests.length) return h + `<div class="note warn">${E(t('xNoTests'))}</div><div class="next"><button class="btn" data-act="goto-test">← ${E(t('xTabTest'))}</button></div>`;
     const rounds = X.C.evalRounds(p), cur = rounds[rounds.length - 1];
-    h += `<div class="card eval-top"><button class="btn primary" data-act="xeval">▶ ${E(rounds.length ? t('rerun') : t('runEval'))}</button>
+    const top = `<div class="card eval-top"><button class="btn primary" data-act="xeval">▶ ${E(rounds.length ? t('rerun') : t('runEval'))}</button>
       ${cur && (cur.modelVersion || 0) !== (p.modelVersion || 0) ? `<div class="note warn">${E(t('notEvaluated', { n: p.modelVersion }))} ${E(t('modelChanged'))}</div>` : ''}
       ${newSince() ? `<div class="note">${E(t('xNewSince', { n: newSince() }))}</div>` : ''}
       ${rounds.length > 1 ? `<div class="history"><b>${E(t('history'))}</b> ${rounds.map(r => `<span class="hchip">${E(t('roundN', { n: r.n }))} ${r.pct}%</span>`).join(' → ')}</div>` : ''}</div>`;
-    if (cur) h += resultHtml(cur) + X.ratingHtml(cur) + X.causeHtml(cur, 'xCauses', 'xFixPh');
-    h += tryHtml();
+    h += X.cols(top + (cur ? resultHtml(cur) : '') + tryHtml(), cur ? X.ratingHtml(cur) + X.causeHtml(cur, 'xCauses', 'xFixPh') : '', true);
     h += `<div class="note">${E(t('xRetrainHint'))}</div>`;
     h += `<div class="next two-btn"><button class="btn" data-act="step" data-v="2">← ${E(t('xGoCollect'))}</button>
       ${p.step >= 5 ? `<button class="btn primary" data-act="step" data-v="5">${E(t('goDeploy'))} →</button>` : `<span class="muted">${E(t('needStarToDeploy'))}</span>`}</div>`;
