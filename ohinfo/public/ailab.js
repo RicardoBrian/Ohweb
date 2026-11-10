@@ -14,12 +14,12 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { loadSession, verifyStudentAuth, authReady, clearSession } from './session.js';
 import { escHtml } from './escape.js';
-import * as C from './ai-core.js?v=202611100001';
-import { makeT, getLang, setLang } from './ai-i18n.js?v=202611100001';
-import { prepareImage, prepareCover, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202611100001';
-import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, refetchTrainPhoto, saveModelToDrive, deviceId, devPhotoPut, devPhotoGet, devPhotoDel } from './ai-drive.js?v=202611100001';
-import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202611100001';
-import { appHtml, probsByLabel, THEMES, ACCENTS, FONTS, ensureFont } from './ai-render.js?v=202611100001';
+import * as C from './ai-core.js?v=202611100002';
+import { makeT, getLang, setLang } from './ai-i18n.js?v=202611100002';
+import { prepareImage, prepareCover, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202611100002';
+import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, refetchTrainPhoto, saveModelToDrive, deviceId, devPhotoPut, devPhotoGet, devPhotoDel } from './ai-drive.js?v=202611100002';
+import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202611100002';
+import { appHtml, probsByLabel, THEMES, ACCENTS, FONTS, ensureFont } from './ai-render.js?v=202611100002';
 
 const E = escHtml;
 const $ = id => document.getElementById(id);
@@ -55,6 +55,9 @@ const uploader = new Uploader({
 // ── 도움 함수 ──
 // 선생님이 배정에서 "수업 제목을 모둠 주제로"를 켰으면 그 제목이 주제(학생은 바꾸지 못함)
 const lockedTopic = () => (S.asg && S.asg.lockTopic ? String(S.asg.title || '').trim().slice(0, 40) : '');
+// 결과물: 선생님이 배정에서 고른다. app = 웹앱, code = 블록 코딩, both = 둘 다(예전 배정은 값이 없어 둘 다)
+const outMode = () => (S.asg && ['app', 'code', 'both'].includes(S.asg.output) ? S.asg.output : 'both');
+const codeUrl = () => new URL(`aicode.html?id=${encodeURIComponent(S.pid)}`, location.href).href;
 const isLeader = () => !!(S.pair && S.pair.leaderId === S.me);
 const members = () => (S.pair && S.pair.members) || [];
 const nameOf = id => (S.pair && S.pair.memberNames && S.pair.memberNames[id]) || id;
@@ -75,7 +78,7 @@ let TB = null, _tbLoading = null;
 const TBon = () => (isTable() && TB ? TB : null);
 function loadTable() {
   if (_tbLoading) return _tbLoading;
-  _tbLoading = import('./ai-table.js?v=202611100001').then(M => {
+  _tbLoading = import('./ai-table.js?v=202611100002').then(M => {
     TB = M.makeTable({
       S, E, t: (k, v) => t(k, v), $, C, isLeader, members, nameOf, leaderName, pref, safeUpdate, schedule, toast, nextBtn, draftOr, cols, lockedTopic,
       ratingHtml, causeHtml, debounce, serverTimestamp, go: n => actions.step(n),
@@ -90,7 +93,7 @@ let TX = null, _txLoading = null;
 const TXon = () => (isText() && TX ? TX : null);
 function loadText() {
   if (_txLoading) return _txLoading;
-  _txLoading = import('./ai-text.js?v=202611100001').then(M => {
+  _txLoading = import('./ai-text.js?v=202611100002').then(M => {
     TX = M.makeText({
       S, E, t: (k, v) => t(k, v), $, C, isLeader, members, leaderName, pref, safeUpdate, schedule, toast, nextBtn, tipsHtml, cols,
       ratingHtml, causeHtml, serverTimestamp, setDoc, deleteDoc, doc, db, labelsOf, imgs, isMine, ownerTag, ownerChips, namesOf, minTrain, minTest, ms,
@@ -217,6 +220,7 @@ function nextTarget() {
     }
     case 5: {
       if (!p.published || p.pubSig !== appSig(appData())) return has('[data-act="publish"]:not([disabled])');
+      if (outMode() === 'code') return has('[data-code-link]');
       if (!p.postId) return has('[data-act="post"]:not([disabled])');
       return has('a[href^="ohdlet.html?"]');
     }
@@ -650,6 +654,7 @@ function appSig(a) {
 }
 
 function step5() {
+  if (outMode() === 'code') return step5Code();
   FONTS.forEach(ensureFont);   // 글꼴 고르기 견본용(⑤ 화면에서만)
   const p = S.project;
   const a = appData();
@@ -699,12 +704,32 @@ function step5() {
       <a class="btn sm" href="${E(appUrl())}" target="_blank" rel="noopener">${E(t('open'))} ↗</a></div></div>
       ${postHtml()}
       ${isTable() ? '' : fbCard()}
-      <div class="note"><a class="btn sm" href="${E(new URL(`aicode.html?id=${encodeURIComponent(S.pid)}`, location.href).href)}" target="_blank" rel="noopener">${E(t('codeWithAi'))} ↗</a> <span class="muted sm">${E(t('codeHelp'))}</span></div>
+      ${outMode() === 'app' ? '' : `<div class="note"><a class="btn sm" href="${E(codeUrl())}" target="_blank" rel="noopener">${E(t('codeWithAi'))} ↗</a> <span class="muted sm">${E(t('codeHelp'))}</span></div>`}
       <button class="btn ghost" data-act="newmodel">＋ ${E(t('newModel'))}</button>` : ''}</div>`;
   h += `</div><div class="deploy-preview"><div class="pv-label">${E(t('previewAs'))}</div>
     <div class="pv-tabs">${TBon() ? '' : a.labels.map((l, i) => `<button class="${i === S.previewLabel ? 'on' : ''}" data-act="preview-label" data-v="${i}">${E(l.emoji || '')} ${E(C.labelName(l, S.lang))}</button>`).join('')}</div>
     <div class="pv-frame">${previewHtml(a)}</div></div></div>`;
   return h;
+}
+
+// ⑤ 블록 코딩만: 웹앱 꾸미기 없이 AI 이름만 정해 내보내고, 코딩 화면에서 작품을 만들어 게시판에 올린다.
+function step5Code() {
+  const p = S.project;
+  const a = appData();
+  const dirty = p.published && p.pubSig !== appSig(a);
+  const evaluated = C.evalRounds(p).some(r => (r.modelVersion || 0) === (p.modelVersion || 0));
+  let main = `<div class="card"><div class="field"><label for="f-title">${E(t('codeAiName'))}</label>
+    <input id="f-title" data-field="title" maxlength="${C.TITLE_MAX}" placeholder="${E(t('appTitlePh'))}" value="${E(a.title)}"></div>
+    ${TBon() ? TBon().deployLine() : ''}${p.modelVersion ? `<div class="deploy-model"><b>${E(t('deployModel', { n: p.modelVersion }))}</b></div>
+    ${evaluated ? '' : `<div class="note warn">${E(t('deployNotEval', { n: p.modelVersion }))}</div>`}` : ''}
+    <div id="s5err" class="err"></div>
+    ${!p.published || dirty || S.busy.pub ? `<button class="btn primary" data-act="publish" ${S.busy.pub ? 'disabled' : ''}>${E(S.busy.pub ? t('publishing') : (p.published ? t('saveChanges') : t('codePublish')))}</button>` : ''}
+    ${p.published ? `<div class="note ok">✅ ${E(t('codePublished'))}</div>
+      <a class="btn primary big" data-code-link href="${E(codeUrl())}" target="_blank" rel="noopener">${E(t('codeWithAi'))} ↗</a>
+      <p class="muted sm">${E(t('codeHelpPost'))}</p>
+      <button class="btn ghost" data-act="newmodel">＋ ${E(t('newModel'))}</button>` : ''}</div>`;
+  if (TBon() && !TBon().isClass()) main += TBon().unitCard();
+  return lead('s5LeadCode') + cols(main, tipsHtml(t('codeTips')));
 }
 
 // 제목·직접 쓰기를 입력하는 동안: 입력칸은 건드리지 않고 미리보기와 그 칸의 오류 문구만 바꾼다.
@@ -1121,7 +1146,7 @@ const actions = {
   // ✍️ 그리기 · 📸 카메라: 필요할 때만 불러온다.
   async cap(mode, el) {
     const [kind, labelId] = el.dataset.zone.split(':');
-    const M = await import('./ai-capture.js?v=202611100001');
+    const M = await import('./ai-capture.js?v=202611100002');
     if (kind === 'cover') return M.openDraw({ t, title: t('coverTitle'), single: true, onAdd: blob => setCover([blob], []) });
     const lab = labelById(labelId);
     const local = mode === 'camera' && camLocal() && kind !== 'try';
@@ -1259,10 +1284,11 @@ const actions = {
     if (!a.title.trim()) { err.textContent = t('e_title'); $('f-title') && $('f-title').focus(); return; }
     if (isTable() && !a.table) { err.textContent = t('tNoPick'); return; }
     if (isText() && !a.text) { err.textContent = t('noModelYet'); return; }
-    // 대문(사진 + 설명)은 꼭 넣는다 — 어떤 앱인지 한눈에 보이게
-    if (!a.cover) { err.textContent = t('e_cover'); return; }
-    if (!a.desc.trim()) { err.textContent = t('e_desc'); $('f-desc') && $('f-desc').focus(); return; }
-    for (const l of a.labels) {
+    // 대문(사진 + 설명)은 꼭 넣는다 — 어떤 앱인지 한눈에 보이게(블록 코딩만 하는 수업은 웹앱을 꾸미지 않는다)
+    const webApp = outMode() !== 'code';
+    if (webApp && !a.cover) { err.textContent = t('e_cover'); return; }
+    if (webApp && !a.desc.trim()) { err.textContent = t('e_desc'); $('f-desc') && $('f-desc').focus(); return; }
+    if (webApp) for (const l of a.labels) {
       if (l.phrase === C.CUSTOM_PHRASE) {
         const v = C.validateCustomPhrase(S.drafts['custom-' + l.id] != null ? S.drafts['custom-' + l.id] : l.custom);
         if (v) { err.textContent = `${l.name}: ${t('c_' + v)}`; return; }

@@ -4,13 +4,13 @@
 // 블록 편집기는 Blockly(구글 오픈소스, Apache 2.0)를 쓴다.
 
 import { db } from './firebase-config.js';
-import { doc, getDoc, updateDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { doc, getDoc, updateDoc, addDoc, collection, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { loadSession, authReady } from './session.js';
 import { escHtml, SAFE_ID } from './escape.js';
-import { makeT, getLang, setLang } from './ai-i18n.js?v=202611100001';
-import { labelName, newId } from './ai-core.js?v=202611100001';
-import { defineBlocks, toolbox, starter, compile, build, COSTUMES } from './ai-blocks.js?v=202611100001';
-import { Stage, Runtime } from './ai-stage.js?v=202611100001';
+import { makeT, getLang, setLang } from './ai-i18n.js?v=202611100002';
+import { labelName, newId, LANGS, classBoardKey, nv } from './ai-core.js?v=202611100002';
+import { defineBlocks, toolbox, starter, compile, build, COSTUMES } from './ai-blocks.js?v=202611100002';
+import { Stage, Runtime } from './ai-stage.js?v=202611100002';
 
 const E = escHtml;
 const $ = id => document.getElementById(id);
@@ -23,7 +23,7 @@ const t = makeT(lang);
 const BL = 'https://cdn.jsdelivr.net/npm/blockly@10.4.3/';
 const BL_LANG = { ko: 'ko', en: 'en', zh: 'zh-hans', ru: 'ru' };
 
-const S = { app: null, project: null, me: '', kind: 'image', prob: 'class', code: null, ws: null, emoji: '🐱', title: '', key: '', model: null, photo: null, cam: null, showBlocks: false, last: null };
+const S = { app: null, project: null, asg: null, session: null, me: '', kind: 'image', prob: 'class', code: null, ws: null, emoji: '🐱', title: '', key: '', model: null, photo: null, cam: null, showBlocks: false, last: null };
 let stage, rt;
 
 function toast(msg) { const el = $('toast'); el.textContent = msg; el.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(() => el.classList.remove('on'), 2600); }
@@ -55,7 +55,7 @@ async function start() {
   } else {
     const session = loadSession();
     if (!session) { location.href = 'index.html'; return; }
-    S.me = session.id;
+    S.me = session.id; S.session = session;
     await authReady();
     try {
       const ps = await getDoc(doc(db, 'ai_projects', pid));
@@ -63,6 +63,8 @@ async function start() {
       S.project = ps.data();
     } catch { return fail(t('k_notMember')); }
     S.code = (S.project.codes || {})[S.me] || null;
+    // 배정: 선생님이 결과물로 블록 코딩을 골랐고 게시판이 있으면 작품을 게시판에 올릴 수 있다
+    try { const as = await getDoc(doc(db, 'ai_assignments', S.project.asId)); S.asg = as.exists() ? as.data() : null; } catch { S.asg = null; }
   }
   S.emoji = (S.code && COSTUMES.includes(S.code.emoji)) ? S.code.emoji : '🐱';
   S.title = (S.code && S.code.title) || '';
@@ -100,6 +102,7 @@ function layout() {
       ${play ? '' : `<div class="ac-card"><h3>${E(t('k_char'))}</h3><div class="ac-chars">${COSTUMES.map(e => `<button data-emoji="${e}" class="${e === S.emoji ? 'on' : ''}">${e}</button>`).join('')}</div></div>`}
       <div class="ac-card" id="inPanel">${inputPanel()}</div>
       <div class="ac-card"><h3>${E(t('k_result'))}</h3><div id="resBox"><span class="muted">${E(t('k_none'))}</span></div></div>
+      ${canPost() ? `<div class="ac-card" id="postCard">${postCardHtml()}</div>` : ''}
       ${play ? '' : `<div class="ac-card hidden" id="sharePanel"></div>`}
     </aside>`;
   $('langSel').addEventListener('change', e => { setLang(e.target.value); location.reload(); });
@@ -108,6 +111,7 @@ function layout() {
   if (play) $('blocksBtn').addEventListener('click', toggleBlocks);
   else {
     $('shareBtn').addEventListener('click', share);
+    if (canPost()) $('postCard').addEventListener('click', e => { if (e.target.closest('#postBtn')) post(); });
     $('nameIn').addEventListener('input', () => { S.title = $('nameIn').value; scheduleSave(); });
     document.querySelectorAll('[data-emoji]').forEach(b => b.addEventListener('click', () => {
       S.emoji = b.dataset.emoji; document.querySelectorAll('[data-emoji]').forEach(x => x.classList.toggle('on', x === b));
@@ -140,7 +144,7 @@ function bindInputs() {
     $('photoBtn').addEventListener('click', () => $('filePick').click());
     $('filePick').addEventListener('change', () => { const f = $('filePick').files[0]; $('filePick').value = ''; if (f) setPhoto(f); });
     const d = $('drawBtn');
-    if (d) d.addEventListener('click', async () => { const M = await import('./ai-capture.js?v=202611100001'); M.openDraw({ t, single: true, onAdd: b => setPhoto(b) }); });
+    if (d) d.addEventListener('click', async () => { const M = await import('./ai-capture.js?v=202611100002'); M.openDraw({ t, single: true, onAdd: b => setPhoto(b) }); });
   }
   if (S.kind === 'table') document.querySelectorAll('[data-fi]').forEach(el => el.addEventListener('input', () => {
     const i = Number(el.dataset.fi), f = S.app.table.features[i];
@@ -178,9 +182,9 @@ function setPhoto(blob) {
 // ── AI ──
 let _modelP = null;
 function loadModel() {
-  if (S.kind === 'text') _modelP = import('./ai-text-core.js?v=202611100001').then(M => ({ text: M }));
-  else if (S.kind === 'table') _modelP = import('./ai-table-core.js?v=202611100001').then(M => ({ table: M }));
-  else _modelP = import('./ai-model.js?v=202611100001').then(async M => ({ M, loaded: await (S.app.modelVersion ? M.loadDriveModel(null, pid, S.app.modelVersion) : M.loadModel(S.app.modelUrl)) }));
+  if (S.kind === 'text') _modelP = import('./ai-text-core.js?v=202611100002').then(M => ({ text: M }));
+  else if (S.kind === 'table') _modelP = import('./ai-table-core.js?v=202611100002').then(M => ({ table: M }));
+  else _modelP = import('./ai-model.js?v=202611100002').then(async M => ({ M, loaded: await (S.app.modelVersion ? M.loadDriveModel(null, pid, S.app.modelVersion) : M.loadModel(S.app.modelUrl)) }));
   _modelP.catch(e => { console.error(e); toast(t('k_loadFail')); });
 }
 async function classify(kind, arg) {
@@ -304,7 +308,7 @@ async function save() {
   if (p.json.length > 90000) { $('saveSt').textContent = ''; return toast(t('k_tooBig')); }
   if (!S.key) S.key = newId('k');
   try {
-    await updateDoc(doc(db, 'ai_projects', pid), { [`codes.${S.me}`]: { ...p, key: S.key, shared: !!(S.code && S.code.shared), at: serverTimestamp() } });
+    await updateDoc(doc(db, 'ai_projects', pid), { [`codes.${S.me}`]: { ...p, key: S.key, shared: !!(S.code && S.code.shared), ...(S.code && S.code.postId ? { postId: S.code.postId } : {}), at: serverTimestamp() } });
     S.code = { ...(S.code || {}), ...p, key: S.key };
     $('saveSt').textContent = t('k_saved');
   } catch (e) { console.error(e); $('saveSt').textContent = ''; toast(t('error') + ' ' + (e.code || '')); }
@@ -318,8 +322,8 @@ async function share() {
     await updateDoc(doc(db, 'ai_apps', pid), { [`codes.${S.key}`]: { ...p, at: serverTimestamp() } });
     await updateDoc(doc(db, 'ai_projects', pid), { [`codes.${S.me}.shared`]: true });
     S.code.shared = true;
-  } catch (e) { console.error(e); return toast(t('error') + ' ' + (e.code || '')); }
-  const url = new URL(`aicode.html?id=${encodeURIComponent(pid)}&c=${encodeURIComponent(S.key)}`, location.href).href;
+  } catch (e) { console.error(e); toast(t('error') + ' ' + (e.code || '')); return false; }
+  const url = playUrl();
   const panel = $('sharePanel');
   panel.classList.remove('hidden');
   panel.innerHTML = `<h3>🔗 ${E(t('k_shared'))}</h3><p class="muted">${E(t('k_shareHelp'))}</p>
@@ -328,6 +332,51 @@ async function share() {
   $('copyBtn').addEventListener('click', async () => { try { await navigator.clipboard.writeText(url); } catch { $('shareUrl').select(); document.execCommand('copy'); } toast(t('copied')); });
   groupWorks();
   toast(t('k_shared'));
+  return true;
+}
+const playUrl = () => new URL(`aicode.html?id=${encodeURIComponent(pid)}&c=${encodeURIComponent(S.key)}`, location.href).href;
+
+// ── 정보 게시판에 올리기(블록 코딩 결과물) ──
+// 결과물이 '웹앱만'이면 올리지 않는다(값이 없는 예전 배정은 둘 다).
+const canPost = () => !play && !!(S.asg && S.asg.board && S.asg.board.name) && S.asg.output !== 'app';
+function boardUrl() {
+  const b = S.asg.board;
+  return 'ohdlet.html?' + new URLSearchParams({ board: b.name, school: b.schoolName || '', grade: b.grade || '', group: b.group || '' }).toString();
+}
+function postCardHtml() {
+  const done = S.code && S.code.postId;
+  return `<h3>${E(t('k_post'))}</h3><p class="muted" style="margin:0 0 8px">${E(t('k_postHelp'))}</p>
+    ${done ? `<p style="margin:0 0 8px">✅ ${E(t('k_posted'))} <a href="${E(boardUrl())}" target="_blank" rel="noopener">${E(t('openOhdlet'))} ↗</a></p>` : ''}
+    <button class="ac-btn${done ? '' : ' run'}" id="postBtn">${E(done ? t('k_postAgain') : t('k_post'))}</button>`;
+}
+async function post() {
+  const btn = $('postBtn');
+  btn.disabled = true;
+  try {
+    if (!(await share())) return;
+    const url = playUrl();
+    const img = $('stage').toDataURL('image/jpeg', 0.8);   // 지금 실행 화면(480×360)
+    const b = S.asg.board, a = S.asg;
+    const title = (S.title || '').trim() || S.app.title || t('k_untitled');
+    const sx = { ko: 'Ko', zh: 'Zh', ru: 'Ru', en: 'En' };
+    const texts = {};
+    for (const lg of LANGS) {
+      const tl = makeT(lg);
+      texts['sub' + sx[lg]] = `[${nv(a.grade)}-${nv(a.class)}] ` + tl('k_postTitle', { title });
+      texts['msg' + sx[lg]] = tl('k_postBody', { url });
+    }
+    const ref = await addDoc(collection(db, 'posts'), {
+      classTitle: b.name, boardKey: classBoardKey(b), grade: b.grade || '', group: b.group || '',
+      num: String(S.session.number || ''), name: S.session.name || '', studentId: S.me, srcLang: lang,
+      ...texts, imgs: [img], column: '', likes: 0, pinned: false, deleted: false,
+      ...((a.boardScope || 'class') === 'class' ? { aiScope: 'class', aiGrade: nv(a.grade), aiClass: nv(a.class) } : {}),
+      createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+    });
+    await updateDoc(doc(db, 'ai_projects', pid), { [`codes.${S.me}.postId`]: ref.id });
+    S.code = { ...(S.code || {}), postId: ref.id };
+    toast(t('k_posted'));
+  } catch (e) { console.error(e); toast(t('error') + ' ' + (e.code || '')); }
+  finally { $('postCard').innerHTML = postCardHtml(); }
 }
 async function groupWorks() {
   try {
