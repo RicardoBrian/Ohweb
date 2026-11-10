@@ -14,12 +14,12 @@ import {
 } from '/vibe/shared/fake-firebase/firebase-firestore.js';
 import { loadSession, verifyStudentAuth, authReady, clearSession } from './session.js';
 import { escHtml } from './escape.js';
-import * as C from './ai-core.js?v=202611100003';
-import { makeT, getLang, setLang } from './ai-i18n.js?v=202611100003';
-import { prepareImage, prepareCover, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202611100003';
-import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, refetchTrainPhoto, saveModelToDrive, deviceId, devPhotoPut, devPhotoGet, devPhotoDel } from './ai-drive.js?v=202611100003';
-import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202611100003';
-import { appHtml, probsByLabel, THEMES, ACCENTS, FONTS, ensureFont } from './ai-render.js?v=202611100003';
+import * as C from './ai-core.js?v=202611100004';
+import { makeT, getLang, setLang } from './ai-i18n.js?v=202611100004';
+import { prepareImage, prepareCover, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202611100004';
+import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, refetchTrainPhoto, saveModelToDrive, deviceId, devPhotoPut, devPhotoGet, devPhotoDel } from './ai-drive.js?v=202611100004';
+import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202611100004';
+import { appHtml, probsByLabel, THEMES, ACCENTS, FONTS, ensureFont } from './ai-render.js?v=202611100004';
 
 const E = escHtml;
 const $ = id => document.getElementById(id);
@@ -78,7 +78,7 @@ let TB = null, _tbLoading = null;
 const TBon = () => (isTable() && TB ? TB : null);
 function loadTable() {
   if (_tbLoading) return _tbLoading;
-  _tbLoading = import('./ai-table.js?v=202611100003').then(M => {
+  _tbLoading = import('./ai-table.js?v=202611100004').then(M => {
     TB = M.makeTable({
       S, E, t: (k, v) => t(k, v), $, C, isLeader, members, nameOf, leaderName, pref, safeUpdate, schedule, toast, nextBtn, draftOr, cols, lockedTopic,
       ratingHtml, causeHtml, debounce, serverTimestamp, go: n => actions.step(n),
@@ -93,7 +93,7 @@ let TX = null, _txLoading = null;
 const TXon = () => (isText() && TX ? TX : null);
 function loadText() {
   if (_txLoading) return _txLoading;
-  _txLoading = import('./ai-text.js?v=202611100003').then(M => {
+  _txLoading = import('./ai-text.js?v=202611100004').then(M => {
     TX = M.makeText({
       S, E, t: (k, v) => t(k, v), $, C, isLeader, members, leaderName, pref, safeUpdate, schedule, toast, nextBtn, tipsHtml, cols,
       ratingHtml, causeHtml, serverTimestamp, setDoc, deleteDoc, doc, db, labelsOf, imgs, isMine, ownerTag, ownerChips, namesOf, minTrain, minTest, ms,
@@ -729,6 +729,7 @@ function step5Code() {
       <p class="muted sm">${E(t('codeHelpPost'))}</p>
       <button class="btn ghost" data-act="newmodel">＋ ${E(t('newModel'))}</button>` : ''}</div>`;
   if (TBon() && !TBon().isClass()) main += TBon().unitCard();
+  if (p.published && !isTable()) main += fbCard();
   return lead('s5LeadCode') + cols(main, tipsHtml(t('codeTips')));
 }
 
@@ -762,22 +763,36 @@ function previewHtml(a) {
 function fbCard() {
   const list = S.fb || [];
   const good = list.filter(f => f.ok).length;
-  const wrong = list.filter(f => !f.ok).sort((a, b) => (a.status === 'new' ? 0 : 1) - (b.status === 'new' ? 0 : 1) || ms(b.at) - ms(a.at));
+  const bad = list.filter(f => !f.ok).length;
+  // 맞아요도 사진·문장이 있으면 그 레이블의 데이터가 된다(맞힌 것도 더 배우면 더 확실해진다)
+  const shown = list.filter(f => !f.ok || f.text || f.img)
+    .sort((a, b) => (a.status === 'new' ? 0 : 1) - (b.status === 'new' ? 0 : 1) || ms(b.at) - ms(a.at));
   const lname = id => { const l = labelById(id); return l ? l.name : '?'; };
+  const ready = fbReady();
   const item = f => {
     const media = f.text ? `<div class="fbtext">“${E(f.text)}”</div>` : f.img ? `<img class="fbimg" src="${E(f.img)}" alt="">` : `<div class="muted sm">${E(t('fbNoMedia'))}</div>`;
     const can = (f.text || f.img) && labelById(f.want);
     const btns = f.status === 'new'
       ? `<div class="row">${can ? `<button class="btn sm" data-act="fbuse" data-v="train" data-id="${E(f.id)}">${E(t('fbToTrain'))}</button><button class="btn sm" data-act="fbuse" data-v="test" data-id="${E(f.id)}">${E(t('fbToTest'))}</button>` : ''}<button class="btn ghost sm" data-act="fbuse" data-v="skip" data-id="${E(f.id)}">${E(t('fbSkip'))}</button></div>`
       : `<span class="tag">${E(t('fbDone_' + f.status))}</span>`;
+    const line = f.ok
+      ? `<span class="tag">👍 ${E(t('fbRight'))}</span> <b>${E(lname(f.want))}</b>`
+      : `<span class="muted">${E(t('fbAi'))}</span> <b class="bad">${E(lname(f.got))}</b> → <span class="muted">${E(t('fbFriend'))}</span> <b>${E(lname(f.want))}</b>`;
     return `<div class="fbi${f.status === 'new' ? ' new' : ''}">${media}
-      <div class="fbl"><span class="muted">${E(t('fbAi'))}</span> <b class="bad">${E(lname(f.got))}</b> → <span class="muted">${E(t('fbFriend'))}</span> <b>${E(lname(f.want))}</b>${f.note ? ` · <span>${E(f.note)}</span>` : ''}</div>${btns}</div>`;
+      <div class="fbl">${line}${f.note ? ` · <span>${E(f.note)}</span>` : ''}</div>${btns}</div>`;
   };
-  return `<div class="card fbcard"><h3>📬 ${E(t('fbTitle'))} <span class="hchip">👍 ${good}</span> <span class="hchip">👎 ${wrong.length}</span></h3>
+  const added = S.fbAdded;
+  return `<div class="card fbcard"><h3>📬 ${E(t('fbTitle'))} <span class="hchip">👍 ${good}</span> <span class="hchip">👎 ${bad}</span></h3>
     <p class="muted sm">${E(t('fbHelp'))}</p>
-    ${wrong.length ? `<div class="fblist">${wrong.map(item).join('')}</div>` : `<div class="muted">${E(t('fbNone'))}</div>`}
-    ${wrong.some(f => f.status === 'train' || f.status === 'test') ? `<div class="note">${E(t('fbRetrainHint'))}</div>` : ''}</div>`;
+    ${ready.length ? `<div class="row"><button class="btn primary sm" data-act="fbuseall" ${S.busy.fbAll ? 'disabled' : ''}>📥 ${E(S.busy.fbAll ? t('uploading') : t('fbAll', { n: ready.length }))}</button>
+      <span class="muted sm">${E(t('fbAllHelp'))}</span></div>` : ''}
+    ${added ? `<div class="note ok">✅ ${E(t('fbAdded', { a: added.a, b: added.b }))}
+      <div class="row" style="margin-top:6px"><button class="btn sm" data-act="step" data-v="3">🧠 ${E(t('fbGoTrain'))}</button></div></div>` : ''}
+    ${shown.length ? `<div class="fblist">${shown.map(item).join('')}</div>` : `<div class="muted">${E(t('fbNone'))}</div>`}
+    ${!added && shown.some(f => f.status === 'train' || f.status === 'test') ? `<div class="note">${E(t('fbRetrainHint'))}</div>` : ''}</div>`;
 }
+// 한 번에 넣을 수 있는 피드백: 아직 처리 안 했고, 사진·문장과 레이블이 있는 것(오래된 것부터)
+const fbReady = () => (S.fb || []).filter(f => f.status === 'new' && (f.text || f.img) && labelById(f.want)).sort((a, b) => ms(a.at) - ms(b.at));
 
 // ohdlet에서 그 게시판을 바로 여는 주소
 function ohdletUrl(b) {
@@ -1146,7 +1161,7 @@ const actions = {
   // ✍️ 그리기 · 📸 카메라: 필요할 때만 불러온다.
   async cap(mode, el) {
     const [kind, labelId] = el.dataset.zone.split(':');
-    const M = await import('./ai-capture.js?v=202611100003');
+    const M = await import('./ai-capture.js?v=202611100004');
     if (kind === 'cover') return M.openDraw({ t, title: t('coverTitle'), single: true, onAdd: blob => setCover([blob], []) });
     const lab = labelById(labelId);
     const local = mode === 'camera' && camLocal() && kind !== 'try';
@@ -1341,6 +1356,8 @@ const actions = {
         cover: fresh.cover || '', desc, descLang: fresh.descLang, descTr, inputs: fresh.inputs,
         labels: fresh.labels.map(({ id, name, tr, emoji, phrase, custom, customLang, customTr }) => ({ id, name, tr, emoji, phrase, custom, customLang, customTr })),
         modelVersion: fresh.modelVersion, modelUrl: fresh.modelUrl, mapping: fresh.mapping, published: true, updatedAt: serverTimestamp(),
+        // 카메라 사진 피드백: 선생님이 배정에서 "카메라 사진도 드라이브에 저장하기"를 켰을 때만
+        camFeedback: !!(S.asg && S.asg.cameraUpload),
         ...(fresh.table ? { table: (({ key, ...rest }) => rest)(fresh.table) } : {}),
         ...(fresh.text ? { text: fresh.text } : {}),
       };
@@ -1384,6 +1401,29 @@ const actions = {
       toast(t('posted'), 'ok');
     } catch (e) { console.error(e); toast(t('error') + ': ' + (e.code || e.message), 'err'); }
     S.busy.post = false; schedule();
+  },
+  // 새 피드백을 한 번에 데이터로: 4개 중 1개는 테스트 데이터로(평가 점수가 부풀지 않게), 나머지는 학습 데이터로
+  async fbuseall() {
+    if (S.busy.fbAll) return;
+    const list = fbReady();
+    if (!list.length) return;
+    S.busy.fbAll = true; S.fbAdded = null; schedule();
+    let a = 0, b = 0;
+    try {
+      for (const [i, f] of list.entries()) {
+        const v = i % 4 === 3 ? 'test' : 'train';
+        let n = 0;
+        try {
+          if (f.text && TXon()) n = await TXon().addTexts(v, f.want, f.text);
+          else if (f.img) n = await onPhotos(v, f.want, [await (await fetch(f.img)).blob()], []);
+        } catch (e) { console.warn('[fb]', e); }
+        if (!n) continue;
+        await safeUpdate(doc(db, 'ai_apps', S.pid, 'feedback', f.id), { status: v, statusBy: S.me });
+        if (v === 'test') b++; else a++;
+      }
+      S.fbAdded = { a, b };
+      toast(t('fbAdded', { a, b }), 'ok');
+    } finally { S.busy.fbAll = false; schedule(); }
   },
   async fbuse(v, el) {
     const f = (S.fb || []).find(x => x.id === el.dataset.id);

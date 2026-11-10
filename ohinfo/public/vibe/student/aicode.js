@@ -7,10 +7,10 @@ import { db } from './firebase-config.js';
 import { doc, getDoc, updateDoc, addDoc, collection, serverTimestamp } from '/vibe/shared/fake-firebase/firebase-firestore.js';
 import { loadSession, authReady } from './session.js';
 import { escHtml, SAFE_ID } from './escape.js';
-import { makeT, getLang, setLang } from './ai-i18n.js?v=202611100003';
-import { labelName, newId, LANGS, classBoardKey, nv } from './ai-core.js?v=202611100003';
-import { defineBlocks, toolbox, starter, compile, build, COSTUMES, registerVarsFlyout } from './ai-blocks.js?v=202611100003';
-import { Stage, Runtime } from './ai-stage.js?v=202611100003';
+import { makeT, getLang, setLang } from './ai-i18n.js?v=202611100004';
+import { labelName, newId, LANGS, classBoardKey, nv } from './ai-core.js?v=202611100004';
+import { defineBlocks, toolbox, starter, compile, build, COSTUMES, registerVarsFlyout } from './ai-blocks.js?v=202611100004';
+import { Stage, Runtime } from './ai-stage.js?v=202611100004';
 
 const E = escHtml;
 const $ = id => document.getElementById(id);
@@ -23,7 +23,7 @@ const t = makeT(lang);
 const BL = 'https://cdn.jsdelivr.net/npm/blockly@10.4.3/';
 const BL_LANG = { ko: 'ko', en: 'en', zh: 'zh-hans', ru: 'ru' };
 
-const S = { app: null, project: null, asg: null, session: null, me: '', kind: 'image', prob: 'class', code: null, ws: null, emoji: '🐱', title: '', key: '', model: null, photo: null, cam: null, showBlocks: false, last: null };
+const S = { app: null, project: null, asg: null, session: null, fbBy: '', last: null, fb: null, fbFor: null, fbWant: '', me: '', kind: 'image', prob: 'class', code: null, ws: null, emoji: '🐱', title: '', key: '', model: null, photo: null, cam: null, showBlocks: false, last: null };
 let stage, rt;
 
 function toast(msg) { const el = $('toast'); el.textContent = msg; el.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(() => el.classList.remove('on'), 2600); }
@@ -52,10 +52,13 @@ async function start() {
   if (play) {
     S.code = (S.app.codes || {})[shareKey];
     if (!S.code) return fail(t('k_notFound'));
+    // 로그인한 친구라면 공유 작품에서도 맞아요/틀렸어요를 보낼 수 있다
+    const ses = loadSession();
+    if (ses) { S.fbBy = ses.id; authReady().catch(() => {}); }
   } else {
     const session = loadSession();
     if (!session) { location.href = 'index.html'; return; }
-    S.me = session.id; S.session = session;
+    S.me = session.id; S.session = session; S.fbBy = session.id;
     await authReady();
     try {
       const ps = await getDoc(doc(db, 'ai_projects', pid));
@@ -101,7 +104,7 @@ function layout() {
         <form class="ac-ask hidden" id="askBox"><input id="askIn" autocomplete="off" placeholder="${E(t('k_answerPh'))}"><button type="submit">✓</button></form></div>
       ${play ? '' : `<div class="ac-card"><h3>${E(t('k_char'))}</h3><div class="ac-chars">${COSTUMES.map(e => `<button data-emoji="${e}" class="${e === S.emoji ? 'on' : ''}">${e}</button>`).join('')}</div></div>`}
       <div class="ac-card" id="inPanel">${inputPanel()}</div>
-      <div class="ac-card"><h3>${E(t('k_result'))}</h3><div id="resBox"><span class="muted">${E(t('k_none'))}</span></div></div>
+      <div class="ac-card"><h3>${E(t('k_result'))}</h3><div id="resBox"><span class="muted">${E(t('k_none'))}</span></div><div id="fbBox"></div></div>
       ${canPost() ? `<div class="ac-card" id="postCard">${postCardHtml()}</div>` : ''}
       ${play ? '' : `<div class="ac-card hidden" id="sharePanel"></div>`}
     </aside>`;
@@ -119,6 +122,7 @@ function layout() {
     }));
   }
   bindInputs();
+  bindFeedback();
 }
 
 function inputPanel() {
@@ -144,7 +148,7 @@ function bindInputs() {
     $('photoBtn').addEventListener('click', () => $('filePick').click());
     $('filePick').addEventListener('change', () => { const f = $('filePick').files[0]; $('filePick').value = ''; if (f) setPhoto(f); });
     const d = $('drawBtn');
-    if (d) d.addEventListener('click', async () => { const M = await import('./ai-capture.js?v=202611100003'); M.openDraw({ t, single: true, onAdd: b => setPhoto(b) }); });
+    if (d) d.addEventListener('click', async () => { const M = await import('./ai-capture.js?v=202611100004'); M.openDraw({ t, single: true, onAdd: b => setPhoto(b) }); });
   }
   if (S.kind === 'table') document.querySelectorAll('[data-fi]').forEach(el => el.addEventListener('input', () => {
     const i = Number(el.dataset.fi), f = S.app.table.features[i];
@@ -182,9 +186,9 @@ function setPhoto(blob) {
 // ── AI ──
 let _modelP = null;
 function loadModel() {
-  if (S.kind === 'text') _modelP = import('./ai-text-core.js?v=202611100003').then(M => ({ text: M }));
-  else if (S.kind === 'table') _modelP = import('./ai-table-core.js?v=202611100003').then(M => ({ table: M }));
-  else _modelP = import('./ai-model.js?v=202611100003').then(async M => ({ M, loaded: await (S.app.modelVersion ? M.loadDriveModel(null, pid, S.app.modelVersion) : M.loadModel(S.app.modelUrl)) }));
+  if (S.kind === 'text') _modelP = import('./ai-text-core.js?v=202611100004').then(M => ({ text: M }));
+  else if (S.kind === 'table') _modelP = import('./ai-table-core.js?v=202611100004').then(M => ({ table: M }));
+  else _modelP = import('./ai-model.js?v=202611100004').then(async M => ({ M, loaded: await (S.app.modelVersion ? M.loadDriveModel(null, pid, S.app.modelVersion) : M.loadModel(S.app.modelUrl)) }));
   _modelP.catch(e => { console.error(e); toast(t('k_loadFail')); });
 }
 async function classify(kind, arg) {
@@ -210,15 +214,80 @@ async function classify(kind, arg) {
       src = c;
     } else if (S.photo && S.photo.complete && S.photo.naturalWidth) src = S.photo;
     if (!src) { toast(t('k_needInput')); return null; }
+    S.lastSrc = { el: src, cam: src.tagName === 'CANVAS' };
     const preds = await m.M.predict(m.loaded, src);
     const probs = {};
     for (const x of preds || []) { const id = (S.app.mapping || {})[x.className]; if (id) probs[id] = (probs[id] || 0) + x.probability; }
     r = { probs };
   }
+  if (r.probs) S.last = { got: topId(r.probs), text: kind === 'text' ? r.input : '', src: kind === 'image' ? S.lastSrc : null };
   showResult(r);
   return r;
 }
+const topId = probs => { let top = '', bp = -1; for (const [id, p] of Object.entries(probs || {})) if (p > bp) { bp = p; top = id; } return top; };
+
+// ── 맞아요/틀렸어요 → 만든 모둠에게(ai_apps/{pid}/feedback). 모둠이 ⑤에서 데이터로 넣고 다시 학습한다 ──
+// 블록이 계속 물어봐도 고르는 중(틀렸어요 → 정답 고르기)이면 그대로 둔다.
+function fbRender() {
+  const box = $('fbBox');
+  if (!box) return;
+  if (!S.fbBy || S.kind === 'table' || !S.last) { box.innerHTML = ''; return; }
+  if (S.fb === 'sent') { box.innerHTML = `<div class="ac-fb muted">✅ ${E(t('fbThanks'))}</div>`; return; }
+  if (S.fb === 'wrong' || S.fb === 'sending') {
+    box.innerHTML = `<div class="ac-fb"><b>${E(t('fbPick'))}</b><div class="ac-opts">${(S.app.labels || []).map(l =>
+      `<button class="ac-btn${S.fbWant === l.id ? ' on' : ''}" data-fbpick="${E(l.id)}">${E(l.emoji || '')} ${E(nameOf(l.id))}</button>`).join('')}</div>
+      <div class="ac-row"><button class="ac-btn run" data-fb="send" ${S.fbWant && S.fb !== 'sending' ? '' : 'disabled'}>${E(t('fbSend'))}</button><button class="ac-btn" data-fb="cancel">${E(t('fbCancel'))}</button></div></div>`;
+    return;
+  }
+  const cam = S.last.src && S.last.src.cam;
+  box.innerHTML = `<div class="ac-fb"><span>${E(t('fbAsk'))}<br><small class="muted">${E(t(cam && S.app.camFeedback ? 'fbPrivacyCam' : 'fbPrivacy'))}</small></span>
+    <div class="ac-row"><button class="ac-btn" data-fb="ok">👍 ${E(t('fbRight'))}</button><button class="ac-btn" data-fb="wrong">👎 ${E(t('fbWrong'))}</button></div></div>`;
+}
+// 보낼 사진: 긴 쪽 320px JPEG(웹앱 피드백과 같은 크기). 카메라 사진은 선생님이 허락한 수업만.
+function fbPhoto(src) {
+  if (!src || (src.cam && !S.app.camFeedback)) return '';
+  const el = src.el, w = el.naturalWidth || el.width, h = el.naturalHeight || el.height;
+  if (!w || !h) return '';
+  const k = Math.min(1, 320 / Math.max(w, h)), c = document.createElement('canvas');
+  c.width = Math.round(w * k); c.height = Math.round(h * k);
+  c.getContext('2d').drawImage(el, 0, 0, c.width, c.height);
+  const u = c.toDataURL('image/jpeg', 0.75);
+  return u.length < 59000 ? u : '';
+}
+async function fbSend(ok) {
+  const f = S.fbFor;
+  if (!f) return;
+  const want = ok ? f.got : S.fbWant;
+  if (!want) return;
+  S.fb = 'sending'; fbRender();
+  try {
+    await authReady();
+    const data = { by: S.fbBy, ok: !!ok, got: f.got, want, note: '', status: 'new', lang, at: serverTimestamp() };
+    if (f.text) data.text = String(f.text).slice(0, 100);
+    else if (f.img) data.img = f.img;
+    await addDoc(collection(db, 'ai_apps', pid, 'feedback'), data);
+    S.fb = 'sent';
+  } catch (e) { console.error('[aicode] feedback', e); toast(t('error') + ' ' + (e.code || '')); S.fb = ok ? null : 'wrong'; }
+  fbRender();
+}
+function bindFeedback() {
+  $('fbBox').addEventListener('click', e => {
+    const pick = e.target.closest('[data-fbpick]');
+    if (pick) { S.fbWant = pick.dataset.fbpick; return fbRender(); }
+    const b = e.target.closest('[data-fb]');
+    if (!b) return;
+    const v = b.dataset.fb;
+    if (v === 'cancel') { S.fb = null; S.fbFor = null; return fbRender(); }
+    if (v === 'send') return fbSend(false);
+    // 누른 순간의 결과·사진을 붙잡아 둔다(블록이 계속 물어봐도 바뀌지 않게)
+    S.fbFor = { got: S.last.got, text: S.last.text, img: S.kind === 'image' ? fbPhoto(S.last.src) : '' };
+    if (v === 'ok') fbSend(true);
+    else { S.fb = 'wrong'; S.fbWant = ''; fbRender(); }
+  });
+}
 function showResult(r) {
+  if (S.fb !== 'wrong' && S.fb !== 'sending') { S.fb = null; S.fbFor = null; }
+  fbRender();
   const box = $('resBox');
   if (r.value != null) {
     const u = S.app.table && S.app.table.unit ? ' ' + S.app.table.unit : '';
