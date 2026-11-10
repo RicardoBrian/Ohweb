@@ -7,10 +7,11 @@ import { db } from './firebase-config.js';
 import { doc, getDoc, updateDoc, addDoc, collection, serverTimestamp } from '/vibe/shared/fake-firebase/firebase-firestore.js';
 import { loadSession, authReady } from './session.js';
 import { escHtml, SAFE_ID } from './escape.js';
-import { makeT, getLang, setLang } from './ai-i18n.js?v=202611100006';
-import { labelName, newId, LANGS, classBoardKey, nv } from './ai-core.js?v=202611100006';
-import { defineBlocks, toolbox, starter, compile, build, COSTUMES, registerVarsFlyout } from './ai-blocks.js?v=202611100006';
-import { Stage, Runtime } from './ai-stage.js?v=202611100006';
+import { bindDropZone, fetchFirstImage } from './ai-image.js?v=202611100007';
+import { makeT, getLang, setLang } from './ai-i18n.js?v=202611100007';
+import { labelName, newId, LANGS, classBoardKey, nv } from './ai-core.js?v=202611100007';
+import { defineBlocks, toolbox, starter, compile, build, COSTUMES, registerVarsFlyout } from './ai-blocks.js?v=202611100007';
+import { Stage, Runtime } from './ai-stage.js?v=202611100007';
 
 const E = escHtml;
 const $ = id => document.getElementById(id);
@@ -100,7 +101,8 @@ function layout() {
   $('main').innerHTML = `<div id="blocklyDiv"${play ? ' class="hidden"' : ''}></div>
     <aside class="ac-side">
       ${play ? '' : `<p class="muted" style="margin:0">${E(t('k_lead'))}</p>`}
-      <div class="ac-stage"><canvas id="stage"></canvas>
+      <div class="ac-stage" id="stageBox"><canvas id="stage"></canvas>
+        <div class="ac-pick hidden" id="pickBox"><button class="ac-btn run" id="pickBtn">${E(t('k_photo'))}</button><span>${E(t('k_pickHint'))}</span></div>
         <form class="ac-ask hidden" id="askBox"><input id="askIn" autocomplete="off" placeholder="${E(t('k_answerPh'))}"><button type="submit">✓</button></form></div>
       ${play ? '' : `<div class="ac-card"><h3>${E(t('k_char'))}</h3><div class="ac-chars">${COSTUMES.map(e => `<button data-emoji="${e}" class="${e === S.emoji ? 'on' : ''}">${e}</button>`).join('')}</div></div>`}
       <div class="ac-card" id="inPanel">${inputPanel()}</div>
@@ -131,6 +133,7 @@ function inputPanel() {
     const draw = (S.app.inputs || []).includes('draw');
     return `<h3>${E(t('k_input'))}</h3><div class="ac-row"><button class="ac-btn" id="camBtn">${E(t('k_camOn'))}</button>
       <button class="ac-btn" id="photoBtn">${E(t('k_photo'))}</button>${draw ? `<button class="ac-btn" id="drawBtn">${E(t('k_draw'))}</button>` : ''}${ask}</div>
+      <p class="muted" style="margin:6px 0 0">${E(t('k_dropHint'))}</p>
       <video class="ac-cam hidden" id="cam" autoplay playsinline muted></video><img class="ac-photo hidden" id="photo" alt="">`;
   }
   if (S.kind === 'text') return `<h3>${E(t('k_input'))}</h3><textarea class="ac-text" id="txtIn" rows="2" maxlength="100" placeholder="${E(t('k_textPh'))}"></textarea><div class="ac-row" style="margin-top:6px">${ask}</div>`;
@@ -147,8 +150,16 @@ function bindInputs() {
     $('camBtn').addEventListener('click', () => camera(!S.cam));
     $('photoBtn').addEventListener('click', () => $('filePick').click());
     $('filePick').addEventListener('change', () => { const f = $('filePick').files[0]; $('filePick').value = ''; if (f) setPhoto(f); });
+    // 끌어다 놓기·붙여넣기(Ctrl+V): 사진 파일, 구글 이미지에서 끌어온 사진 모두 — 입력 칸과 무대 어디든
+    const dropPhoto = async (files, urls) => {
+      try { const b = files[0] || (urls.length ? await fetchFirstImage(urls) : null); if (b) setPhoto(b); }
+      catch { toast(t('k_dropFail')); }
+    };
+    bindDropZone($('inPanel'), dropPhoto);
+    bindDropZone($('stageBox'), dropPhoto);
+    $('pickBtn').addEventListener('click', () => $('filePick').click());
     const d = $('drawBtn');
-    if (d) d.addEventListener('click', async () => { const M = await import('./ai-capture.js?v=202611100006'); M.openDraw({ t, single: true, onAdd: b => setPhoto(b) }); });
+    if (d) d.addEventListener('click', async () => { const M = await import('./ai-capture.js?v=202611100007'); M.openDraw({ t, single: true, onAdd: b => setPhoto(b) }); });
   }
   if (S.kind === 'table') document.querySelectorAll('[data-fi]').forEach(el => el.addEventListener('input', () => {
     const i = Number(el.dataset.fi), f = S.app.table.features[i];
@@ -175,9 +186,20 @@ async function camera(on) {
     btn.textContent = t('k_camOff'); btn.classList.add('on');
   } catch { toast(t('capNoCam')); S.cam = null; }
 }
+let _pickResolve = null;
+function pickPhoto() {
+  return new Promise(res => { _pickResolve = res; $('pickBox').classList.remove('hidden'); });
+}
+function endPick() {
+  $('pickBox').classList.add('hidden');
+  if (_pickResolve) { const r = _pickResolve; _pickResolve = null; r(); }
+}
 function setPhoto(blob) {
+  if (!blob || !/^image\//.test(blob.type || 'image/')) return;
   const img = $('photo');
   if (img.src) URL.revokeObjectURL(img.src);
+  // 사진이 다 열린 뒤에 "사진 올리기" 블록을 끝낸다(바로 다음 블록이 그 사진으로 묻도록)
+  img.onload = () => { if (_pickResolve) endPick(); };
   img.src = URL.createObjectURL(blob); img.classList.remove('hidden');
   S.photo = img;
   if (S.cam) camera(false);
@@ -186,9 +208,9 @@ function setPhoto(blob) {
 // ── AI ──
 let _modelP = null;
 function loadModel() {
-  if (S.kind === 'text') _modelP = import('./ai-text-core.js?v=202611100006').then(M => ({ text: M }));
-  else if (S.kind === 'table') _modelP = import('./ai-table-core.js?v=202611100006').then(M => ({ table: M }));
-  else _modelP = import('./ai-model.js?v=202611100006').then(async M => ({ M, loaded: await (S.app.modelVersion ? M.loadDriveModel(null, pid, S.app.modelVersion) : M.loadModel(S.app.modelUrl)) }));
+  if (S.kind === 'text') _modelP = import('./ai-text-core.js?v=202611100007').then(M => ({ text: M }));
+  else if (S.kind === 'table') _modelP = import('./ai-table-core.js?v=202611100007').then(M => ({ table: M }));
+  else _modelP = import('./ai-model.js?v=202611100007').then(async M => ({ M, loaded: await (S.app.modelVersion ? M.loadDriveModel(null, pid, S.app.modelVersion) : M.loadModel(S.app.modelUrl)) }));
   _modelP.catch(e => { console.error(e); toast(t('k_loadFail')); });
 }
 async function classify(kind, arg) {
@@ -336,12 +358,13 @@ function initStage() {
     stage, nameOf, inputs: S.kind === 'table' ? tableInputs() : [],
     classify: (kind, arg) => classify(kind, arg),
     camera: on => camera(on),
+    pickPhoto: () => (S.kind === 'image' ? pickPhoto() : Promise.resolve()),
     onInputs: vals => showInputs(vals),
     ask: q => new Promise(res => {
       _askResolve = res;
       $('askBox').classList.remove('hidden'); $('askIn').value = ''; $('askIn').focus();
     }),
-    cancelAsk: () => { if (_askResolve) { _askResolve(''); _askResolve = null; } $('askBox').classList.add('hidden'); },
+    cancelAsk: () => { if (_askResolve) { _askResolve(''); _askResolve = null; } $('askBox').classList.add('hidden'); if ($('pickBox')) endPick(); },
     onState: on => { $('runBtn').classList.toggle('on', on); },
     onError: () => toast(t('k_error')),
   });

@@ -154,6 +154,8 @@ export class Runtime {
       async ask(q) { R.o.stage.bubble = String(q || ''); const a = await R.o.ask(String(q || '')); R.o.stage.bubble = null; if (R.stopped) throw STOP; R.answer = a; },
       answer() { return R.answer; },
       camera(on) { if (R.o.camera) R.o.camera(!!on); },
+      // 사진 올리기: 무대에 [사진 고르기]를 띄우고 학생이 고르거나 끌어다 놓을 때까지 기다린다
+      async pickPhoto() { if (R.stopped) throw STOP; if (R.o.pickPhoto) await R.o.pickPhoto(); if (R.stopped) throw STOP; },
       async askImage() { return R.classify('image'); },
       async askText(txt) { return R.classify('text', String(txt == null ? '' : txt)); },
       async askTable() { return R.classify('table', R.inputs.slice()); },
