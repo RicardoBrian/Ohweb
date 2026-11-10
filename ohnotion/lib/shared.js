@@ -131,35 +131,56 @@ export function getPage(context, slug) {
   });
 }
 
-// ── 페이지 숨기기(시험 기간 등) ──
-// appSettings/ohnotion_site = { closedSlugs: [주소, …], updatedAt }. 공개 읽기·관리자 쓰기
-// (규칙의 appSettings 그대로). 관리 페이지 목록의 ⏸ 버튼이 주소를 넣고 뺀다.
+// ── 페이지 숨기기(시험 기간) · 다국어 학습지 ──
+// appSettings/ohnotion_site = {
+//   closedSlugs: [주소, …],                                   관리 페이지 목록의 ⏸
+//   langs: { 주소: [{ code: 'en', url, pageId }, …] },          다국어 학습지(언어별 노션 페이지)
+//   updatedAt }
+// 공개 읽기·관리자 쓰기(규칙의 appSettings 그대로 — notion_pages 규칙은 필드를 제한해서 여기에 둔다).
 // 숨긴 페이지를 연 학생 화면이 30초마다 /api/status 로 묻기 때문에, 문서 하나를 데이터센터당
-// 15초에 한 번만 읽는다(페이지 수와 상관없음). 읽기에 실패하면 "숨김 없음"으로 보고, 실패는 캐싱하지 않는다.
+// 15초에 한 번만 읽는다(페이지 수와 상관없음). 읽기에 실패하면 "숨김·다국어 없음"으로 보고, 실패는 캐싱하지 않는다.
 export const SITE_DOC = 'ohnotion_site';
 const SITE_TTL_SECONDS = 15;
-export async function getClosedSlugs(context) {
+const EMPTY_SITE = { closedSlugs: [], langs: {} };
+export const LANG_RE = /^[a-z]{2,3}(-[A-Za-z]{2,4})?$/;
+
+function parseLangs(field) {
+  const out = {};
+  for (const [slug, v] of Object.entries(field?.mapValue?.fields || {})) {
+    const list = (v.arrayValue?.values || []).map((x) => {
+      const f = x.mapValue?.fields || {};
+      return { code: f.code?.stringValue || '', pageId: f.pageId?.stringValue || '' };
+    }).filter((l) => LANG_RE.test(l.code) && /^[0-9a-f]{32}$/.test(l.pageId));
+    if (list.length) out[slug] = list;
+  }
+  return out;
+}
+
+export async function getSiteSettings(context) {
   try {
-    const hit = await cacheGet(context, 'site');
-    if (hit) return hit.closedSlugs || [];
+    const hit = await cacheGet(context, 'site2');
+    if (hit) return hit;
   } catch { /* 캐시 없이 */ }
   try {
     const r = await fetch(`${DOCS}/appSettings/${SITE_DOC}`);
-    let closedSlugs = [];
+    let site = EMPTY_SITE;
     if (r.ok) {
-      const values = (await r.json()).fields?.closedSlugs?.arrayValue?.values || [];
-      closedSlugs = values.map((v) => v.stringValue).filter((v) => typeof v === 'string');
+      const fields = (await r.json()).fields || {};
+      site = {
+        closedSlugs: (fields.closedSlugs?.arrayValue?.values || []).map((v) => v.stringValue).filter((v) => typeof v === 'string'),
+        langs: parseLangs(fields.langs),
+      };
     } else if (r.status !== 404) {
-      return [];
+      return EMPTY_SITE;
     }
-    context.waitUntil(cachePut(context, 'site', { closedSlugs }, SITE_TTL_SECONDS).catch(() => {}));
-    return closedSlugs;
+    context.waitUntil(cachePut(context, 'site2', site, SITE_TTL_SECONDS).catch(() => {}));
+    return site;
   } catch {
-    return [];
+    return EMPTY_SITE;
   }
 }
 export async function isClosed(context, slug) {
-  return (await getClosedSlugs(context)).includes(slug);
+  return (await getSiteSettings(context)).closedSlugs.includes(slug);
 }
 
 export function listPages(context) {

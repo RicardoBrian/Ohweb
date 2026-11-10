@@ -240,3 +240,11 @@ body.ui-sky .links-section h2, body.ui-sky .section-head h2 { font-weight: 700; 
 /* 숨긴 페이지(⏸) */
 .page-card.is-closed { opacity: 0.75; outline: 2px solid var(--danger-light); }
 .icon-btn.on { background: var(--danger-light); color: var(--danger); }
+
+/* 다국어 학습지 — 언어별 링크 줄 */
+.check { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; cursor: pointer; }
+#langBox { margin-top: 10px; }
+.lang-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+.lang-row select { flex: 0 0 190px; }
+.lang-row input { flex: 1; min-width: 0; }
+@media (max-width: 640px) { .lang-row { flex-wrap: wrap; } .lang-row select { flex: 1 1 100%; } }
