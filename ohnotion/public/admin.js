@@ -13,7 +13,7 @@
 //     대신 보여준 횟수, 못 불러온 횟수의 일별 카운터.
 import { db } from './firebase-config.js';
 import {
-  collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, where, serverTimestamp,
+  collection, doc, getDoc, getDocs, setDoc, deleteDoc, query, where, serverTimestamp, arrayUnion, arrayRemove,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 const app = document.getElementById('app');
@@ -154,15 +154,6 @@ async function renderDashboard() {
         <code>FIREBASE_SERVICE_ACCOUNT_KEY</code>를 넣고 재배포하면 켜져요. 등록과 학생 화면은 지금도 동작해요.
       </div>
 
-      <div class="site-switch" id="siteSwitch">
-        <div class="site-switch-text">
-          <b id="siteState">학생 화면 상태 확인 중…</b>
-          <span class="hint" id="siteHint">시험 때 누르면 모든 학생 주소가 막혀요(페이지는 지워지지 않아요). 열려 있던 학생 화면도 1분 안에 자동 새로고침돼 닫혀요.</span>
-          <input id="siteMessage" class="inp" maxlength="300" placeholder="학생에게 보일 문구 (비우면: 선생님이 잠시 닫아 두었어요…)">
-        </div>
-        <button type="button" class="btn" id="siteToggle" disabled>…</button>
-      </div>
-
       <div class="tiles" id="tiles"></div>
 
       <div class="create-card">
@@ -240,55 +231,24 @@ async function renderDashboard() {
   document.getElementById('cancelEdit').addEventListener('click', resetForm);
   document.getElementById('recheckBtn').addEventListener('click', () => runChecks(true));
 
-  document.getElementById('siteToggle').addEventListener('click', toggleSite);
-  loadSite();
-
   await refresh({ withChecks: true });
   startRefresh();
 }
 
-// ── 학생 화면 닫기(시험 기간) — appSettings/ohnotion_site (lib/shared.js getSiteStatus) ──
+// ── 페이지 숨기기(시험 기간) — appSettings/ohnotion_site.closedSlugs (lib/shared.js getClosedSlugs) ──
+// 지우지 않고 그 주소만 막는다. 열려 있던 학생 화면도 1분 안에 스스로 새로고침돼 닫힌다.
 const SITE_DOC = 'ohnotion_site';
-let siteClosed = false;
-function renderSite() {
-  const box = document.getElementById('siteSwitch');
-  if (!box) return;
-  box.classList.toggle('closed', siteClosed);
-  document.getElementById('siteState').textContent = siteClosed
-    ? '⏸ 학생 화면이 닫혀 있어요 — 지금 학생은 어떤 주소도 열 수 없어요'
-    : '▶ 학생 화면이 열려 있어요';
-  const btn = document.getElementById('siteToggle');
-  btn.disabled = false;
-  btn.textContent = siteClosed ? '다시 열기' : '학생 화면 닫기';
-  btn.className = siteClosed ? 'btn accent' : 'btn danger';
+let closedSlugs = new Set();
+async function loadClosed() {
+  const snap = await getDoc(doc(db, 'appSettings', SITE_DOC));
+  closedSlugs = new Set(snap.exists() ? (snap.data().closedSlugs || []) : []);
 }
-async function loadSite() {
-  try {
-    const snap = await getDoc(doc(db, 'appSettings', SITE_DOC));
-    const d = snap.exists() ? snap.data() : {};
-    siteClosed = d.closed === true;
-    document.getElementById('siteMessage').value = d.message || '';
-    renderSite();
-  } catch (e) {
-    document.getElementById('siteState').textContent = `상태를 못 읽었어요: ${e.message}`;
-  }
-}
-async function toggleSite() {
-  const next = !siteClosed;
-  if (next && !confirm('학생 화면을 닫을까요?\n모든 주소가 막히고, 열려 있던 학생 화면도 1분 안에 닫혀요.')) return;
-  const btn = document.getElementById('siteToggle');
-  btn.disabled = true;
-  try {
-    await setDoc(doc(db, 'appSettings', SITE_DOC), {
-      closed: next,
-      message: document.getElementById('siteMessage').value.trim().slice(0, 300),
-      updatedAt: serverTimestamp(),
-    });
-    siteClosed = next;
-  } catch (e) {
-    alert(`바꾸지 못했어요: ${e.message}`);
-  }
-  renderSite();
+async function setClosed(slug, closed) {
+  await setDoc(doc(db, 'appSettings', SITE_DOC), {
+    closedSlugs: closed ? arrayUnion(slug) : arrayRemove(slug),
+    updatedAt: serverTimestamp(),
+  }, { merge: true });
+  if (closed) closedSlugs.add(slug); else closedSlugs.delete(slug);
 }
 
 function startRefresh() {
@@ -375,7 +335,7 @@ async function runChecks(force = false) {
 
 async function refresh({ withChecks }) {
   try {
-    await Promise.all([loadPages(), loadStats().catch((e) => { console.warn('통계 읽기 실패', e); })]);
+    await Promise.all([loadPages(), loadClosed().catch((e) => { console.warn('숨김 목록 읽기 실패', e); }), loadStats().catch((e) => { console.warn('통계 읽기 실패', e); })]);
   } catch (e) {
     document.getElementById('pageList').innerHTML = `<div class="empty-state">불러오기에 실패했어요: ${escapeHtml(e.message)}</div>`;
     return;
@@ -501,11 +461,12 @@ function renderList() {
     const cat = (p.category || '').trim();
     const slugAttr = escapeHtml(p.slug);
     return `
-      <div class="page-card">
+      <div class="page-card${closedSlugs.has(p.slug) ? ' is-closed' : ''}">
         <div class="page-main">
           <div class="page-top">
             <span class="pill ${st.cls}">${escapeHtml(st.label)}</span>
             ${cat ? `<span class="pill cat">${escapeHtml(cat)}</span>` : ''}
+            ${closedSlugs.has(p.slug) ? '<span class="pill bad" title="학생이 열 수 없어요(👁로 다시 공개)">⏸ 숨김</span>' : ''}
             ${p.locked ? '<span class="pill muted" title="비밀번호가 걸려 있어요">🔒 비밀번호</span>' : ''}
             <span class="page-title">${escapeHtml(p.title || p.slug)}</span>
           </div>
@@ -522,6 +483,7 @@ function renderList() {
           <button class="icon-btn" data-act="present" data-slug="${slugAttr}" title="발표 모드로 열기">▶</button>
           <button class="icon-btn" data-act="copy" data-slug="${slugAttr}" title="주소 복사">⧉</button>
           <button class="icon-btn" data-act="check" data-slug="${slugAttr}" title="지금 새로 불러오기">⟳</button>
+          <button class="icon-btn${closedSlugs.has(p.slug) ? ' on' : ''}" data-act="close" data-slug="${slugAttr}" title="${closedSlugs.has(p.slug) ? '다시 공개' : '숨기기(지우지 않고 학생만 못 들어오게)'}">${closedSlugs.has(p.slug) ? '👁' : '⏸'}</button>
           <button class="icon-btn" data-act="edit" data-slug="${slugAttr}" title="수정">✎</button>
           <button class="icon-btn danger" data-act="delete" data-slug="${slugAttr}" title="삭제">✕</button>
         </div>
@@ -546,12 +508,19 @@ async function onAction(act, p) {
       await checkOne(p, true);
       renderAll();
       if (checks[p.slug]?.ok) showToast('새로 불러왔어요 — 학생 화면에 바로 반영돼요');
+    } else if (act === 'close') {
+      const closing = !closedSlugs.has(p.slug);
+      if (closing && !confirm(`"${p.title || p.slug}" 페이지를 숨길까요?\n지워지지 않고, 학생만 못 들어와요. 열려 있던 학생 화면도 1분 안에 닫혀요.`)) return;
+      await setClosed(p.slug, closing);
+      renderAll();
+      showToast(closing ? '숨겼어요 — 1분 안에 학생 화면이 닫혀요' : '다시 공개했어요 — 1분 안에 학생 화면이 열려요');
     } else if (act === 'edit') {
       startEdit(p);
     } else if (act === 'delete') {
       if (!confirm(`"${p.title || p.slug}" 페이지를 삭제할까요?\n노션 원본은 그대로 남고, ${PUBLIC_HOST}/${p.slug} 주소만 사라져요.`)) return;
       await deleteDoc(doc(db, 'notion_pages', p.slug));
       if (p.locked) await deleteDoc(doc(db, 'notion_secrets', p.slug)).catch(() => {});
+      if (closedSlugs.has(p.slug)) await setClosed(p.slug, false).catch(() => {});
       delete checks[p.slug];
       showToast('삭제했어요');
       if (editing === p.slug) resetForm();
