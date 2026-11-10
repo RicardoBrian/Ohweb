@@ -13,7 +13,7 @@
 | `public/admin-ailab.js` | AI 실습실 관리 |
 | `public/exam-qcsv.js` | 시험 문항 CSV |
 | `public/forms.html` | 설문 만들기·결과 |
-| `public/score.html` + `score-core.js` | 수행평가: 감점사유 템플릿·점수 입력(CSV/엑셀)·반별 공개·이의신청 확인·수정 이력. `score-core.js` 는 화면 없는 순수 함수(테스트 `npm run test:score`) |
+| `public/score.html` + `score-core.js` + `score-config.js` | 수행평가: 감점사유 템플릿·평가 항목(①②③)·점수 입력(CSV/엑셀, 채점 시트 상세 탭 그대로·학번 가능)·비고(선생님만)·반별 공개·이의신청 확인·수정 이력·제출물 연결(드라이브 폴더 → 학번으로 학생). `score-core.js` 는 화면 없는 순수 함수(테스트 `npm run test:score`), `score-config.js` 는 Apps Script 주소 |
 | `public/messages.html`, `notice.html` | 메시지·공지 |
 | `public/settle.html` + `settle-firebase-config.js` | 정산(개인용, DB `ohsettle-10d43`) |
 | `public/timer.html` | 타이머 |

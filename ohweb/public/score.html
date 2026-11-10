@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>수행평가 — kakainfo 관리자</title>
+  <title>시험 점수 확인 — kakainfo 관리자</title>
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
@@ -150,6 +150,18 @@
     .hist .when { font-size: 0.76rem; color: var(--sub); }
     .quote { background: var(--sky-chip); border-radius: 12px; padding: 12px 14px; white-space: pre-wrap; word-break: break-word; }
 
+    /* 항목별 점수·제출물 */
+    .crit-row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+    .crit-no { font-weight: 800; color: var(--accent); width: 18px; }
+    td.crit-cell { min-width: 150px; }
+    td.crit-cell .f-item { width: 64px; text-align: right; margin-bottom: 4px; display: block; }
+    td.crit-cell .f-reason { font-size: 0.78rem; padding: 4px 8px; }
+    td.total { font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .f-note { background: var(--sky-chip); }
+    .file-box { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; }
+    .file-name { font-weight: 700; font-size: 0.85rem; margin-bottom: 6px; word-break: break-all; }
+    .file-img { max-width: 100%; border-radius: 8px; display: block; margin-bottom: 8px; }
+    .file-text { white-space: pre-wrap; word-break: break-word; font-size: 0.82rem; background: var(--sky-chip); border-radius: 8px; padding: 10px; max-height: 320px; overflow: auto; }
     .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px); background: rgba(20,24,40,0.92); color: #fff; font-size: 0.85rem; font-weight: 600; padding: 10px 22px; border-radius: 50px; z-index: 20000; transition: transform 0.3s, opacity 0.3s; opacity: 0; pointer-events: none; max-width: 92vw; }
     .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
   </style>
@@ -166,6 +178,7 @@
     <symbol id="ic-download" viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5M5 20h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="ic-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
     <symbol id="ic-trash" viewBox="0 0 24 24"><path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-folder" viewBox="0 0 24 24"><path d="M3.5 6.5a1 1 0 0 1 1-1h5l2 2.5h8a1 1 0 0 1 1 1v9.5a1 1 0 0 1-1 1h-15a1 1 0 0 1-1-1Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
     <symbol id="ic-history" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4M12 8v4l3 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="ic-refresh" viewBox="0 0 24 24"><path d="M5 12a7 7 0 0 1 12-4.9M19 12a7 7 0 0 1-12 4.9M17 3v4h-4M7 21v-4h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
     <symbol id="ic-school" viewBox="0 0 24 24"><path d="M12 4 3 8.5 12 13l9-4.5Z M7 10.8V16c0 1.2 2.2 3 5 3s5-1.8 5-3v-5.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
@@ -179,7 +192,7 @@
 </svg>
 
 <nav class="nav">
-  <a href="admin.html" class="nav-brand"><img src="logo.png" alt="kakainfo"><span class="nav-brand-title">수행평가</span></a>
+  <a href="admin.html" class="nav-brand"><img src="logo.png" alt="kakainfo"><span class="nav-brand-title">시험 점수 확인</span></a>
   <div style="flex:1"></div>
   <button class="waffle-btn" title="메뉴" onclick="openAppModal()">
     <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor"><rect width="5" height="5" rx="1.2"/><rect x="6.5" width="5" height="5" rx="1.2"/><rect x="13" width="5" height="5" rx="1.2"/><rect y="6.5" width="5" height="5" rx="1.2"/><rect x="6.5" y="6.5" width="5" height="5" rx="1.2"/><rect x="13" y="6.5" width="5" height="5" rx="1.2"/><rect y="13" width="5" height="5" rx="1.2"/><rect x="6.5" y="13" width="5" height="5" rx="1.2"/><rect x="13" y="13" width="5" height="5" rx="1.2"/></svg>
@@ -194,7 +207,7 @@
       <button class="app-modal-item" onclick="location.href='admin.html#schools'"><svg width="28" height="28"><use href="#ic-school"/></svg><span>학교</span></button>
       <button class="app-modal-item" onclick="location.href='admin.html#students'"><svg width="28" height="28"><use href="#ic-people"/></svg><span>학생</span></button>
       <button class="app-modal-item" onclick="location.href='admin.html#exam'"><svg width="28" height="28"><use href="#ic-clipboard"/></svg><span>시험</span></button>
-      <button class="app-modal-item" onclick="closeAppModal()"><svg width="28" height="28"><use href="#ic-check"/></svg><span>수행평가</span></button>
+      <button class="app-modal-item" onclick="closeAppModal()"><svg width="28" height="28"><use href="#ic-check"/></svg><span>시험 점수 확인</span></button>
       <button class="app-modal-item" onclick="location.href='forms.html'"><svg width="28" height="28"><use href="#ic-doc"/></svg><span>설문지</span></button>
       <button class="app-modal-item" onclick="location.href='messages.html'"><svg width="28" height="28"><use href="#ic-chat"/></svg><span>학생 질문</span></button>
       <button class="app-modal-item" onclick="location.href='admin.html#apps'"><svg width="28" height="28"><use href="#ic-grid"/></svg><span>앱 설정</span></button>
@@ -206,7 +219,7 @@
   <!-- 목록 화면 -->
   <div id="viewList">
     <div class="page-head">
-      <h1>수행평가</h1>
+      <h1>시험 점수 확인</h1>
       <div class="grow"></div>
       <div class="seg" id="tabSeg">
         <button data-tab="assess" class="on">평가</button>
@@ -247,6 +260,7 @@
     <div class="toolbar">
       <button class="btn" id="btnScoreForm"><svg><use href="#ic-download"/></svg>점수 양식 내려받기</button>
       <button class="btn primary" id="btnScoreUpload"><svg><use href="#ic-upload"/></svg>점수 파일 올리기</button>
+      <button class="btn" id="btnFiles"><svg><use href="#ic-folder"/></svg>제출물 연결</button>
       <div class="grow"></div>
       <label class="chk" style="border:none;padding:4px"><input type="checkbox" id="onlyDisputes"> 이의신청만</label>
       <button class="btn sm" id="btnPubAll">전체 공개</button>
@@ -270,9 +284,11 @@
 <script type="module">
 await window.AdminAuth.ready;
 if (!window.AdminAuth.isValid()) { location.href = 'index.html'; throw new Error('관리자 아님'); }
-import { db } from './firebase-config.js';
+import { db, auth } from './firebase-config.js';
+import { SCORE_GAS_URL } from './score-config.js';
+import { openViewer, fileKind, objectUrl } from './score-viewer.js';
 import {
-  collection, getDocs, doc, updateDoc, deleteDoc, addDoc, setDoc, query, where, orderBy,
+  collection, getDocs, getDoc, doc, updateDoc, deleteDoc, addDoc, setDoc, query, where, orderBy,
   writeBatch, serverTimestamp, arrayUnion, arrayRemove,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import * as SC from './score-core.js';
@@ -457,6 +473,7 @@ function assessForm(a) {
   const bySchool = {};
   classes.forEach(c => (bySchool[c.school] ||= []).push(c));
   const subjects = templates.map(t => t.subject);
+  let crit = (a?.criteria || []).map(c => ({ ...c }));
   const body = `
     <div class="field"><label>평가 이름</label><input class="f-inp" id="fTitle" maxlength="80" value="${esc(a?.title || '')}" placeholder="예: 1차 수행평가 — 포트폴리오"></div>
     <div class="field" style="display:grid;grid-template-columns:1fr 110px 90px;gap:8px">
@@ -466,16 +483,36 @@ function assessForm(a) {
       <div><label>만점</label><input class="f-inp" id="fMax" type="number" min="1" step="any" value="${esc(a?.maxScore ?? 100)}"></div>
     </div>
     <div class="hint" id="fSubjHint"></div>
+    <div class="field"><label>평가 항목 <span style="font-weight:500">(선택 — 항목별로 점수·사유를 매길 때. 만점은 배점 합계)</span></label>
+      <div id="fCrit"></div>
+      <button class="btn sm" type="button" id="fCritAdd">+ 항목 추가</button>
+      <div class="hint">비워 두고 점수 파일을 올리면, 파일의 "① 항목(배점)" 머리글로 자동으로 채울 수 있습니다.</div>
+    </div>
     <div class="field"><label>대상 반</label>
       ${classes.length ? Object.entries(bySchool).map(([s, cs]) => `<div class="group-label">${esc(s)}</div><div class="chk-list">${cs.map(c => `<label class="chk"><input type="checkbox" value="${esc(c.key)}" ${sel.has(c.key) ? 'checked' : ''}>${esc(c.grade)}학년 ${esc(c.cls)}반 <span class="hint" style="margin:0">${c.students.length}명</span></label>`).join('')}</div>`).join('')
         : '<p class="hint">학생 명단이 없습니다. 관리자 화면의 학생 메뉴에서 먼저 올려 주세요.</p>'}
     </div>`;
   openModal(a ? '평가 수정' : '새 평가', body, `<button class="btn" data-close>취소</button><button class="btn primary" id="fOk">${a ? '저장' : '만들기'}</button>`);
-  const hint = () => { const s = $('fSubject').value.trim(); const n = templateItems(s).length; $('fSubjHint').textContent = s ? (n ? `감점사유 ${n}개를 고를 수 있습니다.` : '이 과목 이름의 감점사유 템플릿이 없습니다. 템플릿 탭에서 올리면 고를 수 있습니다.') : ''; };
+  const hint = () => { const s = $('fSubject').value.trim(); const n = templateItems(s).length; $('fSubjHint').textContent = s ? (n ? `감점사유 ${n}개를 고를 수 있습니다.` : '이 과목 이름의 감점사유 템플릿이 없습니다(항목별 사유만 쓸 거면 괜찮습니다).') : ''; };
   $('fSubject').oninput = hint; hint();
+  const readCrit = () => [...$('fCrit').querySelectorAll('.crit-row')].map(r => ({ label: r.querySelector('[data-c=label]').value.trim(), max: Number(r.querySelector('[data-c=max]').value) }));
+  const syncMax = () => { const c = readCrit().filter(x => x.label); $('fMax').disabled = !!c.length; if (c.length) $('fMax').value = SC.sumMax(c); };
+  const drawCrit = () => {
+    $('fCrit').innerHTML = crit.map((c, i) => `<div class="crit-row"><span class="crit-no">${SC.circled(i)}</span>
+      <input class="f-inp" data-c="label" maxlength="60" value="${esc(c.label || '')}" placeholder="항목 이름">
+      <input class="f-inp" data-c="max" type="number" min="0" step="any" value="${esc(c.max ?? '')}" placeholder="배점" style="width:80px">
+      <button class="icon-btn" type="button" data-cdel="${i}" title="빼기"><svg><use href="#ic-close"/></svg></button></div>`).join('');
+    syncMax();
+  };
+  $('fCrit').addEventListener('input', syncMax);
+  $('fCrit').addEventListener('click', e => { const b = e.target.closest('[data-cdel]'); if (b) { crit = readCrit(); crit.splice(+b.dataset.cdel, 1); drawCrit(); } });
+  $('fCritAdd').onclick = () => { crit = readCrit(); crit.push({ label: '', max: '' }); drawCrit(); };
+  drawCrit();
   $('fOk').onclick = async () => {
     const title = $('fTitle').value.trim(), subject = $('fSubject').value.trim(), term = $('fTerm').value.trim();
-    const maxScore = Number($('fMax').value);
+    const criteria = readCrit().filter(c => c.label);
+    if (criteria.some(c => !(c.max > 0))) return toast('항목마다 배점(0보다 큰 수)을 써 주세요.');
+    const maxScore = criteria.length ? SC.sumMax(criteria) : Number($('fMax').value);
     const classKeys = [...$('modalCard').querySelectorAll('.chk-list input:checked')].map(i => i.value);
     if (!title) return toast('평가 이름을 써 주세요.');
     if (!(maxScore > 0)) return toast('만점은 0보다 커야 합니다.');
@@ -483,19 +520,28 @@ function assessForm(a) {
     $('fOk').disabled = true;
     try {
       if (!a) {
-        const ref = await addDoc(collection(db, 'score_assessments'), { title, subject, term, maxScore, classKeys, publishedClasses: [], createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+        const ref = await addDoc(collection(db, 'score_assessments'), { title, subject, term, maxScore, criteria, classKeys, publishedClasses: [], createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
         closeModal(); await reloadAll(); location.hash = 'a=' + encodeURIComponent(ref.id);
         return;
       }
+      const fail = msg => { $('fOk').disabled = false; toast(msg, 4500); };
       // 고칠 때: 점수가 있는 반은 뺄 수 없다(학생 화면에 남은 결과가 길을 잃는다).
       const removed = (a.classKeys || []).filter(k => !classKeys.includes(k));
       const stuck = removed.filter(k => Object.values(results).some(r => r.classKey === k));
-      if (stuck.length) { $('fOk').disabled = false; return toast(`점수가 입력된 반은 뺄 수 없습니다: ${stuck.map(classLabelOf).join(', ')}`, 4500); }
-      const copyChanged = title !== a.title || subject !== a.subject || term !== a.term || maxScore !== a.maxScore;
-      if (maxScore < a.maxScore && Object.values(results).some(r => r.score != null && r.score > maxScore)) { $('fOk').disabled = false; return toast('새 만점보다 높은 점수가 있습니다. 점수를 먼저 고쳐 주세요.', 4000); }
-      await updateDoc(doc(db, 'score_assessments', a.id), { title, subject, term, maxScore, classKeys, publishedClasses: (a.publishedClasses || []).filter(k => classKeys.includes(k)), updatedAt: serverTimestamp() });
-      // 학생 화면용 복사본(평가명·과목·학기·만점)도 맞춘다.
-      if (copyChanged) await commitOps(Object.keys(results).map(sid => b => b.update(doc(db, 'score_results', SC.resultId(a.id, sid)), { title, subject, term, maxScore })));
+      if (stuck.length) return fail(`점수가 입력된 반은 뺄 수 없습니다: ${stuck.map(classLabelOf).join(', ')}`);
+      const withItems = Object.values(results).filter(r => r.items?.length);
+      if (withItems.length && criteria.length !== (a.criteria || []).length) return fail('항목별 점수가 입력된 뒤에는 항목 수를 바꿀 수 없습니다(이름·배점은 바꿀 수 있음).');
+      if (withItems.some(r => r.items.some((it, i) => it.score != null && it.score > criteria[i].max))) return fail('새 배점보다 높은 항목 점수가 있습니다. 점수를 먼저 고쳐 주세요.');
+      if (maxScore < a.maxScore && Object.values(results).some(r => r.score != null && r.score > maxScore)) return fail('새 만점보다 높은 점수가 있습니다. 점수를 먼저 고쳐 주세요.');
+      const critChanged = JSON.stringify(criteria) !== JSON.stringify(a.criteria || []);
+      const copyChanged = title !== a.title || subject !== a.subject || term !== a.term || maxScore !== a.maxScore || critChanged;
+      await updateDoc(doc(db, 'score_assessments', a.id), { title, subject, term, maxScore, criteria, classKeys, publishedClasses: (a.publishedClasses || []).filter(k => classKeys.includes(k)), updatedAt: serverTimestamp() });
+      // 학생 화면용 복사본(평가명·과목·학기·만점·항목 이름/배점)도 맞춘다.
+      if (copyChanged) await commitOps(Object.values(results).map(r => b => {
+        const upd = { title, subject, term, maxScore };
+        if (r.items?.length) upd.items = r.items.map((it, i) => ({ ...it, label: criteria[i].label, max: criteria[i].max }));
+        b.update(doc(db, 'score_results', SC.resultId(a.id, r.studentId)), upd);
+      }));
       closeModal(); await reloadAll(); await openDetail(a.id); toast('저장했습니다.');
     } catch (e) { toast('저장 실패: ' + e.message, 4000); $('fOk').disabled = false; }
   };
@@ -514,6 +560,7 @@ $('btnDelAssess').onclick = async () => {
       h.docs.forEach(d => ops.push(b => b.delete(d.ref)));
       ops.push(b => b.delete(rref));
     }
+    ops.push(b => b.delete(doc(db, 'score_notes', cur.id)));
     ops.push(b => b.delete(doc(db, 'score_assessments', cur.id)));
     await commitOps(ops);
     drafts.clear(); location.hash = ''; await reloadAll(); toast('삭제했습니다.');
@@ -521,25 +568,41 @@ $('btnDelAssess').onclick = async () => {
 };
 
 // ── 평가 상세 ──
+let notes = {};               // 학생ID → 비고(선생님만, score_notes/{평가ID})
+const noteDrafts = new Map(); // 학생ID → 저장 안 한 비고
 async function openDetail(aid) {
   cur = assessments.find(a => a.id === aid);
   if (!cur) { location.hash = ''; return; }
   $('viewList').classList.add('hidden'); $('viewDetail').classList.remove('hidden');
   $('dTable').innerHTML = '<div class="loading">점수 불러오는 중…</div>';
-  const snap = await getDocs(query(collection(db, 'score_results'), where('assessmentId', '==', aid)));
+  const [snap, nSnap] = await Promise.all([
+    getDocs(query(collection(db, 'score_results'), where('assessmentId', '==', aid))),
+    getDoc(doc(db, 'score_notes', aid)),
+  ]);
   results = {}; snap.docs.forEach(d => { results[d.data().studentId] = d.data(); });
-  drafts.clear(); bad.clear();
+  notes = (nSnap.exists() && nSnap.data().notes) || {};
+  drafts.clear(); bad.clear(); noteDrafts.clear();
   if (!curClass || !(cur.classKeys || []).includes(curClass)) curClass = (cur.classKeys || [])[0] || null;
   renderDetail();
 }
-function rowValue(sid) { return drafts.get(sid) || SC.pickResult(results[sid] || {}); }
+const crits = () => cur?.criteria || [];
+// 항목이 있는 평가는 값에 항목 칸을 채워 둔다(비교·화면이 같은 모양이 되게).
+function withItems(v) {
+  const c = crits();
+  if (!c.length) { const o = { ...v }; delete o.items; return o; }
+  return { ...v, items: c.map((cr, i) => ({ label: cr.label, max: cr.max, score: v.items?.[i]?.score ?? null, reason: v.items?.[i]?.reason || '' })) };
+}
+const norm = r => withItems(SC.pickResult(r || {}));
+const sameVal = (a, b) => JSON.stringify(norm(a)) === JSON.stringify(norm(b));
+function rowValue(sid) { return drafts.get(sid) || norm(results[sid]); }
+const assessStudents = () => (cur.classKeys || []).flatMap(k => classByKey[k]?.students || []);
 function renderDetail() {
   $('dTitle').textContent = cur.title;
-  $('dMeta').textContent = `${cur.subject || '과목 없음'} · ${cur.term || ''} · 만점 ${cur.maxScore}`;
+  $('dMeta').textContent = `${cur.subject || '과목 없음'} · ${cur.term || ''} · 만점 ${cur.maxScore}` + (crits().length ? ` · 항목 ${crits().map((c, i) => `${SC.circled(i)}${c.label}(${c.max})`).join(' ')}` : '');
   const pubs = new Set(cur.publishedClasses || []);
   $('dClasses').innerHTML = (cur.classKeys || []).map(k => {
     const list = classByKey[k]?.students || [];
-    const done = list.filter(s => results[s.id]).length;
+    const done = list.filter(s => results[s.id] && (results[s.id].score != null || results[s.id].status !== 'normal')).length;
     const disp = list.filter(s => results[s.id]?.dispute && !results[s.id].dispute.checked).length;
     const on = pubs.has(k);
     return `<div class="cls-chip ${k === curClass ? 'on' : ''}" data-cls="${esc(k)}">
@@ -556,15 +619,24 @@ function dedCell(v) {
 function rowHtml(s) {
   const v = rowValue(s.id), saved = results[s.id];
   const d = saved?.dispute;
-  const scoreStr = bad.has(s.id) ? bad.get(s.id) : (v.score ?? '');
-  return `<tr data-sid="${esc(s.id)}" class="${drafts.has(s.id) ? 'dirty' : ''}">
+  const nFiles = (saved?.files || []).length;
+  const noteVal = noteDrafts.has(s.id) ? noteDrafts.get(s.id) : (notes[s.id] || '');
+  const scoreCells = crits().length
+    ? crits().map((c, i) => { const k = `${s.id}#${i}`, it = v.items[i];
+        return `<td class="crit-cell"><input class="f-inp f-item ${bad.has(k) ? 'bad' : ''}" data-f="item" data-i="${i}" inputmode="decimal" value="${esc(bad.has(k) ? bad.get(k) : (it.score ?? ''))}" placeholder="-">
+          <input class="f-inp f-reason" data-f="reason" data-i="${i}" maxlength="500" value="${esc(it.reason)}" placeholder="사유"></td>`; }).join('')
+      + `<td class="total" data-total>${esc(v.score ?? '-')}</td>`
+    : `<td><input class="f-inp f-score ${bad.has(s.id) ? 'bad' : ''}" data-f="score" inputmode="decimal" value="${esc(bad.has(s.id) ? bad.get(s.id) : (v.score ?? ''))}" placeholder="-"></td>`;
+  return `<tr data-sid="${esc(s.id)}" class="${drafts.has(s.id) || noteDrafts.has(s.id) ? 'dirty' : ''}">
     <td class="no">${esc(s.number)}</td>
     <td class="name">${esc(s.name)}</td>
-    <td><input class="f-inp f-score ${bad.has(s.id) ? 'bad' : ''}" data-f="score" inputmode="decimal" value="${esc(scoreStr)}" placeholder="-"></td>
+    ${scoreCells}
     <td><select class="f-inp f-status" data-f="status">${SC.STATUSES.map(x => `<option value="${x.id}" ${x.id === v.status ? 'selected' : ''}>${x.label}</option>`).join('')}</select></td>
-    <td style="min-width:200px"><button class="ded-btn" data-act="ded">${dedCell(v)}</button></td>
+    <td style="min-width:150px"><button class="ded-btn" data-act="ded">${dedCell(v)}</button></td>
     <td style="min-width:140px"><input class="f-inp" data-f="memo" maxlength="500" value="${esc(v.memo)}" placeholder="메모(학생에게 보임)"></td>
+    <td style="min-width:130px"><input class="f-inp f-note" data-f="note" maxlength="500" value="${esc(noteVal)}" placeholder="비고(선생님만)"></td>
     <td style="white-space:nowrap">
+      ${nFiles ? `<button class="pill accent disp-btn" data-act="files" title="제출물 보기">제출물 ${nFiles}</button>` : ''}
       ${d ? `<button class="pill ${d.checked ? '' : 'warn'} disp-btn" data-act="disp">${d.checked ? '이의 확인함' : '이의신청'}</button>` : ''}
       ${saved ? `<span class="pill ${saved.published ? 'ok' : ''}">${saved.published ? '공개' : '비공개'}</span>` : ''}
       ${saved ? `<button class="icon-btn" data-act="hist" title="수정 이력"><svg><use href="#ic-history"/></svg></button>` : ''}
@@ -578,37 +650,57 @@ function renderTable() {
   // 명단에서 빠진 학생의 결과도 보이게(번호가 바뀐 경우 등)
   const orphans = Object.values(results).filter(r => r.classKey === curClass && !studentById[r.studentId]);
   if ($('onlyDisputes').checked) list = list.filter(s => results[s.id]?.dispute);
+  const head = crits().length
+    ? crits().map((c, i) => `<th>${SC.circled(i)} ${esc(c.label)} <span style="font-weight:500">/${esc(c.max)}</span></th>`).join('') + `<th>합계 /${esc(cur.maxScore)}</th>`
+    : `<th>점수 / ${esc(cur.maxScore)}</th>`;
+  const cols = 8 + (crits().length ? crits().length : 0);
   el.innerHTML = `<div class="tbl-wrap"><table class="sc">
-    <thead><tr><th>번호</th><th>이름</th><th>점수 / ${esc(cur.maxScore)}</th><th>상태</th><th>감점사유</th><th>메모</th><th></th></tr></thead>
-    <tbody>${list.map(rowHtml).join('') || `<tr><td colspan="7" class="empty">${$('onlyDisputes').checked ? '이의신청이 없습니다.' : '이 반 학생이 없습니다.'}</td></tr>`}</tbody>
+    <thead><tr><th>번호</th><th>이름</th>${head}<th>상태</th><th>감점사유</th><th>메모</th><th>비고</th><th></th></tr></thead>
+    <tbody>${list.map(rowHtml).join('') || `<tr><td colspan="${cols}" class="empty">${$('onlyDisputes').checked ? '이의신청이 없습니다.' : '이 반 학생이 없습니다.'}</td></tr>`}</tbody>
   </table></div>
   ${orphans.length ? `<p class="hint" style="margin-top:10px">명단에 없는 학생의 결과 ${orphans.length}건이 있습니다(학생이 삭제되었거나 다시 올려 ID 가 바뀐 경우). 학생 화면에는 그대로 보입니다.</p>` : ''}`;
 }
 function renderSavebar() {
-  $('savebar').classList.toggle('hidden', !drafts.size && !bad.size);
-  $('saveCount').textContent = `저장 안 한 변경 ${drafts.size}명${bad.size ? ` · 점수 오류 ${bad.size}` : ''}`;
+  const n = new Set([...drafts.keys(), ...noteDrafts.keys()]).size;
+  $('savebar').classList.toggle('hidden', !n && !bad.size);
+  $('saveCount').textContent = `저장 안 한 변경 ${n}명${bad.size ? ` · 점수 오류 ${bad.size}` : ''}`;
 }
-const isBlank = v => v.score == null && v.status === 'normal' && !v.deductions.length && !v.memo;
-function setDraft(sid, patch) {
-  const base = rowValue(sid);
-  const next = { ...base, ...patch };
-  const saved = results[sid];
-  if (saved ? SC.sameResult(saved, next) : isBlank(next)) drafts.delete(sid); else drafts.set(sid, next);
+const isBlank = v => v.score == null && v.status === 'normal' && !v.deductions.length && !v.memo && !(v.items || []).some(i => i.score != null || i.reason);
+const dirtyCheck = () => drafts.size || bad.size || noteDrafts.size;
+function markRow(sid) {
   const tr = $('dTable').querySelector(`tr[data-sid="${CSS.escape(sid)}"]`);
-  if (tr) tr.classList.toggle('dirty', drafts.has(sid));
+  if (tr) tr.classList.toggle('dirty', drafts.has(sid) || noteDrafts.has(sid));
+  return tr;
+}
+function setDraft(sid, patch) {
+  const next = { ...rowValue(sid), ...patch };
+  if (next.items) next.score = SC.sumItems(next.items);
+  const saved = results[sid];
+  if (saved ? sameVal(saved, next) : isBlank(next)) drafts.delete(sid); else drafts.set(sid, next);
+  const tr = markRow(sid);
+  const tot = tr?.querySelector('[data-total]'); if (tot) tot.textContent = next.score ?? '-';
   renderSavebar();
 }
 $('dTable').addEventListener('input', e => {
   const f = e.target.dataset.f, tr = e.target.closest('tr[data-sid]'); if (!f || !tr) return;
   const sid = tr.dataset.sid;
+  const num = (raw, max) => { const n = raw === '' ? null : Number(raw); return { n, ok: n === null || (Number.isFinite(n) && n >= 0 && n <= Number(max)) }; };
   if (f === 'score') {
-    const raw = e.target.value.trim();
-    const n = raw === '' ? null : Number(raw);
-    const ok = n === null || (Number.isFinite(n) && n >= 0 && n <= Number(cur.maxScore));
+    const raw = e.target.value.trim(), { n, ok } = num(raw, cur.maxScore);
     e.target.classList.toggle('bad', !ok);
-    if (ok) { bad.delete(sid); setDraft(sid, { score: n }); }
-    else { bad.set(sid, raw); renderSavebar(); }
+    if (ok) { bad.delete(sid); setDraft(sid, { score: n }); } else { bad.set(sid, raw); renderSavebar(); }
+  } else if (f === 'item' || f === 'reason') {
+    const i = +e.target.dataset.i, items = rowValue(sid).items.map(x => ({ ...x }));
+    if (f === 'reason') { items[i].reason = e.target.value.trim(); setDraft(sid, { items }); return; }
+    const raw = e.target.value.trim(), { n, ok } = num(raw, crits()[i].max), k = `${sid}#${i}`;
+    e.target.classList.toggle('bad', !ok);
+    if (ok) { bad.delete(k); items[i].score = n; setDraft(sid, { items }); } else { bad.set(k, raw); renderSavebar(); }
   } else if (f === 'memo') setDraft(sid, { memo: e.target.value.trim() });
+  else if (f === 'note') {
+    const v = e.target.value.trim();
+    if (v === (notes[sid] || '')) noteDrafts.delete(sid); else noteDrafts.set(sid, v);
+    markRow(sid); renderSavebar();
+  }
 });
 $('dTable').addEventListener('change', e => {
   const tr = e.target.closest('tr[data-sid]');
@@ -620,6 +712,7 @@ $('dTable').addEventListener('click', e => {
   if (b.dataset.act === 'ded') pickDeductions(sid);
   if (b.dataset.act === 'hist') showHistory(sid);
   if (b.dataset.act === 'disp') showDispute(sid);
+  if (b.dataset.act === 'files') showFiles(sid);
 });
 $('onlyDisputes').onchange = renderTable;
 $('dClasses').addEventListener('click', async e => {
@@ -649,51 +742,55 @@ function pickDeductions(sid) {
   };
 }
 
+// 새 결과 문서 — 학생 화면용 복사본(평가명 등)과 공개 여부를 같이 넣는다.
+function newResultDoc(sid, extra) {
+  const st = studentById[sid];
+  const ck = SC.classKey(st.schoolName, st.grade, st.class);
+  const published = (cur.publishedClasses || []).includes(ck);
+  return {
+    assessmentId: cur.id, studentId: sid, classKey: ck,
+    title: cur.title, subject: cur.subject || '', term: cur.term || '', maxScore: cur.maxScore,
+    score: null, status: 'normal', deductions: [], memo: '',
+    ...extra, published, publishedAt: published ? serverTimestamp() : null,
+    createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+  };
+}
 // 저장 — 이미 있던 결과를 바꾸면 이전 값을 history 에 남긴다.
-async function saveResults(changes) {
-  const pubs = new Set(cur.publishedClasses || []);
+async function saveResults(changes, noteMap) {
   const ops = [];
   let n = 0;
   for (const { sid, next } of changes) {
     const prev = results[sid];
-    if (prev && SC.sameResult(prev, next)) continue;
-    const st = studentById[sid];
+    if (prev && sameVal(prev, next)) continue;
     const ref = doc(db, 'score_results', SC.resultId(cur.id, sid));
-    const val = SC.pickResult(next);
+    const val = SC.pickResult(withItems(next));
     if (prev) {
       const hist = doc(collection(ref, 'history'));
-      ops.push(b => b.set(hist, { at: serverTimestamp(), before: SC.pickResult(prev), after: val, summary: SC.describeChange(prev, val), wasPublished: !!prev.published }));
+      ops.push(b => b.set(hist, { at: serverTimestamp(), before: SC.pickResult(prev), after: val, summary: SC.describeChange(norm(prev), val), wasPublished: !!prev.published }));
       ops.push(b => b.update(ref, { ...val, updatedAt: serverTimestamp() }));
-    } else {
-      const ck = SC.classKey(st.schoolName, st.grade, st.class);
-      const published = pubs.has(ck);
-      ops.push(b => b.set(ref, {
-        assessmentId: cur.id, studentId: sid, classKey: ck,
-        title: cur.title, subject: cur.subject || '', term: cur.term || '', maxScore: cur.maxScore,
-        ...val, published, publishedAt: published ? serverTimestamp() : null,
-        createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
-      }));
-    }
+    } else ops.push(b => b.set(ref, newResultDoc(sid, val)));
     n++;
   }
+  const nm = Object.entries(noteMap || {}).filter(([sid, v]) => v !== (notes[sid] || ''));
+  if (nm.length) ops.push(b => b.set(doc(db, 'score_notes', cur.id), { notes: Object.fromEntries(nm), updatedAt: serverTimestamp() }, { merge: true }));
   if (ops.length) await commitOps(ops);
-  return n;
+  return { n, notes: nm.length };
 }
 $('btnSave').onclick = async () => {
-  if (bad.size) return toast('빨간 칸의 점수를 고쳐 주세요 (0 ~ 만점).', 3500);
+  if (bad.size) return toast('빨간 칸의 점수를 고쳐 주세요 (0 ~ 배점).', 3500);
   $('btnSave').disabled = true;
   try {
-    const n = await saveResults([...drafts].map(([sid, next]) => ({ sid, next })));
-    toast(`${n}명 저장했습니다.`);
+    const r = await saveResults([...drafts].map(([sid, next]) => ({ sid, next })), Object.fromEntries(noteDrafts));
+    toast(`${r.n}명 저장했습니다.${r.notes ? ` (비고 ${r.notes}건)` : ''}`);
     await openDetail(cur.id);
   } catch (e) { toast('저장 실패: ' + e.message, 4000); }
   $('btnSave').disabled = false;
 };
-$('btnRevert').onclick = () => { drafts.clear(); bad.clear(); renderTable(); renderSavebar(); };
+$('btnRevert').onclick = () => { drafts.clear(); bad.clear(); noteDrafts.clear(); renderTable(); renderSavebar(); };
 
 // 공개·비공개 — 평가의 publishedClasses 와 그 반 결과들의 published 를 같이 바꾼다.
 async function setPublished(keys, on) {
-  if (drafts.size || bad.size) return toast('저장 안 한 변경을 먼저 저장하거나 되돌려 주세요.', 3500);
+  if (dirtyCheck()) return toast('저장 안 한 변경을 먼저 저장하거나 되돌려 주세요.', 3500);
   try {
     const set = new Set(keys);
     const ops = [b => b.update(doc(db, 'score_assessments', cur.id), { publishedClasses: on ? arrayUnion(...keys) : arrayRemove(...keys), updatedAt: serverTimestamp() })];
@@ -711,42 +808,151 @@ $('btnUnpubAll').onclick = () => setPublished(cur.classKeys || [], false);
 
 // 점수 양식 — 대상 반 학생 명단 + 지금 입력된 값(그대로 고쳐서 다시 올리면 된다)
 $('btnScoreForm').onclick = () => {
-  const rows = [SC.SCORE_HEADER];
-  (cur.classKeys || []).forEach(k => (classByKey[k]?.students || []).forEach(s => {
-    const r = results[s.id];
-    rows.push([s.schoolName, SC.nv(s.grade), SC.nv(s.class), s.number, s.name, r?.score ?? '', r ? SC.statusLabel(r.status) : '', (r?.deductions || []).map(d => d.code).join(';'), r?.memo || '']);
-  }));
+  const c = crits();
+  const rows = [SC.scoreHeader(c)];
+  assessStudents().forEach(s => {
+    const r = results[s.id], v = norm(r);
+    const scorePart = c.length ? [...v.items.map(i => i.score ?? ''), ...v.items.map(i => i.reason)] : [v.score ?? ''];
+    rows.push([s.schoolName, SC.nv(s.grade), SC.nv(s.class), s.number, s.name, ...scorePart, r ? SC.statusLabel(r.status) : '', v.deductions.map(d => d.code).join(';'), v.memo, notes[s.id] || '']);
+  });
   download(`${cur.title}_점수.csv`.replace(/[\\/:*?"<>|]/g, '_'), SC.toCSV(rows));
 };
 $('btnScoreUpload').onclick = async () => {
-  if (drafts.size || bad.size) return toast('저장 안 한 변경을 먼저 저장하거나 되돌려 주세요.', 3500);
+  if (dirtyCheck()) return toast('저장 안 한 변경을 먼저 저장하거나 되돌려 주세요.', 3500);
   const f = await pickFile(); if (!f) return;
   let p;
-  try { p = SC.parseScoreRows(await readRows(f), { students, items: templateItems(cur.subject), maxScore: Number(cur.maxScore) }); }
+  try { p = SC.parseScoreRows(await readRows(f), { students, poolIds: assessStudents().map(s => s.id), items: templateItems(cur.subject), maxScore: Number(cur.maxScore), criteria: crits() }); }
   catch (e) { toast('파일을 읽지 못했습니다: ' + e.message, 4000); return; }
+  // 항목이 없는 평가에 항목 열이 있는 파일 → 파일 머리글대로 항목을 정한다.
+  const setCrit = !crits().length && p.fileCriteria.length ? p.fileCriteria.map(c => ({ label: c.label, max: c.max })) : null;
+  if (setCrit && setCrit.some(c => !(c.max > 0))) { toast('항목 머리글에 배점을 괄호로 써 주세요. 예: "① 변수 사용(5)"', 5000); return; }
+  if (setCrit && Object.values(results).some(r => r.score != null)) { toast('이미 총점이 입력된 평가에는 항목을 자동으로 넣지 않습니다. 평가 수정에서 항목을 먼저 정해 주세요.', 5000); return; }
+  const prevCrit = cur.criteria;
+  if (setCrit) cur.criteria = setCrit; // 비교를 새 항목 기준으로
   const fresh = p.rows.filter(r => !results[r.studentId]);
-  const changed = p.rows.filter(r => results[r.studentId] && !SC.sameResult(results[r.studentId], r));
-  const same = p.rows.length - fresh.length - changed.length;
+  const changed = p.rows.filter(r => results[r.studentId] && !sameVal(results[r.studentId], r));
+  const noteOnly = p.rows.filter(r => !fresh.includes(r) && !changed.includes(r) && (r.note || '') !== (notes[r.studentId] || ''));
+  cur.criteria = prevCrit;
+  const same = p.rows.length - fresh.length - changed.length - noteOnly.length;
   const newClasses = [...new Set(p.rows.map(r => { const s = studentById[r.studentId]; return SC.classKey(s.schoolName, s.grade, s.class); }))].filter(k => !(cur.classKeys || []).includes(k));
   const pubChanged = changed.filter(r => results[r.studentId].published).length;
-  const body = `<div class="stat-row"><span class="pill ok">새로 입력 ${fresh.length}</span><span class="pill accent">바뀜 ${changed.length}</span><span class="pill">같음 ${same}</span>${p.errors.length ? `<span class="pill warn">오류 ${p.errors.length}줄</span>` : ''}</div>
+  const body = `<div class="stat-row"><span class="pill ok">새로 입력 ${fresh.length}</span><span class="pill accent">바뀜 ${changed.length}</span>${noteOnly.length ? `<span class="pill accent">비고만 바뀜 ${noteOnly.length}</span>` : ''}<span class="pill">같음 ${same}</span>${p.errors.length ? `<span class="pill warn">오류 ${p.errors.length}줄</span>` : ''}</div>
+    ${setCrit ? `<p class="hint">평가 항목을 파일 머리글대로 정합니다: ${setCrit.map((c, i) => `${SC.circled(i)} ${esc(c.label)}(${esc(c.max)})`).join(' ')} — 만점 ${SC.sumMax(setCrit)}</p>` : ''}
     ${pubChanged ? `<p class="hint">이미 공개된 점수 ${pubChanged}건이 바뀝니다. 이전 값은 수정 이력에 남습니다.</p>` : ''}
     ${newClasses.length ? `<p class="hint">대상 반에 추가됩니다: ${newClasses.map(classLabelOf).map(esc).join(', ')}</p>` : ''}
+    ${p.rows.some(r => r.note) ? '<p class="hint">"비고" 열은 선생님만 봅니다(학생 화면에 안 나옴).</p>' : ''}
     ${p.errors.length ? `<div class="group-label">오류 (이 줄들은 저장하지 않음)</div><div class="msg-list err">${p.errors.map(esc).join('<br>')}</div>` : ''}
     ${p.warnings.length ? `<div class="group-label">확인해 보세요</div><div class="msg-list warn">${p.warnings.map(esc).join('<br>')}</div>` : ''}`;
-  const n = fresh.length + changed.length;
+  const n = fresh.length + changed.length + noteOnly.length;
   openModal('점수 파일 미리보기', body, `<button class="btn" data-close>취소</button>${n ? `<button class="btn primary" id="upOk">${n}명 저장</button>` : ''}`);
   if (!n) return;
   $('upOk').onclick = async () => {
     $('upOk').disabled = true;
     try {
-      if (newClasses.length) { await updateDoc(doc(db, 'score_assessments', cur.id), { classKeys: arrayUnion(...newClasses), updatedAt: serverTimestamp() }); cur.classKeys = [...(cur.classKeys || []), ...newClasses]; }
-      const saved = await saveResults([...fresh, ...changed].map(r => ({ sid: r.studentId, next: r })));
-      closeModal(); toast(`${saved}명 저장했습니다.`);
-      await openDetail(cur.id);
+      const upd = {};
+      if (newClasses.length) upd.classKeys = arrayUnion(...newClasses);
+      if (setCrit) { upd.criteria = setCrit; upd.maxScore = SC.sumMax(setCrit); }
+      if (Object.keys(upd).length) {
+        await updateDoc(doc(db, 'score_assessments', cur.id), { ...upd, updatedAt: serverTimestamp() });
+        if (newClasses.length) cur.classKeys = [...(cur.classKeys || []), ...newClasses];
+        if (setCrit) {
+          cur.criteria = setCrit; cur.maxScore = upd.maxScore;
+          // 이미 있던 결과(제출물만 연결된 것 등)의 만점 복사본도 맞춘다
+          await commitOps(Object.values(results).map(r => b => b.update(doc(db, 'score_results', SC.resultId(cur.id, r.studentId)), { maxScore: cur.maxScore })));
+        }
+      }
+      const noteMap = Object.fromEntries(p.rows.map(r => [r.studentId, r.note || '']));
+      const saved = await saveResults([...fresh, ...changed].map(r => ({ sid: r.studentId, next: r })), noteMap);
+      closeModal(); toast(`${saved.n}명 저장했습니다.${saved.notes ? ` (비고 ${saved.notes}건)` : ''}`);
+      await reloadAll(false); await openDetail(cur.id);
     } catch (e) { toast('저장 실패: ' + e.message, 4000); $('upOk').disabled = false; }
   };
 };
+
+// ── 제출물 (선생님 구글 드라이브 — Apps Script score-drive.gs 를 거친다) ──
+async function gas(action, payload) {
+  if (!SCORE_GAS_URL) throw new Error('Apps Script 주소가 아직 설정되지 않았습니다(score-config.js).');
+  const idToken = await auth.currentUser.getIdToken();
+  const res = await fetch(SCORE_GAS_URL, { method: 'POST', body: JSON.stringify({ action, idToken, ...payload }) });
+  const txt = await res.text();
+  let data; try { data = JSON.parse(txt); } catch { throw new Error('Apps Script 응답을 읽지 못했습니다: ' + txt.slice(0, 120)); }
+  if (data.error) throw new Error(data.error);
+  return data;
+}
+const fileSize = n => n > 1048576 ? (n / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(n / 1024)) + 'KB';
+$('btnFiles').onclick = () => {
+  if (dirtyCheck()) return toast('저장 안 한 변경을 먼저 저장하거나 되돌려 주세요.', 3500);
+  const linked = Object.values(results).filter(r => r.files?.length).length;
+  openModal('제출물 연결', `
+    <p class="hint" style="margin:0 0 10px">제출물이 든 <b>구글 드라이브 폴더 주소</b>를 붙여 넣으세요(한 줄에 하나). 반 폴더가 안에 있어도 됩니다.
+      파일 이름 속 <b>학번</b>(예: 20260930_<b>10101</b>_이름.png)으로 학생을 찾습니다. 파일은 드라이브에 비공개로 두고, 학생은 본인 것만 볼 수 있습니다.</p>
+    <div class="field"><textarea class="f-inp" id="drvFolders" rows="3" placeholder="https://drive.google.com/drive/folders/...">${esc((cur.driveFolders || []).join('\n'))}</textarea></div>
+    <div id="drvResult">${linked ? `<p class="hint">지금 ${linked}명에게 제출물이 연결돼 있습니다. 다시 불러오면 새 목록으로 바뀝니다.</p>` : ''}</div>`,
+    `<button class="btn" data-close>닫기</button><button class="btn primary" id="drvLoad">불러오기</button>`);
+  $('drvLoad').onclick = async () => {
+    const folders = $('drvFolders').value.split(/\s+/).map(s => s.trim()).filter(Boolean);
+    if (!folders.length) return toast('폴더 주소를 붙여 넣으세요.');
+    $('drvLoad').disabled = true; $('drvResult').innerHTML = '<div class="loading">드라이브 폴더를 읽는 중… (파일이 많으면 30초쯤 걸립니다)</div>';
+    try {
+      const data = await gas('list', { aid: cur.id, folders });
+      const pool = assessStudents();
+      const m = SC.matchFiles(data.files, students, pool.map(s => s.id));
+      const sids = Object.keys(m.byStudent);
+      const outside = sids.filter(sid => !pool.some(s => s.id === sid));
+      const missing = pool.filter(s => !m.byStudent[s.id]);
+      const willClear = Object.values(results).filter(r => r.files?.length && !m.byStudent[r.studentId]).length;
+      $('drvResult').innerHTML = `<div class="stat-row"><span class="pill ok">학생 ${sids.length}명 · 파일 ${data.files.length - m.unmatched.length}개</span>${m.unmatched.length ? `<span class="pill warn">못 붙인 파일 ${m.unmatched.length}</span>` : ''}<span class="pill">제출물 없는 학생 ${missing.length}</span></div>
+        <p class="hint">폴더: ${data.folders.map(f => esc(f.name)).join(', ')}${data.truncated ? ' — 파일이 너무 많아 일부만 읽었습니다' : ''}</p>
+        ${outside.length ? `<p class="hint">대상 반이 아닌 학생 ${outside.length}명의 파일도 있습니다 — 대상 반에 추가됩니다.</p>` : ''}
+        ${willClear ? `<p class="hint">이전에 연결됐지만 이번 폴더에 없는 학생 ${willClear}명은 연결이 지워집니다.</p>` : ''}
+        ${m.unmatched.length ? `<div class="group-label">못 붙인 파일</div><div class="msg-list warn">${m.unmatched.slice(0, 50).map(f => `${esc(f.path)}/${esc(f.name)} — ${esc(f.why)}`).join('<br>')}${m.unmatched.length > 50 ? '<br>…' : ''}</div>` : ''}
+        ${missing.length ? `<div class="group-label">제출물 없는 학생</div><div class="msg-list warn">${missing.map(s => `${esc(classLabelOf(SC.classKey(s.schoolName, s.grade, s.class)))} ${esc(s.number)}번 ${esc(s.name)}`).join(', ')}</div>` : ''}`;
+      $('drvLoad').outerHTML = `<button class="btn primary" id="drvSave">${sids.length}명에게 연결</button>`;
+      $('drvSave').onclick = async () => {
+        $('drvSave').disabled = true;
+        try {
+          const newClasses = [...new Set(outside.map(sid => { const s = studentById[sid]; return SC.classKey(s.schoolName, s.grade, s.class); }))].filter(k => !(cur.classKeys || []).includes(k));
+          await updateDoc(doc(db, 'score_assessments', cur.id), { driveFolders: folders, ...(newClasses.length ? { classKeys: arrayUnion(...newClasses) } : {}), updatedAt: serverTimestamp() });
+          cur.driveFolders = folders; if (newClasses.length) cur.classKeys = [...(cur.classKeys || []), ...newClasses];
+          const pick = f => ({ id: f.id, name: f.name, mimeType: f.mimeType, size: f.size });
+          const ops = [];
+          sids.forEach(sid => {
+            const files = m.byStudent[sid].map(pick);
+            const ref = doc(db, 'score_results', SC.resultId(cur.id, sid));
+            ops.push(b => results[sid] ? b.update(ref, { files }) : b.set(ref, newResultDoc(sid, { files })));
+          });
+          Object.values(results).filter(r => r.files?.length && !m.byStudent[r.studentId])
+            .forEach(r => ops.push(b => b.update(doc(db, 'score_results', SC.resultId(cur.id, r.studentId)), { files: [] })));
+          await commitOps(ops);
+          closeModal(); toast(`${sids.length}명에게 제출물을 연결했습니다.`);
+          await reloadAll(false); await openDetail(cur.id);
+        } catch (e) { toast('저장 실패: ' + e.message, 4000); $('drvSave').disabled = false; }
+      };
+    } catch (e) {
+      $('drvResult').innerHTML = `<div class="msg-list err">${esc(e.message)}</div>`;
+      $('drvLoad').disabled = false;
+    }
+  };
+};
+// 제출물 미리보기(교사)
+async function showFiles(sid) {
+  const r = results[sid], s = studentById[sid]; if (!r?.files?.length) return;
+  openModal(`제출물 — ${s ? `${s.number}번 ${s.name}` : ''}`, r.files.map((f, i) => `<div class="file-box" data-i="${i}"><div class="file-name">${esc(f.name)} <span class="hint">${esc(fileSize(f.size || 0))}</span></div><div class="file-body"><div class="loading" style="padding:16px">불러오는 중…</div></div></div>`).join(''), '<button class="btn" data-close>닫기</button>');
+  r.files.forEach(async (f, i) => {
+    const box = $('modalCard').querySelector(`.file-box[data-i="${i}"] .file-body`);
+    try { renderFile(box, await gas('file', { rid: SC.resultId(cur.id, sid), fileId: f.id })); }
+    catch (e) { if (box) box.innerHTML = `<div class="msg-list err">${esc(e.message)}</div>`; }
+  });
+}
+function renderFile(box, d) {
+  if (!box) return;
+  // 내려받지 않고 그 자리에서 — 누르면 팝업(그림 크게, 글 본문, 스크래치 실행)
+  const kind = fileKind(d), open = () => openViewer(d);
+  if (kind === 'image') { box.innerHTML = `<img class="file-img" src="${objectUrl(d)}" alt="" style="cursor:zoom-in">`; box.querySelector('img').onclick = open; }
+  else if (kind === 'text') { box.innerHTML = `<pre class="file-text">${esc(d.text)}</pre>`; }
+  else if (kind === 'scratch') { box.innerHTML = '<button class="btn sm primary">▶ 실행해 보기</button>'; box.querySelector('button').onclick = open; }
+  else box.innerHTML = '<p class="hint">이 형식은 미리 볼 수 없습니다.</p>';
+}
 
 // 수정 이력
 async function showHistory(sid) {
@@ -781,14 +987,14 @@ function showDispute(sid) {
 async function route() {
   const m = location.hash.match(/^#a=(.+)$/);
   if (m) await openDetail(decodeURIComponent(m[1]));
-  else { cur = null; drafts.clear(); bad.clear(); renderSavebar(); $('viewDetail').classList.add('hidden'); $('viewList').classList.remove('hidden'); renderAssessList(); renderTemplates(); }
+  else { cur = null; drafts.clear(); bad.clear(); noteDrafts.clear(); renderSavebar(); $('viewDetail').classList.add('hidden'); $('viewList').classList.remove('hidden'); renderAssessList(); renderTemplates(); }
 }
 let lastHash = location.hash;
 window.addEventListener('hashchange', async () => {
-  if ((drafts.size || bad.size) && !confirm('저장 안 한 변경이 있습니다. 버리고 이동할까요?')) { history.replaceState(null, '', lastHash || location.pathname); return; }
+  if (dirtyCheck() && !confirm('저장 안 한 변경이 있습니다. 버리고 이동할까요?')) { history.replaceState(null, '', lastHash || location.pathname); return; }
   lastHash = location.hash; route();
 });
-window.addEventListener('beforeunload', e => { if (drafts.size) { e.preventDefault(); e.returnValue = ''; } });
+window.addEventListener('beforeunload', e => { if (dirtyCheck()) { e.preventDefault(); e.returnValue = ''; } });
 $('btnBack').onclick = () => { location.hash = ''; };
 async function reloadAll(rerender = true) {
   await loadBase();

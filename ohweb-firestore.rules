@@ -419,6 +419,10 @@ service cloud.firestore {
     }
     // 점수 수정 이력 — 교사만 본다(학생에게 안 보임).
     match /score_results/{id}/history/{hid} { allow read, write: if isAdmin(); }
+    // 비고(선생님만 보는 메모) — 결과 문서에 두면 학생이 읽을 수 있어서 평가별로 따로 둔다.
+    // 제출물 목록(결과 문서의 files)은 위 규칙대로 선생님만 쓴다 — Apps Script(score-drive.gs)가
+    // 학생 토큰으로 결과 문서를 읽어 이 목록에 있는 파일만 보내 준다.
+    match /score_notes/{aid} { allow read, write: if isAdmin(); }
 
     // ── 수업일지(ohlog) ──
     // 교사는 Google 로그인으로 프로필을 만들고(status 'pending'), 관리자가 승인('approved')해야

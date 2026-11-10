@@ -52,6 +52,34 @@ const serve = (root, port, signIn) => http.createServer((req, res) => {
 }).listen(port);
 const adminSrv = serve(ADMIN_ROOT, 8098, true), stuSrv = serve(STU_ROOT, 8099, false);
 
+// 가짜 Apps Script(score-drive.gs 와 같은 판단): 부른 사람의 토큰으로 에뮬레이터 Firestore 를
+// 읽어 보고(=실제 규칙이 판단), 결과 문서의 files 에 있는 파일만 돌려준다.
+const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+const FAKE_FILES = [
+  { id: 'F_A2', name: '20261104_10203_김학생_2.png', mimeType: 'image/png', size: 70, path: '스크래치2/2반' },
+  { id: 'F_A1', name: '20261104_10203_김학생.png', mimeType: 'image/png', size: 70, path: '스크래치2/2반' },
+  { id: 'F_B', name: '20261104_10204_박학생.txt', mimeType: 'text/plain', size: 20, path: '스크래치2/2반' },
+  { id: 'F_X', name: '안내.png', mimeType: 'image/png', size: 70, path: '스크래치2' },
+];
+async function fakeGas(req) {
+  const read = p => fetch(`http://127.0.0.1:8181/v1/projects/ohweb-93062/databases/(default)/documents/${p}`, { headers: { Authorization: 'Bearer ' + req.idToken } });
+  if (req.action === 'list') {
+    const r = await read('score_assessments/' + req.aid);
+    return r.ok ? { folders: [{ id: 'FOLDER', name: '스크래치 2차' }], files: FAKE_FILES, truncated: false } : { error: 'auth: 볼 수 있는 권한이 없습니다', code: 'auth' };
+  }
+  if (req.action === 'file') {
+    const r = await read('score_results/' + req.rid);
+    if (!r.ok) return { error: 'auth: 볼 수 있는 권한이 없습니다', code: 'auth' };
+    const d = await r.json();
+    const ids = (d.fields?.files?.arrayValue?.values || []).map(v => v.mapValue.fields.id.stringValue);
+    if (!ids.includes(req.fileId)) return { error: 'auth: 이 결과에 연결된 파일이 아닙니다', code: 'auth' };
+    const f = FAKE_FILES.find(x => x.id === req.fileId);
+    return f.mimeType.startsWith('text/') ? { name: f.name, mimeType: f.mimeType, text: '학생이 쓴 설명글' } : { name: f.name, mimeType: f.mimeType, size: f.size, data: PNG };
+  }
+  return { error: 'badRequest', code: 'badRequest' };
+}
+const idTokenOf = async (email, password) => (await (await fetch('http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=fake', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ email, password, returnSecureToken: true }) })).json()).idToken;
+
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 async function newPage() {
   const ctx = await browser.newContext();
@@ -59,6 +87,7 @@ async function newPage() {
     const u = route.request().url();
     const m = u.match(/^https:\/\/www\.gstatic\.com\/firebasejs\/10\.12\.2\/([A-Za-z0-9_-]+\.js)$/);
     if (m) return route.fulfill({ status: 200, contentType: 'text/javascript', body: readFileSync(path.join(FB, m[1])) });
+    if (/^https:\/\/script\.google\.com\/macros\//.test(u)) return fakeGas(JSON.parse(route.request().postData() || '{}')).then(out => route.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify(out) }));
     if (u.startsWith('http://localhost:') || u.startsWith('http://127.0.0.1')) return route.continue();
     return route.abort(); // 글꼴 등 외부 요청은 막는다
   });
@@ -189,6 +218,86 @@ try {
   await S.reload();
   await S.waitForSelector('#detail .d-score', { timeout: 10000 });
   ok(/선생님 확인함/.test(await S.innerText('#detail')), '학생: 이의신청이 "선생님 확인함"으로 바뀜');
+
+  // ── 2차: 채점 시트(상세 탭) 그대로 올리기 + 제출물 연결 ──
+  await T.goto('http://localhost:8098/score.html');
+  await T.waitForSelector('#assessList .a-card', { timeout: 15000 });
+  await T.click('#btnNewAssess');
+  await T.fill('#fTitle', '2차 수행평가');
+  await T.fill('#fSubject', '정보');
+  await T.check('.chk-list input[value="S중__g1__c2"]');
+  await T.click('#fOk');
+  await T.waitForSelector('#dTable table.sc', { timeout: 10000 });
+  const aid2 = await read(async db => (await getDocs(query(collection(db, 'score_assessments'), where('title', '==', '2차 수행평가')))).docs[0].id);
+  await upload(T, '#btnScoreUpload', '2차 상세.csv', [
+    '학번,이름,① 알고리즘 설계(10),② 중첩 제어 구조(10),③ 프로그램 완성(10),2차 합계(30),① 감점 사유,② 감점 사유,③ 감점 사유,비고',
+    '10203,김학생,10,10,8,28,감점 없음,감점 없음,함수 호출 인자 오류로 도형이 안 그려짐,기준상 6점이나 후하게 8점',
+    '10204,박학생,10,10,10,30,감점 없음,감점 없음,감점 없음,',
+  ].join('\n'));
+  await T.waitForSelector('#upOk');
+  const prev2 = await T.innerText('.modal-body');
+  ok(/파일 머리글대로/.test(prev2) && /만점 30/.test(prev2) && /비고/.test(prev2), '교사: 채점 시트를 올리면 항목(①②③)과 만점 30을 파일대로 정하겠다고 안내');
+  await T.click('#upOk');
+  await T.waitForFunction(() => !document.getElementById('modal').classList.contains('open'));
+  await T.waitForSelector('#dTable td.crit-cell');
+  const a2 = await read(async db => (await getDoc(doc(db, 'score_assessments', aid2))).data());
+  ok(a2.criteria.length === 3 && a2.maxScore === 30 && a2.criteria[2].label === '프로그램 완성', '교사: 평가 항목·만점 저장');
+  const r2 = await read(async db => (await getDoc(doc(db, 'score_results', `${aid2}_StuA`))).data());
+  ok(r2.score === 28 && r2.items[2].score === 8 && /함수 호출/.test(r2.items[2].reason) && r2.items[0].reason === '' && !('note' in r2) && r2.maxScore === 30, '교사: 항목별 점수·사유 저장("감점 없음"은 빈칸), 결과 문서에 비고 없음');
+  const n2 = await read(async db => (await getDoc(doc(db, 'score_notes', aid2))).data());
+  ok(/후하게/.test(n2.notes.StuA), '교사: 비고는 선생님 전용 문서에 저장');
+  ok((await T.$$('#dTable td.crit-cell')).length === 6 && /28/.test(await T.innerText('#dTable tr[data-sid="StuA"] [data-total]')), '교사: 표에 항목 칸·합계가 보임');
+  // 항목 점수를 표에서 고치면 합계가 따라 바뀌고 이력이 남는다
+  await T.fill('#dTable tr[data-sid="StuA"] input[data-f="item"][data-i="2"]', '9');
+  ok((await T.innerText('#dTable tr[data-sid="StuA"] [data-total]')).trim() === '29', '교사: 항목 점수를 고치면 합계가 바로 바뀜');
+  await T.click('#btnSave');
+  await T.waitForFunction(() => document.getElementById('savebar').classList.contains('hidden'));
+  const h2 = await read(async db => (await getDocs(collection(db, 'score_results', `${aid2}_StuA`, 'history'))).docs.map(d => d.data()));
+  ok(h2.length === 1 && /③ 8 → 9/.test(h2[0].summary), '교사: 항목 점수 변경도 이력에 남음');
+
+  // 제출물 연결
+  await T.click('#btnFiles');
+  await T.fill('#drvFolders', 'https://drive.google.com/drive/folders/FOLDER');
+  await T.click('#drvLoad');
+  await T.waitForSelector('#drvSave', { timeout: 10000 });
+  const drv = await T.innerText('#drvResult');
+  ok(/학생 2명 · 파일 3개/.test(drv) && /못 붙인 파일 1/.test(drv) && /이름에 학번이 없음/.test(drv), '교사: 드라이브 폴더 → 학번으로 2명·3개 연결, 학번 없는 파일 알림');
+  await T.click('#drvSave');
+  await T.waitForFunction(() => !document.getElementById('modal').classList.contains('open'));
+  const fa = await read(async db => (await getDoc(doc(db, 'score_results', `${aid2}_StuA`))).data().files);
+  ok(fa.map(f => f.id).join() === 'F_A1,F_A2', '교사: 학생별 제출물 저장(본 파일 먼저, _2 다음)');
+  await T.click('#dTable tr[data-sid="StuA"] [data-act="files"]');
+  await T.waitForSelector('.modal-body img.file-img', { timeout: 10000 });
+  ok(true, '교사: 제출물 미리보기(그림)');
+  await T.click('.modal-foot [data-close]');
+  await T.click('#dClasses [data-pub="S중__g1__c2"]');
+  await T.waitForSelector('#dClasses [data-pub="S중__g1__c2"].on');
+
+  // 학생: 항목별 점수 + 내 제출물
+  await S.goto('http://localhost:8099/score.html');
+  await S.waitForSelector('#list .item', { timeout: 10000 });
+  await S.click('#list .item:has-text("2차 수행평가")');
+  await S.waitForSelector('#detail .crit');
+  const det2 = await S.innerText('#detail');
+  ok(/항목별 점수/.test(det2) && /프로그램 완성/.test(det2) && /함수 호출 인자 오류/.test(det2) && /29/.test(det2), '학생: 항목별 점수·사유가 보임');
+  ok(!/후하게/.test(det2), '학생: 비고(선생님 메모)는 안 보임');
+  await S.waitForFunction(() => document.querySelectorAll('#detail img.file-img').length === 2, null, { timeout: 10000 });
+  ok(true, '학생: 내 제출물 그림 2장이 보임');
+  ok((await S.$$('#detail a[download]')).length === 0, '학생: 내려받기 버튼 없음');
+  await S.click('#detail img.file-img');
+  await S.waitForSelector('.sv-back .sv-body img', { timeout: 5000 });
+  ok(/김학생\.png/.test(await S.innerText('.sv-title')), '학생: 그림을 누르면 그 자리에서 팝업으로 크게 보임');
+  await S.keyboard.press('Escape');
+  await S.waitForSelector('.sv-back', { state: 'detached', timeout: 5000 });
+  ok(/시험 점수 확인/.test(await S.innerText('#navTitle')), '학생: 화면 제목이 "시험 점수 확인"');
+  await shot(S, '4-student-items-files');
+  await shot(T, '5-teacher-items');
+  // 다른 학생 파일은 못 받는다(진짜 규칙이 판단)
+  const tokA = await idTokenOf('stua@ohinfo.local', 'pass99');
+  const steal = await fakeGas({ action: 'file', idToken: tokA, rid: `${aid2}_StuB`, fileId: 'F_B' });
+  const steal2 = await fakeGas({ action: 'file', idToken: tokA, rid: `${aid2}_StuA`, fileId: 'F_B' });
+  const steal3 = await fakeGas({ action: 'list', idToken: tokA, aid: aid2, folders: ['FOLDER'] });
+  ok(!!steal.error && !!steal2.error && !!steal3.error, '학생: 남의 결과·남의 파일·폴더 목록 요청은 거부');
 
   ok(errors.length === 0, '페이지 오류 없음' + (errors.length ? ' — ' + errors.join(' | ') : ''));
 } catch (e) {

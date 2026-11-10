@@ -20,7 +20,7 @@
 | `exam.html` | 시험 보기 — 1500줄, `// ── 제출 ──`, `// ── 문제 렌더링 ──` 등으로 검색. 서버는 `functions/api/exam.js` |
 | `qna.html` | 질문 게시판(`qna_threads`) |
 | `formfill.html`, `formlab.html` | 설문 제출 |
-| `score.html` | 수행평가 점수 확인·이의신청(`score_results`, 본인·공개된 것만). 홈 타일은 `appSettings` 의 `score` |
+| `score.html` + `score-config.js` | 수행평가 점수·항목별 점수·내 제출물 확인·이의신청(`score_results`, 본인·공개된 것만). 제출물은 Apps Script `score-drive.gs` 가 본인 확인 뒤 보내 줌. 홈 타일은 `appSettings` 의 `score` |
 | `ailab.html`·`ailab.js`, `aiapp.html`, `aicode.*`, `ai-*.js` | AI 실습실. `ai-i18n.js`(135KB)는 번역 문장 모음 — 통째로 읽지 말 것 |
 | `평택타이머1~3.html`, `활성함수.html`, `견본/`, `프롬프트/`, `vcexample/` | 연수·수업용 단독 페이지 |
 
@@ -29,5 +29,6 @@
 
 ## 그 밖
 - `apps-script/ailab-drive.gs`: AI 실습실 이미지를 구글 드라이브에 올리는 Apps Script (자동 배포 안 됨, Apps Script 편집기에 붙여넣기)
+- `apps-script/score-drive.gs`: 수행평가 제출물(선생님 드라이브)을 본인 학생에게만 보내는 Apps Script. 프로젝트 "수행평가 제출물"로 배포됨, 주소는 `ohweb/public/score-config.js`·`ohinfo/public/score-config.js` (README 참고)
 - `scripts/migrate-students-to-auth.mjs`: 한 번 쓰고 끝난 학생 계정 전환 스크립트
 - 테스트: `ohweb-rules-test` 에서 `npm run test:login`, `npm run test:exam`

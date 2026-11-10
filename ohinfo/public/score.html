@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>수행평가 — kakainfo</title>
+<title>시험 점수 확인 — kakainfo</title>
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
@@ -73,6 +73,18 @@
   .msg { font-size: 0.84rem; margin-top: 6px; }
   .msg.err { color: var(--danger); }
   .msg.ok { color: var(--success); }
+  .crit { padding: 9px 0; border-bottom: 1px solid var(--border); }
+  .crit:last-child { border-bottom: none; }
+  .crit-top { display: flex; align-items: baseline; gap: 10px; }
+  .crit-name { flex: 1; font-weight: 700; font-size: 0.92rem; color: var(--text); }
+  .crit-score { font-weight: 900; font-variant-numeric: tabular-nums; color: var(--text); white-space: nowrap; }
+  .crit-score small { color: var(--sub); font-weight: 700; font-size: 0.78rem; }
+  .crit-reason { font-size: 0.85rem; color: var(--danger); margin-top: 2px; white-space: pre-wrap; word-break: break-word; }
+  .file-box { margin-top: 10px; }
+  .file-name { font-size: 0.8rem; color: var(--sub); font-weight: 600; margin-bottom: 4px; word-break: break-all; }
+  .file-img { max-width: 100%; border-radius: 10px; display: block; border: 1px solid var(--border); cursor: zoom-in; }
+  .btn.primary { margin-top: 2px; }
+  .file-text { white-space: pre-wrap; word-break: break-word; font-size: 0.85rem; background: var(--sky-chip); border-radius: 10px; padding: 10px 12px; max-height: 360px; overflow: auto; color: var(--text); }
 </style>
 </head>
 <body class="ui-sky">
@@ -86,7 +98,7 @@
 <nav class="nav">
   <button class="nav-back" id="navBack" title="뒤로"><svg width="17" height="17"><use href="#ic-back"/></svg></button>
   <div>
-    <div class="nav-title" id="navTitle">수행평가</div>
+    <div class="nav-title" id="navTitle">시험 점수 확인</div>
     <div class="nav-sub" id="navSub"></div>
   </div>
 </nav>
@@ -97,7 +109,9 @@
 </div>
 
 <script type="module">
-import { db } from './firebase-config.js';
+import { db, auth } from './firebase-config.js';
+import { SCORE_GAS_URL } from './score-config.js';
+import { openViewer, fileKind, objectUrl } from './score-viewer.js';
 import { collection, query, where, getDocs, doc, getDoc, updateDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { loadSession, verifyStudentAuth, authReady } from './session.js';
 import { escHtml as esc } from './escape.js';
@@ -109,34 +123,34 @@ if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
 const lang = localStorage.getItem('ohinfo_lang') || 'ko';
 
 const LANGS = {
-  ko: { title: '수행평가', loading: '불러오는 중…', empty: '아직 공개된 수행평가가 없어요.\n선생님이 점수를 공개하면 여기에 보여요.',
+  ko: { title: '시험 점수 확인', loading: '불러오는 중…', empty: '아직 공개된 점수가 없어요.\n선생님이 점수를 공개하면 여기에 보여요.',
         error: '불러오지 못했어요', max: '만점', score: '점수', noScore: '점수 없음', ded: '감점 사유', noDed: '감점 사유가 없어요.',
         memo: '선생님 메모', status: { normal: '', missing: '미제출', absent: '결시', credited: '인정점' },
         dispute: '이의신청', disputeHelp: '점수나 감점 사유가 이상하면 선생님께 알려 주세요. 처리는 선생님이 직접 안내해 줍니다.',
         disputePh: '어떤 부분이 이상한지 적어 주세요 (500자까지)', send: '보내기', resend: '다시 보내기', sent: '보냈어요. 선생님이 확인할 거예요.',
         mine: '내가 보낸 이의신청', received: '접수됨', checked: '선생님 확인함', tooLong: '500자까지 쓸 수 있어요.', emptyText: '내용을 적어 주세요.',
-        updated: '점수 공개 이후에 수정됨' },
-  zh: { title: '实践评价', loading: '加载中…', empty: '还没有公开的实践评价。\n老师公开分数后会显示在这里。',
+        updated: '점수 공개 이후에 수정됨', items: '항목별 점수', files: '내 제출물', view: '크게 보기', run: '실행해 보기', viewer: { close: '닫기', start: '시작', stop: '멈춤', loadingPlayer: '스크래치 실행기를 불러오는 중…', cantPlay: '이 프로젝트를 실행하지 못했어요.', cantPreview: '이 형식은 미리 볼 수 없어요.' }, fileErr: '파일을 불러오지 못했어요' },
+  zh: { title: '成绩查询', loading: '加载中…', empty: '还没有公开的实践评价。\n老师公开分数后会显示在这里。',
         error: '加载失败', max: '满分', score: '分数', noScore: '无分数', ded: '扣分原因', noDed: '没有扣分原因。',
         memo: '老师备注', status: { normal: '', missing: '未提交', absent: '缺考', credited: '认定分' },
         dispute: '提出异议', disputeHelp: '如果分数或扣分原因有问题，请告诉老师。老师会当面处理。',
         disputePh: '请写下哪里有问题（最多500字）', send: '发送', resend: '重新发送', sent: '已发送，老师会确认。',
         mine: '我提出的异议', received: '已接收', checked: '老师已确认', tooLong: '最多500字。', emptyText: '请填写内容。',
-        updated: '公开后已修改' },
-  ru: { title: 'Оценивание', loading: 'Загрузка…', empty: 'Пока нет опубликованных оценок.\nОни появятся, когда учитель их откроет.',
+        updated: '公开后已修改', items: '各项得分', files: '我的提交', view: '查看', run: '运行', viewer: { close: '关闭', start: '开始', stop: '停止', loadingPlayer: '正在加载 Scratch 播放器…', cantPlay: '无法运行此作品。', cantPreview: '此格式无法预览。' }, fileErr: '无法加载文件' },
+  ru: { title: 'Мои оценки', loading: 'Загрузка…', empty: 'Пока нет опубликованных оценок.\nОни появятся, когда учитель их откроет.',
         error: 'Не удалось загрузить', max: 'макс.', score: 'Баллы', noScore: 'Нет баллов', ded: 'Причины снижения', noDed: 'Снижений нет.',
         memo: 'Заметка учителя', status: { normal: '', missing: 'Не сдано', absent: 'Отсутствовал', credited: 'Зачтено' },
         dispute: 'Апелляция', disputeHelp: 'Если с баллами что-то не так, сообщите учителю. Учитель разберётся лично.',
         disputePh: 'Опишите, что не так (до 500 символов)', send: 'Отправить', resend: 'Отправить снова', sent: 'Отправлено. Учитель проверит.',
         mine: 'Моя апелляция', received: 'Получено', checked: 'Учитель проверил', tooLong: 'Не более 500 символов.', emptyText: 'Напишите текст.',
-        updated: 'Изменено после публикации' },
-  en: { title: 'Performance assessment', loading: 'Loading…', empty: 'No published results yet.\nThey will appear here when your teacher publishes them.',
+        updated: 'Изменено после публикации', items: 'Баллы по критериям', files: 'Мои работы', view: 'Открыть', run: 'Запустить', viewer: { close: 'Закрыть', start: 'Старт', stop: 'Стоп', loadingPlayer: 'Загрузка проигрывателя Scratch…', cantPlay: 'Не удалось запустить проект.', cantPreview: 'Этот формат нельзя открыть.' }, fileErr: 'Не удалось загрузить файл' },
+  en: { title: 'My scores', loading: 'Loading…', empty: 'No published results yet.\nThey will appear here when your teacher publishes them.',
         error: 'Could not load', max: 'out of', score: 'Score', noScore: 'No score', ded: 'Deduction reasons', noDed: 'No deductions.',
         memo: "Teacher's note", status: { normal: '', missing: 'Not submitted', absent: 'Absent', credited: 'Credited' },
         dispute: 'Request a review', disputeHelp: 'If your score or deductions look wrong, let your teacher know. Your teacher will follow up in person.',
         disputePh: 'Describe what looks wrong (up to 500 characters)', send: 'Send', resend: 'Send again', sent: 'Sent. Your teacher will check it.',
         mine: 'My request', received: 'Received', checked: 'Checked by teacher', tooLong: 'Up to 500 characters.', emptyText: 'Please write something.',
-        updated: 'Edited after publishing' },
+        updated: 'Edited after publishing', items: 'Score by criterion', files: 'My submission', view: 'View', run: 'Run it', viewer: { close: 'Close', start: 'Start', stop: 'Stop', loadingPlayer: 'Loading the Scratch player…', cantPlay: 'Could not run this project.', cantPreview: 'This file type cannot be previewed.' }, fileErr: 'Could not load the file' },
 };
 const L = LANGS[lang] || LANGS.ko;
 document.title = `${L.title} — kakainfo`;
@@ -190,10 +204,14 @@ function renderDetail(r) {
       ${pillsHtml(r) ? `<div class="pills" style="justify-content:center">${pillsHtml(r)}</div>` : ''}
       ${edited ? `<div class="hint">${esc(L.updated)} · ${esc(fmt(r.updatedAt))}</div>` : ''}
     </div>
-    <div class="card">
+    ${(r.items || []).length ? `<div class="card"><div class="sec-label">${esc(L.items)}</div>${r.items.map((it, i) => `<div class="crit">
+      <div class="crit-top"><span class="crit-name">${'①②③④⑤⑥⑦⑧⑨⑩'[i] || (i + 1) + '.'} ${esc(it.label)}</span><span class="crit-score">${it.score == null ? '-' : esc(it.score)}<small> / ${esc(it.max)}</small></span></div>
+      ${it.reason ? `<div class="crit-reason">${esc(it.reason)}</div>` : ''}</div>`).join('')}</div>` : ''}
+    ${ded.length || !(r.items || []).length ? `<div class="card">
       <div class="sec-label">${esc(L.ded)}</div>
       ${ded.length ? ded.map(x => `<div class="ded"><span class="code">${esc(x.code)}</span><span>${esc(x.label)}</span></div>`).join('') : `<div class="none">${esc(L.noDed)}</div>`}
-    </div>
+    </div>` : ''}
+    ${(r.files || []).length ? `<div class="card"><div class="sec-label">${esc(L.files)}</div>${r.files.map((f, i) => `<div class="file-box" data-fi="${i}"><div class="file-name">${esc(f.name)}</div><div class="file-body"><div class="hint">${esc(L.loading)}</div></div></div>`).join('')}</div>` : ''}
     ${r.memo ? `<div class="card"><div class="sec-label">${esc(L.memo)}</div><div class="memo">${esc(r.memo)}</div></div>` : ''}
     <div class="card">
       <div class="sec-label">${esc(L.dispute)}</div>
@@ -203,6 +221,7 @@ function renderDetail(r) {
       <div class="row"><span class="cnt" id="dispCnt">0/500</span><span class="grow"></span><button class="btn primary" id="dispSend">${esc(d ? L.resend : L.send)}</button></div>
       <div class="msg" id="dispMsg"></div>
     </div>`;
+  loadFiles(r);
   const ta = document.getElementById('dispText');
   ta.oninput = () => { document.getElementById('dispCnt').textContent = `${ta.value.length}/500`; };
   document.getElementById('dispSend').onclick = async () => {
@@ -220,6 +239,37 @@ function renderDetail(r) {
       console.error(e); msg.className = 'msg err'; msg.textContent = `${L.error}: ${e.code || e.message}`; btn.disabled = false;
     }
   };
+}
+
+// 제출물 — 선생님 드라이브의 파일을 Apps Script(score-drive.gs)가 본인 확인 뒤 보내 준다.
+async function loadFiles(r) {
+  for (const [i, f] of (r.files || []).entries()) {
+    const box = () => document.querySelector(`#detail .file-box[data-fi="${i}"] .file-body`);
+    try {
+      if (!SCORE_GAS_URL) throw new Error('not configured');
+      const idToken = await auth.currentUser.getIdToken();
+      const res = await fetch(SCORE_GAS_URL, { method: 'POST', body: JSON.stringify({ action: 'file', idToken, rid: r.id, fileId: f.id }) });
+      const d = JSON.parse(await res.text());
+      if (d.error) throw new Error(d.error);
+      const el = box(); if (!el) return; // 다른 화면으로 넘어감
+      // 내려받지 않고 그 자리에서 본다 — 누르면 팝업(그림 크게, 글 본문, 스크래치는 바로 실행)
+      const kind = fileKind(d);
+      const open = () => openViewer(d, L.viewer);
+      if (kind === 'image') {
+        el.innerHTML = `<img class="file-img" src="${objectUrl(d)}" alt="" title="${esc(L.view)}">`;
+        el.querySelector('img').onclick = open;
+      } else if (kind === 'text') {
+        el.innerHTML = `<pre class="file-text">${esc(d.text.length > 400 ? d.text.slice(0, 400) + '…' : d.text)}</pre><button class="btn">${esc(L.view)}</button>`;
+        el.querySelector('button').onclick = open;
+      } else if (kind === 'scratch') {
+        el.innerHTML = `<button class="btn primary">▶ ${esc(L.run)}</button>`;
+        el.querySelector('button').onclick = open;
+      } else el.innerHTML = `<div class="hint">${esc(L.viewer.cantPreview)}</div>`;
+    } catch (e) {
+      console.error(e);
+      const el = box(); if (el) el.innerHTML = `<div class="msg err">${esc(L.fileErr)}</div>`;
+    }
+  }
 }
 
 function route() {
