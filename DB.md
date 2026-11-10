@@ -13,7 +13,7 @@
 | `schools`, `classes` | ohweb(관리), ohinfo | 학교·반 |
 | `students` | ohweb(관리), ohinfo(로그인) | 학생 계정. 로그인은 Firebase Auth `${id}@ohinfo.local` |
 | `student_directory` | ohweb, ohinfo | 공개용 학생 명단(이름만) |
-| `appSettings` | ohweb, ohinfo, ohnotion | 반 × 앱 공개 설정 · `ohnotion_site` = 노션 페이지 숨기기(closedSlugs) |
+| `appSettings` | ohweb, ohinfo, ohnotion | 반 × 앱 공개 설정 · `ohnotion_site` = 노션 페이지 숨기기(closedSlugs) · `ohnotion_follow_{주소}` = 발표 따라가기 |
 | `posts` | ohinfo `ohdlet.html`(게시판), ohweb | 게시판 글 |
 | `qna_threads` | ohinfo `qna.html`, ohweb | 질문 게시판 |
 | `student_forms`, `student_form_responses` | ohweb `forms.html`, ohinfo `formfill.html` | 설문·제출 |
