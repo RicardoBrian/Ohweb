@@ -154,6 +154,15 @@ async function renderDashboard() {
         <code>FIREBASE_SERVICE_ACCOUNT_KEY</code>를 넣고 재배포하면 켜져요. 등록과 학생 화면은 지금도 동작해요.
       </div>
 
+      <div class="site-switch" id="siteSwitch">
+        <div class="site-switch-text">
+          <b id="siteState">학생 화면 상태 확인 중…</b>
+          <span class="hint" id="siteHint">시험 때 누르면 모든 학생 주소가 막혀요(페이지는 지워지지 않아요). 열려 있던 학생 화면도 1분 안에 자동 새로고침돼 닫혀요.</span>
+          <input id="siteMessage" class="inp" maxlength="300" placeholder="학생에게 보일 문구 (비우면: 선생님이 잠시 닫아 두었어요…)">
+        </div>
+        <button type="button" class="btn" id="siteToggle" disabled>…</button>
+      </div>
+
       <div class="tiles" id="tiles"></div>
 
       <div class="create-card">
@@ -231,8 +240,55 @@ async function renderDashboard() {
   document.getElementById('cancelEdit').addEventListener('click', resetForm);
   document.getElementById('recheckBtn').addEventListener('click', () => runChecks(true));
 
+  document.getElementById('siteToggle').addEventListener('click', toggleSite);
+  loadSite();
+
   await refresh({ withChecks: true });
   startRefresh();
+}
+
+// ── 학생 화면 닫기(시험 기간) — appSettings/ohnotion_site (lib/shared.js getSiteStatus) ──
+const SITE_DOC = 'ohnotion_site';
+let siteClosed = false;
+function renderSite() {
+  const box = document.getElementById('siteSwitch');
+  if (!box) return;
+  box.classList.toggle('closed', siteClosed);
+  document.getElementById('siteState').textContent = siteClosed
+    ? '⏸ 학생 화면이 닫혀 있어요 — 지금 학생은 어떤 주소도 열 수 없어요'
+    : '▶ 학생 화면이 열려 있어요';
+  const btn = document.getElementById('siteToggle');
+  btn.disabled = false;
+  btn.textContent = siteClosed ? '다시 열기' : '학생 화면 닫기';
+  btn.className = siteClosed ? 'btn accent' : 'btn danger';
+}
+async function loadSite() {
+  try {
+    const snap = await getDoc(doc(db, 'appSettings', SITE_DOC));
+    const d = snap.exists() ? snap.data() : {};
+    siteClosed = d.closed === true;
+    document.getElementById('siteMessage').value = d.message || '';
+    renderSite();
+  } catch (e) {
+    document.getElementById('siteState').textContent = `상태를 못 읽었어요: ${e.message}`;
+  }
+}
+async function toggleSite() {
+  const next = !siteClosed;
+  if (next && !confirm('학생 화면을 닫을까요?\n모든 주소가 막히고, 열려 있던 학생 화면도 1분 안에 닫혀요.')) return;
+  const btn = document.getElementById('siteToggle');
+  btn.disabled = true;
+  try {
+    await setDoc(doc(db, 'appSettings', SITE_DOC), {
+      closed: next,
+      message: document.getElementById('siteMessage').value.trim().slice(0, 300),
+      updatedAt: serverTimestamp(),
+    });
+    siteClosed = next;
+  } catch (e) {
+    alert(`바꾸지 못했어요: ${e.message}`);
+  }
+  renderSite();
 }
 
 function startRefresh() {

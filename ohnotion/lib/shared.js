@@ -131,6 +131,34 @@ export function getPage(context, slug) {
   });
 }
 
+// ── 사이트 닫기(시험 기간 등) ──
+// appSettings/ohnotion_site = { closed: bool, message: string, updatedAt }. 공개 읽기·관리자 쓰기
+// (규칙의 appSettings 그대로). 관리 페이지의 "학생 화면 닫기" 스위치가 쓴다.
+// 학생 화면이 30초마다 /api/status 로 묻기 때문에, Firestore 는 데이터센터당 15초에 한 번만 읽는다.
+// 읽기에 실패하면 "열림"으로 보고(노션 화면이 통째로 막히지 않게), 실패는 캐싱하지 않는다.
+export const SITE_DOC = 'ohnotion_site';
+const SITE_TTL_SECONDS = 15;
+export async function getSiteStatus(context) {
+  try {
+    const hit = await cacheGet(context, 'site');
+    if (hit) return hit;
+  } catch { /* 캐시 없이 */ }
+  try {
+    const r = await fetch(`${DOCS}/appSettings/${SITE_DOC}`);
+    let status = { closed: false, message: '' };
+    if (r.ok) {
+      const d = fromFsDoc(await r.json());
+      status = { closed: d.closed === true, message: typeof d.message === 'string' ? d.message.slice(0, 300) : '' };
+    } else if (r.status !== 404) {
+      return { closed: false, message: '' };
+    }
+    context.waitUntil(cachePut(context, 'site', status, SITE_TTL_SECONDS).catch(() => {}));
+    return status;
+  } catch {
+    return { closed: false, message: '' };
+  }
+}
+
 export function listPages(context) {
   return cached(context, 'list', async () => {
     const r = await fetch(`${DOCS}/notion_pages?pageSize=300`);
