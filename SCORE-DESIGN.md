@@ -55,3 +55,7 @@ score_results/{id}/history/{id}
 - **제출물**: 선생님 드라이브에 그대로 둔다. 교사 화면 "제출물 연결"에 폴더 주소 → Apps Script `score-drive.gs`(list) 가 하위 폴더까지 훑고, 파일 이름의 학번으로 학생에 붙여 결과 문서 `files [{id,name,mimeType,size}]` 에 저장(선생님만 씀).
   학생은 `score-drive.gs`(file) 로 받는다 — 스크립트가 학생 토큰으로 결과 문서를 읽어(규칙: 본인·공개된 것만) `files` 에 있는 파일만 보낸다. 드라이브 공유 설정은 바꾸지 않는다.
 - 보기: 내려받지 않고 팝업(`score-viewer.js`, 두 사이트에 같은 사본) — 그림 크게, 글 본문, `.sb3` 는 TurboWarp scaffolding 으로 바로 실행.
+
+## 추가 (2026-11-10) — 시험 연계·세션 채점
+- **시험에서 가져오기**(교사 화면): 시험 + 배정(여러 반 묶음) → 평가 하나. 문항 = 항목(Q1…), 사유는 학생에게 보여도 되는 말로(객관식 "오답", 코드 "테스트 3/5 통과", 직접 채점 피드백). 채점 중(needsManual) 학생은 빼고, 대상이 정해진 배정의 미응시 학생은 "미제출". A/B형 시험은 총점만. **다시 가져오기**는 바뀐 학생만(이력에 남음), 감점사유·메모·비고는 유지.
+- **세션 채점**: `tools/exam-grading`(list → export → grades.csv 채우기 → apply 미리보기 → --write) + 스킬 `/exam-grading`. 반영은 관리자 채점 창 저장과 같은 형식, `gradedBy: 'claude-session'`.

@@ -12,6 +12,7 @@
 | `ohshrt/` | 단축 URL | – |
 | `ohsettle/` | 정산(개인용, DB 따로) | settle.kakainfo.com |
 | `ohweb-rules-test/` | Firestore 규칙·화면 테스트 (`npm run test`) | – |
+| `tools/exam-grading/` | 시험 채점 도구(내보내기·반영, 운영 DB 직접). 세션 절차는 스킬 `/exam-grading` | – |
 
 - **DB: `DB.md`** — 어느 앱이 어느 컬렉션을 쓰는지. 컬렉션을 새로 만들면 거기도 고친다.
 - `ohinfo/public/vibe/` 는 견본으로, `ohinfo/tools/vibe/build.py` 가 실제 앱에서 **자동 생성**한다(Actions `vibe-build`). **손으로 고치지 말고** 원본을 고친다. 검색할 때도 `vibe/` 는 빼고 본다(같은 이름 파일이 있어 헷갈린다).
