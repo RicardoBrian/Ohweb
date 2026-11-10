@@ -14,12 +14,12 @@ import {
 } from '/vibe/shared/fake-firebase/firebase-firestore.js';
 import { loadSession, verifyStudentAuth, authReady, clearSession } from './session.js';
 import { escHtml } from './escape.js';
-import * as C from './ai-core.js?v=202610220501';
-import { makeT, getLang, setLang } from './ai-i18n.js?v=202610220501';
-import { prepareImage, prepareCover, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202610220501';
-import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, refetchTrainPhoto, saveModelToDrive, deviceId, devPhotoPut, devPhotoGet, devPhotoDel } from './ai-drive.js?v=202610220501';
-import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202610220501';
-import { appHtml, probsByLabel, THEMES, ACCENTS, FONTS, ensureFont } from './ai-render.js?v=202610220501';
+import * as C from './ai-core.js?v=202611100001';
+import { makeT, getLang, setLang } from './ai-i18n.js?v=202611100001';
+import { prepareImage, prepareCover, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202611100001';
+import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, refetchTrainPhoto, saveModelToDrive, deviceId, devPhotoPut, devPhotoGet, devPhotoDel } from './ai-drive.js?v=202611100001';
+import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202611100001';
+import { appHtml, probsByLabel, THEMES, ACCENTS, FONTS, ensureFont } from './ai-render.js?v=202611100001';
 
 const E = escHtml;
 const $ = id => document.getElementById(id);
@@ -53,6 +53,8 @@ const uploader = new Uploader({
 });
 
 // ── 도움 함수 ──
+// 선생님이 배정에서 "수업 제목을 모둠 주제로"를 켰으면 그 제목이 주제(학생은 바꾸지 못함)
+const lockedTopic = () => (S.asg && S.asg.lockTopic ? String(S.asg.title || '').trim().slice(0, 40) : '');
 const isLeader = () => !!(S.pair && S.pair.leaderId === S.me);
 const members = () => (S.pair && S.pair.members) || [];
 const nameOf = id => (S.pair && S.pair.memberNames && S.pair.memberNames[id]) || id;
@@ -73,9 +75,9 @@ let TB = null, _tbLoading = null;
 const TBon = () => (isTable() && TB ? TB : null);
 function loadTable() {
   if (_tbLoading) return _tbLoading;
-  _tbLoading = import('./ai-table.js?v=202610220501').then(M => {
+  _tbLoading = import('./ai-table.js?v=202611100001').then(M => {
     TB = M.makeTable({
-      S, E, t: (k, v) => t(k, v), $, C, isLeader, members, nameOf, leaderName, pref, safeUpdate, schedule, toast, nextBtn, draftOr,
+      S, E, t: (k, v) => t(k, v), $, C, isLeader, members, nameOf, leaderName, pref, safeUpdate, schedule, toast, nextBtn, draftOr, cols, lockedTopic,
       ratingHtml, causeHtml, debounce, serverTimestamp, go: n => actions.step(n),
     });
     sync(); schedule();
@@ -88,9 +90,9 @@ let TX = null, _txLoading = null;
 const TXon = () => (isText() && TX ? TX : null);
 function loadText() {
   if (_txLoading) return _txLoading;
-  _txLoading = import('./ai-text.js?v=202610220501').then(M => {
+  _txLoading = import('./ai-text.js?v=202611100001').then(M => {
     TX = M.makeText({
-      S, E, t: (k, v) => t(k, v), $, C, isLeader, members, leaderName, pref, safeUpdate, schedule, toast, nextBtn, tipsHtml,
+      S, E, t: (k, v) => t(k, v), $, C, isLeader, members, leaderName, pref, safeUpdate, schedule, toast, nextBtn, tipsHtml, cols,
       ratingHtml, causeHtml, serverTimestamp, setDoc, deleteDoc, doc, db, labelsOf, imgs, isMine, ownerTag, ownerChips, namesOf, minTrain, minTest, ms,
     });
     schedule();
@@ -249,7 +251,7 @@ function applyStaticText() {
 
 function headHtml() {
   const ms_ = members().map(id => `<span class="mem${id === S.me ? ' me' : ''}">${E(nameOf(id))}${id === S.pair.leaderId ? ` <em>${E(t('leader'))}</em>` : ''}</span>`).join('');
-  return `<div class="lab-head">
+  return `${S.asg.title ? `<div class="lab-lesson"><span>${E(t('lessonTitle'))}</span><b>${E(S.asg.title)}</b></div>` : ''}<div class="lab-head">
     <div class="lab-pair"><span class="pair-no">${E(t('pairN', { n: S.pair.no || '' }))}</span>${ms_}<span class="round">${E(t('modelN', { n: S.project.round || 1 }))}</span></div>
     <div class="seg" role="tablist">
       <button data-act="tab" data-v="project" class="${S.tab === 'project' ? 'on' : ''}">${E(t('tabProject'))}</button>
@@ -302,6 +304,12 @@ function tipsHtml(list) {
   return `<div class="tips"><b>${E(t('tipsTitle'))}</b><ul>${list.map(x => `<li>${E(x)}</li>`).join('')}</ul></div>`;
 }
 function lead(key) { return `<p class="lead">${E(t(key))}</p>`; }
+// 넓은 화면: 하는 일(main)은 왼쪽, 도움말·참고(side)는 오른쪽 칸으로. 좁은 화면에서는 위아래로 그대로 쌓인다.
+// even: 두 칸을 같은 너비로(④ 평가처럼 양쪽 다 쓸 게 많을 때).
+function cols(main, side, even = false) {
+  if (!side) return main;
+  return `<div class="cols${even ? ' even' : ''}"><div class="col-main">${main}</div><div class="col-side">${side}</div></div>`;
+}
 function draftOr(key, v) { return S.drafts[key] != null ? S.drafts[key] : (v || ''); }
 
 // ── ① 문제 정의 ──
@@ -310,18 +318,21 @@ function step1() {
   const labels = S.labels || labelsOf();
   const leader = isLeader();
   const hasImg = id => imgs('train', id).length + imgs('test', id).length > 0;
-  let body = lead('s1Lead') + tipsHtml(t(tk('s1Tips')));
+  const tips = tipsHtml(t(tk('s1Tips')));
+  let body = lead('s1Lead');
   if (!leader) {
-    body += `<div class="note">${E(t('s1Wait', { name: leaderName() }))}</div>`;
-    body += `<div class="card"><div class="field"><label>${E(t(tk('topicLabel')))}</label><div class="ro">${E(p.topic || '…')}</div></div>
+    let main = `<div class="note">${E(t('s1Wait', { name: leaderName() }))}</div>`;
+    main += `<div class="card"><div class="field"><label>${E(t(tk('topicLabel')))}</label><div class="ro">${E(lockedTopic() || p.topic || '…')}</div></div>
       <div class="field"><label>${E(t('labelsLabel'))}</label>
       <div class="ro-labels">${labels.length ? labels.map(l => `<div class="ro-label"><b>${E(l.name || '…')}</b>${ownerTag(l)}${trHtml(l)}</div>`).join('') : '<div class="ro">…</div>'}</div></div></div>`;
+    body += cols(main, tips);
     if (p.defined && p.step >= 2) body += nextBtn(2, 's2');
     return body;
   }
-  body += `<div class="card">
+  body += cols(`<div class="card">
     <div class="field"><label for="f-topic">${E(t(tk('topicLabel')))}</label>
-      <input id="f-topic" data-field="topic" maxlength="40" placeholder="${E(t(tk('topicPh')))}" value="${E(draftOr('topic', p.topic))}"></div>
+      ${lockedTopic() ? `<div class="ro">${E(lockedTopic())}</div><div class="muted sm">🔒 ${E(t('topicLocked'))}</div>`
+        : `<input id="f-topic" data-field="topic" maxlength="40" placeholder="${E(t(tk('topicPh')))}" value="${E(draftOr('topic', p.topic))}">`}</div>
     <div class="field"><label>${E(t('labelsLabel'))}</label>
       <div class="label-rows">${labels.map((l, i) => `<div class="label-row">
         <span class="ln">${i + 1}</span>
@@ -332,7 +343,7 @@ function step1() {
     </div>
     <div id="s1err" class="err"></div>
     <button class="btn primary" data-act="s1confirm" ${S.busy.s1 ? 'disabled' : ''}>${E(S.busy.s1 ? t('translating') : (p.defined ? t('saveChanges') : t('s1Confirm')))}</button>
-  </div>`;
+  </div>`, tips);
   if (p.defined && p.step >= 2) body += nextBtn(2, 's2');
   return body;
 }
@@ -405,9 +416,9 @@ function step2() {
   const labels = labelsOf();
   const min = minTrain();
   const counts = labels.map(l => imgs('train', l.id).length);
-  let body = lead('s2Lead') + `<div class="two">${howToHtml()}${tipsHtml(t('s2Tips'))}</div>`;
-  if (C.isUnbalanced(counts)) body += `<div class="note warn">⚖️ ${E(t('unbalanced'))}</div>`;
-  body += `<div class="lgrid">${labels.map(l => {
+  let main = '';
+  if (C.isUnbalanced(counts)) main += `<div class="note warn">⚖️ ${E(t('unbalanced'))}</div>`;
+  main += `<div class="lgrid">${labels.map(l => {
     const mine = isMine(l);
     // 이 기기에 저장되어 올라가기를 기다리는 사진도 바로 센다(올라가는 동안 막대가 멈춰 보이지 않게)
     const c = imgs('train', l.id).length + uploader.pendingFor('train', l.id).length;
@@ -422,6 +433,7 @@ function step2() {
       ${photoGrid('train', l.id, im => im.owner === S.me || isLeader())}
     </div>`;
   }).join('')}</div>`;
+  let body = lead('s2Lead') + cols(main, `<div class="two">${howToHtml()}${tipsHtml(t('s2Tips'))}</div>`);
   if (S.project.step >= 3) body += nextBtn(3, 's2Next');
   return body;
 }
@@ -457,8 +469,9 @@ function trainTab(leader) {
   const newN = C.newSinceTraining(p, S.images);
   const v = p.modelVersion || 0;
   let h = leader ? '' : `<div class="note">${E(t('leaderOnly', { name: leaderName() }))}</div>`;
+  let side = '';
 
-  h += `<div class="card"><h3>${E(t('trainData'))}</h3><div class="tdata">${labels.map(l => {
+  side += `<div class="card"><h3>${E(t('trainData'))}</h3><div class="tdata">${labels.map(l => {
     const list = imgs('train', l.id).filter(i => i.driveId || i.local);
     const small = list.filter(i => i.small).length;
     return `<div class="trow"><b>${E(l.name)}</b><span class="cnt">${E(t('countOf', { c: list.length, m: minTrain() }))}</span>${small ? `<span class="warn-txt">${E(t('smallCount', { n: small }))}</span>` : ''}</div>`;
@@ -468,7 +481,7 @@ function trainTab(leader) {
     ${!driveConfigured() ? `<div class="note warn">${E(t('driveNotSet'))}</div>` : ''}</div>`;
 
   const P = TRAIN_PARAMS;
-  h += `<div class="card"><h3>${E(t('paramsTitle'))}</h3><div class="params">${[['epochs', P.epochs], ['batch', P.batchSize], ['lr', P.learningRate]].map(([k, val]) =>
+  side += `<div class="card"><h3>${E(t('paramsTitle'))}</h3><div class="params">${[['epochs', P.epochs], ['batch', P.batchSize], ['lr', P.learningRate]].map(([k, val]) =>
     `<details class="param"><summary><b>${E(t('params.' + k + '.name'))}</b> <code>${val}</code> <span class="info" aria-hidden="true">ⓘ</span></summary><p>${E(t('params.' + k + '.help'))}</p></details>`).join('')}</div></div>`;
 
   h += '<div class="card train-box">';
@@ -494,7 +507,7 @@ function trainTab(leader) {
   } else if (!leader && !show) {
     h += `<div class="muted">${E(t('noModelYet'))}</div>`;
   }
-  return h + '</div>';
+  return cols(h + '</div>', side);
 }
 
 function testTab() {
@@ -526,7 +539,7 @@ function step4() {
     return h + `<div class="note warn">${E(t('noTests'))}</div><div class="next"><button class="btn" data-act="goto-test">← ${E(t('tabTest'))}</button></div>`;
   }
   const run = S.evalRun;
-  h += `<div class="card eval-top">
+  const top = `<div class="card eval-top">
     <button class="btn primary" data-act="evalrun" ${run ? 'disabled' : ''}>▶ ${E(rounds.length ? t('rerun') : t('runEval'))}</button>
     ${run ? `<div class="muted"><span class="spin"></span>${E(run.i ? t('evaluating', { i: run.i, n: run.n }) : t('loadingModel'))}</div>` : ''}
     ${run && run.error ? `<div class="err">${E(t('modelLoadFail'))}</div>` : ''}
@@ -534,8 +547,7 @@ function step4() {
     ${C.newSinceTraining(p, S.images) ? `<div class="note">${E(t('newSince', { n: C.newSinceTraining(p, S.images) }))}</div>` : ''}
     ${rounds.length > 1 ? `<div class="history"><b>${E(t('history'))}</b> ${rounds.map(r => `<span class="hchip">${E(t('roundN', { n: r.n }))} ${r.pct}%</span>`).join(' → ')}</div>` : ''}
   </div>`;
-  if (cur) h += evalResultHtml(cur) + ratingHtml(cur) + causeHtml(cur);
-  h += tryOneHtml();
+  h += cols(top + (cur ? evalResultHtml(cur) : '') + tryOneHtml(), cur ? ratingHtml(cur) + causeHtml(cur) : '', true);
   h += `<div class="note">${E(t('retrainHint'))}</div>`;
   h += `<div class="next two-btn"><button class="btn" data-act="step" data-v="2">← ${E(t('goCollect'))}</button>
     ${p.step >= 5 ? `<button class="btn primary" data-act="step" data-v="5">${E(t('goDeploy'))} →</button>` : `<span class="muted">${E(t('needStarToDeploy'))}</span>`}</div>`;
@@ -1065,7 +1077,7 @@ const actions = {
     saveLabels();
   },
   async s1confirm() {
-    const topic = (S.drafts.topic != null ? S.drafts.topic : S.project.topic || '').trim();
+    const topic = lockedTopic() || (S.drafts.topic != null ? S.drafts.topic : S.project.topic || '').trim();
     const labels = (S.labels || []).map(l => ({ ...l, name: String(l.name || '').trim() }));
     const errs = [];
     if (!topic) errs.push('noTopic');
@@ -1109,7 +1121,7 @@ const actions = {
   // ✍️ 그리기 · 📸 카메라: 필요할 때만 불러온다.
   async cap(mode, el) {
     const [kind, labelId] = el.dataset.zone.split(':');
-    const M = await import('./ai-capture.js?v=202610220501');
+    const M = await import('./ai-capture.js?v=202611100001');
     if (kind === 'cover') return M.openDraw({ t, title: t('coverTitle'), single: true, onAdd: blob => setCover([blob], []) });
     const lab = labelById(labelId);
     const local = mode === 'camera' && camLocal() && kind !== 'try';

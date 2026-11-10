@@ -5,7 +5,7 @@
 //  ④ 평가: 시험용 줄로 모든 실험을 채점해 공부 점수와 비교하고, 웹앱에 쓸 모델을 고른다.
 // 데이터: ai_projects/{pid}의 tFeat · tHyp · tDrop · tChecked · tTrials · evals · tModel
 
-import * as T from './ai-table-core.js?v=202610220501';
+import * as T from './ai-table-core.js?v=202611100001';
 
 export function makeTable(X) {
   const { S, E } = X;
@@ -72,7 +72,7 @@ export function makeTable(X) {
   // ── ① 문제 정의 ──
   function step1() {
     const p = P(), d = ds(), leader = X.isLeader();
-    let h = lead('ts1Lead') + tips(t('ts1Tips'));
+    let h = '';
     const name = (S.asg.table || {}).name || '';
     const prob = isClass()
       ? t('tProbClass', { target: colName(d.ti), list: d.classes.map(valName).join(', ') })
@@ -85,7 +85,8 @@ export function makeTable(X) {
     const f = new Set(feats());
     h += `<div class="card">
       <div class="field"><label for="f-topic">${E(t('tTopicLabel'))}</label>
-        ${leader ? `<input id="f-topic" data-field="topic" maxlength="40" placeholder="${E(t('tTopicPh'))}" value="${E(X.draftOr('topic', p.topic))}">` : `<div class="ro">${E(p.topic || '…')}</div>`}</div>
+        ${X.lockedTopic() ? `<div class="ro">${E(X.lockedTopic())}</div><div class="muted sm">🔒 ${E(t('topicLocked'))}</div>`
+          : leader ? `<input id="f-topic" data-field="topic" maxlength="40" placeholder="${E(t('tTopicPh'))}" value="${E(X.draftOr('topic', p.topic))}">` : `<div class="ro">${E(p.topic || '…')}</div>`}</div>
       <div class="field"><label>${E(t('tFeatLabel'))}</label>
         <p class="muted sm">${E(t(isClass() ? 'tFeatHelp' : 'tFeatHelpReg'))}</p>
         <div class="ochips">${d.cols.map((_, c) => {
@@ -99,6 +100,7 @@ export function makeTable(X) {
       h += `<div class="card"><div id="s1err" class="err"></div>
         <button class="btn primary" data-act="tconfirm" ${S.busy.s1 ? 'disabled' : ''}>${E(S.busy.s1 ? t('translating') : (p.defined ? t('saveChanges') : t('s1Confirm')))}</button></div>`;
     }
+    h = lead('ts1Lead') + X.cols(h, tips(t('ts1Tips')));
     if (p.defined && p.step >= 2) h += X.nextBtn(2, 'ts2Next');
     return h;
   }
@@ -126,14 +128,13 @@ export function makeTable(X) {
     const ck = p.tChecked || {};
     const autoN = iss.filter(T.autoDropped).length;
     const manN = Object.keys(drop).filter(i => drop[i] === true && !T.autoDropped(iss[i])).length;
-    let h = lead('ts2Lead') + tips(t('ts2Tips'));
-    h += `<div class="card"><div class="tchips"><span>${E(t('tRowsN', { n: d.rows.length }))}</span>
+    const side = tips(t('ts2Tips')) + `<div class="card"><div class="tchips"><span>${E(t('tRowsN', { n: d.rows.length }))}</span>
       <span class="usetag train">${E(t('tTrainRow'))} ${d.rows.length - test.size}</span><span class="usetag test">${E(t('tTestRow'))} ${test.size}</span>
       <span>${E(t('tOutN', { n: autoN + manN }))}</span></div>
       <p class="muted sm">ⓘ ${E(t('tSplitHelp'))}</p>
       <div class="tmembers">${X.members().map(m => { const r = T.ranges(d.rows.length, X.members())[m]; return `<span class="mem${m === S.me ? ' me' : ''}">${ck[m] ? '✅' : '⏳'} ${E(X.nameOf(m))} <small>${r[0] + 1}~${r[1]}</small></span>`; }).join('')}</div></div>`;
     // 내가 맡은 줄
-    h += `<div class="card"><h3>🔎 ${E(t('tMyRows', { a: mine[0] + 1, b: mine[1] }))}</h3>`;
+    let h = `<div class="card"><h3>🔎 ${E(t('tMyRows', { a: mine[0] + 1, b: mine[1] }))}</h3>`;
     if (!flagged.length) h += `<div class="note ok">${E(t('tNoIssue'))}</div>`;
     else {
       h += `<div class="tissues">${flagged.map(i => {
@@ -153,6 +154,7 @@ export function makeTable(X) {
       ${pending.length ? `<span class="muted">${E(t('tPending', { n: pending.length }))}</span>` : ''}</div></div>`;
     h += chartCard();
     h += `<details class="card"><summary><b>${E(t('tAllRows'))}</b></summary>${tableHtml(d.rows.map((_, i) => i), { drop })}</details>`;
+    h = lead('ts2Lead') + X.cols(h, side);
     if (p.step >= 3) h += X.nextBtn(3, 'ts3Next');
     else if (X.members().some(m => !ck[m])) h += `<div class="muted">${E(t('tWaitCheck'))}</div>`;
     return h;
@@ -242,7 +244,7 @@ export function makeTable(X) {
   function step3() {
     const p = P(), d = ds(), dr = draft();
     const mine = (p.tTrials || {})[S.me];
-    let h = lead(isClass() ? 'ts3Lead' : 'ts3LeadReg') + tips(t(isClass() ? 'ts3Tips' : 'ts3TipsReg'));
+    let h = '';
     const fset = new Set(dr.features);
     h += `<div class="card"><h3>🧪 ${E(t('tMyTrial'))}</h3>
       <div class="field"><label>${E(t('tTrialFeat'))}</label><div class="ochips">${feats().map(c => `<button type="button" class="ochip${fset.has(c) ? ' on' : ''}" data-act="ttf" data-v="${c}">${E(colName(c))}</button>`).join('')}</div></div>
@@ -254,7 +256,7 @@ export function makeTable(X) {
     if (mine) h += `<div class="card"><h3>${E(t('tMyModel', { n: mine.v }))}</h3>
       <div class="score"><span class="big">${E(scoreTxt(mine.score))}</span><span>${E(t(isClass() ? 'tTrainScore' : 'tTrainMae', { n: mine.n }))}</span></div>
       ${modelView(mine)}</div>`;
-    h += trialsCard();
+    h = lead(isClass() ? 'ts3Lead' : 'ts3LeadReg') + X.cols(h, tips(t(isClass() ? 'ts3Tips' : 'ts3TipsReg')) + trialsCard());
     if (p.step >= 4) h += `<div class="next"><button class="btn primary" data-act="step" data-v="4">${E(t('s3Next'))} →</button></div>`;
     return h;
   }
@@ -296,10 +298,11 @@ export function makeTable(X) {
     const rounds = X.C.evalRounds(p);
     const cur = rounds[rounds.length - 1];
     const stale = cur && Object.entries(trials).some(([m, x]) => x && (!cur.trials || !cur.trials[m] || cur.trials[m].v !== x.v));
-    h += `<div class="card eval-top"><button class="btn primary" data-act="teval">▶ ${E(rounds.length ? t('rerun') : t('tRunTest'))}</button>
+    let main = `<div class="card eval-top"><button class="btn primary" data-act="teval">▶ ${E(rounds.length ? t('rerun') : t('tRunTest'))}</button>
       <p class="muted sm">${E(t('tTestHelp', { n: testSet().size }))}</p>
       ${stale ? `<div class="note warn">${E(t('tStale'))}</div>` : ''}
       ${rounds.length > 1 ? `<div class="history"><b>${E(t('history'))}</b> ${rounds.map(r => `<span class="hchip">${E(t('roundN', { n: r.n }))} ${E(scoreTxt(isClass() ? r.pct : r.mae))}</span>`).join(' → ')}</div>` : ''}</div>`;
+    let side = '';
     if (cur && cur.trials) {
       const pick = p.tModel;
       const leader = X.isLeader();
@@ -312,14 +315,15 @@ export function makeTable(X) {
           <td>${E(scoreTxt(r.train))}</td><td><b>${E(scoreTxt(r.score))}</b>${cur.best === m ? ' 🏆' : ''}${gap >= 10 ? ` <span class="warn-txt">${E(t('tGap'))}</span>` : ''}</td>
           <td>${leader ? `<label class="radio"><input type="radio" name="tpick" data-act="tpick" data-v="${E(m)}" ${on ? 'checked' : ''} ${same ? '' : 'disabled'}> ${E(t('tPickThis'))}</label>` : (on ? `✅ ${E(t('tPicked'))}` : '')}</td></tr>`;
       }).join('');
-      h += `<div class="card"><h3>📝 ${E(t('tCompare'))}</h3><div class="ttable-wrap"><table class="ttable"><thead><tr><th>${E(t('tWho'))}</th><th>${E(t('tTrialFeat'))}</th>${isClass() ? `<th>${E(t('tDepthShort'))}</th>` : ''}
+      main += `<div class="card"><h3>📝 ${E(t('tCompare'))}</h3><div class="ttable-wrap"><table class="ttable"><thead><tr><th>${E(t('tWho'))}</th><th>${E(t('tTrialFeat'))}</th>${isClass() ? `<th>${E(t('tDepthShort'))}</th>` : ''}
         <th>${E(t(isClass() ? 'tTrainScoreShort' : 'tTrainMaeShort'))}</th><th>${E(t(isClass() ? 'tTestScoreShort' : 'tTestMaeShort'))}</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>
         <p class="muted sm">ⓘ ${E(t(isClass() ? 'tCompareHelp' : 'tCompareHelpReg'))}</p>
         ${pick ? `<div class="note ok">✅ ${E(t('tPickedNote', { name: X.nameOf(pick.uid), n: pick.v }))}</div>` : `<div class="note">${E(leader ? t('tPickHint') : t('tPickWait', { name: X.leaderName() }))}</div>`}
         ${hypReview()}</div>`;
-      h += wrongCard(cur, pick && cur.trials[pick.uid] ? pick.uid : cur.best);
-      h += X.ratingHtml(cur) + X.causeHtml(cur, 'tCauses', 'tFixPh');
+      main += wrongCard(cur, pick && cur.trials[pick.uid] ? pick.uid : cur.best);
+      side = X.ratingHtml(cur) + X.causeHtml(cur, 'tCauses', 'tFixPh');
     }
+    h += X.cols(main, side, true);
     h += `<div class="next two-btn"><button class="btn" data-act="step" data-v="3">← ${E(t('tGoTrain'))}</button>
       ${p.step >= 5 ? `<button class="btn primary" data-act="step" data-v="5">${E(t('goDeploy'))} →</button>` : `<span class="muted">${E(t('tNeedPickStar'))}</span>`}</div>`;
     return h;
@@ -376,7 +380,7 @@ export function makeTable(X) {
       upd({ [`tHyp.${S.me}`]: { c, why: S.drafts.tWhy != null ? S.drafts.tWhy : (cur.why || '') } });
     },
     async tconfirm() {
-      const topic = (S.drafts.topic != null ? S.drafts.topic : P().topic || '').trim();
+      const topic = X.lockedTopic() || (S.drafts.topic != null ? S.drafts.topic : P().topic || '').trim();
       const err = X.$('s1err');
       if (!topic) { err.textContent = t('tNoTopic'); return; }
       if (!feats().length) { err.textContent = t('tNeedFeat'); return; }

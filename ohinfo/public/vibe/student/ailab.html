@@ -9,7 +9,7 @@
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="stylesheet" href="theme.css">
   <link rel="stylesheet" href="student-sky.css">
-  <link rel="stylesheet" href="ai-themes.css?v=202610220501">
+  <link rel="stylesheet" href="ai-themes.css?v=202611100001">
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body { margin: 0; background: var(--bg); background-attachment: fixed; line-height: 1.55; color: var(--text); font-family: var(--font); }
@@ -57,6 +57,22 @@
     .tips ul { margin: 4px 0 0; padding-left: 18px; }
     .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     @media (max-width: 720px) { .two { grid-template-columns: 1fr; } }
+    .lead { max-width: 75ch; }
+
+    /* 넓은 화면: 한 줄로 끝없이 늘이지 않고, 도움말·참고(col-side)를 오른쪽 칸으로 보낸다(ailab.js cols()).
+       좁은 화면에서는 예전처럼 위아래로 — 도움말이 먼저, ④ 평가(even)는 결과가 먼저. */
+    .cols { display: flex; flex-direction: column; }
+    .cols:not(.even) > .col-side { order: -1; }
+    .col-main, .col-side { min-width: 0; }
+    @media (min-width: 1200px) {
+      .wrap { max-width: 1360px; }
+      .cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); gap: 0 20px; align-items: start; }
+      .cols.even { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+      .cols:not(.even) > .col-side { order: 0; }
+      .col-side .two { grid-template-columns: 1fr; }
+      .col-side > .tips:first-child, .col-side > .two:first-child { margin-top: 14px; }
+      .col-side .checks { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
+    }
     .howto { background: var(--glass-strong); border: 1px solid var(--border-card); border-radius: var(--radius-sm); padding: 10px 14px; font-size: .88rem; }
     .howto ol { margin: 4px 0; padding-left: 20px; }
     .howto p { margin: 4px 0 0; color: var(--text-2); }
@@ -69,7 +85,10 @@
     .empty p { color: var(--text-2); margin: 0; }
     .choose { display: flex; flex-direction: column; gap: 8px; max-width: 320px; margin: 20px auto 0; }
 
-    /* 머리: 모둠 + 탭 */
+    /* 머리: 수업 제목 · 모둠 + 탭 */
+    .lab-lesson { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; margin: 0 0 10px; }
+    .lab-lesson span { font-size: .75rem; font-weight: 700; color: var(--accent); background: var(--accent-light); border-radius: 999px; padding: 2px 9px; }
+    .lab-lesson b { font-size: 1.15rem; overflow-wrap: anywhere; }
     .lab-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
     .lab-pair { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
     .pair-no { font-weight: 800; font-size: 1.1rem; margin-right: 4px; }
@@ -401,6 +420,6 @@
 <main class="wrap" id="main"></main>
 <div id="toasts" aria-live="polite"></div>
 <input type="file" id="filePick" accept="image/*" multiple hidden>
-<script type="module" src="ailab.js?v=202610220501"></script>
+<script type="module" src="ailab.js?v=202611100001"></script>
 </body>
 </html>

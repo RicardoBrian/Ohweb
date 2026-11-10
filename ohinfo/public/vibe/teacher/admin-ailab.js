@@ -175,12 +175,13 @@ function assignHtml() {
       ${formOpen ? '' : '<button class="btn sm accent" data-ai="openForm">＋ 새 AI 수업 배정</button>'}</div>
     <div id="aiAsgList">${asgListHtml()}</div></div>`;
   if (!formOpen) return listCard;
-  return `<div class="card ai-assign" data-kind="${kind}">
+  return `<div class="ai-lay"><div class="card ai-assign" data-kind="${kind}">
     <div class="ai-h"><h2>${editing ? `설정 수정 · ${E(classLabel(ed))}` : 'AI 수업 배정'}</h2>
       <span class="ai-btns">${editing ? '' : '<button class="btn sm ghost" data-ai="resetForm" title="입력 칸을 처음 상태로 비웁니다">초기화</button>'}
       ${!editing && S.asgs.length ? '<button class="btn sm ghost" data-ai="closeForm">닫기</button>' : ''}</span></div>
     <div class="ai-sec"><div class="ai-sec-t">수업 제목</div>
-      <input class="inp" id="aiT_title" placeholder="예: 개와 고양이 분류하기" value="${E(ed.title || '')}"></div>
+      <input class="inp" id="aiT_title" placeholder="예: 개와 고양이 분류하기" value="${E(ed.title || '')}">
+      <label class="ai-sub ai-camup"><input type="checkbox" id="aiT_lockTopic" ${ed.lockTopic ? 'checked' : ''}> 수업 제목을 모둠 주제로 정하기 — 켜면 학생은 주제를 직접 쓰지 않고, 이 제목(최대 40자)이 주제가 됩니다.</label></div>
     <div class="ai-sec"><div class="ai-sec-t">활동 종류${editing ? ' <span class="ai-sub">(배정한 뒤에는 바꿀 수 없어요)</span>' : ''}</div>
       <div class="ai-seg ai-seg3">
         ${[['image', '🖼 이미지 분류', '사진을 모아 분류하는 모델을 만들어요'], ['text', '💬 문장 분류', '예시 문장을 직접 써서 감정·종류를 분류해요'], ['table', '📊 표 데이터 (CSV)', '표를 보고 답을 고르거나(분류) 숫자를 맞혀요(예측)']].map(([v, l, h]) =>
@@ -222,7 +223,7 @@ function assignHtml() {
       ${editing ? '<button class="btn ghost" data-ai="cancelEdit">취소</button>' : ''}
       <span class="ai-sub">${editing ? '바꾼 설정은 학생 화면에 바로 반영됩니다.' : '배정한 뒤에도 입력 내용이 남습니다. 반만 바꿔 다시 배정하세요.'}</span>
     </div></div>
-    ${listCard}`;
+    ${listCard}</div>`;
 }
 
 // 같은 제목·학교끼리 묶어서, 반마다 한 줄. 열린 수업이 위로. 필터·접기는 admin-groups.js(AG).
@@ -241,7 +242,7 @@ function asgListHtml() {
     const on = list.filter(a => a.status === 'ON').length;
     const rows = list.map(a => `<div class="ag-r">
       <div class="ag-rl"><div class="ag-rn">${E(classLabel(a))}</div>
-        <div class="ag-rs">모둠 ${a.groupSize || 2}명 · ${isTbl(a) ? `📊 ${E((a.table || {}).name || '표 데이터')} → 🎯 ${E((a.table || {}).target || '')} · ` : ''}${isTbl(a) ? '' : a.kind === 'text' ? `💬 문장 분류(${a.textModel === 'mean' ? '🌏 뜻 이해' : '🔤 단어 조각'}) · 레이블 최대 ${a.maxLabels || 5}개 · 문장 ${a.minPerLabel || 10}개 · 테스트 ${a.minTestPerLabel || 3}개 · ` : `사진: ${srcOf(a).map(x => SRC_NAMES[x] || x).join('·')}${srcOf(a).includes('camera') && !a.cameraUpload ? '(기기에만)' : ''} · 레이블 최대 ${a.maxLabels || 5}개 · 사진 ${a.minPerLabel || 15}장 · 테스트 ${a.minTestPerLabel || 3}장 · `}게시판 ${a.board ? `${E(a.board.name)}(${(a.boardScope || 'class') === 'all' ? '모든 반 함께' : '반별'})` : '없음'}</div></div>
+        <div class="ag-rs">모둠 ${a.groupSize || 2}명 · ${a.lockTopic ? '주제 고정 · ' : ''}${isTbl(a) ? `📊 ${E((a.table || {}).name || '표 데이터')} → 🎯 ${E((a.table || {}).target || '')} · ` : ''}${isTbl(a) ? '' : a.kind === 'text' ? `💬 문장 분류(${a.textModel === 'mean' ? '🌏 뜻 이해' : '🔤 단어 조각'}) · 레이블 최대 ${a.maxLabels || 5}개 · 문장 ${a.minPerLabel || 10}개 · 테스트 ${a.minTestPerLabel || 3}개 · ` : `사진: ${srcOf(a).map(x => SRC_NAMES[x] || x).join('·')}${srcOf(a).includes('camera') && !a.cameraUpload ? '(기기에만)' : ''} · 레이블 최대 ${a.maxLabels || 5}개 · 사진 ${a.minPerLabel || 15}장 · 테스트 ${a.minTestPerLabel || 3}장 · `}게시판 ${a.board ? `${E(a.board.name)}(${(a.boardScope || 'class') === 'all' ? '모든 반 함께' : '반별'})` : '없음'}</div></div>
       <div class="ag-ra">
         <label class="ios-switch" title="${a.status === 'ON' ? '학생 화면 열림 (누르면 닫기)' : '학생 화면 닫힘 (누르면 열기)'}"><input type="checkbox" data-ai="status" data-id="${E(a.id)}" ${a.status === 'ON' ? 'checked' : ''}><span></span></label>
         <button class="btn sm ghost" data-ai="goPairs" data-id="${E(a.id)}">모둠</button>
@@ -353,7 +354,7 @@ function pairsHtml() {
       <button class="btn sm danger" data-ai="delPair" data-id="${E(p.id)}">삭제</button></div>${mem}${add}</div>`;
   }).join('');
   const gs = groupSize();
-  return `<div class="card"><h2>모둠 없는 학생 (${free.length}명)</h2>
+  return `<div class="ai-lay side"><div class="card ai-free"><h2>모둠 없는 학생 (${free.length}명)</h2>
     <div class="ai-chips">${freeChips}</div>
     <div class="ai-btns" style="margin-top:12px;">
       <button class="btn accent sm" data-ai="makePair" ${S.sel.size >= 1 && S.sel.size <= maxSize() ? '' : 'disabled'}>선택한 ${S.sel.size}명으로 모둠 만들기</button>
@@ -361,7 +362,7 @@ function pairsHtml() {
     </div>
     <p class="ai-sub">모둠 인원은 [배정 관리]의 "모둠 인원"(지금 ${gs}명)을 따릅니다. 나누어떨어지지 않으면 모둠 크기를 고르게 나눕니다(예: 25명·4명 → 4·4·4·4·3·3·3).
       ★ = 대표(문제 정의·학습 담당). 결석생은 ×로 빼고, 혼자 남은 학생은 1명 모둠으로 진행합니다. 한 모둠은 최대 ${maxSize()}명까지.</p></div>
-    <div class="ai-pairs">${cards || '<div class="empty-state">아직 모둠이 없습니다.</div>'}</div>`;
+    <div class="ai-pairs">${cards || '<div class="empty-state">아직 모둠이 없습니다.</div>'}</div></div>`;
 }
 
 function boardHtml() {
@@ -399,7 +400,7 @@ function resultsHtml() {
   const pairOf = id => S.pairs.find(p => p.id === id) || {};
   const list = [...S.projects].sort((x, y) => (pairOf(x.pairId).no || 0) - (pairOf(y.pairId).no || 0) || (x.round || 0) - (y.round || 0));
   return `<div class="ai-btns" style="margin-bottom:10px;"><button class="btn sm" data-ai="reloadResults">새로고침</button><button class="btn sm accent" data-ai="csv">엑셀(CSV) 내려받기</button></div>` +
-    list.map(p => projectHtml(p, pairOf(p.pairId))).join('');
+    `<div class="ai-projs">${list.map(p => projectHtml(p, pairOf(p.pairId))).join('')}</div>`;
 }
 
 function projectHtml(p, pair) {
@@ -480,6 +481,7 @@ function readForm() {
     boardScope: (document.querySelector('input[name="aiT_scope"]:checked') || {}).value === 'all' ? 'all' : 'class',
     sources: [...document.querySelectorAll('input[name="aiT_src"]:checked')].map(x => x.value),
     cameraUpload: !!($('aiT_camUp') && $('aiT_camUp').checked),
+    lockTopic: !!($('aiT_lockTopic') && $('aiT_lockTopic').checked),
     textModel: (document.querySelector('input[name="aiT_tmodel"]:checked') || {}).value === 'words' ? 'words' : 'mean',
     kind: (v => (v === 'table' || v === 'text' ? v : 'image'))((document.querySelector('input[name="aiT_kind"]:checked') || {}).value),
   };
@@ -765,6 +767,16 @@ function bind() {
 const STYLE = `
 #section-ailab .ai-btns { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 #section-ailab .ai-sub { font-size: .8rem; color: var(--sub); }
+#section-ailab p.ai-sub { max-width: 80ch; }
+/* 넓은 화면: 끝없이 늘이지 않고 옆 칸으로 — 배정 폼|배정 목록, 모둠 없는 학생|모둠 카드, 결과 카드 여러 열 */
+#section-ailab .ag-q { max-width: 26rem; }
+#section-ailab .ai-projs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 36rem), 1fr)); gap: 0 18px; align-items: start; }
+@media (min-width: 1280px) {
+  #section-ailab .ai-lay { display: grid; grid-template-columns: minmax(0, 52rem) minmax(0, 1fr); gap: 0 18px; align-items: start; }
+  #section-ailab .ai-lay.side { grid-template-columns: minmax(18rem, 24rem) minmax(0, 1fr); }
+  #section-ailab .ai-lay.side .ai-free { position: sticky; top: 26px; max-height: calc(100vh - 52px); overflow-y: auto; }
+  #section-ailab .ai-lay.side .ai-pairs { margin-top: 0; }
+}
 #section-ailab .ai-asg { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 0; border-top: 1px solid var(--border-card); }
 #section-ailab .ai-asg:first-of-type { border-top: 0; }
 #section-ailab .ai-chips { display: flex; flex-wrap: wrap; gap: 6px; }
