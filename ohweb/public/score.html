@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>수행평가 — kakainfo 관리자</title>
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="theme.css">
+  <script src="admin-auth.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); line-height: 1.6; }
+    .hidden { display: none !important; }
+    button, input, select, textarea { font-family: inherit; }
+
+    /* NAV (forms.html 과 같은 틀 — admin-nav.js 가 메뉴를 넣는다) */
+    .nav {
+      position: sticky; top: 0; z-index: 200;
+      background: var(--glass-nav); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border-bottom: 1px solid var(--border); padding: 0 20px; height: var(--nav-h);
+      display: flex; align-items: center; gap: 12px;
+    }
+    .waffle-btn {
+      width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border-card);
+      background: var(--glass); color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .dark-toggle { width: 42px; height: 24px; border-radius: 50px; background: var(--glass); border: 1px solid var(--border); cursor: pointer; position: relative; transition: 0.3s; flex-shrink: 0; }
+    body.dark .dark-toggle { background: rgba(42,92,230,0.6); border-color: rgba(100,140,255,0.4); }
+    .dark-toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.2); transition: transform 0.3s; }
+    body.dark .dark-toggle::after { transform: translateX(18px); }
+    .app-modal { display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(20,22,40,0.45); align-items: center; justify-content: center; }
+    .app-modal.open { display: flex; }
+    .app-modal-card { background: var(--bg-elevated, #fff); border-radius: 22px; padding: 24px; width: min(460px, 92vw); box-shadow: 0 24px 70px rgba(0,0,0,0.3); }
+    .app-modal-head { display: flex; align-items: center; justify-content: space-between; font-size: 1.05rem; font-weight: 900; color: var(--text); margin-bottom: 18px; }
+    .app-modal-x { background: none; border: none; cursor: pointer; color: var(--sub); }
+    .app-modal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .app-modal-item { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 18px 8px; border-radius: 16px; cursor: pointer; background: var(--sky-chip); border: 1px solid var(--border-card); font-size: 0.85rem; font-weight: 700; color: var(--text); }
+
+    /* LAYOUT */
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 28px 20px 120px; }
+    @media (max-width: 600px) { .wrap { padding: 16px 14px 140px; } }
+    .page-head { display: flex; align-items: flex-end; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+    .page-head h1 { font-size: 1.45rem; font-weight: 900; letter-spacing: -0.03em; color: var(--text); }
+    .page-head .meta { font-size: 0.85rem; color: var(--sub); }
+    .page-head .grow { flex: 1; }
+    .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+    .grow { flex: 1; }
+
+    .btn {
+      font-size: 0.85rem; font-weight: 600; cursor: pointer; border-radius: 50px; padding: 7px 16px;
+      border: 1px solid var(--border); background: var(--surface); color: var(--text); white-space: nowrap;
+      display: inline-flex; align-items: center; gap: 6px; transition: background 0.15s, transform 0.1s;
+    }
+    .btn:hover { background: var(--sky-chip); }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.5; cursor: default; }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn.primary:hover { background: var(--accent-hover, var(--accent)); }
+    .btn.danger { color: var(--danger); border-color: rgba(239,68,68,0.3); background: var(--danger-light); }
+    .btn.sm { padding: 4px 11px; font-size: 0.78rem; }
+    .btn svg { width: 15px; height: 15px; }
+    .icon-btn { width: 30px; height: 30px; border-radius: 50%; border: none; background: none; cursor: pointer; color: var(--sub); display: inline-flex; align-items: center; justify-content: center; }
+    .icon-btn:hover { background: var(--sky-chip); color: var(--text); }
+    .icon-btn svg { width: 16px; height: 16px; }
+
+    .seg { display: inline-flex; background: var(--sky-chip); border: 1px solid var(--sky-chip-line); border-radius: 50px; padding: 3px; }
+    .seg button { font-size: 0.82rem; font-weight: 700; color: var(--sub); border: none; background: none; cursor: pointer; padding: 6px 16px; border-radius: 50px; }
+    .seg button.on { background: var(--accent); color: #fff; }
+
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px 18px; box-shadow: var(--shadow-sm, none); }
+    .card + .card { margin-top: 10px; }
+    .a-card { cursor: pointer; display: flex; align-items: center; gap: 14px; }
+    .a-card:hover { box-shadow: var(--shadow); }
+    .a-title { font-weight: 800; color: var(--text); font-size: 1rem; }
+    .a-meta { font-size: 0.8rem; color: var(--sub); margin-top: 2px; }
+    .pill { display: inline-flex; align-items: center; gap: 4px; font-size: 0.72rem; font-weight: 700; padding: 2px 9px; border-radius: 50px; background: var(--sky-chip); color: var(--sub); white-space: nowrap; }
+    .pill.ok { background: var(--success-light); color: var(--success); }
+    .pill.warn { background: var(--danger-light); color: var(--danger); }
+    .pill.accent { background: var(--accent-light); color: var(--accent); }
+    .empty { text-align: center; color: var(--sub); padding: 48px 16px; font-size: 0.9rem; }
+    .loading { text-align: center; color: var(--sub); padding: 48px 16px; }
+
+    /* 템플릿 */
+    .t-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .t-head h3 { font-size: 1rem; font-weight: 800; color: var(--text); }
+    .t-items { display: grid; grid-template-columns: 80px 1fr; gap: 4px 12px; font-size: 0.86rem; color: var(--text); }
+    .t-items .code { font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+
+    /* 반 칩 */
+    .classes { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+    .cls-chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 8px 6px 14px; border-radius: 50px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-size: 0.84rem; font-weight: 700; color: var(--text); }
+    .cls-chip.on { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-light); }
+    .cls-chip .cnt { font-weight: 600; color: var(--sub); font-size: 0.76rem; }
+    .switch { position: relative; width: 38px; height: 22px; border-radius: 50px; background: var(--sky-chip-line, #ccc); border: none; cursor: pointer; flex-shrink: 0; transition: background 0.2s; }
+    .switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform 0.2s; box-shadow: 0 1px 3px rgba(0,0,0,0.25); }
+    .switch.on { background: var(--success); }
+    .switch.on::after { transform: translateX(16px); }
+    .sw-label { font-size: 0.72rem; font-weight: 700; color: var(--sub); }
+    .sw-label.on { color: var(--success); }
+
+    /* 점수 표 */
+    .tbl-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+    table.sc { width: 100%; border-collapse: collapse; font-size: 0.86rem; min-width: 820px; }
+    table.sc th { text-align: left; font-size: 0.74rem; color: var(--sub); font-weight: 700; padding: 10px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; background: var(--sky-chip); }
+    table.sc td { padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; color: var(--text); }
+    table.sc tr:last-child td { border-bottom: none; }
+    table.sc tr.dirty td { background: var(--accent-light); }
+    table.sc td.no { width: 44px; color: var(--sub); font-variant-numeric: tabular-nums; }
+    table.sc td.name { width: 90px; font-weight: 700; white-space: nowrap; }
+    .f-inp { width: 100%; padding: 6px 9px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-elevated, #fff); color: var(--text); font-size: 0.86rem; outline: none; }
+    .f-inp:focus { border-color: var(--accent); }
+    .f-inp.bad { border-color: var(--danger); background: var(--danger-light); }
+    .f-score { width: 72px; text-align: right; font-variant-numeric: tabular-nums; }
+    .f-status { width: 86px; }
+    .ded-btn { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; min-height: 30px; width: 100%; text-align: left; padding: 4px 8px; border-radius: 8px; border: 1px dashed var(--border); background: none; cursor: pointer; color: var(--sub); font-size: 0.78rem; }
+    .ded-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .ded-chip { background: var(--danger-light); color: var(--danger); border-radius: 6px; padding: 1px 7px; font-weight: 700; font-size: 0.74rem; }
+    .disp-btn { border: none; cursor: pointer; }
+
+    /* 저장 막대 */
+    .savebar { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 300; display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 18px; border-radius: 50px; background: rgba(20,24,40,0.92); color: #fff; box-shadow: 0 8px 30px rgba(0,0,0,0.3); font-size: 0.88rem; font-weight: 600; }
+    .savebar .btn { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.2); color: #fff; }
+    .savebar .btn.primary { background: var(--accent); border-color: var(--accent); }
+    @media (max-width: 700px) { .savebar { bottom: 76px; } }
+
+    /* 모달 */
+    .modal { display: none; position: fixed; inset: 0; z-index: 10001; background: rgba(20,22,40,0.45); align-items: center; justify-content: center; padding: 16px; }
+    .modal.open { display: flex; }
+    .modal-card { background: var(--bg-elevated, #fff); color: var(--text); border-radius: 20px; width: min(560px, 100%); max-height: 88vh; display: flex; flex-direction: column; box-shadow: 0 24px 70px rgba(0,0,0,0.3); }
+    .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 10px; font-weight: 900; font-size: 1.05rem; }
+    .modal-body { padding: 4px 20px 12px; overflow-y: auto; font-size: 0.9rem; }
+    .modal-foot { display: flex; gap: 8px; justify-content: flex-end; padding: 12px 20px 18px; flex-wrap: wrap; }
+    .field { margin-bottom: 12px; }
+    .field label { display: block; font-size: 0.78rem; font-weight: 700; color: var(--sub); margin-bottom: 4px; }
+    .field .f-inp { padding: 9px 12px; font-size: 0.92rem; }
+    .hint { font-size: 0.78rem; color: var(--sub); margin-top: 4px; }
+    .chk-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+    .chk { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 10px; border: 1px solid var(--border); cursor: pointer; font-size: 0.85rem; }
+    .chk input { accent-color: var(--accent); width: 16px; height: 16px; }
+    .chk.wide { grid-column: 1 / -1; }
+    .chk .code { font-weight: 800; color: var(--accent); min-width: 34px; }
+    .group-label { font-size: 0.78rem; font-weight: 800; color: var(--sub); margin: 10px 0 6px; }
+    .msg-list { font-size: 0.82rem; max-height: 180px; overflow-y: auto; border-radius: 10px; padding: 8px 12px; margin: 6px 0 10px; }
+    .msg-list.err { background: var(--danger-light); color: var(--danger); }
+    .msg-list.warn { background: var(--sky-chip); color: var(--text); }
+    .stat-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 10px; }
+    .hist { border-left: 3px solid var(--accent-light); padding: 4px 0 4px 12px; margin-bottom: 10px; }
+    .hist .when { font-size: 0.76rem; color: var(--sub); }
+    .quote { background: var(--sky-chip); border-radius: 12px; padding: 12px 14px; white-space: pre-wrap; word-break: break-word; }
+
+    .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px); background: rgba(20,24,40,0.92); color: #fff; font-size: 0.85rem; font-weight: 600; padding: 10px 22px; border-radius: 50px; z-index: 20000; transition: transform 0.3s, opacity 0.3s; opacity: 0; pointer-events: none; max-width: 92vw; }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  </style>
+  <link rel="stylesheet" href="admin-sky.css">
+</head>
+<body class="ui-sky">
+
+<svg width="0" height="0" style="position:absolute;">
+  <defs>
+    <symbol id="ic-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+    <symbol id="ic-upload" viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M5 20h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-download" viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5M5 20h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-trash" viewBox="0 0 24 24"><path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-history" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4M12 8v4l3 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-refresh" viewBox="0 0 24 24"><path d="M5 12a7 7 0 0 1 12-4.9M19 12a7 7 0 0 1-12 4.9M17 3v4h-4M7 21v-4h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-school" viewBox="0 0 24 24"><path d="M12 4 3 8.5 12 13l9-4.5Z M7 10.8V16c0 1.2 2.2 3 5 3s5-1.8 5-3v-5.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-people" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-clipboard" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 4h6v3H9zM8 12h8M8 16h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="ic-check" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 12.5l2.8 2.8L16 9.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-doc" viewBox="0 0 24 24"><path d="M7 3.5h7l4 4v13H6v-17Z M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-chat" viewBox="0 0 24 24"><path d="M4 5.5h16v11.5H9l-4.5 4V17H4Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-grid" viewBox="0 0 24 24"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+  </defs>
+</svg>
+
+<nav class="nav">
+  <a href="admin.html" class="nav-brand"><img src="logo.png" alt="kakainfo"><span class="nav-brand-title">수행평가</span></a>
+  <div style="flex:1"></div>
+  <button class="waffle-btn" title="메뉴" onclick="openAppModal()">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor"><rect width="5" height="5" rx="1.2"/><rect x="6.5" width="5" height="5" rx="1.2"/><rect x="13" width="5" height="5" rx="1.2"/><rect y="6.5" width="5" height="5" rx="1.2"/><rect x="6.5" y="6.5" width="5" height="5" rx="1.2"/><rect x="13" y="6.5" width="5" height="5" rx="1.2"/><rect y="13" width="5" height="5" rx="1.2"/><rect x="6.5" y="13" width="5" height="5" rx="1.2"/><rect x="13" y="13" width="5" height="5" rx="1.2"/></svg>
+  </button>
+  <div class="dark-toggle" onclick="toggleDark()" title="다크모드 전환"></div>
+</nav>
+
+<div class="app-modal" id="appModal" onclick="if(event.target===this)closeAppModal()">
+  <div class="app-modal-card">
+    <div class="app-modal-head"><span>메뉴</span><button class="app-modal-x" onclick="closeAppModal()"><svg width="16" height="16"><use href="#ic-close"/></svg></button></div>
+    <div class="app-modal-grid">
+      <button class="app-modal-item" onclick="location.href='admin.html#schools'"><svg width="28" height="28"><use href="#ic-school"/></svg><span>학교</span></button>
+      <button class="app-modal-item" onclick="location.href='admin.html#students'"><svg width="28" height="28"><use href="#ic-people"/></svg><span>학생</span></button>
+      <button class="app-modal-item" onclick="location.href='admin.html#exam'"><svg width="28" height="28"><use href="#ic-clipboard"/></svg><span>시험</span></button>
+      <button class="app-modal-item" onclick="closeAppModal()"><svg width="28" height="28"><use href="#ic-check"/></svg><span>수행평가</span></button>
+      <button class="app-modal-item" onclick="location.href='forms.html'"><svg width="28" height="28"><use href="#ic-doc"/></svg><span>설문지</span></button>
+      <button class="app-modal-item" onclick="location.href='messages.html'"><svg width="28" height="28"><use href="#ic-chat"/></svg><span>학생 질문</span></button>
+      <button class="app-modal-item" onclick="location.href='admin.html#apps'"><svg width="28" height="28"><use href="#ic-grid"/></svg><span>앱 설정</span></button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <!-- 목록 화면 -->
+  <div id="viewList">
+    <div class="page-head">
+      <h1>수행평가</h1>
+      <div class="grow"></div>
+      <div class="seg" id="tabSeg">
+        <button data-tab="assess" class="on">평가</button>
+        <button data-tab="tmpl">감점사유 템플릿</button>
+      </div>
+    </div>
+    <div id="panelAssess">
+      <div class="toolbar">
+        <button class="btn primary" id="btnNewAssess"><svg><use href="#ic-plus"/></svg>새 평가</button>
+        <div class="grow"></div>
+        <button class="icon-btn" title="새로고침" id="btnReload"><svg><use href="#ic-refresh"/></svg></button>
+      </div>
+      <div id="assessList"><div class="loading">불러오는 중…</div></div>
+    </div>
+    <div id="panelTmpl" class="hidden">
+      <div class="toolbar">
+        <button class="btn primary" id="btnTmplUpload"><svg><use href="#ic-upload"/></svg>템플릿 파일 올리기</button>
+        <button class="btn" id="btnTmplForm"><svg><use href="#ic-download"/></svg>양식 내려받기</button>
+        <div class="grow"></div>
+      </div>
+      <p class="hint" style="margin:-4px 0 14px">양식: <b>과목, 코드, 사유</b> (CSV·엑셀). 같은 과목을 다시 올리면 그 과목 목록이 새 파일로 바뀝니다. 이미 입력한 점수의 감점 문구는 바뀌지 않습니다.</p>
+      <div id="tmplList"></div>
+    </div>
+  </div>
+
+  <!-- 평가 상세 화면 -->
+  <div id="viewDetail" class="hidden">
+    <div class="page-head">
+      <button class="icon-btn" title="목록으로" id="btnBack" style="width:36px;height:36px"><svg><use href="#ic-back"/></svg></button>
+      <div>
+        <h1 id="dTitle"></h1>
+        <div class="meta" id="dMeta"></div>
+      </div>
+      <div class="grow"></div>
+      <button class="btn sm" id="btnEditAssess"><svg><use href="#ic-edit"/></svg>수정</button>
+      <button class="btn sm danger" id="btnDelAssess"><svg><use href="#ic-trash"/></svg>삭제</button>
+    </div>
+    <div class="toolbar">
+      <button class="btn" id="btnScoreForm"><svg><use href="#ic-download"/></svg>점수 양식 내려받기</button>
+      <button class="btn primary" id="btnScoreUpload"><svg><use href="#ic-upload"/></svg>점수 파일 올리기</button>
+      <div class="grow"></div>
+      <label class="chk" style="border:none;padding:4px"><input type="checkbox" id="onlyDisputes"> 이의신청만</label>
+      <button class="btn sm" id="btnPubAll">전체 공개</button>
+      <button class="btn sm" id="btnUnpubAll">전체 비공개</button>
+    </div>
+    <div class="classes" id="dClasses"></div>
+    <div id="dTable"></div>
+  </div>
+</div>
+
+<div class="savebar hidden" id="savebar">
+  <span id="saveCount"></span>
+  <button class="btn sm" id="btnRevert">되돌리기</button>
+  <button class="btn sm primary" id="btnSave">저장</button>
+</div>
+
+<div class="modal" id="modal"><div class="modal-card" id="modalCard"></div></div>
+<input type="file" id="fileInput" accept=".csv,.xlsx,.xls,text/csv" class="hidden">
+<div class="toast" id="toast"></div>
+
+<script type="module">
+await window.AdminAuth.ready;
+if (!window.AdminAuth.isValid()) { location.href = 'index.html'; throw new Error('관리자 아님'); }
+import { db } from './firebase-config.js';
+import {
+  collection, getDocs, doc, updateDoc, deleteDoc, addDoc, setDoc, query, where, orderBy,
+  writeBatch, serverTimestamp, arrayUnion, arrayRemove,
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import * as SC from './score-core.js';
+
+// ── 유틸 ──
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+let toastTimer;
+function toast(msg, ms = 2600) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), ms); }
+const millis = ts => ts?.toMillis ? ts.toMillis() : (ts?.seconds ? ts.seconds * 1000 : 0);
+const fmtTime = ts => { const ms = millis(ts); return ms ? new Date(ms).toLocaleString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''; };
+const numOf = s => { const n = parseInt(String(s ?? '').replace(/[^0-9]/g, ''), 10); return isNaN(n) ? 9999 : n; };
+function download(name, text) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
+  a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+// 묶음 쓰기는 한 번에 500건까지 — 여유 있게 나눠서 보낸다.
+async function commitOps(ops) {
+  for (let i = 0; i < ops.length; i += 400) {
+    const b = writeBatch(db);
+    ops.slice(i, i + 400).forEach(op => op(b));
+    await b.commit();
+  }
+}
+
+// ── 모달 ──
+function openModal(title, body, foot) {
+  $('modalCard').innerHTML = `<div class="modal-head"><span>${esc(title)}</span><button class="icon-btn" data-close><svg><use href="#ic-close"/></svg></button></div><div class="modal-body">${body}</div><div class="modal-foot">${foot || ''}</div>`;
+  $('modal').classList.add('open');
+}
+function closeModal() { $('modal').classList.remove('open'); $('modalCard').innerHTML = ''; }
+$('modal').addEventListener('click', e => { if (e.target === $('modal') || e.target.closest('[data-close]')) closeModal(); });
+function confirmBox(title, html, okLabel = '확인', danger = false) {
+  return new Promise(res => {
+    openModal(title, html, `<button class="btn" data-close>취소</button><button class="btn ${danger ? 'danger' : 'primary'}" id="cfOk">${esc(okLabel)}</button>`);
+    $('cfOk').onclick = () => { closeModal(); res(true); };
+    const obs = new MutationObserver(() => { if (!$('modal').classList.contains('open')) { obs.disconnect(); res(false); } });
+    obs.observe($('modal'), { attributes: true });
+  });
+}
+
+// ── 파일 읽기 (CSV·엑셀) ──
+let xlsxLib = null;
+async function loadXLSX() {
+  if (xlsxLib) return xlsxLib;
+  await new Promise((ok, fail) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = ok; s.onerror = () => fail(new Error('엑셀 읽기 도구를 불러오지 못했습니다. CSV 로 저장해서 올려 주세요.'));
+    document.head.appendChild(s);
+  });
+  return (xlsxLib = window.XLSX);
+}
+async function readRows(file) {
+  const buf = await file.arrayBuffer();
+  if (/\.xlsx?$/i.test(file.name)) {
+    const X = await loadXLSX();
+    const wb = X.read(buf, { type: 'array' });
+    const sh = wb.Sheets[wb.SheetNames[0]];
+    const rows = X.utils.sheet_to_json(sh, { header: 1, raw: false, defval: '' });
+    return rows.map(r => r.map(c => String(c ?? '').trim())).filter(r => r.some(c => c !== ''));
+  }
+  return SC.parseCSV(SC.decodeText(buf));
+}
+function pickFile() {
+  return new Promise(res => {
+    const inp = $('fileInput'); inp.value = '';
+    inp.onchange = () => res(inp.files[0] || null);
+    inp.click();
+  });
+}
+
+// ── 상태 ──
+let students = [], studentById = {}, classes = [], classByKey = {};
+let templates = [], assessments = [], openDisputes = {};
+let cur = null;            // 열린 평가
+let results = {};          // 학생ID → 결과 문서
+let drafts = new Map();    // 학생ID → 저장 안 한 값 {score,status,deductions,memo}
+let bad = new Map();       // 점수 칸이 잘못된 학생ID → 입력한 글자
+let curClass = null;
+
+async function loadBase() {
+  const [stSnap, tSnap, aSnap, dSnap] = await Promise.all([
+    getDocs(collection(db, 'students')),
+    getDocs(collection(db, 'score_templates')),
+    getDocs(collection(db, 'score_assessments')),
+    getDocs(query(collection(db, 'score_results'), where('dispute.checked', '==', false))),
+  ]);
+  students = stSnap.docs.map(d => { const x = d.data(); return { id: d.id, schoolName: x.schoolName || '', grade: x.grade, class: x.class, number: x.number, name: x.name || '' }; })
+    .filter(s => s.schoolName && SC.nv(s.grade) && SC.nv(s.class));
+  studentById = Object.fromEntries(students.map(s => [s.id, s]));
+  classByKey = {};
+  students.forEach(s => {
+    const k = SC.classKey(s.schoolName, s.grade, s.class);
+    (classByKey[k] ||= { key: k, label: SC.classLabel(s.schoolName, s.grade, s.class), school: s.schoolName.trim(), grade: numOf(s.grade), cls: numOf(s.class), students: [] }).students.push(s);
+  });
+  classes = Object.values(classByKey).sort((a, b) => a.school.localeCompare(b.school) || a.grade - b.grade || a.cls - b.cls);
+  classes.forEach(c => c.students.sort((a, b) => numOf(a.number) - numOf(b.number)));
+  templates = tSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => String(a.subject).localeCompare(String(b.subject)));
+  assessments = aSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => millis(b.createdAt) - millis(a.createdAt));
+  openDisputes = {};
+  dSnap.docs.forEach(d => { const a = d.data().assessmentId; openDisputes[a] = (openDisputes[a] || 0) + 1; });
+}
+const templateItems = subject => (templates.find(t => t.subject === subject)?.items) || [];
+const classLabelOf = k => classByKey[k]?.label || k.replace(/__g/, ' ').replace(/__c/, '-');
+
+// ── 목록 화면 ──
+let tab = 'assess';
+$('tabSeg').addEventListener('click', e => {
+  const b = e.target.closest('button[data-tab]'); if (!b) return;
+  tab = b.dataset.tab;
+  $('tabSeg').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  $('panelAssess').classList.toggle('hidden', tab !== 'assess');
+  $('panelTmpl').classList.toggle('hidden', tab !== 'tmpl');
+});
+function renderAssessList() {
+  const el = $('assessList');
+  if (!assessments.length) { el.innerHTML = `<div class="empty">아직 평가가 없습니다. <b>새 평가</b>로 시작하세요.<br>감점사유는 <b>감점사유 템플릿</b> 탭에서 먼저 올려 두면 점수 입력 때 고를 수 있습니다.</div>`; return; }
+  el.innerHTML = assessments.map(a => {
+    const ks = a.classKeys || [], pub = (a.publishedClasses || []).filter(k => ks.includes(k)).length;
+    const disp = openDisputes[a.id] || 0;
+    return `<div class="card a-card" data-aid="${esc(a.id)}">
+      <div style="flex:1;min-width:0">
+        <div class="a-title">${esc(a.title)}</div>
+        <div class="a-meta">${esc(a.subject || '과목 없음')} · ${esc(a.term || '')} · 만점 ${esc(a.maxScore ?? '-')} · ${ks.length}개 반</div>
+      </div>
+      ${disp ? `<span class="pill warn">이의신청 ${disp}</span>` : ''}
+      <span class="pill ${pub === ks.length && ks.length ? 'ok' : pub ? 'accent' : ''}">공개 ${pub}/${ks.length}반</span>
+    </div>`;
+  }).join('');
+}
+$('assessList').addEventListener('click', e => { const c = e.target.closest('[data-aid]'); if (c) location.hash = 'a=' + encodeURIComponent(c.dataset.aid); });
+
+function renderTemplates() {
+  const el = $('tmplList');
+  if (!templates.length) { el.innerHTML = `<div class="empty">등록된 감점사유가 없습니다. 양식을 내려받아 채운 뒤 올려 주세요.</div>`; return; }
+  el.innerHTML = templates.map(t => `<div class="card">
+    <div class="t-head"><h3>${esc(t.subject)}</h3><span class="pill">${(t.items || []).length}개</span><div class="grow"></div>
+      <button class="icon-btn" title="이 과목 템플릿 지우기" data-del-tmpl="${esc(t.id)}"><svg><use href="#ic-trash"/></svg></button></div>
+    <div class="t-items">${(t.items || []).map(i => `<span class="code">${esc(i.code)}</span><span>${esc(i.label)}</span>`).join('')}</div>
+  </div>`).join('');
+}
+$('tmplList').addEventListener('click', async e => {
+  const b = e.target.closest('[data-del-tmpl]'); if (!b) return;
+  const t = templates.find(x => x.id === b.dataset.delTmpl); if (!t) return;
+  if (!await confirmBox('템플릿 지우기', `<p><b>${esc(t.subject)}</b> 과목의 감점사유 ${(t.items || []).length}개를 지웁니다.<br>이미 입력한 점수의 감점 문구는 그대로 남습니다.</p>`, '지우기', true)) return;
+  await deleteDoc(doc(db, 'score_templates', t.id));
+  templates = templates.filter(x => x.id !== t.id); renderTemplates(); toast('지웠습니다.');
+});
+$('btnTmplForm').onclick = () => download('감점사유_양식.csv', SC.toCSV([SC.TEMPLATE_HEADER, ['정보', 'A1', '분량 미달'], ['정보', 'A2', '제출 기한 초과'], ['정보', 'A3', '형식 미준수']]));
+$('btnTmplUpload').onclick = async () => {
+  const f = await pickFile(); if (!f) return;
+  let parsed;
+  try { parsed = SC.parseTemplateRows(await readRows(f)); } catch (e) { toast('파일을 읽지 못했습니다: ' + e.message, 4000); return; }
+  const subs = Object.entries(parsed.subjects);
+  const body = `${parsed.errors.length ? `<div class="msg-list err">${parsed.errors.map(esc).join('<br>')}</div>` : ''}
+    ${subs.length ? subs.map(([s, items]) => {
+      const old = templates.find(t => t.subject === s);
+      return `<div class="group-label">${esc(s)} — ${items.length}개 ${old ? `<span class="pill accent">기존 ${(old.items || []).length}개를 바꿈</span>` : '<span class="pill ok">새 과목</span>'}</div>
+        <div class="t-items">${items.map(i => `<span class="code">${esc(i.code)}</span><span>${esc(i.label)}</span>`).join('')}</div>`;
+    }).join('') : '<p>올릴 수 있는 줄이 없습니다.</p>'}`;
+  openModal('템플릿 미리보기', body, `<button class="btn" data-close>취소</button>${subs.length ? `<button class="btn primary" id="tmplOk">${parsed.errors.length ? '오류 줄은 빼고 ' : ''}저장</button>` : ''}`);
+  if (!subs.length) return;
+  $('tmplOk').onclick = async () => {
+    $('tmplOk').disabled = true;
+    try {
+      for (const [subject, items] of subs) {
+        const old = templates.find(t => t.subject === subject);
+        if (old) await updateDoc(doc(db, 'score_templates', old.id), { items, updatedAt: serverTimestamp() });
+        else await addDoc(collection(db, 'score_templates'), { subject, items, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      }
+      closeModal(); await reloadAll(); toast(`${subs.length}개 과목 템플릿을 저장했습니다.`);
+    } catch (e) { toast('저장 실패: ' + e.message, 4000); $('tmplOk').disabled = false; }
+  };
+};
+
+// ── 평가 만들기·고치기 ──
+function currentTerm() { const d = new Date(); return `${d.getFullYear()}-${d.getMonth() + 1 >= 8 ? 2 : 1}`; }
+function assessForm(a) {
+  const sel = new Set(a?.classKeys || []);
+  const bySchool = {};
+  classes.forEach(c => (bySchool[c.school] ||= []).push(c));
+  const subjects = templates.map(t => t.subject);
+  const body = `
+    <div class="field"><label>평가 이름</label><input class="f-inp" id="fTitle" maxlength="80" value="${esc(a?.title || '')}" placeholder="예: 1차 수행평가 — 포트폴리오"></div>
+    <div class="field" style="display:grid;grid-template-columns:1fr 110px 90px;gap:8px">
+      <div><label>과목 (감점사유 템플릿)</label><input class="f-inp" id="fSubject" list="subjList" maxlength="40" value="${esc(a?.subject || subjects[0] || '')}">
+        <datalist id="subjList">${subjects.map(s => `<option value="${esc(s)}">`).join('')}</datalist></div>
+      <div><label>학기</label><input class="f-inp" id="fTerm" maxlength="20" value="${esc(a?.term || currentTerm())}"></div>
+      <div><label>만점</label><input class="f-inp" id="fMax" type="number" min="1" step="any" value="${esc(a?.maxScore ?? 100)}"></div>
+    </div>
+    <div class="hint" id="fSubjHint"></div>
+    <div class="field"><label>대상 반</label>
+      ${classes.length ? Object.entries(bySchool).map(([s, cs]) => `<div class="group-label">${esc(s)}</div><div class="chk-list">${cs.map(c => `<label class="chk"><input type="checkbox" value="${esc(c.key)}" ${sel.has(c.key) ? 'checked' : ''}>${esc(c.grade)}학년 ${esc(c.cls)}반 <span class="hint" style="margin:0">${c.students.length}명</span></label>`).join('')}</div>`).join('')
+        : '<p class="hint">학생 명단이 없습니다. 관리자 화면의 학생 메뉴에서 먼저 올려 주세요.</p>'}
+    </div>`;
+  openModal(a ? '평가 수정' : '새 평가', body, `<button class="btn" data-close>취소</button><button class="btn primary" id="fOk">${a ? '저장' : '만들기'}</button>`);
+  const hint = () => { const s = $('fSubject').value.trim(); const n = templateItems(s).length; $('fSubjHint').textContent = s ? (n ? `감점사유 ${n}개를 고를 수 있습니다.` : '이 과목 이름의 감점사유 템플릿이 없습니다. 템플릿 탭에서 올리면 고를 수 있습니다.') : ''; };
+  $('fSubject').oninput = hint; hint();
+  $('fOk').onclick = async () => {
+    const title = $('fTitle').value.trim(), subject = $('fSubject').value.trim(), term = $('fTerm').value.trim();
+    const maxScore = Number($('fMax').value);
+    const classKeys = [...$('modalCard').querySelectorAll('.chk-list input:checked')].map(i => i.value);
+    if (!title) return toast('평가 이름을 써 주세요.');
+    if (!(maxScore > 0)) return toast('만점은 0보다 커야 합니다.');
+    if (!classKeys.length) return toast('대상 반을 하나 이상 골라 주세요.');
+    $('fOk').disabled = true;
+    try {
+      if (!a) {
+        const ref = await addDoc(collection(db, 'score_assessments'), { title, subject, term, maxScore, classKeys, publishedClasses: [], createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+        closeModal(); await reloadAll(); location.hash = 'a=' + encodeURIComponent(ref.id);
+        return;
+      }
+      // 고칠 때: 점수가 있는 반은 뺄 수 없다(학생 화면에 남은 결과가 길을 잃는다).
+      const removed = (a.classKeys || []).filter(k => !classKeys.includes(k));
+      const stuck = removed.filter(k => Object.values(results).some(r => r.classKey === k));
+      if (stuck.length) { $('fOk').disabled = false; return toast(`점수가 입력된 반은 뺄 수 없습니다: ${stuck.map(classLabelOf).join(', ')}`, 4500); }
+      const copyChanged = title !== a.title || subject !== a.subject || term !== a.term || maxScore !== a.maxScore;
+      if (maxScore < a.maxScore && Object.values(results).some(r => r.score != null && r.score > maxScore)) { $('fOk').disabled = false; return toast('새 만점보다 높은 점수가 있습니다. 점수를 먼저 고쳐 주세요.', 4000); }
+      await updateDoc(doc(db, 'score_assessments', a.id), { title, subject, term, maxScore, classKeys, publishedClasses: (a.publishedClasses || []).filter(k => classKeys.includes(k)), updatedAt: serverTimestamp() });
+      // 학생 화면용 복사본(평가명·과목·학기·만점)도 맞춘다.
+      if (copyChanged) await commitOps(Object.keys(results).map(sid => b => b.update(doc(db, 'score_results', SC.resultId(a.id, sid)), { title, subject, term, maxScore })));
+      closeModal(); await reloadAll(); await openDetail(a.id); toast('저장했습니다.');
+    } catch (e) { toast('저장 실패: ' + e.message, 4000); $('fOk').disabled = false; }
+  };
+}
+$('btnNewAssess').onclick = () => assessForm(null);
+$('btnEditAssess').onclick = () => cur && assessForm(cur);
+$('btnDelAssess').onclick = async () => {
+  if (!cur) return;
+  const n = Object.keys(results).length;
+  if (!await confirmBox('평가 삭제', `<p><b>${esc(cur.title)}</b> 평가와 입력된 점수 ${n}건, 수정 이력을 모두 지웁니다.<br>학생 화면에서도 사라지며 되돌릴 수 없습니다.</p>`, '삭제', true)) return;
+  try {
+    const ops = [];
+    for (const sid of Object.keys(results)) {
+      const rref = doc(db, 'score_results', SC.resultId(cur.id, sid));
+      const h = await getDocs(collection(rref, 'history'));
+      h.docs.forEach(d => ops.push(b => b.delete(d.ref)));
+      ops.push(b => b.delete(rref));
+    }
+    ops.push(b => b.delete(doc(db, 'score_assessments', cur.id)));
+    await commitOps(ops);
+    drafts.clear(); location.hash = ''; await reloadAll(); toast('삭제했습니다.');
+  } catch (e) { toast('삭제 실패: ' + e.message, 4000); }
+};
+
+// ── 평가 상세 ──
+async function openDetail(aid) {
+  cur = assessments.find(a => a.id === aid);
+  if (!cur) { location.hash = ''; return; }
+  $('viewList').classList.add('hidden'); $('viewDetail').classList.remove('hidden');
+  $('dTable').innerHTML = '<div class="loading">점수 불러오는 중…</div>';
+  const snap = await getDocs(query(collection(db, 'score_results'), where('assessmentId', '==', aid)));
+  results = {}; snap.docs.forEach(d => { results[d.data().studentId] = d.data(); });
+  drafts.clear(); bad.clear();
+  if (!curClass || !(cur.classKeys || []).includes(curClass)) curClass = (cur.classKeys || [])[0] || null;
+  renderDetail();
+}
+function rowValue(sid) { return drafts.get(sid) || SC.pickResult(results[sid] || {}); }
+function renderDetail() {
+  $('dTitle').textContent = cur.title;
+  $('dMeta').textContent = `${cur.subject || '과목 없음'} · ${cur.term || ''} · 만점 ${cur.maxScore}`;
+  const pubs = new Set(cur.publishedClasses || []);
+  $('dClasses').innerHTML = (cur.classKeys || []).map(k => {
+    const list = classByKey[k]?.students || [];
+    const done = list.filter(s => results[s.id]).length;
+    const disp = list.filter(s => results[s.id]?.dispute && !results[s.id].dispute.checked).length;
+    const on = pubs.has(k);
+    return `<div class="cls-chip ${k === curClass ? 'on' : ''}" data-cls="${esc(k)}">
+      ${esc(classLabelOf(k))} <span class="cnt">${done}/${list.length}</span>${disp ? `<span class="pill warn">${disp}</span>` : ''}
+      <span class="sw-label ${on ? 'on' : ''}">${on ? '공개' : '비공개'}</span><button class="switch ${on ? 'on' : ''}" data-pub="${esc(k)}" title="학생에게 ${on ? '숨기기' : '공개하기'}"></button>
+    </div>`;
+  }).join('') || '<p class="hint">대상 반이 없습니다. 수정에서 반을 고르세요.</p>';
+  renderTable();
+  renderSavebar();
+}
+function dedCell(v) {
+  return v.deductions.length ? v.deductions.map(d => `<span class="ded-chip" title="${esc(d.label)}">${esc(d.code)} ${esc(d.label)}</span>`).join('') : '+ 감점사유';
+}
+function rowHtml(s) {
+  const v = rowValue(s.id), saved = results[s.id];
+  const d = saved?.dispute;
+  const scoreStr = bad.has(s.id) ? bad.get(s.id) : (v.score ?? '');
+  return `<tr data-sid="${esc(s.id)}" class="${drafts.has(s.id) ? 'dirty' : ''}">
+    <td class="no">${esc(s.number)}</td>
+    <td class="name">${esc(s.name)}</td>
+    <td><input class="f-inp f-score ${bad.has(s.id) ? 'bad' : ''}" data-f="score" inputmode="decimal" value="${esc(scoreStr)}" placeholder="-"></td>
+    <td><select class="f-inp f-status" data-f="status">${SC.STATUSES.map(x => `<option value="${x.id}" ${x.id === v.status ? 'selected' : ''}>${x.label}</option>`).join('')}</select></td>
+    <td style="min-width:200px"><button class="ded-btn" data-act="ded">${dedCell(v)}</button></td>
+    <td style="min-width:140px"><input class="f-inp" data-f="memo" maxlength="500" value="${esc(v.memo)}" placeholder="메모(학생에게 보임)"></td>
+    <td style="white-space:nowrap">
+      ${d ? `<button class="pill ${d.checked ? '' : 'warn'} disp-btn" data-act="disp">${d.checked ? '이의 확인함' : '이의신청'}</button>` : ''}
+      ${saved ? `<span class="pill ${saved.published ? 'ok' : ''}">${saved.published ? '공개' : '비공개'}</span>` : ''}
+      ${saved ? `<button class="icon-btn" data-act="hist" title="수정 이력"><svg><use href="#ic-history"/></svg></button>` : ''}
+    </td>
+  </tr>`;
+}
+function renderTable() {
+  const el = $('dTable');
+  if (!curClass) { el.innerHTML = ''; return; }
+  let list = classByKey[curClass]?.students || [];
+  // 명단에서 빠진 학생의 결과도 보이게(번호가 바뀐 경우 등)
+  const orphans = Object.values(results).filter(r => r.classKey === curClass && !studentById[r.studentId]);
+  if ($('onlyDisputes').checked) list = list.filter(s => results[s.id]?.dispute);
+  el.innerHTML = `<div class="tbl-wrap"><table class="sc">
+    <thead><tr><th>번호</th><th>이름</th><th>점수 / ${esc(cur.maxScore)}</th><th>상태</th><th>감점사유</th><th>메모</th><th></th></tr></thead>
+    <tbody>${list.map(rowHtml).join('') || `<tr><td colspan="7" class="empty">${$('onlyDisputes').checked ? '이의신청이 없습니다.' : '이 반 학생이 없습니다.'}</td></tr>`}</tbody>
+  </table></div>
+  ${orphans.length ? `<p class="hint" style="margin-top:10px">명단에 없는 학생의 결과 ${orphans.length}건이 있습니다(학생이 삭제되었거나 다시 올려 ID 가 바뀐 경우). 학생 화면에는 그대로 보입니다.</p>` : ''}`;
+}
+function renderSavebar() {
+  $('savebar').classList.toggle('hidden', !drafts.size && !bad.size);
+  $('saveCount').textContent = `저장 안 한 변경 ${drafts.size}명${bad.size ? ` · 점수 오류 ${bad.size}` : ''}`;
+}
+const isBlank = v => v.score == null && v.status === 'normal' && !v.deductions.length && !v.memo;
+function setDraft(sid, patch) {
+  const base = rowValue(sid);
+  const next = { ...base, ...patch };
+  const saved = results[sid];
+  if (saved ? SC.sameResult(saved, next) : isBlank(next)) drafts.delete(sid); else drafts.set(sid, next);
+  const tr = $('dTable').querySelector(`tr[data-sid="${CSS.escape(sid)}"]`);
+  if (tr) tr.classList.toggle('dirty', drafts.has(sid));
+  renderSavebar();
+}
+$('dTable').addEventListener('input', e => {
+  const f = e.target.dataset.f, tr = e.target.closest('tr[data-sid]'); if (!f || !tr) return;
+  const sid = tr.dataset.sid;
+  if (f === 'score') {
+    const raw = e.target.value.trim();
+    const n = raw === '' ? null : Number(raw);
+    const ok = n === null || (Number.isFinite(n) && n >= 0 && n <= Number(cur.maxScore));
+    e.target.classList.toggle('bad', !ok);
+    if (ok) { bad.delete(sid); setDraft(sid, { score: n }); }
+    else { bad.set(sid, raw); renderSavebar(); }
+  } else if (f === 'memo') setDraft(sid, { memo: e.target.value.trim() });
+});
+$('dTable').addEventListener('change', e => {
+  const tr = e.target.closest('tr[data-sid]');
+  if (tr && e.target.dataset.f === 'status') setDraft(tr.dataset.sid, { status: e.target.value });
+});
+$('dTable').addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'), tr = e.target.closest('tr[data-sid]'); if (!b || !tr) return;
+  const sid = tr.dataset.sid;
+  if (b.dataset.act === 'ded') pickDeductions(sid);
+  if (b.dataset.act === 'hist') showHistory(sid);
+  if (b.dataset.act === 'disp') showDispute(sid);
+});
+$('onlyDisputes').onchange = renderTable;
+$('dClasses').addEventListener('click', async e => {
+  const sw = e.target.closest('[data-pub]');
+  if (sw) { e.stopPropagation(); await setPublished([sw.dataset.pub], !sw.classList.contains('on')); return; }
+  const c = e.target.closest('[data-cls]');
+  if (c && c.dataset.cls !== curClass) { curClass = c.dataset.cls; renderDetail(); }
+});
+
+// 감점사유 고르기
+function pickDeductions(sid) {
+  const v = rowValue(sid), have = new Set(v.deductions.map(d => d.code));
+  const items = templateItems(cur.subject);
+  const extra = v.deductions.filter(d => !items.some(i => i.code === d.code)); // 템플릿에서 빠진 예전 사유
+  const s = studentById[sid];
+  const body = (items.length || extra.length) ? `<div class="chk-list">${[...items, ...extra].map(i => `<label class="chk wide"><input type="checkbox" value="${esc(i.code)}" ${have.has(i.code) ? 'checked' : ''}><span class="code">${esc(i.code)}</span><span>${esc(i.label)}</span></label>`).join('')}</div>
+    ${extra.length ? '<p class="hint">템플릿에 없는 사유는 예전에 저장된 문구입니다.</p>' : ''}`
+    : `<p>"${esc(cur.subject)}" 과목의 감점사유 템플릿이 없습니다. 목록 화면의 <b>감점사유 템플릿</b> 탭에서 올려 주세요.</p>`;
+  openModal(`감점사유 — ${s ? `${s.number}번 ${s.name}` : ''}`, body, `<button class="btn" data-close>취소</button><button class="btn primary" id="dedOk">적용</button>`);
+  $('dedOk').onclick = () => {
+    const codes = [...$('modalCard').querySelectorAll('input:checked')].map(i => i.value);
+    const all = [...items, ...extra];
+    setDraft(sid, { deductions: codes.map(c => { const it = all.find(i => i.code === c); return { code: it.code, label: it.label }; }) });
+    closeModal();
+    const tr = $('dTable').querySelector(`tr[data-sid="${CSS.escape(sid)}"]`);
+    if (tr) tr.querySelector('.ded-btn').innerHTML = dedCell(rowValue(sid));
+  };
+}
+
+// 저장 — 이미 있던 결과를 바꾸면 이전 값을 history 에 남긴다.
+async function saveResults(changes) {
+  const pubs = new Set(cur.publishedClasses || []);
+  const ops = [];
+  let n = 0;
+  for (const { sid, next } of changes) {
+    const prev = results[sid];
+    if (prev && SC.sameResult(prev, next)) continue;
+    const st = studentById[sid];
+    const ref = doc(db, 'score_results', SC.resultId(cur.id, sid));
+    const val = SC.pickResult(next);
+    if (prev) {
+      const hist = doc(collection(ref, 'history'));
+      ops.push(b => b.set(hist, { at: serverTimestamp(), before: SC.pickResult(prev), after: val, summary: SC.describeChange(prev, val), wasPublished: !!prev.published }));
+      ops.push(b => b.update(ref, { ...val, updatedAt: serverTimestamp() }));
+    } else {
+      const ck = SC.classKey(st.schoolName, st.grade, st.class);
+      const published = pubs.has(ck);
+      ops.push(b => b.set(ref, {
+        assessmentId: cur.id, studentId: sid, classKey: ck,
+        title: cur.title, subject: cur.subject || '', term: cur.term || '', maxScore: cur.maxScore,
+        ...val, published, publishedAt: published ? serverTimestamp() : null,
+        createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+      }));
+    }
+    n++;
+  }
+  if (ops.length) await commitOps(ops);
+  return n;
+}
+$('btnSave').onclick = async () => {
+  if (bad.size) return toast('빨간 칸의 점수를 고쳐 주세요 (0 ~ 만점).', 3500);
+  $('btnSave').disabled = true;
+  try {
+    const n = await saveResults([...drafts].map(([sid, next]) => ({ sid, next })));
+    toast(`${n}명 저장했습니다.`);
+    await openDetail(cur.id);
+  } catch (e) { toast('저장 실패: ' + e.message, 4000); }
+  $('btnSave').disabled = false;
+};
+$('btnRevert').onclick = () => { drafts.clear(); bad.clear(); renderTable(); renderSavebar(); };
+
+// 공개·비공개 — 평가의 publishedClasses 와 그 반 결과들의 published 를 같이 바꾼다.
+async function setPublished(keys, on) {
+  if (drafts.size || bad.size) return toast('저장 안 한 변경을 먼저 저장하거나 되돌려 주세요.', 3500);
+  try {
+    const set = new Set(keys);
+    const ops = [b => b.update(doc(db, 'score_assessments', cur.id), { publishedClasses: on ? arrayUnion(...keys) : arrayRemove(...keys), updatedAt: serverTimestamp() })];
+    Object.values(results).filter(r => set.has(r.classKey) && !!r.published !== on).forEach(r => {
+      ops.push(b => b.update(doc(db, 'score_results', SC.resultId(cur.id, r.studentId)), on ? { published: true, publishedAt: serverTimestamp() } : { published: false }));
+    });
+    await commitOps(ops);
+    cur.publishedClasses = on ? [...new Set([...(cur.publishedClasses || []), ...keys])] : (cur.publishedClasses || []).filter(k => !set.has(k));
+    toast(on ? `${keys.length}개 반을 학생에게 공개했습니다.` : `${keys.length}개 반을 비공개로 바꿨습니다.`);
+    await openDetail(cur.id);
+  } catch (e) { toast('실패: ' + e.message, 4000); }
+}
+$('btnPubAll').onclick = async () => { if (await confirmBox('전체 공개', `<p>${(cur.classKeys || []).length}개 반 모두 학생에게 점수를 공개합니다.</p>`, '공개')) setPublished(cur.classKeys || [], true); };
+$('btnUnpubAll').onclick = () => setPublished(cur.classKeys || [], false);
+
+// 점수 양식 — 대상 반 학생 명단 + 지금 입력된 값(그대로 고쳐서 다시 올리면 된다)
+$('btnScoreForm').onclick = () => {
+  const rows = [SC.SCORE_HEADER];
+  (cur.classKeys || []).forEach(k => (classByKey[k]?.students || []).forEach(s => {
+    const r = results[s.id];
+    rows.push([s.schoolName, SC.nv(s.grade), SC.nv(s.class), s.number, s.name, r?.score ?? '', r ? SC.statusLabel(r.status) : '', (r?.deductions || []).map(d => d.code).join(';'), r?.memo || '']);
+  }));
+  download(`${cur.title}_점수.csv`.replace(/[\\/:*?"<>|]/g, '_'), SC.toCSV(rows));
+};
+$('btnScoreUpload').onclick = async () => {
+  if (drafts.size || bad.size) return toast('저장 안 한 변경을 먼저 저장하거나 되돌려 주세요.', 3500);
+  const f = await pickFile(); if (!f) return;
+  let p;
+  try { p = SC.parseScoreRows(await readRows(f), { students, items: templateItems(cur.subject), maxScore: Number(cur.maxScore) }); }
+  catch (e) { toast('파일을 읽지 못했습니다: ' + e.message, 4000); return; }
+  const fresh = p.rows.filter(r => !results[r.studentId]);
+  const changed = p.rows.filter(r => results[r.studentId] && !SC.sameResult(results[r.studentId], r));
+  const same = p.rows.length - fresh.length - changed.length;
+  const newClasses = [...new Set(p.rows.map(r => { const s = studentById[r.studentId]; return SC.classKey(s.schoolName, s.grade, s.class); }))].filter(k => !(cur.classKeys || []).includes(k));
+  const pubChanged = changed.filter(r => results[r.studentId].published).length;
+  const body = `<div class="stat-row"><span class="pill ok">새로 입력 ${fresh.length}</span><span class="pill accent">바뀜 ${changed.length}</span><span class="pill">같음 ${same}</span>${p.errors.length ? `<span class="pill warn">오류 ${p.errors.length}줄</span>` : ''}</div>
+    ${pubChanged ? `<p class="hint">이미 공개된 점수 ${pubChanged}건이 바뀝니다. 이전 값은 수정 이력에 남습니다.</p>` : ''}
+    ${newClasses.length ? `<p class="hint">대상 반에 추가됩니다: ${newClasses.map(classLabelOf).map(esc).join(', ')}</p>` : ''}
+    ${p.errors.length ? `<div class="group-label">오류 (이 줄들은 저장하지 않음)</div><div class="msg-list err">${p.errors.map(esc).join('<br>')}</div>` : ''}
+    ${p.warnings.length ? `<div class="group-label">확인해 보세요</div><div class="msg-list warn">${p.warnings.map(esc).join('<br>')}</div>` : ''}`;
+  const n = fresh.length + changed.length;
+  openModal('점수 파일 미리보기', body, `<button class="btn" data-close>취소</button>${n ? `<button class="btn primary" id="upOk">${n}명 저장</button>` : ''}`);
+  if (!n) return;
+  $('upOk').onclick = async () => {
+    $('upOk').disabled = true;
+    try {
+      if (newClasses.length) { await updateDoc(doc(db, 'score_assessments', cur.id), { classKeys: arrayUnion(...newClasses), updatedAt: serverTimestamp() }); cur.classKeys = [...(cur.classKeys || []), ...newClasses]; }
+      const saved = await saveResults([...fresh, ...changed].map(r => ({ sid: r.studentId, next: r })));
+      closeModal(); toast(`${saved}명 저장했습니다.`);
+      await openDetail(cur.id);
+    } catch (e) { toast('저장 실패: ' + e.message, 4000); $('upOk').disabled = false; }
+  };
+};
+
+// 수정 이력
+async function showHistory(sid) {
+  const s = studentById[sid];
+  openModal(`수정 이력 — ${s ? `${s.number}번 ${s.name}` : ''}`, '<div class="loading">불러오는 중…</div>', '<button class="btn" data-close>닫기</button>');
+  try {
+    const snap = await getDocs(query(collection(db, 'score_results', SC.resultId(cur.id, sid), 'history'), orderBy('at', 'desc')));
+    const r = results[sid];
+    const html = (snap.empty ? '<p class="hint">처음 입력한 뒤 바뀐 적이 없습니다.</p>' : snap.docs.map(d => { const h = d.data(); return `<div class="hist"><div class="when">${esc(fmtTime(h.at))}${h.wasPublished ? ' · 공개 중 수정' : ''}</div>${esc(h.summary || SC.describeChange(h.before, h.after))}</div>`; }).join(''))
+      + (r ? `<div class="hist"><div class="when">${esc(fmtTime(r.createdAt))}</div>처음 입력: 점수 ${esc(r.score ?? '없음')}</div>` : '');
+    $('modalCard').querySelector('.modal-body').innerHTML = html;
+  } catch (e) { $('modalCard').querySelector('.modal-body').innerHTML = `<p class="msg-list err">${esc(e.message)}</p>`; }
+}
+
+// 이의신청 — 처리는 오프라인. 여기서는 내용을 보고 "확인함" 표시만 한다.
+function showDispute(sid) {
+  const r = results[sid], s = studentById[sid]; if (!r?.dispute) return;
+  const d = r.dispute;
+  openModal(`이의신청 — ${s ? `${s.number}번 ${s.name}` : ''}`,
+    `<div class="hint" style="margin-bottom:6px">${esc(fmtTime(d.at))}</div><div class="quote">${esc(d.text)}</div>
+     <p class="hint" style="margin-top:10px">처리는 직접(오프라인으로) 해 주세요. 점수를 고치면 학생 화면에 바로 반영되고, 이전 값은 이력에 남습니다.</p>`,
+    `<button class="btn" data-close>닫기</button><button class="btn primary" id="dispOk">${d.checked ? '확인 취소' : '확인함으로 표시'}</button>`);
+  $('dispOk').onclick = async () => {
+    try {
+      await updateDoc(doc(db, 'score_results', SC.resultId(cur.id, sid)), { 'dispute.checked': !d.checked });
+      closeModal(); await reloadAll(false); await openDetail(cur.id);
+    } catch (e) { toast('실패: ' + e.message, 4000); }
+  };
+}
+
+// ── 화면 전환 (#a=평가ID) ──
+async function route() {
+  const m = location.hash.match(/^#a=(.+)$/);
+  if (m) await openDetail(decodeURIComponent(m[1]));
+  else { cur = null; drafts.clear(); bad.clear(); renderSavebar(); $('viewDetail').classList.add('hidden'); $('viewList').classList.remove('hidden'); renderAssessList(); renderTemplates(); }
+}
+let lastHash = location.hash;
+window.addEventListener('hashchange', async () => {
+  if ((drafts.size || bad.size) && !confirm('저장 안 한 변경이 있습니다. 버리고 이동할까요?')) { history.replaceState(null, '', lastHash || location.pathname); return; }
+  lastHash = location.hash; route();
+});
+window.addEventListener('beforeunload', e => { if (drafts.size) { e.preventDefault(); e.returnValue = ''; } });
+$('btnBack').onclick = () => { location.hash = ''; };
+async function reloadAll(rerender = true) {
+  await loadBase();
+  if (rerender && !cur) { renderAssessList(); renderTemplates(); }
+}
+$('btnReload').onclick = () => reloadAll().then(() => toast('새로 불러왔습니다.'));
+
+try { await loadBase(); await route(); }
+catch (e) { $('assessList').innerHTML = `<div class="empty">불러오지 못했습니다: ${esc(e.message)}<br><span class="hint">권한 오류라면 Firestore 규칙에 수행평가 부분이 게시됐는지 확인하세요.</span></div>`; console.error(e); }
+</script>
+
+<script>
+function toggleDark() { const d = document.body.classList.toggle('dark'); localStorage.setItem('dark', d ? '1' : '0'); }
+function openAppModal() { document.getElementById('appModal').classList.add('open'); }
+function closeAppModal() { document.getElementById('appModal').classList.remove('open'); }
+(function () { if (localStorage.getItem('dark') === '1') document.body.classList.add('dark'); })();
+</script>
+<script src="admin-nav.js"></script>
+</body>
+</html>

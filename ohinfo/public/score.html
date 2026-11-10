@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>수행평가 — kakainfo</title>
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="theme.css">
+<link rel="stylesheet" href="student-sky.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); line-height: 1.6; min-height: 100vh; }
+  button, textarea { font-family: inherit; }
+  .hidden { display: none !important; }
+
+  .nav {
+    position: sticky; top: 0; z-index: 200;
+    background: var(--glass-nav); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+    border-bottom: 1px solid var(--border); padding: 0 16px; height: var(--nav-h);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .nav-back {
+    width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border-card);
+    background: var(--glass); color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .nav-title { font-weight: 800; font-size: 0.98rem; color: var(--text); }
+  .nav-sub { font-size: 0.72rem; color: var(--sub); font-weight: 600; }
+
+  .wrap { max-width: 640px; margin: 0 auto; padding: 18px 16px 60px; }
+  .state { text-align: center; color: var(--sub); padding: 64px 16px; font-size: 0.92rem; white-space: pre-line; }
+
+  .card {
+    background: var(--surface); border-radius: 18px; padding: 16px 18px; margin-bottom: 10px;
+    box-shadow: 0 1px 2px rgba(30,40,100,0.06), 0 8px 24px rgba(30,40,100,0.08);
+  }
+  body.dark .card { box-shadow: 0 8px 24px rgba(0,0,0,0.35); }
+  .item { display: flex; align-items: center; gap: 14px; cursor: pointer; width: 100%; border: none; text-align: left; color: var(--text); }
+  .item:active { transform: scale(0.99); }
+  .item .t { font-weight: 800; font-size: 0.98rem; }
+  .item .m { font-size: 0.78rem; color: var(--sub); margin-top: 1px; }
+  .item .grow { flex: 1; min-width: 0; }
+  .score-sm { font-size: 1.25rem; font-weight: 900; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .score-sm small { font-size: 0.78rem; color: var(--sub); font-weight: 700; }
+  .pill { display: inline-block; font-size: 0.72rem; font-weight: 700; padding: 2px 9px; border-radius: 50px; background: var(--sky-chip); color: var(--sub); white-space: nowrap; }
+  .pill.warn { background: var(--danger-light); color: var(--danger); }
+  .pill.ok { background: var(--success-light); color: var(--success); }
+  .pills { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+
+  /* 상세 */
+  .d-head { text-align: center; padding: 22px 18px 18px; }
+  .d-title { font-size: 1.15rem; font-weight: 900; color: var(--text); }
+  .d-meta { font-size: 0.8rem; color: var(--sub); margin-top: 2px; }
+  .d-score { font-size: 3rem; font-weight: 900; letter-spacing: -0.03em; color: var(--text); margin-top: 10px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .d-score small { font-size: 1.1rem; color: var(--sub); font-weight: 700; }
+  .sec-label { font-size: 0.78rem; font-weight: 800; color: var(--sub); margin-bottom: 8px; }
+  .ded { display: flex; gap: 10px; align-items: baseline; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 0.92rem; color: var(--text); }
+  .ded:last-child { border-bottom: none; }
+  .ded .code { font-weight: 800; color: var(--danger); min-width: 34px; font-size: 0.82rem; }
+  .none { font-size: 0.9rem; color: var(--sub); }
+  .memo { font-size: 0.92rem; color: var(--text); white-space: pre-wrap; word-break: break-word; }
+  .quote { background: var(--sky-chip); border-radius: 12px; padding: 10px 12px; font-size: 0.88rem; white-space: pre-wrap; word-break: break-word; color: var(--text); margin-bottom: 8px; }
+  textarea.inp { width: 100%; min-height: 90px; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-elevated, #fff); color: var(--text); font-size: 0.92rem; resize: vertical; outline: none; }
+  textarea.inp:focus { border-color: var(--accent); }
+  .row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .row .grow { flex: 1; }
+  .cnt { font-size: 0.74rem; color: var(--sub); }
+  .btn { font-size: 0.88rem; font-weight: 700; cursor: pointer; border-radius: 50px; padding: 8px 18px; border: 1px solid var(--border); background: var(--surface); color: var(--text); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .hint { font-size: 0.78rem; color: var(--sub); margin-top: 6px; }
+  .msg { font-size: 0.84rem; margin-top: 6px; }
+  .msg.err { color: var(--danger); }
+  .msg.ok { color: var(--success); }
+</style>
+</head>
+<body class="ui-sky">
+
+<svg width="0" height="0" style="position:absolute;">
+  <defs>
+    <symbol id="ic-back" viewBox="0 0 24 24"><path d="M18 12H5M10 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  </defs>
+</svg>
+
+<nav class="nav">
+  <button class="nav-back" id="navBack" title="뒤로"><svg width="17" height="17"><use href="#ic-back"/></svg></button>
+  <div>
+    <div class="nav-title" id="navTitle">수행평가</div>
+    <div class="nav-sub" id="navSub"></div>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div id="list"><div class="state" id="loadingText">…</div></div>
+  <div id="detail" class="hidden"></div>
+</div>
+
+<script type="module">
+import { db } from './firebase-config.js';
+import { collection, query, where, getDocs, doc, getDoc, updateDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { loadSession, verifyStudentAuth, authReady } from './session.js';
+import { escHtml as esc } from './escape.js';
+
+const student = loadSession();
+if (!student) { location.href = 'index.html'; throw new Error('no session'); }
+verifyStudentAuth(student);
+if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
+const lang = localStorage.getItem('ohinfo_lang') || 'ko';
+
+const LANGS = {
+  ko: { title: '수행평가', loading: '불러오는 중…', empty: '아직 공개된 수행평가가 없어요.\n선생님이 점수를 공개하면 여기에 보여요.',
+        error: '불러오지 못했어요', max: '만점', score: '점수', noScore: '점수 없음', ded: '감점 사유', noDed: '감점 사유가 없어요.',
+        memo: '선생님 메모', status: { normal: '', missing: '미제출', absent: '결시', credited: '인정점' },
+        dispute: '이의신청', disputeHelp: '점수나 감점 사유가 이상하면 선생님께 알려 주세요. 처리는 선생님이 직접 안내해 줍니다.',
+        disputePh: '어떤 부분이 이상한지 적어 주세요 (500자까지)', send: '보내기', resend: '다시 보내기', sent: '보냈어요. 선생님이 확인할 거예요.',
+        mine: '내가 보낸 이의신청', received: '접수됨', checked: '선생님 확인함', tooLong: '500자까지 쓸 수 있어요.', emptyText: '내용을 적어 주세요.',
+        updated: '점수 공개 이후에 수정됨' },
+  zh: { title: '实践评价', loading: '加载中…', empty: '还没有公开的实践评价。\n老师公开分数后会显示在这里。',
+        error: '加载失败', max: '满分', score: '分数', noScore: '无分数', ded: '扣分原因', noDed: '没有扣分原因。',
+        memo: '老师备注', status: { normal: '', missing: '未提交', absent: '缺考', credited: '认定分' },
+        dispute: '提出异议', disputeHelp: '如果分数或扣分原因有问题，请告诉老师。老师会当面处理。',
+        disputePh: '请写下哪里有问题（最多500字）', send: '发送', resend: '重新发送', sent: '已发送，老师会确认。',
+        mine: '我提出的异议', received: '已接收', checked: '老师已确认', tooLong: '最多500字。', emptyText: '请填写内容。',
+        updated: '公开后已修改' },
+  ru: { title: 'Оценивание', loading: 'Загрузка…', empty: 'Пока нет опубликованных оценок.\nОни появятся, когда учитель их откроет.',
+        error: 'Не удалось загрузить', max: 'макс.', score: 'Баллы', noScore: 'Нет баллов', ded: 'Причины снижения', noDed: 'Снижений нет.',
+        memo: 'Заметка учителя', status: { normal: '', missing: 'Не сдано', absent: 'Отсутствовал', credited: 'Зачтено' },
+        dispute: 'Апелляция', disputeHelp: 'Если с баллами что-то не так, сообщите учителю. Учитель разберётся лично.',
+        disputePh: 'Опишите, что не так (до 500 символов)', send: 'Отправить', resend: 'Отправить снова', sent: 'Отправлено. Учитель проверит.',
+        mine: 'Моя апелляция', received: 'Получено', checked: 'Учитель проверил', tooLong: 'Не более 500 символов.', emptyText: 'Напишите текст.',
+        updated: 'Изменено после публикации' },
+  en: { title: 'Performance assessment', loading: 'Loading…', empty: 'No published results yet.\nThey will appear here when your teacher publishes them.',
+        error: 'Could not load', max: 'out of', score: 'Score', noScore: 'No score', ded: 'Deduction reasons', noDed: 'No deductions.',
+        memo: "Teacher's note", status: { normal: '', missing: 'Not submitted', absent: 'Absent', credited: 'Credited' },
+        dispute: 'Request a review', disputeHelp: 'If your score or deductions look wrong, let your teacher know. Your teacher will follow up in person.',
+        disputePh: 'Describe what looks wrong (up to 500 characters)', send: 'Send', resend: 'Send again', sent: 'Sent. Your teacher will check it.',
+        mine: 'My request', received: 'Received', checked: 'Checked by teacher', tooLong: 'Up to 500 characters.', emptyText: 'Please write something.',
+        updated: 'Edited after publishing' },
+};
+const L = LANGS[lang] || LANGS.ko;
+document.title = `${L.title} — kakainfo`;
+document.getElementById('navTitle').innerText = L.title;
+document.getElementById('loadingText').innerText = L.loading;
+{
+  const d = v => String(v || '').replace(/[^0-9]/g, '') || String(v || '').trim();
+  const g = d(student.grade), c = d(student.class), n = String(student.number || '').trim();
+  document.getElementById('navSub').innerText = `${student.schoolName || ''}${g ? ` ${g}학년` : ''}${c ? ` ${c}반` : ''}${n ? ` ${n}번` : ''} · ${student.name || ''}`;
+}
+
+const millis = ts => ts?.toMillis ? ts.toMillis() : (ts?.seconds ? ts.seconds * 1000 : 0);
+const fmt = ts => { const ms = millis(ts); return ms ? new Date(ms).toLocaleString(lang === 'ko' ? 'ko-KR' : undefined, { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''; };
+const SAFE_ID = /^[A-Za-z0-9_-]{1,200}$/;
+let items = [];
+
+function scoreHtml(r, cls) {
+  return r.score == null ? `<span class="${cls}">${esc(L.noScore)}</span>` : `<span class="${cls}">${esc(r.score)}<small> / ${esc(r.maxScore)}</small></span>`;
+}
+function pillsHtml(r) {
+  const out = [];
+  const st = L.status[r.status];
+  if (st) out.push(`<span class="pill">${esc(st)}</span>`);
+  if (r.dispute) out.push(`<span class="pill ${r.dispute.checked ? 'ok' : 'warn'}">${esc(L.dispute)} · ${esc(r.dispute.checked ? L.checked : L.received)}</span>`);
+  return out.join('');
+}
+
+function renderList() {
+  const el = document.getElementById('list');
+  if (!items.length) { el.innerHTML = `<div class="state">${esc(L.empty)}</div>`; return; }
+  el.innerHTML = items.map(r => `<button class="card item" data-id="${esc(r.id)}">
+    <div class="grow"><div class="t">${esc(r.title)}</div><div class="m">${esc(r.subject || '')}${r.term ? ` · ${esc(r.term)}` : ''}</div>
+      ${pillsHtml(r) ? `<div class="pills">${pillsHtml(r)}</div>` : ''}</div>
+    ${scoreHtml(r, 'score-sm')}
+  </button>`).join('');
+}
+document.getElementById('list').addEventListener('click', e => {
+  const b = e.target.closest('[data-id]'); if (b) location.hash = 'r=' + encodeURIComponent(b.dataset.id);
+});
+
+function renderDetail(r) {
+  const el = document.getElementById('detail');
+  const ded = (r.deductions || []);
+  const d = r.dispute;
+  const edited = millis(r.updatedAt) && millis(r.publishedAt) && millis(r.updatedAt) > millis(r.publishedAt) + 1000;
+  el.innerHTML = `
+    <div class="card d-head">
+      <div class="d-title">${esc(r.title)}</div>
+      <div class="d-meta">${esc(r.subject || '')}${r.term ? ` · ${esc(r.term)}` : ''}</div>
+      <div class="d-score">${r.score == null ? `<small>${esc(L.noScore)}</small>` : `${esc(r.score)}<small> / ${esc(r.maxScore)}</small>`}</div>
+      ${pillsHtml(r) ? `<div class="pills" style="justify-content:center">${pillsHtml(r)}</div>` : ''}
+      ${edited ? `<div class="hint">${esc(L.updated)} · ${esc(fmt(r.updatedAt))}</div>` : ''}
+    </div>
+    <div class="card">
+      <div class="sec-label">${esc(L.ded)}</div>
+      ${ded.length ? ded.map(x => `<div class="ded"><span class="code">${esc(x.code)}</span><span>${esc(x.label)}</span></div>`).join('') : `<div class="none">${esc(L.noDed)}</div>`}
+    </div>
+    ${r.memo ? `<div class="card"><div class="sec-label">${esc(L.memo)}</div><div class="memo">${esc(r.memo)}</div></div>` : ''}
+    <div class="card">
+      <div class="sec-label">${esc(L.dispute)}</div>
+      ${d ? `<div class="hint" style="margin:0 0 4px">${esc(L.mine)} · ${esc(fmt(d.at))} · ${esc(d.checked ? L.checked : L.received)}</div><div class="quote">${esc(d.text)}</div>` : ''}
+      <div class="hint" style="margin:0 0 8px">${esc(L.disputeHelp)}</div>
+      <textarea class="inp" id="dispText" maxlength="500" placeholder="${esc(L.disputePh)}"></textarea>
+      <div class="row"><span class="cnt" id="dispCnt">0/500</span><span class="grow"></span><button class="btn primary" id="dispSend">${esc(d ? L.resend : L.send)}</button></div>
+      <div class="msg" id="dispMsg"></div>
+    </div>`;
+  const ta = document.getElementById('dispText');
+  ta.oninput = () => { document.getElementById('dispCnt').textContent = `${ta.value.length}/500`; };
+  document.getElementById('dispSend').onclick = async () => {
+    const text = ta.value.trim(), msg = document.getElementById('dispMsg');
+    if (!text) { msg.className = 'msg err'; msg.textContent = L.emptyText; return; }
+    if (text.length > 500) { msg.className = 'msg err'; msg.textContent = L.tooLong; return; }
+    const btn = document.getElementById('dispSend'); btn.disabled = true;
+    try {
+      await updateDoc(doc(db, 'score_results', r.id), { dispute: { text, at: serverTimestamp(), checked: false } });
+      const fresh = await getDoc(doc(db, 'score_results', r.id));
+      Object.assign(r, fresh.data());
+      renderDetail(r);
+      const m = document.getElementById('dispMsg'); m.className = 'msg ok'; m.textContent = L.sent;
+    } catch (e) {
+      console.error(e); msg.className = 'msg err'; msg.textContent = `${L.error}: ${e.code || e.message}`; btn.disabled = false;
+    }
+  };
+}
+
+function route() {
+  const m = location.hash.match(/^#r=(.+)$/);
+  const id = m ? decodeURIComponent(m[1]) : '';
+  const r = id && SAFE_ID.test(id) && items.find(x => x.id === id);
+  document.getElementById('list').classList.toggle('hidden', !!r);
+  document.getElementById('detail').classList.toggle('hidden', !r);
+  if (r) { renderDetail(r); window.scrollTo(0, 0); } else renderList();
+}
+window.addEventListener('hashchange', route);
+document.getElementById('navBack').onclick = () => { if (location.hash) location.hash = ''; else location.href = 'home.html'; };
+
+// 본인 결과는 로그인 복원 뒤에만 읽을 수 있다(규칙: studentId == 본인, published == true).
+try {
+  await authReady();
+  const snap = await getDocs(query(collection(db, 'score_results'), where('studentId', '==', student.id), where('published', '==', true)));
+  items = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => millis(b.publishedAt) - millis(a.publishedAt));
+  route();
+} catch (e) {
+  console.error(e);
+  document.getElementById('list').innerHTML = `<div class="state">${esc(L.error)}: ${esc(e.code || e.message)}</div>`;
+}
+</script>
+</body>
+</html>
