@@ -12,7 +12,6 @@
  * 받은 파일은 50분 캐싱한다(서명 주소 만료 전에 갈아 끼움).
  */
 import { makeClient, explainError } from '../../lib/notion.js';
-import { getSiteStatus } from '../../lib/shared.js';
 
 const CACHE_SECONDS = 50 * 60;
 const SANDBOX = 'sandbox allow-scripts allow-forms allow-popups allow-modals allow-downloads';
@@ -43,10 +42,6 @@ export async function onRequestGet(context) {
   const p = (params.get('p') || '').toLowerCase();
   const id = b || p;
   if (!/^[0-9a-f]{32}$/.test(id) || !env.NOTION_TOKEN) return new Response('잘못된 요청', { status: 400 });
-  // 사이트를 닫아 두면(시험 기간) 파일·사진 주소도 막는다 — HTML 파일을 주소로 바로 여는 걸 막으려고.
-  if ((await getSiteStatus(context)).closed) {
-    return new Response('지금은 열 수 없어요', { status: 403, headers: { 'Cache-Control': 'no-store' } });
-  }
 
   const cache = caches.default;
   const cacheKey = new Request(new URL(`/__notion-file/${b ? 'b' : 'p'}/${id}/${params.get('k') || ''}`, request.url));

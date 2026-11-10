@@ -131,32 +131,35 @@ export function getPage(context, slug) {
   });
 }
 
-// ── 사이트 닫기(시험 기간 등) ──
-// appSettings/ohnotion_site = { closed: bool, message: string, updatedAt }. 공개 읽기·관리자 쓰기
-// (규칙의 appSettings 그대로). 관리 페이지의 "학생 화면 닫기" 스위치가 쓴다.
-// 학생 화면이 30초마다 /api/status 로 묻기 때문에, Firestore 는 데이터센터당 15초에 한 번만 읽는다.
-// 읽기에 실패하면 "열림"으로 보고(노션 화면이 통째로 막히지 않게), 실패는 캐싱하지 않는다.
+// ── 페이지 숨기기(시험 기간 등) ──
+// appSettings/ohnotion_site = { closedSlugs: [주소, …], updatedAt }. 공개 읽기·관리자 쓰기
+// (규칙의 appSettings 그대로). 관리 페이지 목록의 ⏸ 버튼이 주소를 넣고 뺀다.
+// 숨긴 페이지를 연 학생 화면이 30초마다 /api/status 로 묻기 때문에, 문서 하나를 데이터센터당
+// 15초에 한 번만 읽는다(페이지 수와 상관없음). 읽기에 실패하면 "숨김 없음"으로 보고, 실패는 캐싱하지 않는다.
 export const SITE_DOC = 'ohnotion_site';
 const SITE_TTL_SECONDS = 15;
-export async function getSiteStatus(context) {
+export async function getClosedSlugs(context) {
   try {
     const hit = await cacheGet(context, 'site');
-    if (hit) return hit;
+    if (hit) return hit.closedSlugs || [];
   } catch { /* 캐시 없이 */ }
   try {
     const r = await fetch(`${DOCS}/appSettings/${SITE_DOC}`);
-    let status = { closed: false, message: '' };
+    let closedSlugs = [];
     if (r.ok) {
-      const d = fromFsDoc(await r.json());
-      status = { closed: d.closed === true, message: typeof d.message === 'string' ? d.message.slice(0, 300) : '' };
+      const values = (await r.json()).fields?.closedSlugs?.arrayValue?.values || [];
+      closedSlugs = values.map((v) => v.stringValue).filter((v) => typeof v === 'string');
     } else if (r.status !== 404) {
-      return { closed: false, message: '' };
+      return [];
     }
-    context.waitUntil(cachePut(context, 'site', status, SITE_TTL_SECONDS).catch(() => {}));
-    return status;
+    context.waitUntil(cachePut(context, 'site', { closedSlugs }, SITE_TTL_SECONDS).catch(() => {}));
+    return closedSlugs;
   } catch {
-    return { closed: false, message: '' };
+    return [];
   }
+}
+export async function isClosed(context, slug) {
+  return (await getClosedSlugs(context)).includes(slug);
 }
 
 export function listPages(context) {

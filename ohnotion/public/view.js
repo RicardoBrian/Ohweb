@@ -52,11 +52,11 @@
     }
   });
 
-  // 관리 페이지에서 "학생 화면 닫기"를 켜면(시험 기간) 이미 열려 있던 화면도 새로고침해서
+  // 관리 페이지에서 이 주소를 숨기면(⏸, 시험 기간) 이미 열려 있던 화면도 새로고침해서
   // 닫힘 안내로 바꾼다. 화면이 보일 때만 30초마다 묻고, 탭으로 돌아오면 바로 한 번 묻는다.
   function checkClosed() {
-    if (document.hidden) return;
-    fetch('/api/status', { cache: 'no-store' }).then((r) => r.json())
+    if (document.hidden || !slug) return;
+    fetch(`/api/status?slug=${encodeURIComponent(slug)}`, { cache: 'no-store' }).then((r) => r.json())
       .then((s) => { if (s && s.closed === true) location.reload(); }).catch(() => {});
   }
   setInterval(checkClosed, 30000);

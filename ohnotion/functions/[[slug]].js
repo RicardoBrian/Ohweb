@@ -19,7 +19,7 @@
  * 먼저 실행). 우리 주소일 수 없는 요청(점이 들어간 파일, admin 등 예약어)은 바로
  * next()로 넘기고, 어떤 예외도 밖으로 던지지 않는다.
  */
-import { escapeHtml, getPage, getSiteStatus, parsePath, recordStat } from '../lib/shared.js';
+import { escapeHtml, getPage, isClosed, parsePath, recordStat } from '../lib/shared.js';
 import { getRendered } from '../lib/render.js';
 import { explainError } from '../lib/notion.js';
 import { getPassword, isUnlocked, passwordMatches, unlockCookie } from '../lib/lock.js';
@@ -27,7 +27,7 @@ import { getPassword, isUnlocked, passwordMatches, unlockCookie } from '../lib/l
 // 학생 화면의 CSS/JS 주소 뒤에 붙는 버전. view.css나 view.js를 고치면 이 값을 바꾼다 —
 // 그래야 브라우저·Cloudflare에 남은 예전 파일 대신 새 파일을 받는다(첫 iframe 버전의
 // view.css가 남아 여백·HTML 창 크기가 다 깨져 보였던 일이 있었다).
-const ASSET_V = '2026111001';
+const ASSET_V = '2026111002';
 
 function html(body, status = 200) {
   return new Response(body, {
@@ -78,10 +78,10 @@ function renderMessage(title, message, status) {
 </main>`), status);
 }
 
-// 사이트를 닫아 둔 동안(관리 페이지 "학생 화면 닫기") 모든 주소에서 보여 주는 화면.
-// 30초마다 /api/status 를 물어 다시 열리면 스스로 새로고침한다(학생이 손댈 필요 없음).
-function renderClosed(message) {
-  const msg = message ? escapeHtml(message) : '선생님이 잠시 닫아 두었어요. 다시 열리면 이 화면이 자동으로 바뀌어요.';
+// 관리 페이지에서 숨겨 둔 주소(⏸)에서 보여 주는 화면.
+// 30초마다 /api/status 를 물어 다시 공개되면 스스로 새로고침한다(학생이 손댈 필요 없음).
+function renderClosed(slug) {
+  const msg = '선생님이 잠시 닫아 두었어요. 다시 열리면 이 화면이 자동으로 바뀌어요.';
   return html(shell('지금은 열 수 없어요', `${topbar()}
 <main class="list lock">
   <div class="lock-card">
@@ -94,7 +94,7 @@ function renderClosed(message) {
 (function () {
   function check() {
     if (document.hidden) return;
-    fetch('/api/status', { cache: 'no-store' }).then(function (r) { return r.json(); })
+    fetch('/api/status?slug=' + encodeURIComponent(${JSON.stringify(slug).replace(/</g, '\\u003c')}), { cache: 'no-store' }).then(function (r) { return r.json(); })
       .then(function (s) { if (s && s.closed === false) location.reload(); }).catch(function () {});
   }
   setInterval(check, 30000);
@@ -186,9 +186,8 @@ export async function onRequest(context) {
     const route = parsePath(pathname);
     if (!route) return next();
 
-    // 관리 페이지에서 "학생 화면 닫기"를 켰으면(시험 기간) 어떤 주소도 열지 않는다.
-    const site = await getSiteStatus(context);
-    if (site.closed) return renderClosed(site.message);
+    // 관리 페이지에서 이 주소를 숨겨 뒀으면(시험 기간) 하위 페이지까지 열지 않는다.
+    if (await isClosed(context, route.slug)) return renderClosed(route.slug);
 
     const page = await getPage(context, route.slug).catch(() => null);
     if (!page) {
