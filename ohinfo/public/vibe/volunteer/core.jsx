@@ -14,7 +14,7 @@
   const auth = firebase.auth();
   if (USE_EMULATOR) {
     // 시험용 창이 뒤에 있을 때 실시간 연결이 멈추는 일이 있어 에뮬레이터에서만 long polling 을 쓴다.
-    db.settings({ experimentalForceLongPolling: true, merge: true });
+    db.settings({ experimentalForceLongPolling: true, experimentalAutoDetectLongPolling: false, merge: true });
     db.useEmulator("127.0.0.1", 8080);
     auth.useEmulator("http://127.0.0.1:9099");
   }

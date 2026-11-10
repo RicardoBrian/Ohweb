@@ -10,6 +10,7 @@
   <script src="/vibe/shared/fake-firebase/core.js"></script><script src="/vibe/shared/fake-firebase/compat.js"></script>
   <script src="seed.js"></script>
   <script src="fb-guard.js"></script>
+  <script src="privacy-notice.js"></script>
   <script src="yt.js"></script>
   <style>
     /* ── Design tokens ───────────────────────────────────── */
@@ -1037,6 +1038,12 @@ async function checkAuth() {
     if (user && user.email === ADMIN_EMAIL) {
       document.getElementById('pw-modal').classList.remove('open');
       initApp();
+      // 교사 개인정보 처리 안내(공용 privacyAcks) — 이 판을 확인한 적 없으면 한 번 띄운다
+      window.PrivacyNotice && PrivacyNotice.check({
+        email: user.email, app: 'broadcast',
+        read: e => db.collection('privacyAcks').doc(e).get().then(s => s.exists ? s.data() : null),
+        write: (e, d) => db.collection('privacyAcks').doc(e).set({ ...d, at: firebase.firestore.FieldValue.serverTimestamp() }),
+      });
     } else {
       document.getElementById('pw-modal').classList.add('open');
     }
@@ -1205,6 +1212,7 @@ async function saveBroadcast() {
     notice: document.getElementById('bc-notice').value.trim()
   };
   try {
+    await BCIds.addTo(db, task);
     const ref = db.collection(BC + 'broadcasts').doc(dateKey);
     const snap = await ref.get();
     let tasks = [];
@@ -1310,9 +1318,26 @@ async function addStudent(grade) {
   const name = inp.value.trim();
   if (!name) { showToast('이름을 입력해 주세요', 'warn'); return; }
   try {
-    await db.collection(BC + 'members').add({ name, grade, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    // 공용 명렬표(years/{학년도}/students)에서 같은 학년·같은 이름을 찾아 학생 ID 를 붙인다
+    const now = new Date();
+    const year = now.getMonth() < 2 ? now.getFullYear() - 1 : now.getFullYear();
+    const norm = s => String(s || '').normalize('NFC').replace(/\s+/g, '');
+    let hits = [];
+    try {
+      const snap = await db.collection(`years/${year}/students`).where('grade', '==', Number(grade)).get();
+      hits = snap.docs.filter(d => [d.data().name, d.data().koreanName].some(n => n && norm(n) === norm(name)));
+    } catch (e) { console.warn('명렬표를 읽지 못함', e); }
+    const data = { name, grade, createdAt: firebase.firestore.FieldValue.serverTimestamp() };
+    if (hits.length === 1) {
+      const ref = db.collection(BC + 'members').doc(hits[0].id);
+      if ((await ref.get()).exists) { showToast(`${name} 은(는) 이미 부원입니다`, 'warn'); return; }
+      await ref.set({ ...data, studentId: hits[0].id });
+      showToast(`${name} 추가됨 (학생 ${hits[0].id})`, 'success');
+    } else {
+      await db.collection(BC + 'members').add(data);
+      showToast(`${name} 추가됨 — 명렬표에서 ${hits.length ? '같은 이름이 여럿이라' : '찾지 못해'} 학생 ID 없이 저장`, 'warn');
+    }
     inp.value = '';
-    showToast(`${name} 추가됨`, 'success');
   } catch(e) {
     showToast('추가 실패: ' + FBGuard.message(e), 'error');
   }

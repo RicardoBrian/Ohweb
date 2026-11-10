@@ -49,6 +49,12 @@
       setTeacher(undefined);
       setUser(u || null);
       if (!u) return;
+      // 교사 개인정보 처리 안내(공용 privacyAcks) — 이 판을 확인한 적 없으면 한 번 띄운다
+      PrivacyNotice.check({
+        email: u.email, app: "gwvs",
+        read: (e) => db.collection("privacyAcks").doc(e).get().then((s) => (s.exists ? s.data() : null)),
+        write: (e, d) => db.collection("privacyAcks").doc(e).set({ ...d, at: firebase.firestore.FieldValue.serverTimestamp() }),
+      });
       try {
         const snap = await db.collection(PATHS.admins).doc(u.email).get();
         setIsAdmin(snap.exists);

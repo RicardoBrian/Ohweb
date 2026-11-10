@@ -1540,6 +1540,7 @@ function openTaskEditModal(task, dateKey) {
 
 async function saveTaskEdit(dateKey, newTask, isNew) {
   try {
+    await BCIds.addTo(db, newTask);
     const docRef = db.collection(BC + 'broadcasts').doc(dateKey);
     const snap = await docRef.get();
     let tasks = snap.exists ? (snap.data().tasks || []) : [];
@@ -1714,7 +1715,7 @@ function buildTaskCard(task, dateKey) {
       tag.setAttribute('aria-pressed', currentAttendance[docId] ? 'true' : 'false');
       tag.setAttribute('aria-label', `${name} 출결 토글`);
       if (currentAttendance[docId]) tag.classList.add('absent');
-      tag.addEventListener('click', () => toggleAbsent(tag, dateKey, task.id, task.period || task.id, name));
+      tag.addEventListener('click', () => toggleAbsent(tag, dateKey, task.id, task.period || task.id, name, key.slice(1)));
       stagRow.appendChild(tag);
     });
 
@@ -1769,7 +1770,7 @@ function buildTaskCard(task, dateKey) {
   return card;
 }
 
-async function toggleAbsent(tagEl, dateKey, taskId, period, name) {
+async function toggleAbsent(tagEl, dateKey, taskId, period, name, grade) {
   const docId = tagEl.dataset.docId;
   const wasAbsent = tagEl.classList.contains('absent');
   const nowAbsent = !wasAbsent;
@@ -1777,10 +1778,12 @@ async function toggleAbsent(tagEl, dateKey, taskId, period, name) {
   tagEl.style.opacity = '0.5';
   tagEl.style.pointerEvents = 'none';
   try {
+    const studentId = grade ? (await BCIds.load(db)).idFor(grade, name) : null;
     await db.collection(BC + 'attendance').doc(docId).set({
       date: dateKey,
       period: period,
       name: name,
+      ...(studentId ? { studentId, grade } : {}),
       absent: nowAbsent,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }, { merge: true });

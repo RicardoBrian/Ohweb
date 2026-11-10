@@ -202,3 +202,40 @@ window.BC = 'apps/broadcast/';
     identity: function () { return identity; }
   };
 })();
+
+/* ── 부원 이름 → 공용 명렬표 학생 ID ─────────────────────────────
+   방송 일정(p1·p2·p3)과 출결은 화면·검색용으로 이름 글자를 그대로 두고,
+   부원과 맞는 이름에는 학생 ID 를 함께 저장한다(p1Ids…, attendance.studentId).
+   같은 학년에 같은 이름이 둘 이상이거나 부원이 아닌 이름(예: 선생님)은 ID 없이 둔다. */
+window.BCIds = (function () {
+  'use strict';
+  var norm = function (s) { return String(s || '').normalize('NFC').replace(/\s+/g, ''); };
+  async function load(db) {
+    var snap = await db.collection(window.BC + 'members').get();
+    var map = {};
+    snap.forEach(function (d) {
+      var m = d.data(), id = m.studentId;
+      if (!id) return;
+      var k = String(m.grade) + '|' + norm(m.name);
+      map[k] = (k in map) ? null : id;     // 같은 학년 동명이인 → 정하지 않음
+    });
+    return {
+      idFor: function (grade, name) { return map[String(grade) + '|' + norm(name)] || null; },
+      idsFor: function (grade, csv) {
+        var out = [];
+        String(csv || '').split(',').forEach(function (n) {
+          var id = map[String(grade) + '|' + norm(n)];
+          if (id && out.indexOf(id) < 0) out.push(id);
+        });
+        return out;
+      }
+    };
+  }
+  /** task 에 p1Ids·p2Ids·p3Ids 를 채워 돌려준다(이름 칸은 그대로). */
+  async function addTo(db, task) {
+    var ids = await load(db);
+    ['1', '2', '3'].forEach(function (g) { task['p' + g + 'Ids'] = ids.idsFor(g, task['p' + g]); });
+    return task;
+  }
+  return { load: load, addTo: addTo };
+})();
