@@ -35,6 +35,7 @@ export function defineBlocks(B, J, ctx) {
     hat('ev_click', t('b_onClick')),
     // AI
     stmt('ai_ask_image', COLORS.ai, t('b_askImage')),
+    stmt('ai_pick_photo', COLORS.ai, t('b_pickPhoto')),
     stmt('ai_camera', COLORS.ai, t('b_camera'), [drop('ON', [[t('b_on'), '1'], [t('b_off'), '0']])]),
     stmt('ai_ask_text', COLORS.ai, t('b_askText'), [val('TEXT')]),
     stmt('ai_ask_table', COLORS.ai, t('b_askTable')),
@@ -127,6 +128,7 @@ export function defineBlocks(B, J, ctx) {
   const F = g.forBlock;
   for (const k of Object.keys(HATS)) F[k] = () => '';
   F.ai_ask_image = () => 'await api.askImage();\n';
+  F.ai_pick_photo = () => 'await api.pickPhoto();\n';
   F.ai_camera = b => `api.camera(${b.getFieldValue('ON') === '1'});\n`;
   F.ai_ask_text = b => `await api.askText(${v(b, 'TEXT', O.NONE, "''")});\n`;
   F.ai_ask_table = () => 'await api.askTable();\n';
@@ -219,7 +221,7 @@ export function toolbox(ctx) {
   const b = (type, inputs) => ({ kind: 'block', type, ...(inputs ? { inputs } : {}) });
   const cls = prob !== 'reg';
   const ai = [
-    ...(kind === 'image' ? [b('ai_camera'), b('ai_ask_image')] : []),
+    ...(kind === 'image' ? [b('ai_camera'), b('ai_pick_photo'), b('ai_ask_image')] : []),
     ...(kind === 'text' ? [b('ai_ask_user', { Q: txt(t('b_defAsk')) }), b('ai_answer'), b('ai_ask_text', { TEXT: txt(t('b_defText')) })] : []),
     ...(kind === 'table' ? [b('ai_set_input', { V: num(0) }), b('ai_input_value'), b('ai_ask_table')] : []),
     b('ai_result'),
