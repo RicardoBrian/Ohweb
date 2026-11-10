@@ -134,6 +134,8 @@ function renderLogin(errorMessage = '') {
 
 // ── 대시보드 뼈대 ──
 async function renderDashboard() {
+  // 학습지 화면(follow.js)에서 이 브라우저를 선생님으로 알아보게 — 발표 모드에 "학생 고정" 버튼이 보인다.
+  try { localStorage.setItem('kakanotion-teacher', '1'); } catch { /* 무시 */ }
   app.innerHTML = `
     <div class="topbar">
       <a class="nav-brand" href="/"><img src="/logo.png" alt="kakainfo"><span class="nav-brand-title">kakanotion</span></a>
@@ -217,7 +219,11 @@ async function renderDashboard() {
       </div>
     </div>`;
 
-  document.getElementById('logoutBtn').addEventListener('click', async () => { await window.AdminAuth.logout(); renderLogin(); });
+  document.getElementById('logoutBtn').addEventListener('click', async () => {
+    try { localStorage.removeItem('kakanotion-teacher'); } catch { /* 무시 */ }
+    await window.AdminAuth.logout();
+    renderLogin();
+  });
   document.getElementById('darkToggle').addEventListener('click', () => {
     document.body.classList.toggle('dark');
     try { localStorage.setItem('dark', document.body.classList.contains('dark') ? '1' : '0'); } catch { /* 무시 */ }

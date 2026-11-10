@@ -10,6 +10,10 @@
 //       F = 전체 화면, B 또는 . = 화면 가리기, Esc = 끝내기, 화면 오른쪽/왼쪽 클릭, 스와이프.
 //       발표용 리모컨(클리커)은 보통 PageDown/PageUp을 보내므로 그대로 된다.
 // 주소에 #present(또는 #present=3)를 붙이면 바로 발표 모드로 열린다.
+//
+// 따라가기(follow.js): window.KakaPresent 로 밖에서 열고·넘기고·잠근다. 잠그면(학생 화면)
+// 넘기기·끝내기가 다 막히고 선생님이 넘기는 대로만 움직인다(전체 화면 F만 됨).
+// 발표 쪽 변화는 document 에 'present:open' / 'present:close' / 'present:slide' / 'present:blank' 이벤트로 알린다.
 (function () {
   const W = 1280;           // 슬라이드 설계 크기(16:9). 화면에 맞춰 통째로 확대/축소한다.
   const H = 720;
@@ -23,6 +27,8 @@
   let slides = [];
   let index = 0;
   let hideTimer = null;
+  let locked = false;       // 선생님 화면 따라가는 중(follow.js) — 학생은 못 넘긴다
+  const emit = (name, detail = {}) => document.dispatchEvent(new CustomEvent(`present:${name}`, { detail }));
 
   // ── 슬라이드 만들기 ──
   function isHeading(el, tag) {
@@ -116,6 +122,7 @@
     deck.innerHTML = `
       <div class="deck-stage"><div class="deck-canvas"></div></div>
       <div class="deck-blank" hidden></div>
+      <div class="deck-lock" hidden>👀 선생님 화면을 따라가는 중</div>
       <div class="deck-ui">
         <button type="button" data-a="prev" aria-label="이전">‹</button>
         <span class="deck-count"></span>
@@ -133,6 +140,7 @@
 
     deck.querySelector('.deck-ui').addEventListener('click', (e) => {
       const a = e.target.closest('button')?.dataset.a;
+      if (locked && a !== 'full') return;
       if (a === 'prev') go(index - 1);
       else if (a === 'next') go(index + 1);
       else if (a === 'full') toggleFull();
@@ -140,6 +148,7 @@
     });
     // 화면 왼쪽 1/3 클릭 = 이전, 나머지 = 다음(링크·버튼·영상·코드는 제외).
     deck.querySelector('.deck-stage').addEventListener('click', (e) => {
+      if (locked) return;
       if (e.target.closest('a, button, iframe, video, audio, summary, pre, input, .htmlfile, figure.image img')) return;
       if (window.getSelection()?.toString()) return;
       go(e.clientX < window.innerWidth / 3 ? index - 1 : index + 1);
@@ -147,7 +156,7 @@
     let touchX = null;
     deck.addEventListener('touchstart', (e) => { touchX = e.touches[0].clientX; }, { passive: true });
     deck.addEventListener('touchend', (e) => {
-      if (touchX == null) return;
+      if (touchX == null || locked) return;
       const dx = e.changedTouches[0].clientX - touchX;
       if (Math.abs(dx) > 50) go(dx < 0 ? index + 1 : index - 1);
       touchX = null;
@@ -169,11 +178,13 @@
     }, true);
     document.fonts?.ready?.then(later);
     go(Math.min(Math.max(start, 0), slides.length - 1), true);
+    setLocked(locked);
     showUi();
+    emit('open', { index, total: slides.length });
   }
 
   function close() {
-    if (!deck) return;
+    if (!deck || locked) return;
     if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
     document.removeEventListener('keydown', onKey, true);
     window.removeEventListener('resize', layout);
@@ -181,6 +192,18 @@
     deck = null;
     document.body.classList.remove('presenting');
     if (location.hash.startsWith('#present')) history.replaceState(null, '', location.pathname + location.search);
+    emit('close');
+  }
+
+  function setLocked(v) {
+    locked = !!v;
+    if (!deck) return;
+    deck.classList.toggle('locked', locked);
+    deck.querySelector('.deck-lock').hidden = !locked;
+  }
+  function setBlank(v) {
+    const blank = deck?.querySelector('.deck-blank');
+    if (blank) blank.hidden = !v;
   }
 
   // 1280×720 슬라이드를 화면에 맞게 확대/축소하고, 넘치는 슬라이드는 내용만 더 줄인다.
@@ -241,6 +264,7 @@
     deck.querySelector('.deck-count').textContent = `${index + 1} / ${slides.length}`;
     deck.querySelector('.deck-progress span').style.width = `${((index + 1) / slides.length) * 100}%`;
     history.replaceState(null, '', `${location.pathname}${location.search}#present=${index + 1}`);
+    emit('slide', { index, total: slides.length });
   }
 
   function toggleFull() {
@@ -260,17 +284,36 @@
     if (e.target.closest?.('input, textarea, [contenteditable]')) return;
     const blank = deck.querySelector('.deck-blank');
     const k = e.key;
+    if (locked) {
+      // 학생 화면: 전체 화면만 되고 나머지 키는 다 막는다(페이지 스크롤·뒤로 가기 포함).
+      if (k === 'f' || k === 'F') toggleFull();
+      if (!e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); e.stopPropagation(); }
+      return;
+    }
     let handled = true;
-    if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter', 'n', 'N'].includes(k)) { blank.hidden = true; go(index + 1); }
-    else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace', 'p', 'P'].includes(k)) { blank.hidden = true; go(index - 1); }
+    const unblank = () => { if (!blank.hidden) { blank.hidden = true; emit('blank', { on: false }); } };
+    if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter', 'n', 'N'].includes(k)) { unblank(); go(index + 1); }
+    else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace', 'p', 'P'].includes(k)) { unblank(); go(index - 1); }
     else if (k === 'Home') go(0);
     else if (k === 'End') go(slides.length - 1);
     else if (k === 'f' || k === 'F') toggleFull();
-    else if (k === 'b' || k === 'B' || k === '.') blank.hidden = !blank.hidden;
+    else if (k === 'b' || k === 'B' || k === '.') { blank.hidden = !blank.hidden; emit('blank', { on: !blank.hidden }); }
     else if (k === 'Escape') { if (!document.fullscreenElement) close(); }
     else handled = false;
     if (handled) { e.preventDefault(); e.stopPropagation(); }
   }
+
+  window.KakaPresent = {
+    open: (i = 0) => open(i),
+    close,
+    go: (i) => go(i),
+    isOpen: () => !!deck,
+    index: () => index,
+    total: () => slides.length,
+    deck: () => deck,
+    setLocked,
+    setBlank,
+  };
 
   // ── 시작 ──
   function startFromHash() {

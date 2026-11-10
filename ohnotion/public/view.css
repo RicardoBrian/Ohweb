@@ -556,3 +556,13 @@ html.lb-open, html.lb-open body { overflow: hidden; }
 }
 @keyframes lp-spin { to { transform: rotate(360deg); } }
 .loading-page h1 { font-size: 20px; }
+
+/* 발표 따라가기(follow.js) — 학생: 잠김 표시 / 선생님: 고정 중 표시 */
+.deck-lock, .deck-teacher {
+  position: absolute; left: 16px; top: 16px; z-index: 3; padding: 6px 12px; border-radius: 8px;
+  background: rgba(15, 15, 15, 0.72); color: #fff; font: 500 14px var(--font); pointer-events: none;
+}
+.deck-teacher { background: rgba(212, 76, 71, 0.9); }
+.deck.locked .deck-ui button:not([data-a="full"]), .deck.locked .deck-ui .deck-count { display: none; }
+.deck.locked .deck-stage { cursor: default; }
+.deck-ui .deck-follow.on { background: rgba(212, 76, 71, 0.9); }
