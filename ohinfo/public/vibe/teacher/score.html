@@ -230,6 +230,7 @@
     <div id="panelAssess">
       <div class="toolbar">
         <button class="btn primary" id="btnNewAssess"><svg><use href="#ic-plus"/></svg>새 평가</button>
+        <button class="btn" id="btnFromExam"><svg><use href="#ic-clipboard"/></svg>시험에서 가져오기</button>
         <div class="grow"></div>
         <button class="icon-btn" title="새로고침" id="btnReload"><svg><use href="#ic-refresh"/></svg></button>
       </div>
@@ -262,6 +263,7 @@
       <button class="btn" id="btnScoreForm"><svg><use href="#ic-download"/></svg>점수 양식 내려받기</button>
       <button class="btn primary" id="btnScoreUpload"><svg><use href="#ic-upload"/></svg>점수 파일 올리기</button>
       <button class="btn" id="btnFiles"><svg><use href="#ic-folder"/></svg>제출물 연결</button>
+      <button class="btn hidden" id="btnResync"><svg><use href="#ic-refresh"/></svg>시험 결과 다시 가져오기</button>
       <div class="grow"></div>
       <label class="chk" style="border:none;padding:4px"><input type="checkbox" id="onlyDisputes"> 이의신청만</label>
       <button class="btn sm" id="btnPubAll">전체 공개</button>
@@ -599,6 +601,7 @@ function rowValue(sid) { return drafts.get(sid) || norm(results[sid]); }
 const assessStudents = () => (cur.classKeys || []).flatMap(k => classByKey[k]?.students || []);
 function renderDetail() {
   $('dTitle').textContent = cur.title;
+  $('btnResync').classList.toggle('hidden', cur.source?.type !== 'exam');
   $('dMeta').textContent = `${cur.subject || '과목 없음'} · ${cur.term || ''} · 만점 ${cur.maxScore}` + (crits().length ? ` · 항목 ${crits().map((c, i) => `${SC.circled(i)}${c.label}(${c.max})`).join(' ')}` : '');
   const pubs = new Set(cur.publishedClasses || []);
   $('dClasses').innerHTML = (cur.classKeys || []).map(k => {
@@ -757,7 +760,7 @@ function newResultDoc(sid, extra) {
   };
 }
 // 저장 — 이미 있던 결과를 바꾸면 이전 값을 history 에 남긴다.
-async function saveResults(changes, noteMap) {
+async function saveResults(changes, noteMap, extraNew = {}) {
   const ops = [];
   let n = 0;
   for (const { sid, next } of changes) {
@@ -769,7 +772,7 @@ async function saveResults(changes, noteMap) {
       const hist = doc(collection(ref, 'history'));
       ops.push(b => b.set(hist, { at: serverTimestamp(), before: SC.pickResult(prev), after: val, summary: SC.describeChange(norm(prev), val), wasPublished: !!prev.published }));
       ops.push(b => b.update(ref, { ...val, updatedAt: serverTimestamp() }));
-    } else ops.push(b => b.set(ref, newResultDoc(sid, val)));
+    } else ops.push(b => b.set(ref, newResultDoc(sid, { ...val, ...extraNew })));
     n++;
   }
   const nm = Object.entries(noteMap || {}).filter(([sid, v]) => v !== (notes[sid] || ''));
@@ -935,6 +938,144 @@ $('btnFiles').onclick = () => {
     }
   };
 };
+// ── 시험에서 가져오기 (exam.html 의 시험 결과 → 이 평가) ──
+// 채점이 끝난(needsManual=false) 학생만 가져온다. 문항이 평가 항목(Q1…)이 되고, 사유는 학생에게
+// 보여도 되는 말로 바꾼다(객관식 정답 번호는 넣지 않는다). 시험지 유형(A/B형)이 있는 시험은 총점만.
+const normGC = v => String(v ?? '').replace(/학년|반/g, '').trim();
+const examTargets = a => (s => (!a.grade || normGC(a.grade) === normGC(s.grade)) && (!a.class || normGC(a.class) === normGC(s.class)) && (!a.schoolName || a.schoolName === (s.schoolName || '')));
+const hasTarget = a => !!(a.grade || a.class || a.schoolName);
+function examReason(r) {
+  const fb = String(r.feedback ?? '');
+  if (fb.startsWith('cases:')) return `테스트 ${fb.slice(6)} 통과`;
+  if (fb === 'manual' || fb === 'correct' || fb.startsWith('wrong')) return (r.score ?? 0) < (r.maxScore ?? 0) && r.type === 'mc' ? '오답' : '';
+  if (!fb && r.type === 'mc' && (r.score ?? 0) < (r.maxScore ?? 0)) return '오답';
+  return fb.slice(0, 500);
+}
+async function buildFromExam(examId, asIds) {
+  const [exSnap, qSnap] = await Promise.all([getDoc(doc(db, 'exams', examId)), getDocs(query(collection(db, 'exam_questions'), where('examId', '==', examId)))]);
+  const exam = exSnap.exists() ? exSnap.data() : { title: examId };
+  const qs = qSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order ?? 1e9) - (b.order ?? 1e9));
+  const itemsMode = !(Array.isArray(exam.forms) && exam.forms.length);
+  const criteria = itemsMode ? qs.map((q, i) => ({ label: `Q${i + 1}. ${String(q.title || '').replace(/\s+/g, ' ').slice(0, 30)}`.trim(), max: Number(q.points) || 0 })) : [];
+  const qIndex = Object.fromEntries(qs.map((q, i) => [q.id, i]));
+  const rows = new Map(); // 학생ID → 행
+  let waiting = 0;
+  const waitingIds = new Set();
+  for (const asId of asIds) {
+    const aSnap = await getDoc(doc(db, 'exam_assignments', asId));
+    const a = aSnap.exists() ? aSnap.data() : {};
+    const [pSnap, rSnap] = await Promise.all([
+      getDocs(query(collection(db, 'exam_progress'), where('asId', '==', asId))),
+      getDocs(query(collection(db, 'exam_results'), where('asId', '==', asId))),
+    ]);
+    const resBy = {};
+    rSnap.docs.forEach(d => { const r = d.data(); (resBy[r.studentId] ||= []).push(r); });
+    const progBy = {};
+    pSnap.docs.forEach(d => { const p = d.data(); progBy[p.studentId || d.id.slice(asId.length + 1)] = p; });
+    // 대상: 학교·학년·반이 정해진 배정은 그 학생 전부(안 본 학생 = 미제출), "전체" 배정은 응시한 학생만
+    const pool = hasTarget(a) ? students.filter(examTargets(a)).map(s => s.id) : Object.keys(progBy);
+    for (const sid of new Set([...pool, ...Object.keys(progBy)])) {
+      if (!studentById[sid]) continue;
+      const p = progBy[sid];
+      if (p?.status === 'submitted' && p.needsManual) { if (!rows.has(sid)) { waiting++; waitingIds.add(sid); } continue; }
+      if (p?.status === 'submitted') {
+        let items;
+        if (itemsMode) {
+          items = criteria.map(c => ({ label: c.label, max: c.max, score: null, reason: '' }));
+          (resBy[sid] || []).forEach(r => { const i = qIndex[r.questionId]; if (i != null) items[i] = { ...items[i], score: Number(r.score) || 0, reason: examReason(r) }; });
+        }
+        if (waitingIds.delete(sid)) waiting--;
+        rows.set(sid, { studentId: sid, score: itemsMode ? SC.sumItems(items) : Number(p.totalScore) || 0, status: 'normal', deductions: [], memo: '', ...(items ? { items } : {}), totalPoints: p.totalPoints });
+      } else if (!rows.has(sid) && !waitingIds.has(sid)) {
+        rows.set(sid, { studentId: sid, score: null, status: 'missing', deductions: [], memo: '', ...(itemsMode ? { items: criteria.map(c => ({ label: c.label, max: c.max, score: null, reason: '' })) } : {}) });
+      }
+    }
+  }
+  const maxScore = itemsMode ? SC.sumMax(criteria) : Math.max(0, ...[...rows.values()].map(r => Number(r.totalPoints) || 0));
+  return { exam, criteria, itemsMode, rows: [...rows.values()], waiting, maxScore };
+}
+const sidClass = sid => { const s = studentById[sid]; return SC.classKey(s.schoolName, s.grade, s.class); };
+function fromExamSummary(b, extra = '') {
+  const sub = b.rows.filter(r => r.status === 'normal').length, miss = b.rows.filter(r => r.status === 'missing').length;
+  return `<div class="stat-row"><span class="pill ok">채점 끝난 응시 ${sub}명</span><span class="pill">미제출 ${miss}명</span>${b.waiting ? `<span class="pill warn">아직 채점 중 ${b.waiting}명 — 빼고 가져옴</span>` : ''}</div>
+    <p class="hint">${b.itemsMode ? `문항 ${b.criteria.length}개가 평가 항목이 됩니다(만점 ${b.maxScore}). 사유: 객관식 "오답", 코드 "테스트 3/5 통과", 직접 채점한 문항은 선생님 피드백.` : '시험지 유형(A/B형)이 있는 시험이라 총점만 가져옵니다.'}</p>${extra}`;
+}
+$('btnFromExam').onclick = async () => {
+  openModal('시험에서 가져오기', '<div class="loading">시험 목록 불러오는 중…</div>', '<button class="btn" data-close>닫기</button>');
+  try {
+    const [eSnap, aSnap] = await Promise.all([getDocs(collection(db, 'exams')), getDocs(collection(db, 'exam_assignments'))]);
+    const exams = eSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const asg = aSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const withAsg = exams.filter(e => asg.some(a => a.examId === e.id)).sort((a, b) => String(a.title).localeCompare(String(b.title), 'ko'));
+    const label = a => [a.schoolName, a.grade && `${a.grade}학년`, a.class && `${a.class}반`].filter(Boolean).join(' ') || '전체';
+    $('modalCard').querySelector('.modal-body').innerHTML = `
+      <div class="field"><label>시험</label><select class="f-inp" id="feExam"><option value="">— 고르세요 —</option>${withAsg.map(e => `<option value="${esc(e.id)}">${esc(e.title || e.id)}</option>`).join('')}</select></div>
+      <div class="field"><label>배정 (여러 반을 하나의 평가로 묶습니다)</label><div id="feAsg" class="chk-list"></div></div>
+      <div id="fePrev"></div>`;
+    $('modalCard').querySelector('.modal-foot').innerHTML = '<button class="btn" data-close>닫기</button><button class="btn primary" id="feLoad" disabled>불러오기</button>';
+    $('feExam').onchange = () => {
+      const list = asg.filter(a => a.examId === $('feExam').value);
+      $('feAsg').innerHTML = list.map(a => `<label class="chk"><input type="checkbox" value="${esc(a.id)}" checked>${esc(label(a))}</label>`).join('');
+      $('fePrev').innerHTML = ''; $('feLoad').disabled = !list.length;
+      const used = assessments.find(x => x.source?.examId === $('feExam').value);
+      if (used) $('fePrev').innerHTML = `<p class="hint">이 시험은 이미 "${esc(used.title)}" 평가로 가져왔습니다. 그 평가에서 <b>시험 결과 다시 가져오기</b>를 쓰면 바뀐 것만 갱신됩니다.</p>`;
+    };
+    $('feLoad').onclick = async () => {
+      const examId = $('feExam').value, asIds = [...$('feAsg').querySelectorAll('input:checked')].map(i => i.value);
+      if (!asIds.length) return toast('배정을 하나 이상 고르세요.');
+      $('feLoad').disabled = true; $('fePrev').innerHTML = '<div class="loading">시험 결과 읽는 중…</div>';
+      try {
+        const b = await buildFromExam(examId, asIds);
+        if (!b.rows.length) { $('fePrev').innerHTML = fromExamSummary(b, '<p class="hint">가져올 학생이 없습니다.</p>'); return; }
+        $('fePrev').innerHTML = fromExamSummary(b);
+        $('feLoad').outerHTML = `<button class="btn primary" id="feSave">평가 만들기</button>`;
+        $('feSave').onclick = async () => {
+          $('feSave').disabled = true;
+          try {
+            const classKeys = [...new Set(b.rows.map(r => sidClass(r.studentId)))];
+            const ref = await addDoc(collection(db, 'score_assessments'), {
+              title: b.exam.title || '시험', subject: '', term: currentTerm(), maxScore: b.maxScore, criteria: b.criteria, classKeys, publishedClasses: [],
+              source: { type: 'exam', examId, asIds }, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
+            });
+            await reloadAll(false);
+            cur = assessments.find(a => a.id === ref.id); results = {}; notes = {};
+            const r = await saveResults(b.rows.map(x => ({ sid: x.studentId, next: x })), null, { fromExam: true });
+            closeModal(); toast(`${r.n}명을 가져왔습니다. 확인 후 반별로 공개하세요.`, 3500);
+            location.hash = 'a=' + encodeURIComponent(ref.id);
+          } catch (e) { toast('저장 실패: ' + e.message, 4000); $('feSave').disabled = false; }
+        };
+      } catch (e) { $('fePrev').innerHTML = `<div class="msg-list err">${esc(e.message)}</div>`; $('feLoad').disabled = false; }
+    };
+  } catch (e) { $('modalCard').querySelector('.modal-body').innerHTML = `<div class="msg-list err">${esc(e.message)}</div>`; }
+};
+// 다시 가져오기 — 채점을 고쳤거나 늦게 채점한 학생을 반영. 바뀐 학생만 쓰고 이전 값은 이력에 남는다.
+$('btnResync').onclick = async () => {
+  if (dirtyCheck()) return toast('저장 안 한 변경을 먼저 저장하거나 되돌려 주세요.', 3500);
+  const src = cur.source;
+  openModal('시험 결과 다시 가져오기', '<div class="loading">시험 결과 읽는 중…</div>', '<button class="btn" data-close>닫기</button>');
+  try {
+    const b = await buildFromExam(src.examId, src.asIds || []);
+    if (b.itemsMode && b.criteria.length !== crits().length) { $('modalCard').querySelector('.modal-body').innerHTML = `<div class="msg-list err">시험 문항 수(${b.criteria.length})가 이 평가의 항목 수(${crits().length})와 다릅니다. 시험 문항이 바뀌었으면 새 평가로 다시 가져오세요.</div>`; return; }
+    // 학생이 고친 결과(이의신청 등)는 유지하고, 선생님이 이 화면에서 손댄 점수는 시험 값으로 덮어쓴다(이력에 남음).
+    const fresh = b.rows.filter(r => !results[r.studentId]);
+    const changed = b.rows.filter(r => results[r.studentId] && !sameVal(results[r.studentId], { ...norm(results[r.studentId]), score: r.score, status: r.status, items: r.items }));
+    const pubChanged = changed.filter(r => results[r.studentId].published).length;
+    $('modalCard').querySelector('.modal-body').innerHTML = fromExamSummary(b, `<div class="stat-row"><span class="pill ok">새로 ${fresh.length}</span><span class="pill accent">바뀜 ${changed.length}</span><span class="pill">같음 ${b.rows.length - fresh.length - changed.length}</span></div>${pubChanged ? `<p class="hint">이미 공개된 ${pubChanged}명의 점수가 바뀝니다. 이전 값은 수정 이력에 남습니다.</p>` : ''}<p class="hint">감점사유·메모·비고는 그대로 둡니다.</p>`);
+    if (!fresh.length && !changed.length) return;
+    $('modalCard').querySelector('.modal-foot').innerHTML = `<button class="btn" data-close>취소</button><button class="btn primary" id="rsOk">${fresh.length + changed.length}명 반영</button>`;
+    $('rsOk').onclick = async () => {
+      $('rsOk').disabled = true;
+      try {
+        const newClasses = [...new Set(fresh.map(r => sidClass(r.studentId)))].filter(k => !(cur.classKeys || []).includes(k));
+        if (newClasses.length) { await updateDoc(doc(db, 'score_assessments', cur.id), { classKeys: arrayUnion(...newClasses), updatedAt: serverTimestamp() }); cur.classKeys = [...(cur.classKeys || []), ...newClasses]; }
+        const keep = sid => { const v = norm(results[sid]); return { deductions: v.deductions, memo: v.memo }; };
+        const r = await saveResults([...fresh, ...changed].map(x => ({ sid: x.studentId, next: results[x.studentId] ? { ...x, ...keep(x.studentId) } : x })), null, { fromExam: true });
+        closeModal(); toast(`${r.n}명 반영했습니다.`); await reloadAll(false); await openDetail(cur.id);
+      } catch (e) { toast('저장 실패: ' + e.message, 4000); $('rsOk').disabled = false; }
+    };
+  } catch (e) { $('modalCard').querySelector('.modal-body').innerHTML = `<div class="msg-list err">${esc(e.message)}</div>`; }
+};
+
 // 제출물 미리보기(교사)
 async function showFiles(sid) {
   const r = results[sid], s = studentById[sid]; if (!r?.files?.length) return;
