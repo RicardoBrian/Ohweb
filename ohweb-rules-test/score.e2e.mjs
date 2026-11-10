@@ -299,6 +299,58 @@ try {
   const steal3 = await fakeGas({ action: 'list', idToken: tokA, aid: aid2, folders: ['FOLDER'] });
   ok(!!steal.error && !!steal2.error && !!steal3.error, '학생: 남의 결과·남의 파일·폴더 목록 요청은 거부');
 
+  // ── 시험에서 가져오기 ── 1학년 전체 배정: 김학생(채점 끝), 박학생(채점 중), 이학생(안 봄)
+  await env.withSecurityRulesDisabled(async c => {
+    const db = c.firestore();
+    await setDoc(doc(db, 'exams/EXM'), { title: '정보 기말고사' });
+    await setDoc(doc(db, 'exam_questions/QM1'), { examId: 'EXM', order: 1, type: 'mc', title: '변수란 무엇인가', options: ['가', '나'], points: 10 });
+    await setDoc(doc(db, 'exam_questions/QM2'), { examId: 'EXM', order: 2, type: 'code', title: '합 구하기', points: 10 });
+    await setDoc(doc(db, 'exam_assignments/ASM'), { examId: 'EXM', schoolName: 'S중', grade: '1', class: '', status: 'OFF' });
+    await setDoc(doc(db, 'exam_progress/ASM_StuA'), { asId: 'ASM', studentId: 'StuA', status: 'submitted', totalScore: 5, totalPoints: 20, needsManual: false });
+    await setDoc(doc(db, 'exam_results/ASM_StuA_0'), { asId: 'ASM', studentId: 'StuA', questionId: 'QM1', qIdx: 0, type: 'mc', value: '1', score: 0, maxScore: 10, feedback: '', check: 'wrong' });
+    await setDoc(doc(db, 'exam_results/ASM_StuA_1'), { asId: 'ASM', studentId: 'StuA', questionId: 'QM2', qIdx: 1, type: 'code', value: 'x', score: 5, maxScore: 10, feedback: 'cases:1/2' });
+    await setDoc(doc(db, 'exam_progress/ASM_StuB'), { asId: 'ASM', studentId: 'StuB', status: 'submitted', totalScore: 0, totalPoints: 20, needsManual: true });
+    await setDoc(doc(db, 'exam_results/ASM_StuB_0'), { asId: 'ASM', studentId: 'StuB', questionId: 'QM1', qIdx: 0, type: 'mc', value: '0', score: 0, maxScore: 10, feedback: 'manual', check: 'correct' });
+    await setDoc(doc(db, 'exam_results/ASM_StuB_1'), { asId: 'ASM', studentId: 'StuB', questionId: 'QM2', qIdx: 1, type: 'code', value: 'y', score: 0, maxScore: 10, feedback: 'manual' });
+  });
+  await T.goto('http://localhost:8098/score.html');
+  await T.waitForSelector('#assessList .a-card', { timeout: 15000 });
+  await T.click('#btnFromExam');
+  await T.waitForSelector('#feExam option[value="EXM"]', { state: 'attached', timeout: 10000 });
+  await T.selectOption('#feExam', 'EXM');
+  await T.click('#feLoad');
+  await T.waitForSelector('#feSave', { timeout: 10000 });
+  const fe = await T.innerText('#fePrev');
+  ok(/채점 끝난 응시 1명/.test(fe) && /미제출 1명/.test(fe) && /채점 중 1명/.test(fe) && /만점 20/.test(fe), '교사: 시험에서 가져오기 미리보기(응시 1·미제출 1·채점 중 1 제외, 만점 20)');
+  await T.click('#feSave');
+  await T.waitForSelector('#dTable td.crit-cell', { timeout: 10000 });
+  const aid3 = await read(async db => (await getDocs(query(collection(db, 'score_assessments'), where('title', '==', '정보 기말고사')))).docs[0].id);
+  const [a3, e1, e3] = await read(async db => Promise.all([getDoc(doc(db, 'score_assessments', aid3)), getDoc(doc(db, 'score_results', `${aid3}_StuA`)), getDoc(doc(db, 'score_results', `${aid3}_StuC`))]).then(x => x.map(d => d.data())));
+  ok(a3.source.examId === 'EXM' && a3.criteria.length === 2 && a3.maxScore === 20 && a3.classKeys.length === 2, '교사: 시험 → 평가(출처·문항 2개 항목·만점 20·대상 반 2개)');
+  ok(e1.score === 5 && e1.items[0].reason === '오답' && e1.items[1].reason === '테스트 1/2 통과' && e1.fromExam === true && e3.status === 'missing', '교사: 문항 점수·안전한 사유(정답 번호 없음)·미제출 상태');
+  ok(!(await read(async db => (await getDoc(doc(db, 'score_results', `${aid3}_StuB`))).exists())), '교사: 채점 중인 학생은 가져오지 않음');
+  // 박학생 채점이 끝난 뒤 다시 가져오기
+  await env.withSecurityRulesDisabled(async c => {
+    const db = c.firestore();
+    await setDoc(doc(db, 'exam_results/ASM_StuB_0'), { score: 10, feedback: '' }, { merge: true });
+    await setDoc(doc(db, 'exam_results/ASM_StuB_1'), { score: 7, feedback: '반복문은 맞지만 출력 형식이 다름' }, { merge: true });
+    await setDoc(doc(db, 'exam_progress/ASM_StuB'), { totalScore: 17, needsManual: false }, { merge: true });
+  });
+  await T.click('#btnResync');
+  await T.waitForSelector('#rsOk', { timeout: 10000 });
+  ok(/새로 1/.test(await T.innerText('.modal-body')), '교사: 다시 가져오기 — 늦게 채점한 학생 1명 새로');
+  await T.click('#rsOk');
+  await T.waitForFunction(() => !document.getElementById('modal').classList.contains('open'));
+  const e2 = await read(async db => (await getDoc(doc(db, 'score_results', `${aid3}_StuB`))).data());
+  ok(e2.score === 17 && e2.items[0].reason === '' && /출력 형식/.test(e2.items[1].reason), '교사: 다시 가져오기 반영(선생님 피드백은 사유로)');
+  await T.click('#dClasses [data-pub="S중__g1__c2"]');
+  await T.waitForSelector('#dClasses [data-pub="S중__g1__c2"].on');
+  await S.goto('http://localhost:8099/score.html');
+  await S.waitForSelector('#list .item', { timeout: 10000 });
+  await S.click('#list .item:has-text("정보 기말고사")');
+  await S.waitForSelector('#detail .crit');
+  ok(/테스트 1\/2 통과/.test(await S.innerText('#detail')) && (await S.$$('#detail a[href="exam.html"]')).length === 1, '학생: 시험에서 온 평가 — 문항별 점수·사유, 시험 화면 링크');
+
   ok(errors.length === 0, '페이지 오류 없음' + (errors.length ? ' — ' + errors.join(' | ') : ''));
 } catch (e) {
   fails++; console.log('❌ 중단: ' + e.message);
