@@ -391,6 +391,35 @@ service cloud.firestore {
       }
     }
 
+    // ── 수행평가 점수 확인(ohweb score.html → ohinfo score.html) ──
+    // 감점사유 템플릿·평가는 교사(관리자)만. 학생 화면은 결과 문서 하나에 필요한 것
+    // (평가명·점수·상태·감점 문구)이 다 복사돼 있어서 이 둘을 읽을 필요가 없다.
+    match /score_templates/{id}   { allow read, write: if isAdmin(); }
+    match /score_assessments/{id} { allow read, write: if isAdmin(); }
+    // 결과(문서 ID `${평가ID}_${학생ID}`): 학생은 본인 것 중 공개된 것만 읽는다 —
+    // 목록 조회는 where studentId == 본인, published == true 로 해야 규칙을 통과한다.
+    // 학생이 쓸 수 있는 건 이의신청(dispute) 하나뿐: 점수·상태·공개 여부는 못 건드리고,
+    // 교사의 "확인함"(checked)을 스스로 켤 수 없다. 처리는 오프라인으로 한다.
+    function scoreDisputeOnly() {
+      let d = request.resource.data.dispute;
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['dispute'])
+        && d is map && d.keys().hasOnly(['text', 'at', 'checked'])
+        && d.text is string && d.text.size() > 0 && d.text.size() <= 500
+        && d.at == request.time
+        && d.checked == false;
+    }
+    match /score_results/{id} {
+      allow read: if isAdmin()
+          || (isOwnStudentAuth(resource.data.get('studentId', '')) && resource.data.get('published', false) == true);
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+          || (isOwnStudentAuth(resource.data.get('studentId', ''))
+              && resource.data.get('published', false) == true
+              && scoreDisputeOnly());
+    }
+    // 점수 수정 이력 — 교사만 본다(학생에게 안 보임).
+    match /score_results/{id}/history/{hid} { allow read, write: if isAdmin(); }
+
     // ── 수업일지(ohlog) ──
     // 교사는 Google 로그인으로 프로필을 만들고(status 'pending'), 관리자가 승인('approved')해야
     // 일지·계획·추가 수업을 읽고 쓸 수 있다. 학생 계정(@ohinfo.local, 이메일/비밀번호)은 못 만든다.

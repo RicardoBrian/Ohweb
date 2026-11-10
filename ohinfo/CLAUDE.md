@@ -20,6 +20,7 @@
 | `exam.html` | 시험 보기 — 1500줄, `// ── 제출 ──`, `// ── 문제 렌더링 ──` 등으로 검색. 서버는 `functions/api/exam.js` |
 | `qna.html` | 질문 게시판(`qna_threads`) |
 | `formfill.html`, `formlab.html` | 설문 제출 |
+| `score.html` | 수행평가 점수 확인·이의신청(`score_results`, 본인·공개된 것만). 홈 타일은 `appSettings` 의 `score` |
 | `ailab.html`·`ailab.js`, `aiapp.html`, `aicode.*`, `ai-*.js` | AI 실습실. `ai-i18n.js`(135KB)는 번역 문장 모음 — 통째로 읽지 말 것 |
 | `평택타이머1~3.html`, `활성함수.html`, `견본/`, `프롬프트/`, `vcexample/` | 연수·수업용 단독 페이지 |
 

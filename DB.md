@@ -16,6 +16,7 @@
 | `appSettings` | ohweb, ohinfo, ohnotion | 반 × 앱 공개 설정 · `ohnotion_site` = 노션 페이지 숨기기(closedSlugs)·다국어 링크(langs) · `ohnotion_follow_{주소}` = 발표 따라가기 |
 | `posts` | ohinfo `ohdlet.html`(게시판), ohweb | 게시판 글 |
 | `qna_threads` | ohinfo `qna.html`, ohweb | 질문 게시판 |
+| `score_templates`, `score_assessments`, `score_results`(+하위 `history`) | ohweb `score.html`(입력·공개), ohinfo `score.html`(학생 확인·이의신청) | 수행평가 점수·감점사유. 학생은 본인 결과 중 공개된 것만 읽는다 |
 | `student_forms`, `student_form_responses` | ohweb `forms.html`, ohinfo `formfill.html` | 설문·제출 |
 | `exams`, `exam_questions`, `exam_assignments`, `exam_progress`, `exam_answers`, `exam_results` | ohweb `admin.html`(시험 관리), ohinfo `exam.html`, `ohinfo/functions/api/exam.js` | 시험 |
 | `ai_projects`(+하위 `images`, `feedback`), `ai_apps`, `ai_pairs`, `ai_assignments` | ohinfo `ailab*`, `aiapp.html`, ohweb `admin-ailab.js` | AI 실습실 |

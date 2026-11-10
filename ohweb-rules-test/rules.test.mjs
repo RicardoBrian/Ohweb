@@ -293,5 +293,52 @@ await T('노션: 비로그인이 페이지 목록·개별 읽기(학생 화면)'
   await T('수업일지: 관리자가 교사 일지 읽기', getDocs(collection(admin, 'classlog_users/tch1/logs')), true);
 }
 
+// ── 수행평가 점수 확인 ── SA1: 공개된 평가(StuA·StuB), SA2: 비공개(StuA)
+{
+  await env.withSecurityRulesDisabled(async c => {
+    const db = c.firestore();
+    const r = (aid, sid, published, extra = {}) => ({ assessmentId: aid, studentId: sid, classKey: 'S__g1__c2', title: '수행1', subject: '정보', term: '2026-2', maxScore: 20, score: 17, status: 'normal', deductions: [{ code: 'A1', label: '분량 미달' }], memo: '', published, ...extra });
+    await setDoc(doc(db, 'score_templates/T1'), { subject: '정보', items: [{ code: 'A1', label: '분량 미달' }] });
+    await setDoc(doc(db, 'score_assessments/SA1'), { title: '수행1', subject: '정보', maxScore: 20, classKeys: ['S__g1__c2'], publishedClasses: ['S__g1__c2'] });
+    await setDoc(doc(db, 'score_results/SA1_StuA'), r('SA1', 'StuA', true));
+    await setDoc(doc(db, 'score_results/SA1_StuB'), r('SA1', 'StuB', true, { score: 12 }));
+    await setDoc(doc(db, 'score_results/SA2_StuA'), r('SA2', 'StuA', false));
+    await setDoc(doc(db, 'score_results/SA1_StuA/history/h1'), { before: { score: 15 }, after: { score: 17 } });
+  });
+  const dispute = (extra = {}) => ({ dispute: { text: '감점 사유를 다시 봐 주세요', at: serverTimestamp(), checked: false, ...extra } });
+  console.log('── 수행평가: 공격 ──');
+  await T('수행평가: 비로그인이 결과 읽기', getDoc(doc(anon, 'score_results/SA1_StuA')), false);
+  await T('수행평가: 다른 학생 결과 읽기', getDoc(doc(B, 'score_results/SA1_StuA')), false);
+  await T('수행평가: 다른 학생 결과 목록 조회', getDocs(query(collection(B, 'score_results'), where('studentId', '==', 'StuA'), where('published', '==', true))), false);
+  await T('수행평가: 조건 없이 전체 결과 조회', getDocs(collection(A, 'score_results')), false);
+  await T('수행평가: 본인 것이라도 공개 조건 없이 조회(비공개 포함)', getDocs(query(collection(A, 'score_results'), where('studentId', '==', 'StuA'))), false);
+  await T('수행평가: 비공개 결과 직접 읽기', getDoc(doc(A, 'score_results/SA2_StuA')), false);
+  await T('수행평가: 학생이 평가 목록 읽기', getDocs(collection(A, 'score_assessments')), false);
+  await T('수행평가: 학생이 감점사유 템플릿 읽기', getDocs(collection(A, 'score_templates')), false);
+  await T('수행평가: 학생이 수정 이력 읽기', getDocs(collection(A, 'score_results/SA1_StuA/history')), false);
+  await T('수행평가: 학생이 본인 점수 올리기', updateDoc(doc(A, 'score_results/SA1_StuA'), { score: 20 }), false);
+  await T('수행평가: 학생이 감점사유 지우기', updateDoc(doc(A, 'score_results/SA1_StuA'), { deductions: [] }), false);
+  await T('수행평가: 이의신청하며 점수도 같이 바꾸기', updateDoc(doc(A, 'score_results/SA1_StuA'), { ...dispute(), score: 20 }), false);
+  await T('수행평가: 이의신청을 "확인함"으로 넣기', updateDoc(doc(A, 'score_results/SA1_StuA'), dispute({ checked: true })), false);
+  await T('수행평가: 이의신청 시각 조작', updateDoc(doc(A, 'score_results/SA1_StuA'), dispute({ at: new Date('2020-01-01') })), false);
+  await T('수행평가: 이의신청 500자 초과', updateDoc(doc(A, 'score_results/SA1_StuA'), dispute({ text: 'x'.repeat(501) })), false);
+  await T('수행평가: 빈 이의신청', updateDoc(doc(A, 'score_results/SA1_StuA'), dispute({ text: '' })), false);
+  await T('수행평가: 이의신청에 모르는 필드', updateDoc(doc(A, 'score_results/SA1_StuA'), dispute({ admin: true })), false);
+  await T('수행평가: 다른 학생 결과에 이의신청', updateDoc(doc(B, 'score_results/SA1_StuA'), dispute()), false);
+  await T('수행평가: 비공개 결과에 이의신청', updateDoc(doc(A, 'score_results/SA2_StuA'), dispute()), false);
+  await T('수행평가: 학생이 결과 만들기', setDoc(doc(A, 'score_results/SA9_StuA'), { studentId: 'StuA', published: true, score: 20 }), false);
+  await T('수행평가: 학생이 결과 지우기', deleteDoc(doc(A, 'score_results/SA1_StuA')), false);
+  await T('수행평가: 이메일 미인증 관리자 사칭', getDocs(collection(fakeAdmin, 'score_results')), false);
+  console.log('── 수행평가: 정상 기능 ──');
+  await T('수행평가: 학생이 공개된 내 결과 목록', getDocs(query(collection(A, 'score_results'), where('studentId', '==', 'StuA'), where('published', '==', true))), true);
+  await T('수행평가: 학생이 공개된 내 결과 열기', getDoc(doc(A, 'score_results/SA1_StuA')), true);
+  await T('수행평가: 학생 이의신청', updateDoc(doc(A, 'score_results/SA1_StuA'), dispute()), true);
+  await T('수행평가: 학생 이의신청 다시 보내기', updateDoc(doc(A, 'score_results/SA1_StuA'), dispute({ text: '한 번 더' })), true);
+  await T('수행평가: 관리자 템플릿·평가 쓰기', (async () => { await setDoc(doc(admin, 'score_templates/T2'), { subject: '과학', items: [] }); await setDoc(doc(admin, 'score_assessments/SA3'), { title: '새 평가' }); })(), true);
+  await T('수행평가: 관리자 결과 입력·이력 남기기·공개', (async () => { const b = writeBatch(admin); b.set(doc(admin, 'score_results/SA3_StuB'), { assessmentId: 'SA3', studentId: 'StuB', score: 10, published: false }); b.set(doc(admin, 'score_results/SA1_StuB/history/h2'), { before: { score: 12 }, after: { score: 13 } }); b.update(doc(admin, 'score_results/SA1_StuB'), { score: 13 }); await b.commit(); await updateDoc(doc(admin, 'score_results/SA3_StuB'), { published: true }); })(), true);
+  await T('수행평가: 관리자 이의신청 확인함·결과 목록·이력 읽기', (async () => { await updateDoc(doc(admin, 'score_results/SA1_StuA'), { 'dispute.checked': true }); await getDocs(query(collection(admin, 'score_results'), where('assessmentId', '==', 'SA1'))); await getDocs(collection(admin, 'score_results/SA1_StuA/history')); })(), true);
+  await T('수행평가: 관리자 결과 삭제', deleteDoc(doc(admin, 'score_results/SA3_StuB')), true);
+}
+
 console.log(fails ? `\n실패 ${fails}건` : '\n전부 통과'); process.exitCode = fails ? 1 : 0;
 await env.cleanup();
