@@ -257,12 +257,16 @@ export function toolbox(ctx) {
   };
 }
 
-// 변수 칸: Blockly 기본 변수 블록 + 무대에 변수 보이기/숨기기
+// 변수 칸: Blockly 기본 변수 칸([변수 만들기] 버튼 + 블록) + 무대에 변수 보이기/숨기기
 export function registerVarsFlyout(B, ws) {
   ws.registerToolboxCategoryCallback('VARS_PLUS', w => {
-    const list = B.Variables.flyoutCategoryBlocks(w);
-    if (w.getAllVariables().length) for (const type of ['va_show', 'va_hide']) {
-      const el = B.utils.xml.createElement('block'); el.setAttribute('type', type); el.setAttribute('gap', '8'); list.push(el);
+    const list = B.Variables.flyoutCategory(w);
+    // 보이기/숨기기 블록에는 있는 변수를 넣어 둔다(비워 두면 Blockly가 'i' 변수를 새로 만든다)
+    const vars = w.getVariablesOfType('').sort((x, y) => x.name.localeCompare(y.name));
+    if (vars.length) for (const type of ['va_show', 'va_hide']) {
+      const el = B.utils.xml.createElement('block'); el.setAttribute('type', type); el.setAttribute('gap', '8');
+      const f = B.utils.xml.createElement('field'); f.setAttribute('name', 'VAR'); f.setAttribute('id', vars[0].getId()); f.textContent = vars[0].name;
+      el.appendChild(f); list.push(el);
     }
     return list;
   });
