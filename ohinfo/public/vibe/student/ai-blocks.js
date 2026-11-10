@@ -153,6 +153,9 @@ export function defineBlocks(B, J, ctx) {
   F.ct_wait = b => `await api.wait(${v(b, 'SEC')});\n`;
   F.ct_forever = b => `while (true) {\n${g.statementToCode(b, 'DO')}  await api.tick();\n}\n`;
   F.ct_stop = () => 'api.stopAll();\n';
+  // = < > 비교: 스크래치처럼 둘 다 숫자면 숫자로, 아니면 글자로(대소문자 무시). 칸에 글자도 쓸 수 있게.
+  const CMP = { EQ: '=', NEQ: '!=', LT: '<', LTE: '<=', GT: '>', GTE: '>=' };
+  F.logic_compare = b => [`api.cmp(${v(b, 'A', O.NONE, "''")}, '${CMP[b.getFieldValue('OP')] || '='}', ${v(b, 'B', O.NONE, "''")})`, O.FUNCTION_CALL];
   const cond = b => v(b, 'C', O.NONE, 'false');
   const tg = b => q(b.getFieldValue('T'));
   const varName = b => { const m = b.workspace.getVariableById(b.getFieldValue('VAR')); return m ? m.name : ''; };
@@ -245,7 +248,7 @@ export function toolbox(ctx) {
         b('se_timer'), b('se_reset_timer'), b('se_current')] },
       { kind: 'category', name: t('b_cOp'), colour: COLORS.op, contents: [
         b('math_arithmetic', { A: num(1), B: num(1) }), b('math_random_int', { FROM: num(1), TO: num(10) }),
-        b('logic_compare', { A: num(0), B: num(50) }), b('logic_operation'), b('logic_negate'),
+        b('logic_compare', { A: txt(''), B: txt('50') }), b('logic_operation'), b('logic_negate'),
         b('text_join'), b('op_letter', { S: txt(t('b_defWord')), I: num(1) }), b('op_length', { S: txt(t('b_defWord')) }), b('op_contains', { A: txt(t('b_defWord')), B: txt(t('b_defLetter')) }),
         b('math_modulo', { DIVIDEND: num(10), DIVISOR: num(3) }), b('math_round', { NUM: num(3.5) }), b('math_single', { NUM: num(9) }), b('math_trig', { NUM: num(45) }),
         b('text'), b('math_number')] },
