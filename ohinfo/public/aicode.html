@@ -49,6 +49,9 @@
     .ac-f { display: grid; grid-template-columns: 1fr 120px; gap: 6px; align-items: center; margin: 4px 0; font-size: .88rem; }
     .ac-f input, .ac-f select { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border-card); background: var(--bg-elevated); color: var(--text); width: 100%; }
     .ac-res { font-size: 1.15rem; font-weight: 800; margin-bottom: 6px; }
+    .ac-fb { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border-card); display: flex; flex-direction: column; gap: 8px; font-size: .88rem; }
+    .ac-opts { display: flex; flex-wrap: wrap; gap: 6px; }
+    .ac-fb .ac-btn { padding: 8px 12px; font-size: .85rem; }
     .ac-bar { display: grid; grid-template-columns: minmax(60px, 34%) 1fr 42px; gap: 8px; align-items: center; font-size: .84rem; margin: 3px 0; }
     .ac-bar .tr { height: 10px; border-radius: 999px; background: var(--hairline); overflow: hidden; }
     .ac-bar .tr span { display: block; height: 100%; background: #0fbd8c; border-radius: inherit; transition: width .4s; }
@@ -75,6 +78,6 @@
 <main class="ac-main" id="main"><div class="ac-msg" id="boot">…</div></main>
 <input type="file" id="filePick" accept="image/*" hidden>
 <div id="toast" aria-live="polite"></div>
-<script type="module" src="aicode.js?v=202611100003"></script>
+<script type="module" src="aicode.js?v=202611100004"></script>
 </body>
 </html>

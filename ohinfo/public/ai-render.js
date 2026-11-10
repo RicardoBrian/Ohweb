@@ -2,7 +2,7 @@
 // 디자인 5종은 화면 배치가 같고 색·질감만 다르다(ai-themes.css).
 
 import { escHtml } from './escape.js';
-import { labelName, phraseFor, UNSURE, UNSURE_THRESHOLD, LANGS } from './ai-core.js?v=202611100003';
+import { labelName, phraseFor, UNSURE, UNSURE_THRESHOLD, LANGS } from './ai-core.js?v=202611100004';
 
 export const THEMES = ['minimal', 'bw', 'glass', 'neon', 'warm', 'pastel', 'forest', 'ocean', 'space', 'retro', 'comic'];
 // 강조색·글꼴은 디자인과 따로 고른다. 공개 웹앱에 그대로 쓰이므로 이 목록에 있는 값만 받는다.
@@ -92,7 +92,7 @@ function fbHtml(app, lang, t, state) {
       <button type="button" class="aa-lang" data-act="fbcancel">${escHtml(t('fbCancel'))}</button></div>
       ${state.fb === 'wrong' && state.fbErr ? `<div class="aa-err">${escHtml(state.fbErr)}</div>` : ''}</div>`;
   }
-  return `<div class="aa-fb"><span class="aa-fbq">${escHtml(t('fbAsk'))}<br><small>${escHtml(t('fbPrivacy'))}</small></span>
+  return `<div class="aa-fb"><span class="aa-fbq">${escHtml(t('fbAsk'))}<br><small>${escHtml(t(app.camFeedback ? 'fbPrivacyCam' : 'fbPrivacy'))}</small></span>
     <button type="button" class="aa-opt" data-act="fbok">👍 ${escHtml(t('fbRight'))}</button>
     <button type="button" class="aa-opt" data-act="fbwrong">👎 ${escHtml(t('fbWrong'))}</button></div>`;
 }
