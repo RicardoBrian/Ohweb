@@ -14,12 +14,12 @@ import {
 } from '/vibe/shared/fake-firebase/firebase-firestore.js';
 import { loadSession, verifyStudentAuth, authReady, clearSession } from './session.js';
 import { escHtml } from './escape.js';
-import * as C from './ai-core.js?v=202611100002';
-import { makeT, getLang, setLang } from './ai-i18n.js?v=202611100002';
-import { prepareImage, prepareCover, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202611100002';
-import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, refetchTrainPhoto, saveModelToDrive, deviceId, devPhotoPut, devPhotoGet, devPhotoDel } from './ai-drive.js?v=202611100002';
-import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202611100002';
-import { appHtml, probsByLabel, THEMES, ACCENTS, FONTS, ensureFont } from './ai-render.js?v=202611100002';
+import * as C from './ai-core.js?v=202611100003';
+import { makeT, getLang, setLang } from './ai-i18n.js?v=202611100003';
+import { prepareImage, prepareCover, bindDropZone, clearZones, fetchFirstImage, onStrayDrop } from './ai-image.js?v=202611100003';
+import { Uploader, driveConfigured, trashFile, fetchTrainPhotos, refetchTrainPhoto, saveModelToDrive, deviceId, devPhotoPut, devPhotoGet, devPhotoDel } from './ai-drive.js?v=202611100003';
+import { loadModel, predict, imageFromSrc, imageFromBlob, trainModel, loadDriveModel, rememberModel, TRAIN_PARAMS } from './ai-model.js?v=202611100003';
+import { appHtml, probsByLabel, THEMES, ACCENTS, FONTS, ensureFont } from './ai-render.js?v=202611100003';
 
 const E = escHtml;
 const $ = id => document.getElementById(id);
@@ -78,7 +78,7 @@ let TB = null, _tbLoading = null;
 const TBon = () => (isTable() && TB ? TB : null);
 function loadTable() {
   if (_tbLoading) return _tbLoading;
-  _tbLoading = import('./ai-table.js?v=202611100002').then(M => {
+  _tbLoading = import('./ai-table.js?v=202611100003').then(M => {
     TB = M.makeTable({
       S, E, t: (k, v) => t(k, v), $, C, isLeader, members, nameOf, leaderName, pref, safeUpdate, schedule, toast, nextBtn, draftOr, cols, lockedTopic,
       ratingHtml, causeHtml, debounce, serverTimestamp, go: n => actions.step(n),
@@ -93,7 +93,7 @@ let TX = null, _txLoading = null;
 const TXon = () => (isText() && TX ? TX : null);
 function loadText() {
   if (_txLoading) return _txLoading;
-  _txLoading = import('./ai-text.js?v=202611100002').then(M => {
+  _txLoading = import('./ai-text.js?v=202611100003').then(M => {
     TX = M.makeText({
       S, E, t: (k, v) => t(k, v), $, C, isLeader, members, leaderName, pref, safeUpdate, schedule, toast, nextBtn, tipsHtml, cols,
       ratingHtml, causeHtml, serverTimestamp, setDoc, deleteDoc, doc, db, labelsOf, imgs, isMine, ownerTag, ownerChips, namesOf, minTrain, minTest, ms,
@@ -1146,7 +1146,7 @@ const actions = {
   // ✍️ 그리기 · 📸 카메라: 필요할 때만 불러온다.
   async cap(mode, el) {
     const [kind, labelId] = el.dataset.zone.split(':');
-    const M = await import('./ai-capture.js?v=202611100002');
+    const M = await import('./ai-capture.js?v=202611100003');
     if (kind === 'cover') return M.openDraw({ t, title: t('coverTitle'), single: true, onAdd: blob => setCover([blob], []) });
     const lab = labelById(labelId);
     const local = mode === 'camera' && camLocal() && kind !== 'try';

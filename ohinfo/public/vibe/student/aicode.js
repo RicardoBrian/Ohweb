@@ -7,10 +7,10 @@ import { db } from './firebase-config.js';
 import { doc, getDoc, updateDoc, addDoc, collection, serverTimestamp } from '/vibe/shared/fake-firebase/firebase-firestore.js';
 import { loadSession, authReady } from './session.js';
 import { escHtml, SAFE_ID } from './escape.js';
-import { makeT, getLang, setLang } from './ai-i18n.js?v=202611100002';
-import { labelName, newId, LANGS, classBoardKey, nv } from './ai-core.js?v=202611100002';
-import { defineBlocks, toolbox, starter, compile, build, COSTUMES } from './ai-blocks.js?v=202611100002';
-import { Stage, Runtime } from './ai-stage.js?v=202611100002';
+import { makeT, getLang, setLang } from './ai-i18n.js?v=202611100003';
+import { labelName, newId, LANGS, classBoardKey, nv } from './ai-core.js?v=202611100003';
+import { defineBlocks, toolbox, starter, compile, build, COSTUMES, registerVarsFlyout } from './ai-blocks.js?v=202611100003';
+import { Stage, Runtime } from './ai-stage.js?v=202611100003';
 
 const E = escHtml;
 const $ = id => document.getElementById(id);
@@ -144,7 +144,7 @@ function bindInputs() {
     $('photoBtn').addEventListener('click', () => $('filePick').click());
     $('filePick').addEventListener('change', () => { const f = $('filePick').files[0]; $('filePick').value = ''; if (f) setPhoto(f); });
     const d = $('drawBtn');
-    if (d) d.addEventListener('click', async () => { const M = await import('./ai-capture.js?v=202611100002'); M.openDraw({ t, single: true, onAdd: b => setPhoto(b) }); });
+    if (d) d.addEventListener('click', async () => { const M = await import('./ai-capture.js?v=202611100003'); M.openDraw({ t, single: true, onAdd: b => setPhoto(b) }); });
   }
   if (S.kind === 'table') document.querySelectorAll('[data-fi]').forEach(el => el.addEventListener('input', () => {
     const i = Number(el.dataset.fi), f = S.app.table.features[i];
@@ -182,9 +182,9 @@ function setPhoto(blob) {
 // ── AI ──
 let _modelP = null;
 function loadModel() {
-  if (S.kind === 'text') _modelP = import('./ai-text-core.js?v=202611100002').then(M => ({ text: M }));
-  else if (S.kind === 'table') _modelP = import('./ai-table-core.js?v=202611100002').then(M => ({ table: M }));
-  else _modelP = import('./ai-model.js?v=202611100002').then(async M => ({ M, loaded: await (S.app.modelVersion ? M.loadDriveModel(null, pid, S.app.modelVersion) : M.loadModel(S.app.modelUrl)) }));
+  if (S.kind === 'text') _modelP = import('./ai-text-core.js?v=202611100003').then(M => ({ text: M }));
+  else if (S.kind === 'table') _modelP = import('./ai-table-core.js?v=202611100003').then(M => ({ table: M }));
+  else _modelP = import('./ai-model.js?v=202611100003').then(async M => ({ M, loaded: await (S.app.modelVersion ? M.loadDriveModel(null, pid, S.app.modelVersion) : M.loadModel(S.app.modelUrl)) }));
   _modelP.catch(e => { console.error(e); toast(t('k_loadFail')); });
 }
 async function classify(kind, arg) {
@@ -242,6 +242,7 @@ function initBlocks() {
     trashcan: !play, zoom: { controls: true, wheel: true, startScale: 0.75 }, move: { scrollbars: true, drag: true, wheel: true },
     grid: { spacing: 24, length: 2, colour: '#e3e3e8', snap: true },
   });
+  registerVarsFlyout(window.Blockly, S.ws);
   let json = null;
   try { json = S.code && S.code.json ? JSON.parse(S.code.json) : null; } catch { json = null; }
   try { window.Blockly.serialization.workspaces.load(json || starter(ctx), S.ws); }
@@ -282,7 +283,23 @@ function initStage() {
     if (_askResolve) { _askResolve(v); _askResolve = null; }
   });
   window.__aicode = { stage, rt };   // 시험·디버그용(화면 동작에는 쓰지 않음)
-  $('stage').addEventListener('pointerdown', e => { if (stage.hit(e.clientX, e.clientY)) rt.click(); });
+  // 마우스: 무대 좌표·누름 상태(감지 블록), 캐릭터/무대 클릭(이벤트 블록)
+  const cv = $('stage');
+  const track = e => { const p = stage.toStage(e.clientX, e.clientY); stage.mouse.x = Math.round(Math.max(-240, Math.min(240, p.x))); stage.mouse.y = Math.round(Math.max(-180, Math.min(180, p.y))); };
+  cv.addEventListener('pointermove', track);
+  cv.addEventListener('pointerdown', e => { track(e); stage.mouse.down = true; if (stage.hit(e.clientX, e.clientY)) rt.click(); else rt.stageClick(); });
+  window.addEventListener('pointerup', () => { stage.mouse.down = false; });
+  // 키보드: 글 쓰는 칸·블록 편집 중에는 무대로 보내지 않는다
+  const KEY = { ' ': 'space', ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
+  const keyOf = e => KEY[e.key] || (/^[a-z0-9]$/i.test(e.key) ? e.key.toLowerCase() : '');
+  const typing = e => { const el = e.target; return el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable || (el.closest && el.closest('#blocklyDiv'))); };
+  window.addEventListener('keydown', e => {
+    const k = keyOf(e); if (!k || typing(e) || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!rt.stopped && KEY[e.key]) e.preventDefault();   // 실행 중 화살표·스페이스로 화면이 움직이지 않게
+    rt.key(k, true);
+  });
+  window.addEventListener('keyup', e => { const k = keyOf(e); if (k) rt.key(k, false); });
+  window.addEventListener('blur', () => rt.keys.clear());
 }
 function run() {
   let factory;
