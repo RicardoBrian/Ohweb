@@ -5,7 +5,7 @@
 (function () {
   var MENU = [
     ['관리', [['schools', '학교', 'school'], ['students', '학생', 'people'], ['apps', '앱 설정', 'grid']]],
-    ['수업', [['paddlet', '정보 게시판', 'board'], ['exam', '시험', 'clipboard'], ['score', '수행평가', 'check'], ['ailab', 'AI 실험실', 'ai'],
+    ['수업', [['paddlet', '정보 게시판', 'board'], ['exam', '시험', 'clipboard'], ['score', '시험 점수 확인', 'check'], ['ailab', 'AI 실험실', 'ai'],
               ['forms', '설문지', 'doc'], ['messages', '학생 질문', 'chat']]],
     ['도구', [['timer', '타이머', 'timer'], ['notice', '공지 메모', 'notice'], ['settle', '정산 관리', 'wallet']]],
   ];
