@@ -45,3 +45,13 @@ score_results/{id}/history/{id}
 - 결과 화면 아래 서명란(canvas) + "확인했습니다". `ack:{signedAt, signature(png), scoreAtSign, deductionsAtSign}` 를 결과 문서에 추가.
 - 규칙에 학생이 `ack` 만 쓸 수 있는 분기를 `scoreDisputeOnly` 처럼 추가.
 - 공개 후 점수를 고치면 `ack` 를 지워 재서명을 받는다(교사 저장 시 함께 처리). 교사 화면에 서명 현황·인쇄.
+
+## 추가 (2026-11-10) — 항목별 점수·비고·제출물
+- 메뉴 이름은 **"시험 점수 확인"**(학생 홈 타일·학생 화면·관리자 메뉴).
+- **평가 항목**: `score_assessments.criteria [{label,max}]`, 결과에 `items [{label,max,score,reason}]`(이름·배점 복사), 총점 = 항목 합.
+  점수 파일에 `① 항목(배점)` / `① 감점 사유` 머리글이 있으면 그대로 읽는다 — 채점 시트 상세 탭을 CSV 로 받아 바로 올림. 항목이 없는 평가는 파일 머리글로 항목을 정한다.
+- **학번**(10101) 열로 학생을 찾을 수 있다(평가 대상 반 학생 먼저).
+- **비고**: 선생님만 — `score_notes/{평가ID}.notes{학생ID}`(결과 문서에 두면 학생이 읽을 수 있어서 분리).
+- **제출물**: 선생님 드라이브에 그대로 둔다. 교사 화면 "제출물 연결"에 폴더 주소 → Apps Script `score-drive.gs`(list) 가 하위 폴더까지 훑고, 파일 이름의 학번으로 학생에 붙여 결과 문서 `files [{id,name,mimeType,size}]` 에 저장(선생님만 씀).
+  학생은 `score-drive.gs`(file) 로 받는다 — 스크립트가 학생 토큰으로 결과 문서를 읽어(규칙: 본인·공개된 것만) `files` 에 있는 파일만 보낸다. 드라이브 공유 설정은 바꾸지 않는다.
+- 보기: 내려받지 않고 팝업(`score-viewer.js`, 두 사이트에 같은 사본) — 그림 크게, 글 본문, `.sb3` 는 TurboWarp scaffolding 으로 바로 실행.

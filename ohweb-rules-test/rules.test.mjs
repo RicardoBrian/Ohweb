@@ -304,6 +304,8 @@ await T('노션: 비로그인이 페이지 목록·개별 읽기(학생 화면)'
     await setDoc(doc(db, 'score_results/SA1_StuB'), r('SA1', 'StuB', true, { score: 12 }));
     await setDoc(doc(db, 'score_results/SA2_StuA'), r('SA2', 'StuA', false));
     await setDoc(doc(db, 'score_results/SA1_StuA/history/h1'), { before: { score: 15 }, after: { score: 17 } });
+    await setDoc(doc(db, 'score_notes/SA1'), { notes: { StuA: '후하게 8점 줌' } });
+    await setDoc(doc(db, 'score_results/SA1_StuB'), { files: [{ id: 'F1', name: '20260930_10204_박학생.png' }] }, { merge: true });
   });
   const dispute = (extra = {}) => ({ dispute: { text: '감점 사유를 다시 봐 주세요', at: serverTimestamp(), checked: false, ...extra } });
   console.log('── 수행평가: 공격 ──');
@@ -328,6 +330,9 @@ await T('노션: 비로그인이 페이지 목록·개별 읽기(학생 화면)'
   await T('수행평가: 비공개 결과에 이의신청', updateDoc(doc(A, 'score_results/SA2_StuA'), dispute()), false);
   await T('수행평가: 학생이 결과 만들기', setDoc(doc(A, 'score_results/SA9_StuA'), { studentId: 'StuA', published: true, score: 20 }), false);
   await T('수행평가: 학생이 결과 지우기', deleteDoc(doc(A, 'score_results/SA1_StuA')), false);
+  await T('수행평가: 학생이 비고(선생님 메모) 읽기', getDoc(doc(A, 'score_notes/SA1')), false);
+  await T('수행평가: 학생이 제출물 목록에 남의 파일 넣기', updateDoc(doc(B, 'score_results/SA1_StuB'), { files: [{ id: 'OTHER', name: 'x.png' }] }), false);
+  await T('수행평가: 이의신청하며 제출물 목록 바꾸기', updateDoc(doc(B, 'score_results/SA1_StuB'), { ...dispute(), files: [{ id: 'OTHER' }] }), false);
   await T('수행평가: 이메일 미인증 관리자 사칭', getDocs(collection(fakeAdmin, 'score_results')), false);
   console.log('── 수행평가: 정상 기능 ──');
   await T('수행평가: 학생이 공개된 내 결과 목록', getDocs(query(collection(A, 'score_results'), where('studentId', '==', 'StuA'), where('published', '==', true))), true);
@@ -337,6 +342,8 @@ await T('노션: 비로그인이 페이지 목록·개별 읽기(학생 화면)'
   await T('수행평가: 관리자 템플릿·평가 쓰기', (async () => { await setDoc(doc(admin, 'score_templates/T2'), { subject: '과학', items: [] }); await setDoc(doc(admin, 'score_assessments/SA3'), { title: '새 평가' }); })(), true);
   await T('수행평가: 관리자 결과 입력·이력 남기기·공개', (async () => { const b = writeBatch(admin); b.set(doc(admin, 'score_results/SA3_StuB'), { assessmentId: 'SA3', studentId: 'StuB', score: 10, published: false }); b.set(doc(admin, 'score_results/SA1_StuB/history/h2'), { before: { score: 12 }, after: { score: 13 } }); b.update(doc(admin, 'score_results/SA1_StuB'), { score: 13 }); await b.commit(); await updateDoc(doc(admin, 'score_results/SA3_StuB'), { published: true }); })(), true);
   await T('수행평가: 관리자 이의신청 확인함·결과 목록·이력 읽기', (async () => { await updateDoc(doc(admin, 'score_results/SA1_StuA'), { 'dispute.checked': true }); await getDocs(query(collection(admin, 'score_results'), where('assessmentId', '==', 'SA1'))); await getDocs(collection(admin, 'score_results/SA1_StuA/history')); })(), true);
+  await T('수행평가: 관리자 비고 쓰기·읽기', (async () => { await setDoc(doc(admin, 'score_notes/SA1'), { notes: { StuB: '확인 필요' } }, { merge: true }); await getDoc(doc(admin, 'score_notes/SA1')); })(), true);
+  await T('수행평가: 학생이 본인 결과의 제출물 목록 읽기', getDoc(doc(B, 'score_results/SA1_StuB')), true);
   await T('수행평가: 관리자 결과 삭제', deleteDoc(doc(admin, 'score_results/SA3_StuB')), true);
 }
 
