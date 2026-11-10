@@ -131,7 +131,8 @@ function student(ref) {
     }
     // 선생님이 다른(하위) 페이지에서 발표 중이면 그 페이지로 옮겨 간다.
     if (data.path && !samePath(data.path, location.pathname)) {
-      location.replace(`${data.path}#present=${(data.slide || 0) + 1}`);
+      // ?lang=en(다국어 학습지에서 고른 언어)은 그대로 들고 간다.
+      location.replace(`${data.path}${location.search}#present=${(data.slide || 0) + 1}`);
       return;
     }
     following = true;

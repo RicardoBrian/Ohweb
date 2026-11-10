@@ -19,7 +19,7 @@
  * 먼저 실행). 우리 주소일 수 없는 요청(점이 들어간 파일, admin 등 예약어)은 바로
  * next()로 넘기고, 어떤 예외도 밖으로 던지지 않는다.
  */
-import { escapeHtml, getPage, isClosed, parsePath, recordStat } from '../lib/shared.js';
+import { escapeHtml, getPage, getSiteSettings, parsePath, recordStat } from '../lib/shared.js';
 import { getRendered } from '../lib/render.js';
 import { explainError } from '../lib/notion.js';
 import { getPassword, isUnlocked, passwordMatches, unlockCookie } from '../lib/lock.js';
@@ -27,7 +27,7 @@ import { getPassword, isUnlocked, passwordMatches, unlockCookie } from '../lib/l
 // 학생 화면의 CSS/JS 주소 뒤에 붙는 버전. view.css나 view.js를 고치면 이 값을 바꾼다 —
 // 그래야 브라우저·Cloudflare에 남은 예전 파일 대신 새 파일을 받는다(첫 iframe 버전의
 // view.css가 남아 여백·HTML 창 크기가 다 깨져 보였던 일이 있었다).
-const ASSET_V = '2026111003';
+const ASSET_V = '2026111101';
 
 function html(body, status = 200) {
   return new Response(body, {
@@ -131,7 +131,7 @@ function renderLoading(done) {
 
 const KATEX = 'https://cdn.jsdelivr.net/npm/katex@0.16.11/dist';
 const PRISM = 'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0';
-function renderDoc(page, sub, { data, source }) {
+function renderDoc(page, sub, { data, source }, { langs = [], lang = 'ko' } = {}) {
   const pageTitle = data.title;
   const fmt = (iso) => iso ? new Date(iso).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
   const crumbs = sub
@@ -151,8 +151,9 @@ function renderDoc(page, sub, { data, source }) {
   const icon = data.icon ? escapeHtml(data.icon) : (data.iconImg || '');
   const category = (page.category || '').trim();
   return shell(category ? `${pageTitle} — ${category}` : pageTitle, `${topbar(`
-  <span class="bar-title${category ? '' : ' no-sep'}">${escapeHtml(page.title || page.slug)}</span>
+  <span class="bar-title${category ? '' : ' no-sep'}">${escapeHtml(lang !== 'ko' ? pageTitle : (page.title || page.slug))}</span>
   <div class="bar-actions">
+    ${langs.length && !sub ? '<button type="button" class="btn" id="langBtn" title="언어 / Language">🌐</button>' : ''}
     <button type="button" class="btn" id="presentBtn" title="슬라이드로 발표하기 (구분선/제목 1마다 한 장)">▶ 발표</button>
     <button type="button" class="btn warn" id="reportBtn">이상해요</button>
   </div>`, category)}
@@ -169,7 +170,8 @@ ${data.coverUrl ? `<div class="cover" style="background-image:url('${escapeHtml(
 <script src="/view.js?v=${ASSET_V}" defer></script>
 <script src="/present.js?v=${ASSET_V}" defer></script>
 <script src="/lightbox.js?v=${ASSET_V}" defer></script>
-<script type="module" src="/follow.js?v=${ASSET_V}"></script>`, { head, bodyAttrs: ` class="doc-page" data-slug="${escapeHtml(page.slug)}"` });
+<script src="/lang.js?v=${ASSET_V}" defer></script>
+<script type="module" src="/follow.js?v=${ASSET_V}"></script>`, { head, bodyAttrs: ` class="doc-page" data-slug="${escapeHtml(page.slug)}"${langs.length && !sub ? ` data-langs="${escapeHtml(langs.join(','))}" data-lang="${escapeHtml(lang)}"` : ''}` });
 }
 
 export async function onRequest(context) {
@@ -188,7 +190,13 @@ export async function onRequest(context) {
     if (!route) return next();
 
     // 관리 페이지에서 이 주소를 숨겨 뒀으면(시험 기간) 하위 페이지까지 열지 않는다.
-    if (await isClosed(context, route.slug)) return renderClosed(route.slug);
+    const site = await getSiteSettings(context);
+    if (site.closedSlugs.includes(route.slug)) return renderClosed(route.slug);
+    // 다국어 학습지: ?lang=en 이면 그 언어의 노션 페이지를 그린다(없는 코드면 기본 한국어).
+    // 하위 페이지(/주소/ID)는 ID가 이미 그 언어 페이지 안의 것이라 그대로 둔다.
+    const langs = site.langs[route.slug] || [];
+    const langParam = new URL(request.url).searchParams.get('lang') || '';
+    const langEntry = !route.sub && langParam ? langs.find((l) => l.code === langParam) : null;
 
     const page = await getPage(context, route.slug).catch(() => null);
     if (!page) {
@@ -223,7 +231,7 @@ export async function onRequest(context) {
       return renderMessage('준비 중이에요', '관리자가 노션 연결 설정을 마치면 열려요. (NOTION_TOKEN 없음)', 503);
     }
 
-    const pageId = route.sub || page.pageId;
+    const pageId = route.sub || langEntry?.pageId || page.pageId;
     let result;
     try {
       result = await getRendered(context, pageId, page.slug, {
@@ -239,7 +247,7 @@ export async function onRequest(context) {
         `잠시 후 새로고침해 주세요.<br><span class="muted">${escapeHtml(explainError(e))}</span>`, 200);
     }
     if (result.source === 'stale' && result.error) context.waitUntil(recordStat(env, page.slug, 'stale'));
-    return html(renderDoc(page, route.sub, result));
+    return html(renderDoc(page, route.sub, result, { langs: langs.map((l) => l.code), lang: langEntry?.code || 'ko' }));
   } catch (e) {
     console.error('notion 페이지 오류:', e?.message || e);
     try { return await next(); } catch { return new Response('일시적인 오류예요. 새로고침해 주세요.', { status: 500 }); }

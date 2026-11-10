@@ -281,7 +281,7 @@
 
   function onKey(e) {
     if (!deck) return;
-    if (e.target.closest?.('input, textarea, [contenteditable]')) return;
+    if (e.target.closest?.('input, textarea, [contenteditable], .lang-pick')) return;   // 언어 고르기(lang.js) 중엔 그쪽 키
     const blank = deck.querySelector('.deck-blank');
     const k = e.key;
     if (locked) {
