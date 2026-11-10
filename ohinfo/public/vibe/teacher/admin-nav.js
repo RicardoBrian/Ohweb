@@ -5,12 +5,12 @@
 (function () {
   var MENU = [
     ['관리', [['schools', '학교', 'school'], ['students', '학생', 'people'], ['apps', '앱 설정', 'grid']]],
-    ['수업', [['paddlet', '정보 게시판', 'board'], ['exam', '시험', 'clipboard'], ['ailab', 'AI 실험실', 'ai'],
+    ['수업', [['paddlet', '정보 게시판', 'board'], ['exam', '시험', 'clipboard'], ['score', '수행평가', 'check'], ['ailab', 'AI 실험실', 'ai'],
               ['forms', '설문지', 'doc'], ['messages', '학생 질문', 'chat']]],
     ['도구', [['timer', '타이머', 'timer'], ['notice', '공지 메모', 'notice'], ['settle', '정산 관리', 'wallet']]],
   ];
   var TABS = [['students', '학생', 'people'], ['schools', '학교', 'school'], ['exam', '시험', 'clipboard'], ['messages', '질문', 'chat']];
-  var PAGES = { forms: 'forms.html', messages: 'messages.html', timer: 'timer.html', notice: 'notice.html', settle: 'settle.html' };
+  var PAGES = { score: 'score.html', forms: 'forms.html', messages: 'messages.html', timer: 'timer.html', notice: 'notice.html', settle: 'settle.html' };
 
   // 메뉴 아이콘 (페이지마다 가진 아이콘이 달라서 따로 둔다)
   var ICONS = {
@@ -25,6 +25,7 @@
     timer: '<circle cx="12" cy="13" r="8"/><path d="M12 13V8.5M12 13l3 1.5M9.5 2.5h5"/>',
     notice: '<path d="M4 9v6h3l6 4V5L7 9Z"/><path d="M17.5 9.5a4 4 0 0 1 0 5"/>',
     wallet: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 9h14a3 3 0 0 1 3 3"/><circle cx="16.5" cy="13" r="1"/>',
+    check: '<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 12.5l2.8 2.8L16 9.5"/>',
     more: '<circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/>',
   };
   function icon(name, size) {
