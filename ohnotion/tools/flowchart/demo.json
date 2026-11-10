@@ -1,0 +1,47 @@
+{
+  "id": "demo_flow",
+  "langs": ["ko", "en"],
+  "title": {"ko": "스크래치 순서도 예 (반복 · 분기 · 언어별)", "en": "Scratch flowchart sample (loop, branch, per language)"},
+  "note": {
+    "ko": "상자 안 굵은 글씨는 스크래치 블록 그대로, 아래 회색 글씨는 설명이다. 글자 색은 그 블록이 들어 있는 서랍 색이다.",
+    "en": "Bold text in a box is the Scratch block itself; the gray text below is an explanation. The text color is the color of the block's category."
+  },
+  "charts": [
+    {
+      "title": {"ko": "① 반복: 10점이 될 때까지", "en": "1. Loop: until the score reaches 10"},
+      "group": {"ko": "깃발을 클릭했을 때 · 실행", "en": "when flag clicked · runs"},
+      "steps": [
+        {"type": "terminal", "w": 300, "lines": {"ko": [[["sc.events", "깃발을 클릭했을 때"]]], "en": [[["sc.events", "when green flag clicked"]]]}, "desc": {"ko": "깃발을 누르면 여기서 시작", "en": "Starts here when the flag is clicked"}},
+        {"type": "process", "lines": {"ko": [[["sc.vars", "점수를"], ["sc.operators", "0"], ["sc.vars", "(으)로 정하기"]]], "en": [[["sc.vars", "set score to"], ["sc.operators", "0"]]]}, "desc": {"ko": "점수를 0점부터 시작", "en": "Start the score at 0"}},
+        {"type": "loop", "lines": {"ko": [[["sc.vars", "점수"], ["sc.operators", "< 10"], "?"]], "en": [[["sc.vars", "score"], ["sc.operators", "< 10"], "?"]]}, "desc": {"ko": "10점보다 작은 동안", "en": "While it is below 10"}, "body": [
+          {"type": "io", "lines": {"ko": [[["sc.motion", "10 만큼 움직이기"]]], "en": [[["sc.motion", "move 10 steps"]]]}, "desc": {"ko": "앞으로 한 칸", "en": "One step forward"}},
+          {"type": "io", "lines": {"ko": [[["sc.looks", "안녕! 말하기"]]], "en": [[["sc.looks", "say Hello!"]]]}, "desc": {"ko": "말풍선 띄우기", "en": "Show a speech bubble"}},
+          {"type": "process", "lines": {"ko": [[["sc.vars", "점수를"], ["sc.operators", "1"], ["sc.vars", "만큼 바꾸기"]]], "en": [[["sc.vars", "change score by"], ["sc.operators", "1"]]]}, "desc": {"ko": "점수 +1", "en": "Score +1"}}
+        ]},
+        {"type": "io", "lines": {"ko": [[["sc.sound", "야옹 재생하기"]]], "en": [[["sc.sound", "play sound Meow"]]]}, "desc": {"ko": "다 끝나면 소리", "en": "A sound at the end"}},
+        {"type": "terminal", "lines": {"ko": ["끝"], "en": ["End"]}}
+      ]
+    },
+    {
+      "title": {"ko": "② 분기: 벽에 닿으면 돌아서기", "en": "2. Branch: turn around at the wall"},
+      "group": {"ko": "스페이스 키를 눌렀을 때 · 실행", "en": "when space key pressed · runs"},
+      "steps": [
+        {"type": "terminal", "w": 300, "lines": {"ko": [[["sc.events", "스페이스 키를 눌렀을 때"]]], "en": [[["sc.events", "when space key pressed"]]]}},
+        {"type": "decision", "lines": {"ko": [[["sc.sensing", "벽에 닿았는가"], "?"]], "en": [[["sc.sensing", "touching edge"], "?"]]},
+          "yes": [{"type": "process", "lines": {"ko": [[["sc.motion", "180도 돌기"]]], "en": [[["sc.motion", "turn 180 degrees"]]]}, "desc": {"ko": "반대로 돌아선다", "en": "Turn around"}}],
+          "no": [{"type": "io", "lines": {"ko": [[["sc.motion", "10 만큼"], ["sc.motion", "움직이기"]]], "en": [[["sc.motion", "move 10"], ["sc.motion", "steps"]]]}, "desc": {"ko": "그냥 앞으로", "en": "Just go ahead"}}]},
+        {"type": "io", "lines": {"ko": [[["sc.sound", "팝 재생하기"]]], "en": [[["sc.sound", "play sound Pop"]]]}},
+        {"type": "terminal", "lines": {"ko": ["끝"], "en": ["End"]}}
+      ]
+    },
+    {
+      "title": {"ko": "③ 분기: 아니오 쪽이 비었을 때", "en": "3. Branch: nothing on the No side"},
+      "steps": [
+        {"type": "terminal", "lines": {"ko": [[["sc.events", "깃발을 클릭했을 때"]]], "en": [[["sc.events", "when green flag clicked"]]]}},
+        {"type": "decision", "lines": {"ko": [[["sc.sensing", "스페이스 키를 눌렀나"], "?"]], "en": [[["sc.sensing", "space key pressed"], "?"]]},
+          "yes": [{"type": "io", "lines": {"ko": [[["sc.looks", "점프! 말하기"]]], "en": [[["sc.looks", "say Jump!"]]]}}]},
+        {"type": "terminal", "lines": {"ko": ["끝"], "en": ["End"]}}
+      ]
+    }
+  ]
+}

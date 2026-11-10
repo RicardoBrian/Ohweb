@@ -199,16 +199,7 @@ async function renderDashboard() {
             <label for="url">노션 페이지 링크</label>
             <input id="url" class="inp" type="text" placeholder="https://www.notion.so/…  또는  https://xxx.notion.site/…" required>
             <p class="hint">노션에서 그 페이지를 열고 <b>공유 → 링크 복사</b>한 주소면 돼요(<code>notion.so</code>, <code>notion.site</code>, 임베드 iframe 코드 모두 OK). 사이트 첫 화면 주소(<code>xxx.notion.site/</code>)에는 페이지 ID가 없어서 안 돼요.
-            <b>그 페이지에 통합이 연결돼 있어야</b> 읽을 수 있어요(··· → 연결). 웹에 게시는 안 해도 돼요.</p>
-          </div>
-          <div class="field">
-            <label class="check"><input type="checkbox" id="multiLang"> 다국어 학습지 (언어별 노션 페이지)</label>
-            <div id="langBox" hidden>
-              <p class="hint">위 링크가 <b>한국어(기본)</b>예요. 다른 언어마다 그 언어로 만든 노션 페이지 링크를 넣어 주세요(각 페이지에도 통합 연결 필요).
-              학생은 이 주소를 열면 <b>언어를 먼저 골라야</b> 내용이 보여요. 발표 따라가기는 같은 장 번호로 따라가니, 언어별 페이지의 구분선·제목 구성을 똑같이 맞춰 주세요.</p>
-              <div id="langRows"></div>
-              <button type="button" class="btn sm" id="addLang">+ 언어 추가</button>
-            </div>
+            <b>그 페이지에 통합이 연결돼 있어야</b> 읽을 수 있어요(··· → 연결). 웹에 게시는 안 해도 돼요.<br>다국어는 따로 등록하지 않아요. 이 페이지 <b>안에 하위 페이지</b>로 만들고 제목 앞에 <code>[en]</code> 처럼 언어 코드를 붙이면 학생 화면에 언어 고르기가 생겨요(중국어·러시아어 등은 제목이 그 글자면 코드 없이도 알아봐요).</p>
           </div>
           <div class="form-actions">
             <button type="button" class="btn ghost" id="cancelEdit" hidden>취소</button>
@@ -254,11 +245,6 @@ async function renderDashboard() {
   });
   document.getElementById('search').addEventListener('input', (e) => { searchText = e.target.value; renderList(); });
   document.getElementById('cancelEdit').addEventListener('click', resetForm);
-  document.getElementById('multiLang').addEventListener('change', (e) => {
-    document.getElementById('langBox').hidden = !e.target.checked;
-    if (e.target.checked && !document.querySelector('#langRows .lang-row')) addLangRow();
-  });
-  document.getElementById('addLang').addEventListener('click', () => addLangRow());
   document.getElementById('recheckBtn').addEventListener('click', () => runChecks(true));
 
   await refresh({ withChecks: true });
@@ -275,44 +261,6 @@ async function loadClosed() {
   const d = snap.exists() ? snap.data() : {};
   closedSlugs = new Set(d.closedSlugs || []);
   siteLangs = d.langs || {};
-}
-// 다국어: 언어 한 줄(언어 고르기 + 노션 링크)
-function addLangRow(code = '', url = '') {
-  const used = new Set([...document.querySelectorAll('#langRows select')].map((el) => el.value));
-  const pick = code || LANGS.find(([c]) => !used.has(c))?.[0] || 'en';
-  const row = document.createElement('div');
-  row.className = 'lang-row';
-  row.innerHTML = `<select class="inp">${LANGS.map(([c, n]) => `<option value="${c}"${c === pick ? ' selected' : ''}>${escapeHtml(n)} (${c})</option>`).join('')}</select>
-    <input class="inp" type="text" placeholder="이 언어의 노션 페이지 링크">
-    <button type="button" class="icon-btn danger" title="이 언어 빼기">✕</button>`;
-  row.querySelector('input').value = url;
-  row.querySelector('button').addEventListener('click', () => row.remove());
-  document.getElementById('langRows').appendChild(row);
-}
-function setLangForm(list) {
-  document.getElementById('langRows').innerHTML = '';
-  const on = !!list?.length;
-  document.getElementById('multiLang').checked = on;
-  document.getElementById('langBox').hidden = !on;
-  (list || []).forEach((l) => addLangRow(l.code, l.url));
-}
-// 폼 → [{ code, url, pageId }]. 잘못된 줄이 있으면 오류.
-function readLangForm() {
-  if (!document.getElementById('multiLang').checked) return [];
-  const out = [];
-  for (const row of document.querySelectorAll('#langRows .lang-row')) {
-    const code = row.querySelector('select').value;
-    const url = linkFromInput(row.querySelector('input').value);
-    if (!url) continue;
-    const name = LANG_NAME[code] || code;
-    if (out.some((l) => l.code === code)) throw new Error(`${name} 언어가 두 번 들어 있어요`);
-    if (!/^https:\/\/([a-z0-9-]+\.)*notion\.(so|site)(\/|$)/i.test(url)) throw new Error(`${name}: 노션 페이지 링크를 넣어 주세요`);
-    const pageId = extractPageId(url);
-    if (!pageId) throw new Error(`${name}: 링크에서 페이지 ID를 찾지 못했어요`);
-    out.push({ code, url, pageId });
-  }
-  if (!out.length) throw new Error('다국어 학습지면 다른 언어 링크를 하나 이상 넣어 주세요(아니면 체크를 꺼 주세요)');
-  return out;
 }
 async function saveLangs(slug, list) {
   await setDoc(doc(db, 'appSettings', SITE_DOC), {
@@ -632,7 +580,6 @@ function startEdit(p) {
       pw.placeholder = '비우면 누구나 열 수 있어요';
     }).catch(() => { pw.placeholder = '비밀번호를 불러오지 못했어요(규칙 확인)'; });
   }
-  setLangForm(siteLangs[p.slug]);
   document.getElementById('formTitle').textContent = `수정: ${p.slug}`;
   document.getElementById('saveBtn').textContent = '저장';
   document.getElementById('cancelEdit').hidden = false;
@@ -643,7 +590,6 @@ function startEdit(p) {
 function resetForm() {
   editing = null;
   document.getElementById('pageForm').reset();
-  setLangForm([]);
   document.getElementById('pagePassword').placeholder = '비우면 누구나 열 수 있어요';
   document.getElementById('slug').disabled = false;
   document.getElementById('formTitle').textContent = '새 페이지 등록';
@@ -682,7 +628,6 @@ async function onSave(e) {
     if (RESERVED.has(slug.toLowerCase())) throw new Error(`"${slug}"은(는) 쓸 수 없는 주소예요`);
     if (!/^https:\/\/([a-z0-9-]+\.)*notion\.(so|site)(\/|$)/i.test(url)) throw new Error('노션 페이지 링크(https://www.notion.so/… 또는 https://….notion.site/…)를 넣어 주세요');
     if (!pageId) throw new Error('링크에서 페이지 ID를 찾지 못했어요. 사이트 첫 화면 주소 말고, 그 페이지를 열고 "공유 → 링크 복사"한 주소를 넣어 주세요');
-    const langList = readLangForm();
 
     btn.disabled = true;
     btn.textContent = '확인 중...';
@@ -709,23 +654,6 @@ async function onSave(e) {
       }
       if (!title && c.title) title = c.title.slice(0, 100);
       checks[slug] = c;
-      // 언어별 페이지도 읽히는지 같이 본다.
-      if (langList.length && !forceSave) {
-        const bad = [];
-        await Promise.all(langList.map(async (l) => {
-          const lc = await fetch(`/api/check?url=${encodeURIComponent(l.url)}`, { cache: 'no-store' }).then((x) => x.json()).catch(() => null);
-          if (lc?.level === 'bad') bad.push(`${LANG_NAME[l.code] || l.code}: ${lc.message}`);
-        }));
-        if (bad.length) {
-          errEl.innerHTML = `아직 노션에서 읽을 수 없는 언어 페이지가 있어요:<br>${bad.map(escapeHtml).join('<br>')}
-            <br><button type="button" class="btn sm" id="forceSaveBtn" style="margin-top:8px">그래도 저장</button>`;
-          document.getElementById('forceSaveBtn').addEventListener('click', () => {
-            forceSave = true;
-            document.getElementById('pageForm').requestSubmit();
-          });
-          return;
-        }
-      }
     } catch { /* 점검 실패는 저장을 막지 않는다 */ }
     if (!title) title = slug;
 
@@ -744,7 +672,6 @@ async function onSave(e) {
     // 잠그는 경우엔 비밀번호를 먼저 저장해야 잠긴 순간 비밀번호가 없는 틈이 안 생긴다.
     if (password) await setDoc(doc(db, 'notion_secrets', slug), { password, updatedAt: serverTimestamp() });
     await setDoc(doc(db, 'notion_pages', slug), data);
-    if (langList.length || siteLangs[slug]) await saveLangs(slug, langList);
     if (!password && existing?.locked) await deleteDoc(doc(db, 'notion_secrets', slug)).catch(() => {});
     showToast(editing ? '저장했어요 (학생 화면엔 최대 2분 뒤 반영)' : '등록했어요');
     resetForm();

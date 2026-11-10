@@ -302,6 +302,24 @@ function propHtml(p, linkFor) {
   }
 }
 
+// ── 다국어: 한국어 본 페이지 안의 하위 페이지 중 "언어 페이지"를 제목으로 알아본다 ──
+// 제목 앞에 [en] 처럼 언어 코드를 붙이면 그 언어 페이지다. 코드가 없어도 글자가 한국어가 아닌
+// 문자(중국어·러시아어 등)면 그 언어로 본다. 영어 같은 로마자는 코드가 있어야 한다.
+const LANG_CODES = new Set(['en', 'zh', 'ru', 'vi', 'ja', 'uz', 'mn', 'kk', 'ky', 'th', 'tl', 'km', 'ne', 'id', 'ar', 'es', 'fr', 'de']);
+const SCRIPT_LANGS = [
+  [/[\u3040-\u30ff]/, 'ja'], [/[\u4e00-\u9fff]/, 'zh'], [/[\u0400-\u04ff]/, 'ru'],
+  [/[\u0e00-\u0e7f]/, 'th'], [/[\u1780-\u17ff]/, 'km'], [/[\u0600-\u06ff]/, 'ar'], [/[\u0900-\u097f]/, 'ne'],
+];
+/** → { code, title } (제목에서 [코드]는 뺀다) 또는 null(언어 페이지가 아님) */
+export function langOfTitle(title) {
+  const t = String(title || '').trim();
+  const m = t.match(/^\[\s*([A-Za-z]{2,3})(-[A-Za-z]{2,4})?\s*\]\s*(.*)$/);
+  if (m && LANG_CODES.has(m[1].toLowerCase())) return { code: m[1].toLowerCase() + (m[2] || ''), title: m[3] || t };
+  if (!t || /[\uac00-\ud7a3]/.test(t)) return null;
+  for (const [re, code] of SCRIPT_LANGS) if (re.test(t)) return { code, title: t };
+  return null;
+}
+
 export function pageTitle(page) {
   const props = page?.properties || {};
   for (const p of Object.values(props)) {
@@ -651,19 +669,34 @@ export async function renderPage(token, pageId, slug, partial = { kids: {}, rows
       if (b.type !== 'child_page' && b.type !== 'child_database') walk(b.children);
     }
   })(tree.blocks);
+  // 언어 페이지(하위 페이지)는 본문에 링크로 그리지 않고 언어 고르기에만 쓴다.
+  const langPages = [];
+  let blocks = tree.blocks.filter((b) => {
+    const l = b.type === 'child_page' ? langOfTitle(b.child_page?.title) : null;
+    if (!l || langPages.some((x) => x.code === l.code)) return !l;
+    langPages.push({ code: l.code, pageId: plainId(b.id) });
+    return false;
+  });
+  // 언어 페이지 목록 위에 있던 "🌐 다른 언어" 같은 안내 줄도 같이 뺀다.
+  if (langPages.length) {
+    blocks = blocks.filter((b) => !(b.type === 'paragraph'
+      && /^🌐/.test((b.paragraph.rich_text || []).map((t) => t.plain_text).join('').trim())
+      && (b.paragraph.rich_text || []).map((t) => t.plain_text).join('').length <= 12));
+  }
   const r = makeRenderer({ slug, headings });
-  const html = r.renderList(tree.blocks);
+  const html = r.renderList(blocks);
   const icon = page.icon?.type === 'emoji' ? page.icon.emoji : '';
   const iconImg = !icon && page.icon ? r.iconHtml(page.icon, `/api/file?p=${plainId(pageId)}&k=icon`) : '';
   let coverUrl = '';
   if (page.cover?.type === 'external') coverUrl = page.cover.external.url;
   else if (page.cover?.type === 'file') coverUrl = `/api/file?p=${plainId(pageId)}`;
   return {
-    title: pageTitle(page) || '제목 없음',
+    title: (langOfTitle(pageTitle(page))?.title) || pageTitle(page) || '제목 없음',
     icon,
     iconImg,
     coverUrl,
     html,
+    langPages,
     blocks: tree.count,
     hasEquation: r.hasEquation(),
     hasCode: r.hasCode(),
