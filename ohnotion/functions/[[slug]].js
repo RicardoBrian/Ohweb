@@ -193,10 +193,9 @@ export async function onRequest(context) {
     const site = await getSiteSettings(context);
     if (site.closedSlugs.includes(route.slug)) return renderClosed(route.slug);
     // 다국어 학습지: ?lang=en 이면 그 언어의 노션 페이지를 그린다(없는 코드면 기본 한국어).
+    // 언어 페이지는 한국어 본 페이지의 하위 페이지 중 제목에 [en] 처럼 코드가 붙은 것(lib/notion.js langOfTitle).
     // 하위 페이지(/주소/ID)는 ID가 이미 그 언어 페이지 안의 것이라 그대로 둔다.
-    const langs = site.langs[route.slug] || [];
     const langParam = new URL(request.url).searchParams.get('lang') || '';
-    const langEntry = !route.sub && langParam ? langs.find((l) => l.code === langParam) : null;
 
     const page = await getPage(context, route.slug).catch(() => null);
     if (!page) {
@@ -231,12 +230,25 @@ export async function onRequest(context) {
       return renderMessage('준비 중이에요', '관리자가 노션 연결 설정을 마치면 열려요. (NOTION_TOKEN 없음)', 503);
     }
 
-    const pageId = route.sub || langEntry?.pageId || page.pageId;
+    let pageId = route.sub || page.pageId;
+    let langs = [];
+    let langEntry = null;
     let result;
     try {
-      result = await getRendered(context, pageId, page.slug, {
+      const render = (id) => getRendered(context, id, page.slug, {
         onBackgroundError: () => recordStat(env, page.slug, 'stale'),
       });
+      result = await render(pageId);
+      if (!route.sub) {
+        // 관리 페이지에 따로 등록된 언어(예전 방식)가 먼저, 그다음 본 페이지 안에서 찾은 언어 페이지.
+        langs = [...(site.langs[route.slug] || [])];
+        for (const l of result.data.langPages || []) if (!langs.some((x) => x.code === l.code)) langs.push(l);
+        langEntry = langParam ? langs.find((l) => l.code === langParam) || null : null;
+        if (langEntry && langEntry.pageId !== pageId) {
+          pageId = langEntry.pageId;
+          result = await render(pageId);
+        }
+      }
     } catch (e) {
       // 큰 페이지: 이번 요청에서 읽은 데까지 저장해 뒀으니 잠시 뒤 자동으로 다시 열어 이어 읽는다.
       if (e?.name === 'Incomplete') return renderLoading(e.done);
