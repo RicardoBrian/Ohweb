@@ -228,6 +228,13 @@ export class Runtime {
         return { year: d.getFullYear(), month: d.getMonth() + 1, date: d.getDate(), day: d.getDay() + 1, hour: d.getHours(), minute: d.getMinutes(), second: d.getSeconds() }[k] ?? 0;
       },
       async broadcast(msg, wait) { const ps = R.fire('msg:' + String(msg)); if (wait) await Promise.all(ps); if (R.stopped) throw STOP; },
+      cmp(a, op, b) {
+        const isNum = x => typeof x === 'number' || (typeof x === 'string' && x.trim() !== '' && Number.isFinite(Number(x)));
+        let d;
+        if (isNum(a) && isNum(b)) d = Number(a) - Number(b);
+        else { const x = String(a ?? '').toLowerCase(), y = String(b ?? '').toLowerCase(); d = x < y ? -1 : x > y ? 1 : 0; }
+        return { '=': d === 0, '!=': d !== 0, '<': d < 0, '<=': d <= 0, '>': d > 0, '>=': d >= 0 }[op] ?? false;
+      },
       letterOf(i, s) { return [...String(s ?? '')][Math.floor(num(i)) - 1] ?? ''; },
       lengthOf(s) { return [...String(s ?? '')].length; },
       contains(a, b) { return String(a ?? '').toLowerCase().includes(String(b ?? '').toLowerCase()); },
