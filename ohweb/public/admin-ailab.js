@@ -142,6 +142,9 @@ function asgPicker() {
 }
 
 const SRC_NAMES = { search: '구글 이미지', draw: '그리기', camera: '카메라' };
+// 결과물: 값이 없는 예전 배정은 둘 다(웹앱 + 코딩)
+const OUT_NAMES = { app: '🌐 웹앱', code: '🧩 블록 코딩', both: '🌐 웹앱 + 🧩 블록 코딩' };
+const outOf = a => (a && ['app', 'code', 'both'].includes(a.output) ? a.output : 'both');
 const srcOf = a => (Array.isArray(a.sources) && a.sources.length ? a.sources : ['search']);
 const boardKey = b => b ? `${b.name}|${b.schoolName || ''}|${nv(b.grade)}|${nv(b.group)}` : '';
 const classLabel = a => `${nv(a.grade)}학년 ${nv(a.class)}반`;
@@ -212,7 +215,12 @@ function assignHtml() {
           `<label class="ai-opt"><input type="checkbox" name="aiT_src" value="${v}" ${srcOf(ed).includes(v) ? 'checked' : ''}><span><b>${l}</b><small>${h}</small></span></label>`).join('')}
       </div>
       <label class="ai-sub ai-camup"><input type="checkbox" id="aiT_camUp" ${ed.cameraUpload ? 'checked' : ''}> 카메라 사진도 드라이브에 저장하기 <b>(사람이 나오지 않는 물건·식물을 찍을 때만)</b> — 끄면 사진은 찍은 기기에만 남고, 모둠은 기기 한 대를 같이 써요.</label></div>
-    <div class="ai-sec"><div class="ai-sec-t">웹앱 올릴 정보 게시판</div>
+    <div class="ai-sec"><div class="ai-sec-t">결과물</div>
+      <div class="ai-seg ai-seg3" role="radiogroup" aria-label="결과물">
+        ${[['app', '🌐 AI 웹앱', '디자인을 꾸며 웹앱으로 공개하고, 웹앱 주소를 게시판에 올려요'], ['code', '🧩 블록 코딩', '웹앱 꾸미기 없이, 내 AI로 블록 코딩 작품을 만들어 실행 화면을 게시판에 올려요'], ['both', '🌐+🧩 둘 다', '웹앱도 공개하고, 모둠원마다 블록 코딩 작품도 만들어 올려요']].map(([v, l, h]) =>
+          `<label class="ai-opt"><input type="radio" name="aiT_output" value="${v}" ${outOf(ed) === v ? 'checked' : ''}><span><b>${l}</b><small>${h}</small></span></label>`).join('')}
+      </div></div>
+    <div class="ai-sec"><div class="ai-sec-t">결과물 올릴 정보 게시판</div>
       ${sel('aiT_board', boardOptions(boardKey(ed.board), ed.schoolName || '', ed.grade || '1', ed.class || '1'))}
       <div class="ai-seg" role="radiogroup" aria-label="게시판 글 보기">
         ${[['class', '반별로 나누기', '같은 반 학생 글만 보입니다'], ['all', '모든 반 함께', '이 게시판을 쓰는 모든 반 글이 보입니다']].map(([v, l, h]) =>
@@ -242,7 +250,7 @@ function asgListHtml() {
     const on = list.filter(a => a.status === 'ON').length;
     const rows = list.map(a => `<div class="ag-r">
       <div class="ag-rl"><div class="ag-rn">${E(classLabel(a))}</div>
-        <div class="ag-rs">모둠 ${a.groupSize || 2}명 · ${a.lockTopic ? '주제 고정 · ' : ''}${isTbl(a) ? `📊 ${E((a.table || {}).name || '표 데이터')} → 🎯 ${E((a.table || {}).target || '')} · ` : ''}${isTbl(a) ? '' : a.kind === 'text' ? `💬 문장 분류(${a.textModel === 'mean' ? '🌏 뜻 이해' : '🔤 단어 조각'}) · 레이블 최대 ${a.maxLabels || 5}개 · 문장 ${a.minPerLabel || 10}개 · 테스트 ${a.minTestPerLabel || 3}개 · ` : `사진: ${srcOf(a).map(x => SRC_NAMES[x] || x).join('·')}${srcOf(a).includes('camera') && !a.cameraUpload ? '(기기에만)' : ''} · 레이블 최대 ${a.maxLabels || 5}개 · 사진 ${a.minPerLabel || 15}장 · 테스트 ${a.minTestPerLabel || 3}장 · `}게시판 ${a.board ? `${E(a.board.name)}(${(a.boardScope || 'class') === 'all' ? '모든 반 함께' : '반별'})` : '없음'}</div></div>
+        <div class="ag-rs">모둠 ${a.groupSize || 2}명 · ${a.lockTopic ? '주제 고정 · ' : ''}${isTbl(a) ? `📊 ${E((a.table || {}).name || '표 데이터')} → 🎯 ${E((a.table || {}).target || '')} · ` : ''}${isTbl(a) ? '' : a.kind === 'text' ? `💬 문장 분류(${a.textModel === 'mean' ? '🌏 뜻 이해' : '🔤 단어 조각'}) · 레이블 최대 ${a.maxLabels || 5}개 · 문장 ${a.minPerLabel || 10}개 · 테스트 ${a.minTestPerLabel || 3}개 · ` : `사진: ${srcOf(a).map(x => SRC_NAMES[x] || x).join('·')}${srcOf(a).includes('camera') && !a.cameraUpload ? '(기기에만)' : ''} · 레이블 최대 ${a.maxLabels || 5}개 · 사진 ${a.minPerLabel || 15}장 · 테스트 ${a.minTestPerLabel || 3}장 · `}결과물 ${OUT_NAMES[outOf(a)]} · 게시판 ${a.board ? `${E(a.board.name)}(${(a.boardScope || 'class') === 'all' ? '모든 반 함께' : '반별'})` : '없음'}</div></div>
       <div class="ag-ra">
         <label class="ios-switch" title="${a.status === 'ON' ? '학생 화면 열림 (누르면 닫기)' : '학생 화면 닫힘 (누르면 열기)'}"><input type="checkbox" data-ai="status" data-id="${E(a.id)}" ${a.status === 'ON' ? 'checked' : ''}><span></span></label>
         <button class="btn sm ghost" data-ai="goPairs" data-id="${E(a.id)}">모둠</button>
@@ -482,6 +490,7 @@ function readForm() {
     sources: [...document.querySelectorAll('input[name="aiT_src"]:checked')].map(x => x.value),
     cameraUpload: !!($('aiT_camUp') && $('aiT_camUp').checked),
     lockTopic: !!($('aiT_lockTopic') && $('aiT_lockTopic').checked),
+    output: outOf({ output: (document.querySelector('input[name="aiT_output"]:checked') || {}).value }),
     textModel: (document.querySelector('input[name="aiT_tmodel"]:checked') || {}).value === 'words' ? 'words' : 'mean',
     kind: (v => (v === 'table' || v === 'text' ? v : 'image'))((document.querySelector('input[name="aiT_kind"]:checked') || {}).value),
   };
