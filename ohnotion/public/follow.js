@@ -16,10 +16,17 @@
 //     학생은 5분 넘게 소식이 없으면 저절로 풀린다. 학교 PC 시계가 틀린 경우가 있어 "5분"은
 //     학생 PC가 소식을 받은 시각으로 잰다(at 은 처음 열 때 아주 오래된 것만 거르는 데 쓴다).
 //
+// 학생 화면이 다른 탭에 가려져 있으면 브라우저가 그 탭을 느리게 돌리거나 연결을 끊어 "풀림" 소식을
+// 못 받는 일이 있었다. 그래서 탭이 다시 보이면 서버에서 지금 상태를 바로 다시 읽는다.
+// 그래도 안 풀린 학생은 왼쪽 위 "나가기"로 스스로 풀 수 있다 — 선생님이 다음 장으로 넘기거나
+// 고정을 새로 켜면 다시 따라간다(남은 신호만으로는 다시 잠그지 않음).
+// 선생님 화면의 👥/🔒 는 이 창의 기억이 아니라 저장된 상태(sid = 켠 창)를 따른다 — 다른 창이나
+// 이전 페이지에서 켜 둔 고정이 남아 있으면 🔒 로 보이고, 누르면 푼다.
+//
 // 선생님 판별: 관리 페이지에서 로그인하면 이 브라우저에 kakanotion-teacher 표시가 남는다(admin.js).
 // 표시가 있고 실제로 관리자 계정으로 로그인돼 있을 때만 버튼이 보인다. 쓰기는 규칙이 다시 막는다.
 import { db, auth } from './firebase-config.js';
-import { doc, onSnapshot, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { doc, onSnapshot, setDoc, getDocFromServer, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
 const ADMIN_EMAIL = 'qjatjr7575@gmail.com';
@@ -74,8 +81,14 @@ function teacher(ref) {
   let btn = null;
   let moving = false;        // 하위 페이지로 옮겨 가는 중 — 떠날 때 고정을 풀지 않는다
   const resumeKey = `kakanotion-follow-on:${slug}`;
+  const sid = Math.random().toString(36).slice(2, 10);   // 이 창(이 페이지)이 켠 고정인지 가리는 표
+  let remote = null;         // 저장된 상태(마지막으로 받은 것)
+  let remoteAt = 0;          // 켜진 상태를 마지막으로 받은 시각(이 PC 시계)
+  let myAt = 0;              // 이 창이 쓴 것이 서버에 저장된 시각(서버 시계)
+  // 다른 창·이전 페이지에서 켠 고정이 아직 살아 있나
+  const otherOn = () => !on && !!remote?.on && remote.sid !== sid && Date.now() - remoteAt < STALE_MS;
 
-  const write = (data) => setDoc(ref, { ...data, at: serverTimestamp() }, { merge: true })
+  const write = (data) => setDoc(ref, { ...data, sid, at: serverTimestamp() }, { merge: true })
     .catch((e) => { console.error('따라가기 저장 실패', e); alert(`학생 고정을 바꾸지 못했어요: ${e.message}`); });
   const state = () => ({
     on: true,
@@ -87,9 +100,10 @@ function teacher(ref) {
 
   function render() {
     if (!btn) return;
-    btn.textContent = on ? '🔒' : '👥';
-    btn.title = on ? '학생 고정 풀기 (L)' : '학생 화면 고정 — 내 화면을 따라오게 (L)';
-    btn.classList.toggle('on', on);
+    const other = otherOn();
+    btn.textContent = on || other ? '🔒' : '👥';
+    btn.title = on ? '학생 고정 풀기 (L)' : other ? '다른 창에서 켠 학생 고정이 남아 있어요 — 눌러서 풀기 (L)' : '학생 화면 고정 — 내 화면을 따라오게 (L)';
+    btn.classList.toggle('on', on || other);
     const deck = P.deck();
     deck?.classList.toggle('teacher-on', on);
     let badge = deck?.querySelector('.deck-teacher');
@@ -98,8 +112,30 @@ function teacher(ref) {
       badge.className = 'deck-teacher';
       deck.appendChild(badge);
     }
-    if (badge) { badge.hidden = !on; badge.textContent = '🔒 학생 화면 고정 중'; }
+    if (badge) { badge.hidden = !on && !other; badge.textContent = on ? '🔒 학생 화면 고정 중' : '🔒 다른 창에서 켠 학생 고정이 남아 있어요'; }
   }
+  // 👥/🔒 버튼·L: 켜져 있으면 풀고, 다른 창의 고정이 남아 있으면 그것을 풀고, 아니면 켠다.
+  function toggle() {
+    if (on) setOn(false);
+    else if (otherOn()) { write({ on: false }); remote = { ...remote, on: false }; render(); }
+    else setOn(true);
+  }
+  // 저장된 상태를 듣는다 — 다른 창이 켜거나 풀면 이 창은 신호 보내기를 멈춘다(마지막에 쓴 창이 이김).
+  onSnapshot(ref, (snap) => {
+    remote = snap.exists() ? snap.data() : null;
+    const at = remote?.at?.toMillis?.();
+    remoteAt = remote?.on && (at == null || Math.abs(Date.now() - at) < OLD_MS) ? Date.now() : 0;
+    if (remote?.sid === sid && at) myAt = Math.max(myAt, at);
+    // 내 마지막 저장보다 나중에 다른 창이 쓴 것일 때만 물러난다(이전 페이지의 늦게 온 저장은 무시).
+    if (on && !moving && remote && remote.sid !== sid && at && myAt && at > myAt) {
+      on = false;
+      clearInterval(beat);
+      clearTimeout(pending);
+      ss.del(resumeKey);
+    }
+    render();
+  }, (e) => console.warn('따라가기 듣기 실패', e?.message || e));
+  setInterval(render, 30 * 1000);   // 남은 고정이 5분 지나 끝나면 버튼도 👥 로
   function setOn(v) {
     on = v;
     clearInterval(beat);
@@ -121,7 +157,7 @@ function teacher(ref) {
     btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'deck-follow';
-    btn.addEventListener('click', () => setOn(!on));
+    btn.addEventListener('click', toggle);
     ui.insertBefore(btn, ui.querySelector('[data-a="close"]'));
     render();
   }
@@ -137,7 +173,7 @@ function teacher(ref) {
   document.addEventListener('present:close', () => { if (on) setOn(false); btn = null; });
   document.addEventListener('keydown', (e) => {
     if (!P.isOpen() || e.ctrlKey || e.metaKey || e.altKey) return;
-    if (e.key === 'l' || e.key === 'L') { e.preventDefault(); setOn(!on); }
+    if (e.key === 'l' || e.key === 'L') { e.preventDefault(); toggle(); }
   }, true);
   // 고정 중에 슬라이드(또는 본문)의 하위 페이지 링크를 누르면: 고정을 풀지 않고 학생에게 새 페이지를
   // 먼저 알린 뒤 옮겨 가서, 그 페이지에서도 발표·고정을 그대로 이어 간다.
@@ -171,14 +207,24 @@ function teacher(ref) {
   });
 
   // 방금 고정 중에 이 탭에서 페이지를 옮겨 왔으면 발표를 열고 고정을 다시 켠다.
-  const t = Number(ss.get(resumeKey) || 0);
-  ss.del(resumeKey);
-  if (t && Date.now() - t < RESUME_MS) {
+  const resume = (force) => {
+    const t = Number(ss.get(resumeKey) || 0);
+    ss.del(resumeKey);
+    if (!force && !(t && Date.now() - t < RESUME_MS)) return;
     loaded.then(() => {
       if (!P.isOpen()) P.open(0);
-      if (!on) setOn(true);
+      on = false;
+      setOn(true);
     });
-  }
+  };
+  resume(false);
+  // 뒤로 가기로 예전 페이지가 그대로 되살아나면(bfcache) 위 코드가 다시 돌지 않는다 — 여기서 이어 간다.
+  window.addEventListener('pageshow', (e) => {
+    if (!e.persisted) return;
+    const was = on;
+    moving = false;
+    resume(was);
+  });
 }
 
 // ── 학생 ──
@@ -186,6 +232,8 @@ function student(ref) {
   let data = null;
   let following = false;
   let heardAt = 0;          // 켜진 소식을 마지막으로 받은 시각(이 PC 시계)
+  let released = null;      // 학생이 "나가기"를 누른 때의 상태 — 이게 바뀔 때까지(다음 장·새 고정) 안 따라간다
+  const mark = (d) => `${d?.sid || ''}|${d?.path || ''}|${d?.slide ?? ''}|${d?.blank ? 1 : 0}`;
 
   const active = () => !!data?.on && Date.now() - heardAt < STALE_MS;
   const norm = (a) => { try { return decodeURIComponent(a).normalize('NFC'); } catch { return a; } };
@@ -214,10 +262,19 @@ function student(ref) {
     return path;   // 모르면 선생님 페이지(한국어)로
   }
 
+  function unlock() {
+    following = false;
+    P.setLocked(false);
+  }
   function apply() {
     if (!active()) {
-      if (following) { following = false; P.setLocked(false); }
+      released = null;
+      if (following) unlock();
       return;
+    }
+    if (released !== null) {
+      if (released === mark(data)) { if (following) unlock(); return; }
+      released = null;   // 선생님이 넘기거나 새로 켰다 — 다시 따라간다
     }
     // 선생님이 다른(하위) 페이지에서 발표 중이면 그 페이지로 옮겨 간다.
     const to = data.path ? target(data.path) : '';
@@ -233,13 +290,30 @@ function student(ref) {
     P.setBlank(!!data.blank);
   }
 
+  // 왼쪽 위 "나가기" — 선생님이 풀었는데 이 화면만 안 풀렸을 때 학생이 스스로 푼다.
+  document.addEventListener('present:unfollow', () => {
+    if (!following) return;
+    released = mark(data);
+    unlock();
+  });
+
   // 수식·글꼴이 다 그려진 뒤에 슬라이드를 만들어야 해서(present.js 와 같은 이유) 로드 뒤에 적용한다.
-  onSnapshot(ref, (snap) => {
+  const take = (snap) => {
     data = snap.exists() ? snap.data() : null;
     const at = data?.at?.toMillis?.() ?? 0;
     heardAt = data?.on && Math.abs(Date.now() - at) < OLD_MS ? Date.now() : 0;
     loaded.then(apply);
-  }, (e) => console.warn('따라가기 듣기 실패', e?.message || e));
+  };
+  onSnapshot(ref, take, (e) => console.warn('따라가기 듣기 실패', e?.message || e));
+  // 다른 탭을 보다가 돌아오면(가려진 동안 소식을 놓쳤을 수 있음) 서버에서 바로 다시 읽는다.
+  const recheck = () => {
+    if (document.visibilityState !== 'visible') return;
+    getDocFromServer(ref).then(take).catch((e) => console.warn('따라가기 다시 읽기 실패', e?.message || e));
+  };
+  document.addEventListener('visibilitychange', recheck);
+  window.addEventListener('pageshow', (e) => { if (e.persisted) recheck(); });   // 뒤로 가기로 되살아난 페이지
+  window.addEventListener('focus', recheck);
+  window.addEventListener('online', recheck);
   // 선생님 소식이 끊기면(탭을 그냥 닫음) 5분 뒤 저절로 풀리게 가끔 다시 본다.
   setInterval(() => { if (following) apply(); }, 30 * 1000);
 }
