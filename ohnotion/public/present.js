@@ -122,7 +122,7 @@
     deck.innerHTML = `
       <div class="deck-stage"><div class="deck-canvas"></div></div>
       <div class="deck-blank" hidden></div>
-      <div class="deck-lock" hidden>👀 선생님 화면을 따라가는 중</div>
+      <div class="deck-lock" hidden>👀 선생님 화면을 따라가는 중 <button type="button" class="deck-unfollow" title="선생님이 고정을 풀었는데 안 풀렸을 때">나가기</button></div>
       <div class="deck-ui">
         <button type="button" data-a="prev" aria-label="이전">‹</button>
         <span class="deck-count"></span>
@@ -133,6 +133,8 @@
       <div class="deck-progress"><span></span></div>`;
     const canvas = deck.querySelector('.deck-canvas');
     slides.forEach((s) => canvas.appendChild(s));
+    // 따라가기 중 "나가기"(follow.js 가 받아서 이 화면만 고정을 푼다)
+    deck.querySelector('.deck-unfollow').addEventListener('click', () => emit('unfollow'));
     document.body.appendChild(deck);
     document.body.classList.add('presenting');
     // 코드 색칠(Prism)이 늦게 끝났을 수도 있어 슬라이드 쪽도 한 번 더 칠한다.
