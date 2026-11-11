@@ -89,114 +89,71 @@
     }
     .custom-inp:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
     .custom-label { font-size: 0.82rem; color: var(--sub); font-weight: 600; }
-    .btn-start-big {
-      width: 100%; padding: 15px; border-radius: var(--radius-pill); border: none;
-      background: #1d1d1f; color: #fff; font-family: var(--font);
-      font-size: 1.05rem; font-weight: 700; cursor: pointer;
-      box-shadow: var(--highlight), var(--shadow-md);
-      transition: opacity 0.2s, transform 0.15s;
-    }
-    body.dark .btn-start-big { background: #f5f5f7; color: #1d1d1f; }
-    .btn-start-big:hover { opacity: 0.88; }
-    .btn-start-big:active { transform: scale(0.97); }
-    .btn-start-big:disabled { opacity: 0.4; cursor: not-allowed; }
 
     /* ═══════════════════════════════════════
-       RUN VIEW (실행 화면 — 타이머 진행 중)
+       RUN VIEW — 화면 반쪽(프로젝터·TV)에 띄우는 용도.
+       브라우저 도구로 이미 좁으니 메뉴·버튼은 숨기고 글자만 크게.
+       남은 시간 = 아래에서 위로 줄어드는 배경 게이지(B안)
     ═══════════════════════════════════════ */
-    #runView { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100%; gap: 0; }
-    #runView.visible { display: flex; }
+    #runView { display: none; position: fixed; inset: 0; z-index: 200; background: var(--bg); overflow: hidden; --g: rgba(0,113,227,0.24); --gl: #0071e3; }
+    #runView.visible { display: block; }
+    #runView:not(.ui) { cursor: none; }
+    #runView[data-st="warn"]   { --g: rgba(245,158,11,0.32); --gl: #f59e0b; }
+    #runView[data-st="danger"] { --g: rgba(239,68,68,0.32);  --gl: #ef4444; }
+    #runView[data-st="done"]   { --g: rgba(34,197,94,0.38);  --gl: #22c55e; }
+    body.dark #runView { --g: rgba(10,132,255,0.34); }
+    body.dark #runView[data-st="warn"]   { --g: rgba(245,158,11,0.36); }
+    body.dark #runView[data-st="danger"] { --g: rgba(239,68,68,0.40); }
+    body.dark #runView[data-st="done"]   { --g: rgba(34,197,94,0.40); }
 
-    /* 제목 영역 */
-    .run-title-wrap { text-align: center; margin-bottom: 20px; animation: fadeUp 0.4s ease; }
-    .run-title-ko {
-      font-size: clamp(1.6rem, 4vw, 2.8rem);
-      font-weight: 900; letter-spacing: -0.03em;
-      background: var(--accent-grad); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
-      line-height: 1.2; margin-bottom: 8px;
-    }
-    .run-trans-row { display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }
-    .run-trans-item { text-align: center; }
-    .run-trans-lang { font-size: 0.65rem; font-weight: 700; color: var(--sub); letter-spacing: 0.07em; text-transform: uppercase; margin-bottom: 2px; }
-    .run-trans-text { font-size: clamp(0.9rem, 2vw, 1.3rem); font-weight: 600; color: var(--text-2); }
+    .gauge { position: absolute; left: 0; right: 0; bottom: 0; height: 100%; background: var(--g); border-top: 0.6vmin solid var(--gl); transition: height 1s linear, background 0.5s, border-color 0.5s; }
+    #runView[data-st="done"] .gauge { border-top-color: transparent; }
 
-    /* 큰 링 */
-    .run-ring-wrap { position: relative; width: min(420px, 80vw); height: min(420px, 80vw); margin: 0 auto 24px; }
-    .run-ring-svg { width: 100%; height: 100%; transform: rotate(-90deg); }
-    .run-ring-bg { fill: none; stroke: var(--border-card); stroke-width: 10; }
-    .run-ring-fill { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 0.5s linear, stroke 0.4s; }
-    .run-ring-inner { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; }
-    .run-time-num {
-      font-size: clamp(3.6rem, 14vw, 7rem);
-      font-weight: 800; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; line-height: 1;
-      transition: color 0.4s;
-    }
-    .run-time-label { font-size: 0.78rem; font-weight: 700; color: var(--sub); letter-spacing: 0.06em; text-transform: uppercase; }
+    .run-content { position: relative; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2.4vmin; padding: 3vmin 4vw 14vmin; text-align: center; }
+    .run-title-wrap { display: flex; flex-direction: column; align-items: center; gap: 1.2vmin; max-width: 100%; }
+    .run-title-ko { font-size: clamp(2rem, 8.5vmin, 6.5rem); font-weight: 900; letter-spacing: -0.02em; line-height: 1.15; color: var(--text); word-break: keep-all; overflow-wrap: anywhere; }
+    .run-line { font-size: clamp(1.5rem, 5.8vmin, 4.5rem); font-weight: 700; line-height: 1.2; color: var(--text); opacity: 0.9; overflow-wrap: anywhere; }
+    .run-time-num { font-size: clamp(5rem, 27vmin, 22rem); font-weight: 800; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; line-height: 1; color: var(--text); }
+    #runView.no-title .run-time-num { font-size: clamp(5rem, 34vmin, 26rem); }
+    #runView[data-st="danger"] .run-time-num { color: #dc2626; }
+    #runView[data-st="done"]   .run-time-num { color: #15803d; }
+    body.dark #runView[data-st="danger"] .run-time-num { color: #f87171; }
+    body.dark #runView[data-st="done"]   .run-time-num { color: #4ade80; }
+    .run-time-label { font-size: clamp(1.1rem, 3.2vmin, 2.2rem); font-weight: 700; color: var(--text-2); }
+    @keyframes finalPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.07); } }
+    .run-time-num.final { animation: finalPulse 1s ease-in-out infinite; }
 
-    /* 카드 상태 색상 */
-    .run-ring-fill.ok    { stroke: #0071e3; }
-    .run-ring-fill.warn  { stroke: #f59e0b; }
-    .run-ring-fill.danger{ stroke: #ef4444; }
-    .run-ring-fill.done  { stroke: #22c55e; }
-    .run-time-num.warn   { color: #b45309; }
-    body.dark .run-time-num.warn { color: #fbbf24; }
-    .run-time-num.danger { color: #ef4444; }
-    .run-time-num.done   { color: #22c55e; }
-
-    /* 글로우 애니메이션 (위험) */
-    @keyframes dangerPulse { 0%,100%{opacity:1} 50%{opacity:0.65} }
-    .run-time-num.danger { animation: dangerPulse 1s ease infinite; }
-
-    /* 컨트롤 */
-    .run-controls { display: flex; gap: 12px; justify-content: center; }
-    .btn-ctrl {
-      padding: 12px 30px; border-radius: var(--radius-pill); border: none;
-      font-family: var(--font); font-size: 0.95rem; font-weight: 700; cursor: pointer;
-      transition: filter 0.2s, transform 0.15s;
-    }
+    /* 컨트롤: 평소엔 숨김(수업 화면엔 숫자만). 마우스·터치·키를 누르면 잠깐 나타남 */
+    .run-controls { position: absolute; left: 50%; bottom: 2.5vmin; transform: translateX(-50%); display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; max-width: 96%; padding: 8px; border-radius: 18px; background: var(--glass-strong); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); border: 1px solid var(--border); opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+    #runView.ui .run-controls { opacity: 1; pointer-events: auto; }
+    .btn-ctrl { padding: 10px 18px; border-radius: 14px; border: 1px solid var(--border-card); background: var(--glass); color: var(--text); font-family: var(--font); font-size: 0.92rem; font-weight: 700; cursor: pointer; transition: filter 0.2s, transform 0.15s; }
     .btn-ctrl:active { transform: scale(0.95); }
-    .btn-pause { background: #1d1d1f; color: #fff; box-shadow: var(--highlight), var(--shadow-md); }
-    body.dark .btn-pause { background: #f5f5f7; color: #1d1d1f; }
-    .btn-pause:hover { opacity: 0.88; }
-    .btn-back  { background: var(--glass); border: 1px solid var(--border-card); color: var(--text); }
-    .btn-back:hover { background: var(--glass-strong); }
-    .btn-sound { background: var(--glass); border: 1px solid var(--border-card); color: var(--text); padding: 12px 14px; }
-    .btn-sound:hover { background: var(--glass-strong); }
+    .btn-ctrl:hover { background: var(--glass-strong); }
+    .btn-pause { background: var(--sky-cta, #1d1d1f); color: var(--sky-cta-text, #fff); border-color: transparent; }
+    .btn-pause:hover { opacity: 0.88; background: var(--sky-cta, #1d1d1f); }
+    .btn-sound { padding: 10px 12px; }
 
-    /* 종료 배너 */
-    .done-banner {
-      display: none; margin-top: 18px; padding: 12px 24px; border-radius: 14px;
-      background: rgba(34,197,94,0.14); border: 1px solid rgba(34,197,94,0.4);
-      color: #16a34a; font-weight: 700; font-size: 1rem; text-align: center;
-      animation: fadeUp 0.3s ease;
-    }
-    body.dark .done-banner { color: #4ade80; }
-    .done-banner.show { display: block; }
+    /* 설정 화면: 최근 쓴 타이머 칩 */
+    .recent-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .recent-row:empty { display: none; }
+    .recent-chip { padding: 8px 14px; border-radius: 10px; border: 1px dashed var(--border-card); background: var(--glass); color: var(--text); font-family: var(--font); font-size: 0.85rem; font-weight: 600; cursor: pointer; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .recent-chip:hover { background: var(--glass-strong); }
+    .start-hint { font-size: 0.78rem; color: var(--sub); margin-bottom: 10px; }
 
-    @keyframes fadeUp { from { opacity:0; transform: translateY(12px); } to { opacity:1; transform: translateY(0); } }
-
-    /* ── Fullscreen ── */
-    :fullscreen .nav, :-webkit-full-screen .nav { display: none; }
-    :fullscreen main, :-webkit-full-screen main { padding: 40px 24px; background: var(--bg); }
-    :fullscreen .run-ring-wrap, :-webkit-full-screen .run-ring-wrap { width: min(420px, 60vw); height: min(420px, 60vw); }
     /* ── 하늘(ui-sky) 디자인 — 수업 중 띄우는 도구라 사이드바 없이 화면을 크게 쓴다 ──
        ≥1100: 설정 카드 2장 나란히, 실행 화면 링은 화면 높이에 맞춰 크게 */
     body.ui-sky .nav { background: var(--glass-nav); border-bottom: 1px solid var(--border); }
     body.ui-sky .btn-icon { background: var(--sky-chip); border-color: var(--sky-chip-line); backdrop-filter: none; -webkit-backdrop-filter: none; }
     body.ui-sky .title-card, body.ui-sky .timer-setup-card { background: var(--surface); border-color: var(--border); border-radius: 18px; box-shadow: var(--shadow); }
-    body.ui-sky .field-label, body.ui-sky .trans-lang, body.ui-sky .run-trans-lang, body.ui-sky .run-time-label { text-transform: none; letter-spacing: 0; }
+    body.ui-sky .field-label, body.ui-sky .trans-lang { text-transform: none; letter-spacing: 0; }
     body.ui-sky .title-inp, body.ui-sky .custom-inp { background: var(--sky-chip); border-color: var(--sky-chip-line); backdrop-filter: none; -webkit-backdrop-filter: none; }
-    body.ui-sky .btn-translate, body.ui-sky .preset-btn, body.ui-sky .btn-back, body.ui-sky .btn-sound { background: var(--sky-chip); border-color: var(--sky-chip-line); box-shadow: none; }
+    body.ui-sky .btn-translate, body.ui-sky .preset-btn, body.ui-sky .recent-chip { background: var(--sky-chip); border-color: var(--sky-chip-line); box-shadow: none; }
     body.ui-sky .trans-chip { background: var(--sky-chip); border-color: var(--sky-chip-line); }
     body.ui-sky .preset-btn { border-radius: 10px; }
     body.ui-sky .preset-btn.active { background: var(--sky-cta); color: var(--sky-cta-text); }
-    body.ui-sky .btn-start-big, body.ui-sky .btn-pause { background: var(--sky-cta); color: var(--sky-cta-text); border-radius: 14px; box-shadow: 0 8px 24px rgba(20,20,60,0.18); }
-    body.ui-sky .btn-ctrl { border-radius: 14px; }
-    body.ui-sky .run-ring-fill.ok { stroke: var(--accent); }
+    body.ui-sky .btn-pause { background: var(--sky-cta); color: var(--sky-cta-text); }
     @media (min-width: 1100px) {
       body.ui-sky #setupView:not(.hidden) { display: grid; grid-template-columns: 1fr 1fr; align-items: start; max-width: 1100px; gap: 20px; }
-      body.ui-sky .run-ring-wrap { width: min(620px, 62vh); height: min(620px, 62vh); }
-      body.ui-sky .run-time-num { font-size: min(9rem, 11vh); }
     }
   </style>
 </head>
@@ -219,7 +176,7 @@
       <span class="nav-brand-title">수업 타이머</span>
     </a>
     <div class="nav-right">
-      <button class="btn-icon" id="soundBtn" onclick="toggleSound()" title="알림음"><svg width="17" height="17"><use href="#ic-bell"/></svg></button>
+      <button class="btn-icon snd-btn" id="soundBtn" onclick="toggleSound()" title="알림음"><svg width="17" height="17"><use href="#ic-bell"/></svg></button>
       <button class="btn-icon" onclick="toggleFs()" title="전체화면"><svg width="16" height="16"><use href="#ic-expand"/></svg></button>
       <button class="dark-toggle" onclick="toggleDark()" title="다크모드"></button>
     </div>
@@ -244,12 +201,19 @@
             <div class="trans-lang">Русский</div>
             <div class="trans-text" id="transRu">—</div>
           </div>
+          <div class="trans-chip">
+            <div class="trans-lang">English</div>
+            <div class="trans-text" id="transEn">—</div>
+          </div>
         </div>
       </div>
 
       <!-- 시간 설정 + 시작 -->
       <div class="timer-setup-card">
-        <div class="field-label" style="margin-bottom:10px;">시간 설정</div>
+        <div class="field-label" id="recentLabel" style="margin-bottom:10px;">최근 쓴 타이머</div>
+        <div class="recent-row" id="recentRow"></div>
+        <div class="field-label" style="margin-bottom:6px;">시간 선택</div>
+        <div class="start-hint">시간을 누르면 바로 시작돼요. 제목을 적었다면 번역도 자동으로 붙어요.</div>
         <div class="presets" id="presets">
           <button class="preset-btn" onclick="setPreset(5,this)">5분</button>
           <button class="preset-btn" onclick="setPreset(10,this)">10분</button>
@@ -259,45 +223,35 @@
         </div>
         <div class="custom-row">
           <span class="custom-label">직접 입력</span>
-          <input class="custom-inp" id="customMin" type="number" min="0" max="99" placeholder="분">
+          <input class="custom-inp" id="customMin" type="number" min="0" max="99" placeholder="분" onkeydown="if(event.key==='Enter')startCustom()">
           <span class="custom-label">분</span>
-          <input class="custom-inp" id="customSec" type="number" min="0" max="59" placeholder="초">
+          <input class="custom-inp" id="customSec" type="number" min="0" max="59" placeholder="초" onkeydown="if(event.key==='Enter')startCustom()">
           <span class="custom-label">초</span>
-          <button class="preset-btn" onclick="setCustom()">설정</button>
+          <button class="preset-btn" onclick="startCustom()"><svg width="12" height="12" style="vertical-align:-1px;margin-right:4px;"><use href="#ic-play"/></svg>시작</button>
         </div>
-        <button class="btn-start-big" id="startBig" onclick="startTimer()" disabled><svg width="13" height="13" style="vertical-align:-1px;margin-right:5px;"><use href="#ic-play"/></svg>타이머 시작</button>
       </div>
     </div>
 
-    <!-- ── 실행 화면 ── -->
-    <div id="runView">
-      <!-- 제목 -->
-      <div class="run-title-wrap" id="runTitleWrap">
-        <div class="run-title-ko" id="runTitleKo"></div>
-        <div class="run-trans-row" id="runTransRow"></div>
-      </div>
-
-      <!-- 큰 링 -->
-      <div class="run-ring-wrap">
-        <svg class="run-ring-svg" viewBox="0 0 200 200">
-          <circle class="run-ring-bg" cx="100" cy="100" r="88"/>
-          <circle class="run-ring-fill ok" id="runRingFill" cx="100" cy="100" r="88"
-            stroke-dasharray="552.9" stroke-dashoffset="0"/>
-        </svg>
-        <div class="run-ring-inner">
-          <div class="run-time-num" id="runTimeNum">00:00</div>
-          <div class="run-time-label" id="runTimeLabel">진행 중</div>
-        </div>
-      </div>
-
-      <!-- 컨트롤 -->
-      <div class="run-controls">
-        <button class="btn-ctrl btn-back" onclick="backToSetup()"><svg width="13" height="13" style="vertical-align:-1px;margin-right:4px;"><use href="#ic-back"/></svg>돌아가기</button>
-        <button class="btn-ctrl btn-pause" id="pauseBtn" onclick="togglePause()">일시정지</button>
-      </div>
-      <div class="done-banner" id="doneBanner"><svg width="15" height="15" style="vertical-align:-2px;margin-right:5px;"><use href="#ic-bell-ring"/></svg>시간이 종료되었습니다!</div>
-    </div>
   </main>
+
+  <!-- ── 실행 화면 (전체 덮음) ── -->
+  <div id="runView" data-st="ok">
+    <div class="gauge" id="gauge"></div>
+    <div class="run-content">
+      <div class="run-title-wrap" id="runTitleWrap"></div>
+      <div class="run-time-num" id="runTimeNum">00:00</div>
+      <div class="run-time-label" id="runTimeLabel"></div>
+    </div>
+    <div class="run-controls" id="runControls">
+      <button class="btn-ctrl" onclick="backToSetup()"><svg width="13" height="13" style="vertical-align:-1px;margin-right:4px;"><use href="#ic-back"/></svg>돌아가기</button>
+      <button class="btn-ctrl" onclick="adjust(-60)">−1분</button>
+      <button class="btn-ctrl" onclick="adjust(30)">+30초</button>
+      <button class="btn-ctrl" onclick="adjust(60)">+1분</button>
+      <button class="btn-ctrl btn-pause" id="pauseBtn" onclick="togglePause()">일시정지</button>
+      <button class="btn-ctrl btn-sound snd-btn" onclick="toggleSound()" title="알림음"><svg width="17" height="17"><use href="#ic-bell"/></svg></button>
+      <button class="btn-ctrl btn-sound" onclick="toggleFs()" title="전체화면"><svg width="16" height="16"><use href="#ic-expand"/></svg></button>
+    </div>
+  </div>
 
   <script>
     (async () => { await window.AdminAuth.ready; if (!window.AdminAuth.isValid()) location.href = 'index.html'; })();
@@ -314,9 +268,8 @@
     let audioCtx = null;
     function toggleSound() {
       soundOn = !soundOn;
-      document.getElementById('soundBtn').innerHTML = soundOn
-        ? '<svg width="17" height="17"><use href="#ic-bell"/></svg>'
-        : '<svg width="17" height="17"><use href="#ic-bell-off"/></svg>';
+      const ic = soundOn ? '#ic-bell' : '#ic-bell-off';
+      document.querySelectorAll('.snd-btn').forEach(b => { b.innerHTML = `<svg width="17" height="17"><use href="${ic}"/></svg>`; });
     }
     function playDone() {
       if (!soundOn) return;
@@ -334,29 +287,25 @@
       } catch(e) {}
     }
 
-    // ── 번역 ──
-    let zhText = '', ruText = '';
+    // ── 번역 (중국어·러시아어·영어) ──
+    const LANGS = [['zh','zh-cn','transZh'], ['ru','ru','transRu'], ['en','en','transEn']];
+    let tr = { zh:'', ru:'', en:'' };
     function onTitleInput() {
-      const v = document.getElementById('titleInp').value.trim();
-      document.getElementById('transBtn').disabled = !v;
-      updateStartBtn();
-      zhText = ''; ruText = '';
-      document.getElementById('transZh').textContent = '—';
-      document.getElementById('transRu').textContent = '—';
+      document.getElementById('transBtn').disabled = !document.getElementById('titleInp').value.trim();
+      tr = { zh:'', ru:'', en:'' };
+      LANGS.forEach(([,,id]) => setTransEl(id, '—'));
     }
     async function doTranslate() {
       const title = document.getElementById('titleInp').value.trim();
       if (!title) return;
       const btn = document.getElementById('transBtn');
       btn.disabled = true; btn.textContent = '…';
-      ['transZh','transRu'].forEach(id => { const el = document.getElementById(id); el.textContent = '번역 중…'; el.className = 'trans-text loading'; });
+      LANGS.forEach(([,,id]) => { const el = document.getElementById(id); el.textContent = '번역 중…'; el.className = 'trans-text loading'; });
       try {
-        const [zh, ru] = await Promise.all([translate(title,'zh-cn'), translate(title,'ru')]);
-        zhText = zh || ''; ruText = ru || '';
-        setTransEl('transZh', zhText || '—');
-        setTransEl('transRu', ruText || '—');
+        const res = await Promise.all(LANGS.map(([,l]) => translate(title, l)));
+        LANGS.forEach(([k,,id], i) => { tr[k] = res[i] || ''; setTransEl(id, tr[k] || '—'); });
       } catch(e) {
-        setTransEl('transZh','번역 실패'); setTransEl('transRu','번역 실패');
+        LANGS.forEach(([,,id]) => setTransEl(id, '번역 실패'));
       }
       btn.disabled = false; btn.textContent = '번역';
     }
@@ -368,109 +317,158 @@
       return data.translations[0]?.text || '';
     }
 
+    // ── 최근 쓴 타이머 (이 브라우저에만 저장) ──
+    const RECENT_KEY = 'timerRecent';
+    function loadRecent() { try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch(e) { return []; } }
+    function fmtLen(s) { return Math.floor(s/60) + '분' + (s % 60 ? ' ' + (s % 60) + '초' : ''); }
+    function saveRecent() {
+      const title = document.getElementById('titleInp').value.trim();
+      if (!title) return;
+      const list = loadRecent().filter(r => !(r.title === title && r.secs === totalSecs));
+      list.unshift({ title, secs: totalSecs, zh: tr.zh, ru: tr.ru, en: tr.en });
+      try { localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 6))); } catch(e) {}
+      renderRecent();
+    }
+    function renderRecent() {
+      const list = loadRecent();
+      document.getElementById('recentLabel').style.display = list.length ? '' : 'none';
+      document.getElementById('recentRow').innerHTML = list.map((r, i) =>
+        `<button class="recent-chip" onclick="useRecent(${i})">${escHtml(r.title)} · ${fmtLen(r.secs)}</button>`).join('');
+    }
+    function useRecent(i) {
+      const r = loadRecent()[i]; if (!r) return;
+      document.getElementById('titleInp').value = r.title;
+      document.getElementById('transBtn').disabled = false;
+      tr = { zh: r.zh || '', ru: r.ru || '', en: r.en || '' };
+      LANGS.forEach(([k,,id]) => setTransEl(id, tr[k] || '—'));
+      totalSecs = r.secs;
+      startTimer();
+    }
+
     // ── 타이머 상태 ──
-    const CIRC = 2 * Math.PI * 88;
-    let totalSecs = 0, remainSecs = 0, running = false, interval = null;
+    let totalSecs = 0, remainSecs = 0, running = false, interval = null, runKo = '', uiTimer = null;
+    const runView = () => document.getElementById('runView');
 
     function fmt(s) { return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`; }
 
-    function setPreset(min, btn) {
-      totalSecs = remainSecs = min * 60;
-      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-      if (btn) btn.classList.add('active');
-      updateStartBtn();
-    }
-    function setCustom() {
-      const m = parseInt(document.getElementById('customMin').value) || 0;
-      const s = parseInt(document.getElementById('customSec').value) || 0;
-      const total = m*60+s;
+    // 시간 버튼을 누르면 바로 시작
+    function setPreset(min) { totalSecs = min * 60; startTimer(); }
+    function startCustom() {
+      const total = (parseInt(document.getElementById('customMin').value) || 0) * 60 + (parseInt(document.getElementById('customSec').value) || 0);
       if (total <= 0) return;
-      totalSecs = remainSecs = total;
-      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
-      updateStartBtn();
+      totalSecs = total; startTimer();
     }
-    function updateStartBtn() {
-      document.getElementById('startBig').disabled = totalSecs === 0;
+
+    function renderRunTitle() {
+      const wrap = document.getElementById('runTitleWrap');
+      wrap.style.display = runKo ? '' : 'none';
+      runView().classList.toggle('no-title', !runKo);
+      wrap.innerHTML = runKo
+        ? `<div class="run-title-ko">${escHtml(runKo)}</div>` +
+          [['en','en'],['zh','zh-CN'],['ru','ru']].filter(([k]) => tr[k]).map(([k,l]) => `<div class="run-line" lang="${l}">${escHtml(tr[k])}</div>`).join('')
+        : '';
     }
 
     // ── 실행 화면 진입 ──
-    function startTimer() {
+    async function startTimer() {
       if (totalSecs === 0) return;
       remainSecs = totalSecs;
       running = true;
-
-      // 제목 채우기
-      const ko = document.getElementById('titleInp').value.trim();
-      document.getElementById('runTitleKo').textContent = ko || '';
-      document.getElementById('runTitleWrap').style.display = ko ? '' : 'none';
-
-      const transRow = document.getElementById('runTransRow');
-      transRow.innerHTML = '';
-      if (ko) {
-        if (zhText) transRow.innerHTML += `<div class="run-trans-item"><div class="run-trans-text">${escHtml(zhText)}</div></div>`;
-        if (ruText) transRow.innerHTML += `<div class="run-trans-item"><div class="run-trans-text">${escHtml(ruText)}</div></div>`;
-      }
-
-      // 뷰 전환
+      runKo = document.getElementById('titleInp').value.trim();
+      renderRunTitle();
       document.getElementById('setupView').classList.add('hidden');
-      document.getElementById('runView').classList.add('visible');
-      document.getElementById('doneBanner').classList.remove('show');
+      runView().classList.add('visible');
       document.getElementById('pauseBtn').textContent = '일시정지';
-
       updateRunView();
       clearInterval(interval);
       interval = setInterval(tick, 1000);
+      showControls();
+      saveRecent();
+      // 제목은 있는데 번역이 없으면 시작과 동시에 자동 번역
+      if (runKo && !tr.zh && !tr.ru && !tr.en) {
+        const ko = runKo;
+        await doTranslate();
+        if (runKo === ko) { renderRunTitle(); saveRecent(); }
+      }
     }
 
+    function finish() {
+      clearInterval(interval); running = false;
+      document.getElementById('pauseBtn').textContent = '다시 시작';
+      updateRunView();
+      playDone();
+    }
     function tick() {
       if (!running) return;
-      if (remainSecs <= 0) {
-        clearInterval(interval); running = false;
-        document.getElementById('pauseBtn').textContent = '다시 시작';
-        document.getElementById('doneBanner').classList.add('show');
-        updateRunView();
-        playDone(); return;
-      }
       remainSecs--;
+      if (remainSecs <= 0) { remainSecs = 0; finish(); return; }
       updateRunView();
     }
 
     function updateRunView() {
       const pct = totalSecs > 0 ? remainSecs / totalSecs : 0;
-      const offset = CIRC * (1 - pct);
-      const fill = document.getElementById('runRingFill');
-      const num  = document.getElementById('runTimeNum');
-      fill.style.strokeDashoffset = offset;
-
-      fill.className = 'run-ring-fill ';
-      num.className  = 'run-time-num ';
-      if (remainSecs === 0 && totalSecs > 0) { fill.className += 'done'; num.className += 'done'; }
-      else if (pct <= 0.2)  { fill.className += 'danger'; num.className += 'danger'; }
-      else if (pct <= 0.5)  { fill.className += 'warn';   num.className += 'warn'; }
-      else                   { fill.className += 'ok'; }
-
-      document.getElementById('runTimeNum').textContent = fmt(remainSecs);
+      const done = remainSecs === 0 && totalSecs > 0;
+      const st = done ? 'done' : pct <= 0.2 ? 'danger' : pct <= 0.5 ? 'warn' : 'ok';
+      runView().dataset.st = st;
+      document.getElementById('gauge').style.height = (done ? 100 : pct * 100) + '%';
+      const num = document.getElementById('runTimeNum');
+      num.textContent = fmt(remainSecs);
+      num.classList.toggle('final', running && remainSecs > 0 && remainSecs <= 10);
+      // 색만으로 구분하지 않도록 단계마다 문구도 함께
       document.getElementById('runTimeLabel').textContent =
-        remainSecs === 0 ? '종료' : running ? '진행 중' : '일시정지';
+        done ? '종료!' : !running ? '일시정지' : st === 'danger' ? '곧 끝나요' : st === 'warn' ? '절반 지났어요' : '진행 중';
+      if (!running) showControls();
     }
 
     function togglePause() {
-      if (remainSecs === 0) { remainSecs = totalSecs; running = true; document.getElementById('doneBanner').classList.remove('show'); clearInterval(interval); interval = setInterval(tick,1000); document.getElementById('pauseBtn').textContent='일시정지'; updateRunView(); return; }
+      if (remainSecs === 0) { remainSecs = totalSecs; running = true; clearInterval(interval); interval = setInterval(tick, 1000); document.getElementById('pauseBtn').textContent = '일시정지'; updateRunView(); showControls(); return; }
       running = !running;
       document.getElementById('pauseBtn').textContent = running ? '일시정지' : '계속';
-      document.getElementById('runTimeLabel').textContent = running ? '진행 중' : '일시정지';
+      updateRunView(); showControls();
     }
 
+    // 시간 늘리기·줄이기 (수업이 길어질 때)
+    function adjust(d) {
+      if (remainSecs === 0) {
+        if (d < 0) return;
+        totalSecs = remainSecs = d; running = true;
+        clearInterval(interval); interval = setInterval(tick, 1000);
+        document.getElementById('pauseBtn').textContent = '일시정지';
+      } else {
+        remainSecs = Math.max(0, remainSecs + d);
+        if (remainSecs > totalSecs) totalSecs = remainSecs;
+        if (remainSecs === 0) { finish(); showControls(); return; }
+      }
+      updateRunView(); showControls();
+    }
+
+    // 컨트롤은 평소 숨김 — 마우스·터치·키를 누르면 2.5초 보였다가 사라짐(멈춤·종료 상태에선 계속 보임)
+    function showControls() {
+      const rv = runView();
+      rv.classList.add('ui');
+      clearTimeout(uiTimer);
+      if (running && remainSecs > 0) uiTimer = setTimeout(() => rv.classList.remove('ui'), 2500);
+    }
+    runView().addEventListener('mousemove', showControls);
+    runView().addEventListener('touchstart', showControls, { passive: true });
+    // 화면(버튼 밖)을 누르면 일시정지/계속
+    runView().addEventListener('click', e => { if (!e.target.closest('.run-controls')) togglePause(); });
+    document.addEventListener('keydown', e => {
+      if (!runView().classList.contains('visible')) return;
+      showControls();
+      if (e.code === 'Space' && !e.target.closest('button')) { e.preventDefault(); togglePause(); }
+      else if (e.code === 'KeyF') toggleFs();
+    });
+
     function backToSetup() {
-      clearInterval(interval); running = false;
-      document.getElementById('runView').classList.remove('visible');
+      clearInterval(interval); clearTimeout(uiTimer); running = false;
+      runView().classList.remove('visible');
       document.getElementById('setupView').classList.remove('hidden');
     }
 
     function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-    // 링 초기화
-    document.getElementById('runRingFill').style.strokeDasharray = CIRC;
+    renderRecent();
   </script>
 </body>
 </html>
