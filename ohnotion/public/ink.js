@@ -15,6 +15,7 @@
 //
 // 조작(선생님): 발표 화면 ✏️ 또는 D = 필기 켜기/끄기, 1~6 = 색, Z = 이 장 마지막 획 지우기,
 //   🗑 = 이 장 필기 다 지우기, Esc = 필기 끄기. 필기 중에는 클릭·스와이프로 장이 넘어가지 않는다(키는 됨).
+//   태블릿: 필기 중 펜은 쓰고, 손가락은 위아래로 끌면 스크롤·옆으로 쓸면 장 넘기기(펜을 한 번 쓴 뒤부터).
 import { db } from './firebase-config.js';
 import { doc, onSnapshot, setDoc, arrayUnion, arrayRemove, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
@@ -137,7 +138,10 @@ export function teacherInk(slug) {
   let color = 0;
   let bar = null;
   let penBtn = null;
-  let drawing = null;   // 그리는 중인 획 { k, inner, pts, el }
+  let drawing = null;   // 그리는 중인 획 { id, pen, k, inner, pts, el }
+  let pan = null;       // 손가락 스크롤 { id, inner, x, y, top, scale }
+  let sawPen = false;   // 이 기기에서 펜을 쓴 적 있음 → 손가락은 스크롤
+  let lastPenAt = 0;
 
   const save = (data, merge = true) => setDoc(ref, { ...data, at: serverTimestamp() }, { merge })
     .catch((e) => { console.error('필기 저장 실패', e); alert(`필기를 저장하지 못했어요: ${e.message}`); });
@@ -235,31 +239,57 @@ export function teacherInk(slug) {
   function cancelStroke() {
     drawing?.el.remove();
     drawing = null;
+    pan = null;
   }
+  // 태블릿: 펜(또는 마우스)은 쓰고, 손가락은 위아래로 끌면 스크롤·옆으로 쓸면 장 넘기기.
+  // 펜을 한 번이라도 쓴 기기에서만 손가락을 스크롤로 본다(펜 없는 태블릿은 손가락으로 쓴다).
+  // 펜으로 쓰는 중이거나 막 뗀 직후의 손가락(손바닥)은 무시한다.
   document.addEventListener('pointerdown', (e) => {
     if (!inking || e.button !== 0 || !e.target.closest?.('.deck-stage')) return;
+    if (e.pointerType === 'pen') sawPen = true;
     const k = P.index();
     const inner = innerOf(k);
-    if (!inner) return;   // 표지에는 안 쓴다
+    if (e.pointerType === 'touch' && sawPen) {
+      e.preventDefault();
+      if (drawing || pan || Date.now() - lastPenAt < 400) return;   // 손바닥
+      const rect = inner?.getBoundingClientRect();
+      pan = { id: e.pointerId, inner, x: e.clientX, y: e.clientY, top: inner?.scrollTop || 0, scale: inner ? rect.width / Math.max(inner.offsetWidth, 1) : 1 };
+      return;
+    }
+    if (!inner || drawing) return;   // 표지에는 안 쓴다 · 한 번에 한 획
     e.preventDefault();
     const el = lineEl(color);
     layerOf(inner).appendChild(el);
-    drawing = { k, inner, el, pts: [contentPoint(inner, e)] };
+    drawing = { id: e.pointerId, pen: e.pointerType === 'pen', k, inner, el, pts: [contentPoint(inner, e)] };
     el.setAttribute('points', drawing.pts.map((p) => p.join(',')).join(' '));
     try { e.target.setPointerCapture?.(e.pointerId); } catch { /* 무시 */ }
   }, true);
   document.addEventListener('pointermove', (e) => {
-    if (!drawing) return;
+    if (pan && e.pointerId === pan.id) {
+      if (drawing) return;
+      if (pan.inner) pan.inner.scrollTop = pan.top - (e.clientY - pan.y) / pan.scale;
+      return;
+    }
+    if (!drawing || e.pointerId !== drawing.id) return;
     const p = contentPoint(drawing.inner, e);
     const last = drawing.pts[drawing.pts.length - 1];
     if (Math.hypot(p[0] - last[0], p[1] - last[1]) < 2) return;
     drawing.pts.push(p);
     drawing.el.setAttribute('points', drawing.pts.map((q) => q.join(',')).join(' '));
   }, true);
-  const finish = () => {
-    if (!drawing) return;
-    const { k, inner, pts, el } = drawing;
+  const endPan = (e) => {
+    const dx = e.clientX - pan.x;
+    const dy = e.clientY - pan.y;
+    pan = null;
+    // 옆으로 쓸기 = 장 넘기기(위아래 움직임보다 확실히 클 때만)
+    if (e.type === 'pointerup' && Math.abs(dx) > 80 && Math.abs(dx) > Math.abs(dy) * 2) P.go(P.index() + (dx < 0 ? 1 : -1));
+  };
+  const finish = (e) => {
+    if (pan && e.pointerId === pan.id) { endPan(e); return; }
+    if (!drawing || e.pointerId !== drawing.id) return;
+    const { k, inner, pts, el, pen } = drawing;
     drawing = null;
+    if (pen) lastPenAt = Date.now();
     if (pts.length === 1) pts.push([pts[0][0] + 0.5, pts[0][1] + 0.5]);   // 점 하나
     const blocks = blocksOf(inner);
     if (!blocks.length) { el.remove(); return; }
