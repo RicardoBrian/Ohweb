@@ -107,6 +107,8 @@ function teacher(ref) {
       write(state());
       beat = setInterval(() => write(state()), HEARTBEAT_MS);
     } else {
+      // 넘기자마자(0.25초 안) 풀면 늦게 쓰는 슬라이드 저장이 on:true 로 덮어써 학생이 안 풀렸다.
+      clearTimeout(pending);
       ss.del(resumeKey);
       write({ on: false });
     }
@@ -129,7 +131,7 @@ function teacher(ref) {
     if (!on) return;
     // 빨리 여러 장 넘기면 마지막 것만 쓴다(문서 하나에 초당 1번 정도가 Firestore 권장).
     clearTimeout(pending);
-    pending = setTimeout(() => write(state()), 250);
+    pending = setTimeout(() => { if (on) write(state()); }, 250);
   });
   document.addEventListener('present:blank', () => { if (on) write(state()); });
   document.addEventListener('present:close', () => { if (on) setOn(false); btn = null; });
