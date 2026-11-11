@@ -239,6 +239,7 @@ export function teacherInk(slug) {
   function cancelStroke() {
     drawing?.el.remove();
     drawing = null;
+    pan = null;
   }
   // 태블릿: 펜·마우스·한 손가락은 쓰기, 두세 손가락은 위아래로 끌면 스크롤·옆으로 쓸면 장 넘기기.
   // 한 손가락으로 막 쓰기 시작했는데 두 번째 손가락이 닿으면 그 획은 버리고 스크롤로 바꾼다.
@@ -255,6 +256,7 @@ export function teacherInk(slug) {
   }
   document.addEventListener('pointerdown', (e) => {
     if (!inking || e.button !== 0 || !e.target.closest?.('.deck-stage')) return;
+    if (e.pointerType === 'pen') sawPen = true;
     const k = P.index();
     const inner = innerOf(k);
     if (e.pointerType === 'touch') {
