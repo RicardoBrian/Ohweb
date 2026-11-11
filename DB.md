@@ -13,7 +13,7 @@
 | `schools`, `classes` | ohweb(관리), ohinfo | 학교·반 |
 | `students` | ohweb(관리), ohinfo(로그인) | 학생 계정. 로그인은 Firebase Auth `${id}@ohinfo.local` |
 | `student_directory` | ohweb, ohinfo | 공개용 학생 명단(이름만) |
-| `appSettings` | ohweb, ohinfo, ohnotion | 반 × 앱 공개 설정 · `ohnotion_site` = 노션 페이지 숨기기(closedSlugs)·다국어 링크(langs) · `ohnotion_follow_{주소}` = 발표 따라가기 |
+| `appSettings` | ohweb, ohinfo, ohnotion | 반 × 앱 공개 설정 · `ohnotion_site` = 노션 페이지 숨기기(closedSlugs)·다국어 링크(langs) · `ohnotion_follow_{주소}` = 발표 따라가기 · `ohnotion_ink_{주소}` = 발표 필기·스크롤 |
 | `posts` | ohinfo `ohdlet.html`(게시판), ohweb | 게시판 글 |
 | `qna_threads` | ohinfo `qna.html`, ohweb | 질문 게시판 |
 | `score_templates`, `score_assessments`, `score_results`(+하위 `history`), `score_notes` | ohweb `score.html`(입력·공개), ohinfo `score.html`(학생 확인·이의신청), Apps Script `score-drive.gs`(제출물) | 수행평가 점수·항목별 점수·감점사유·제출물 목록(`files`, 파일은 선생님 드라이브). 시험에서 가져온 평가는 `source {type:'exam', examId, asIds}`, 결과에 `fromExam`. 학생은 본인 결과 중 공개된 것만 읽는다. `score_notes` = 선생님만 보는 비고 |

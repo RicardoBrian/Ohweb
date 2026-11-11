@@ -567,6 +567,20 @@ html.lb-open, html.lb-open body { overflow: hidden; }
 .deck.locked .deck-stage { cursor: default; }
 .deck-ui .deck-follow.on { background: rgba(212, 76, 71, 0.9); }
 
+/* 발표 필기(ink.js) — 필기 층은 슬라이드 내용 안에 있어 스크롤과 같이 움직인다. */
+.deck svg.ink-layer { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; z-index: 5; }
+.deck.inking .deck-stage { cursor: crosshair; touch-action: none; user-select: none; -webkit-user-select: none; }
+.deck-ui .deck-pen.on { background: rgba(28, 111, 209, 0.9); }
+.ink-bar { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 4; display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 10px; background: rgba(15, 15, 15, 0.78); }
+.ink-bar[hidden] { display: none; }
+.ink-bar button { width: 34px; height: 34px; border: 0; border-radius: 8px; background: transparent; color: #fff; font-size: 18px; cursor: pointer; }
+.ink-bar button:hover { background: rgba(255, 255, 255, 0.15); }
+.ink-bar .ink-color { position: relative; }
+.ink-bar .ink-color::after { content: ""; position: absolute; inset: 7px; border-radius: 50%; background: var(--c); border: 2px solid rgba(255, 255, 255, 0.85); }
+.ink-bar .ink-color.hl::after { inset: 9px 4px; border-radius: 4px; opacity: 0.8; }
+.ink-bar .ink-color.on { background: rgba(255, 255, 255, 0.28); }
+.ink-bar .ink-sep { width: 1px; height: 22px; background: rgba(255, 255, 255, 0.3); margin: 0 2px; }
+
 /* 다국어 학습지 — 언어 고르기(lang.js). 발표 화면(z-index 1000) 위에 뜬다. */
 .lang-pick { position: fixed; inset: 0; z-index: 3000; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; padding: 16px; }
 .lang-card { position: relative; width: 100%; max-width: 520px; max-height: 100%; overflow: auto; background: var(--card); color: var(--text); border-radius: 16px; padding: 28px 24px; text-align: center; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35); }
