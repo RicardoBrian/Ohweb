@@ -5,6 +5,11 @@
 // 상태: appSettings/ohnotion_follow_{주소} = { on, path, slide, total, blank, at }
 //       (appSettings 규칙 그대로 — 공개 읽기·관리자 쓰기. 규칙 변경 없음.)
 //   - 주소(slug) 하나에 하나. 선생님이 하위 페이지에서 발표하면 path 로 학생도 그 페이지로 옮긴다.
+//   - 고정 중에 선생님이 슬라이드 안의 하위 페이지 링크를 누르면, 고정을 풀지 않고 새 path 와 함께
+//     from(떠난 페이지)·link(그 페이지 본문에서 몇 번째 하위 페이지 링크인지)를 먼저 쓴 뒤 옮겨 가서
+//     그 페이지에서 발표·고정을 그대로 이어 간다. 다른 언어로 보는 학생은 link 번호로 자기 언어 페이지의
+//     같은 자리 링크를 찾아간다(언어별 페이지의 하위 페이지 순서가 같아야 함).
+//   - 선생님이 고정 중에 새로고침·뒤로 가기를 해도 같은 탭이면 1분 안에 다시 켜진다(sessionStorage).
 //   - 학생 화면은 onSnapshot 으로 듣는다 — 슬라이드를 넘길 때마다 학생 1명당 읽기 1번.
 //     Cloudflare 요청은 늘지 않는다(학생이 Firestore 에 바로 붙음).
 //   - 선생님이 탭을 그냥 닫아도 학생이 묶여 있지 않게, 켜 둔 동안 2분마다 at 을 새로 쓰고
@@ -21,10 +26,28 @@ const ADMIN_EMAIL = 'qjatjr7575@gmail.com';
 const HEARTBEAT_MS = 2 * 60 * 1000;
 const STALE_MS = 5 * 60 * 1000;
 const OLD_MS = 30 * 60 * 1000;   // 처음 열었을 때 at 이 이보다 오래면 꺼진 걸로(시계 오차 여유 포함)
+const RESUME_MS = 60 * 1000;     // 선생님이 고정 중에 페이지를 옮기면 이 안에 열린 새 페이지에서 이어 간다
+
+const ss = {
+  get(k) { try { return sessionStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { sessionStorage.setItem(k, v); } catch { /* 무시 */ } },
+  del(k) { try { sessionStorage.removeItem(k); } catch { /* 무시 */ } },
+};
+const loaded = new Promise((r) => { if (document.readyState === 'complete') r(); else window.addEventListener('load', r); });
 
 const slug = document.body.dataset.slug;
 const P = window.KakaPresent;
 if (slug && P) start();
+
+// 이 학습지 본문(발표 슬라이드 말고 원래 본문)의 하위 페이지 링크들 — 문서 순서대로.
+function subLinks() {
+  const root = document.querySelector('main.doc > .notion');
+  if (!root) return [];
+  const base = `/${encodeURIComponent(slug)}/`;
+  return [...root.querySelectorAll('a[href]')].filter((a) => {
+    try { const u = new URL(a.href, location.href); return u.origin === location.origin && u.pathname.startsWith(base); } catch { return false; }
+  });
+}
 
 function start() {
   const ref = doc(db, 'appSettings', `ohnotion_follow_${slug}`);
@@ -49,6 +72,8 @@ function teacher(ref) {
   let beat = null;
   let pending = null;
   let btn = null;
+  let moving = false;        // 하위 페이지로 옮겨 가는 중 — 떠날 때 고정을 풀지 않는다
+  const resumeKey = `kakanotion-follow-on:${slug}`;
 
   const write = (data) => setDoc(ref, { ...data, at: serverTimestamp() }, { merge: true })
     .catch((e) => { console.error('따라가기 저장 실패', e); alert(`학생 고정을 바꾸지 못했어요: ${e.message}`); });
@@ -82,6 +107,7 @@ function teacher(ref) {
       write(state());
       beat = setInterval(() => write(state()), HEARTBEAT_MS);
     } else {
+      ss.del(resumeKey);
       write({ on: false });
     }
     render();
@@ -111,8 +137,46 @@ function teacher(ref) {
     if (!P.isOpen() || e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === 'l' || e.key === 'L') { e.preventDefault(); setOn(!on); }
   }, true);
+  // 고정 중에 슬라이드(또는 본문)의 하위 페이지 링크를 누르면: 고정을 풀지 않고 학생에게 새 페이지를
+  // 먼저 알린 뒤 옮겨 가서, 그 페이지에서도 발표·고정을 그대로 이어 간다.
+  document.addEventListener('click', (e) => {
+    if (!on || e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+    const a = e.target.closest?.('a[href]');
+    if (!a || (a.target && a.target !== '_self')) return;
+    let u;
+    try { u = new URL(a.href, location.href); } catch { return; }
+    const root = `/${encodeURIComponent(slug)}`;
+    if (u.origin !== location.origin || !(u.pathname === root || u.pathname.startsWith(`${root}/`))) return;
+    if (u.pathname === location.pathname) return;   // 같은 페이지 안 이동(#목차 등)
+    e.preventDefault();
+    const href = a.getAttribute('href');
+    const link = subLinks().findIndex((x) => x.getAttribute('href') === href);
+    moving = true;
+    clearInterval(beat);
+    clearTimeout(pending);
+    ss.set(resumeKey, String(Date.now()));
+    const go = () => location.assign(`${u.pathname}#present=1`);
+    const timeout = new Promise((r) => setTimeout(r, 2000));   // 저장이 늦어도 2초 뒤엔 옮겨 간다
+    Promise.race([write({ on: true, path: u.pathname, from: location.pathname, link, slide: 0, total: 0, blank: false }), timeout]).then(go, go);
+  }, true);
+
   // 탭을 닫을 때도 풀어 본다(못 쓰고 닫혀도 학생은 5분 뒤 저절로 풀림).
-  window.addEventListener('pagehide', () => { if (on) write({ on: false }); });
+  // 같은 탭에서 새로고침·뒤로 가기였다면 새 페이지가 1분 안에 다시 켠다.
+  window.addEventListener('pagehide', () => {
+    if (!on || moving) return;
+    ss.set(resumeKey, String(Date.now()));
+    write({ on: false });
+  });
+
+  // 방금 고정 중에 이 탭에서 페이지를 옮겨 왔으면 발표를 열고 고정을 다시 켠다.
+  const t = Number(ss.get(resumeKey) || 0);
+  ss.del(resumeKey);
+  if (t && Date.now() - t < RESUME_MS) {
+    loaded.then(() => {
+      if (!P.isOpen()) P.open(0);
+      if (!on) setOn(true);
+    });
+  }
 }
 
 // ── 학생 ──
@@ -122,7 +186,31 @@ function student(ref) {
   let heardAt = 0;          // 켜진 소식을 마지막으로 받은 시각(이 PC 시계)
 
   const active = () => !!data?.on && Date.now() - heardAt < STALE_MS;
-  const samePath = (a, b) => { try { return decodeURIComponent(a).normalize('NFC') === decodeURIComponent(b).normalize('NFC'); } catch { return a === b; } };
+  const norm = (a) => { try { return decodeURIComponent(a).normalize('NFC'); } catch { return a; } };
+  const samePath = (a, b) => norm(a) === norm(b);
+
+  // 다른 언어로 보는 학생: 선생님(한국어) 페이지 주소 → 내 언어의 같은 페이지 주소.
+  // 선생님이 링크를 눌러 옮길 때(from, link) 내가 from 에 해당하는 페이지에 있으면 내 본문의 같은 번째
+  // 링크를 따라가고, 그 짝을 이 탭에 기억해 둔다(새로고침·되돌아오기에도 쓰도록).
+  const lang = new URLSearchParams(location.search).get('lang') || '';
+  const mapKey = `kakanotion-follow-map:${slug}:${lang}`;
+  const map = (() => { try { return JSON.parse(ss.get(mapKey) || '{}') || {}; } catch { return {}; } })();
+  map[norm(`/${encodeURIComponent(slug)}`)] = `/${encodeURIComponent(slug)}`;
+  function target(path) {
+    if (!lang || lang === 'ko') return path;
+    const known = map[norm(path)];
+    if (known) return known;
+    if (data.from && Number.isInteger(data.link) && data.link >= 0 && samePath(map[norm(data.from)] || '', location.pathname)) {
+      const a = subLinks()[data.link];
+      if (a) {
+        const mine = new URL(a.href, location.href).pathname;
+        map[norm(path)] = mine;
+        ss.set(mapKey, JSON.stringify(map));
+        return mine;
+      }
+    }
+    return path;   // 모르면 선생님 페이지(한국어)로
+  }
 
   function apply() {
     if (!active()) {
@@ -130,9 +218,10 @@ function student(ref) {
       return;
     }
     // 선생님이 다른(하위) 페이지에서 발표 중이면 그 페이지로 옮겨 간다.
-    if (data.path && !samePath(data.path, location.pathname)) {
+    const to = data.path ? target(data.path) : '';
+    if (to && !samePath(to, location.pathname)) {
       // ?lang=en(다국어 학습지에서 고른 언어)은 그대로 들고 간다.
-      location.replace(`${data.path}${location.search}#present=${(data.slide || 0) + 1}`);
+      location.replace(`${to}${location.search}#present=${(data.slide || 0) + 1}`);
       return;
     }
     following = true;
@@ -143,7 +232,6 @@ function student(ref) {
   }
 
   // 수식·글꼴이 다 그려진 뒤에 슬라이드를 만들어야 해서(present.js 와 같은 이유) 로드 뒤에 적용한다.
-  const loaded = new Promise((r) => { if (document.readyState === 'complete') r(); else window.addEventListener('load', r); });
   onSnapshot(ref, (snap) => {
     data = snap.exists() ? snap.data() : null;
     const at = data?.at?.toMillis?.() ?? 0;
