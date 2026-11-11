@@ -7,11 +7,11 @@ import { db } from './firebase-config.js';
 import { doc, getDoc, updateDoc, addDoc, collection, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { loadSession, authReady } from './session.js';
 import { escHtml, SAFE_ID } from './escape.js';
-import { bindDropZone, fetchFirstImage } from './ai-image.js?v=202611100007';
-import { makeT, getLang, setLang } from './ai-i18n.js?v=202611100007';
-import { labelName, newId, LANGS, classBoardKey, nv } from './ai-core.js?v=202611100007';
-import { defineBlocks, toolbox, starter, compile, build, COSTUMES, registerVarsFlyout } from './ai-blocks.js?v=202611100007';
-import { Stage, Runtime } from './ai-stage.js?v=202611100007';
+import { bindDropZone, fetchFirstImage } from './ai-image.js?v=202611110001';
+import { makeT, getLang, setLang } from './ai-i18n.js?v=202611110001';
+import { labelName, newId, LANGS, classBoardKey, nv } from './ai-core.js?v=202611110001';
+import { defineBlocks, toolbox, starter, compile, build, COSTUMES, registerVarsFlyout } from './ai-blocks.js?v=202611110001';
+import { Stage, Runtime } from './ai-stage.js?v=202611110001';
 
 const E = escHtml;
 const $ = id => document.getElementById(id);
@@ -159,7 +159,7 @@ function bindInputs() {
     bindDropZone($('stageBox'), dropPhoto);
     $('pickBtn').addEventListener('click', () => $('filePick').click());
     const d = $('drawBtn');
-    if (d) d.addEventListener('click', async () => { const M = await import('./ai-capture.js?v=202611100007'); M.openDraw({ t, single: true, onAdd: b => setPhoto(b) }); });
+    if (d) d.addEventListener('click', async () => { const M = await import('./ai-capture.js?v=202611110001'); M.openDraw({ t, single: true, onAdd: b => setPhoto(b) }); });
   }
   if (S.kind === 'table') document.querySelectorAll('[data-fi]').forEach(el => el.addEventListener('input', () => {
     const i = Number(el.dataset.fi), f = S.app.table.features[i];
@@ -208,9 +208,9 @@ function setPhoto(blob) {
 // ── AI ──
 let _modelP = null;
 function loadModel() {
-  if (S.kind === 'text') _modelP = import('./ai-text-core.js?v=202611100007').then(M => ({ text: M }));
-  else if (S.kind === 'table') _modelP = import('./ai-table-core.js?v=202611100007').then(M => ({ table: M }));
-  else _modelP = import('./ai-model.js?v=202611100007').then(async M => ({ M, loaded: await (S.app.modelVersion ? M.loadDriveModel(null, pid, S.app.modelVersion) : M.loadModel(S.app.modelUrl)) }));
+  if (S.kind === 'text') _modelP = import('./ai-text-core.js?v=202611110001').then(M => ({ text: M }));
+  else if (S.kind === 'table') _modelP = import('./ai-table-core.js?v=202611110001').then(M => ({ table: M }));
+  else _modelP = import('./ai-model.js?v=202611110001').then(async M => ({ M, loaded: await (S.app.modelVersion ? M.loadDriveModel(null, pid, S.app.modelVersion) : M.loadModel(S.app.modelUrl)) }));
   _modelP.catch(e => { console.error(e); toast(t('k_loadFail')); });
 }
 async function classify(kind, arg) {

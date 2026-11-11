@@ -277,23 +277,9 @@ export function registerVarsFlyout(B, ws) {
   });
 }
 
-// 처음 열었을 때 놓아 두는 예시 프로그램
-export function starter(ctx) {
-  const { t, kind } = ctx;
-  const txt = s => ({ shadow: { type: 'text', fields: { TEXT: s } } });
-  const num = n => ({ shadow: { type: 'math_number', fields: { NUM: n } } });
-  const chain = list => list.reduceRight((next, blk) => (next ? { ...blk, next: { block: next } } : blk), null);
-  let body;
-  if (kind === 'image') {
-    body = chain([{ type: 'ai_camera', fields: { ON: '1' } }, { type: 'lo_say_for', inputs: { TEXT: txt(t('b_defShow')), SEC: num(2) } },
-      { type: 'ct_forever', inputs: { DO: { block: chain([{ type: 'ai_ask_image' }, { type: 'lo_say', inputs: { TEXT: { ...txt(''), block: { type: 'ai_result' } } } }, { type: 'ct_wait', inputs: { SEC: num(1) } }]) } } }]);
-  } else if (kind === 'text') {
-    body = chain([{ type: 'ai_ask_user', inputs: { Q: txt(t('b_defAsk')) } }, { type: 'ai_ask_text', inputs: { TEXT: { ...txt(''), block: { type: 'ai_answer' } } } },
-      { type: 'lo_say_for', inputs: { TEXT: { ...txt(''), block: { type: 'ai_result' } }, SEC: num(2) } }]);
-  } else {
-    body = chain([{ type: 'ai_ask_table' }, { type: 'lo_say_for', inputs: { TEXT: { ...txt(''), block: { type: 'ai_result' } }, SEC: num(2) } }]);
-  }
-  return { blocks: { languageVersion: 0, blocks: [{ type: 'ev_start', x: 30, y: 30, next: { block: body } }] } };
+// 처음 열었을 때는 빈 작업 공간(학생이 처음부터 직접 만든다)
+export function starter() {
+  return { blocks: { languageVersion: 0, blocks: [] } };
 }
 
 // 작업 공간 → 실행할 수 있는 프로그램 글. 이벤트 블록(모자 블록)에 붙은 것만 실행한다.
