@@ -563,8 +563,6 @@ html.lb-open, html.lb-open body { overflow: hidden; }
   background: rgba(15, 15, 15, 0.72); color: #fff; font: 500 14px var(--font); pointer-events: none;
 }
 .deck-teacher { background: rgba(212, 76, 71, 0.9); }
-.deck-unfollow { pointer-events: auto; margin-left: 8px; padding: 2px 10px; border: 1px solid rgba(255, 255, 255, 0.5); border-radius: 6px; background: transparent; color: #fff; font: inherit; font-size: 13px; cursor: pointer; }
-.deck-unfollow:hover { background: rgba(255, 255, 255, 0.15); }
 .deck.locked .deck-ui button:not([data-a="full"]), .deck.locked .deck-ui .deck-count { display: none; }
 .deck.locked .deck-stage { cursor: default; }
 .deck-ui .deck-follow.on { background: rgba(212, 76, 71, 0.9); }
