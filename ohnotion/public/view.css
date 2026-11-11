@@ -569,7 +569,7 @@ html.lb-open, html.lb-open body { overflow: hidden; }
 
 /* 발표 필기(ink.js) — 필기 층은 슬라이드 내용 안에 있어 스크롤과 같이 움직인다. */
 .deck svg.ink-layer { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; pointer-events: none; z-index: 5; }
-.deck.inking .deck-stage { cursor: crosshair; touch-action: none; user-select: none; -webkit-user-select: none; }
+.deck.inking .deck-stage, .deck.inking .deck-stage * { cursor: crosshair; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .deck-ui .deck-pen.on { background: rgba(28, 111, 209, 0.9); }
 .ink-bar { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 4; display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 10px; background: rgba(15, 15, 15, 0.78); }
 .ink-bar[hidden] { display: none; }
