@@ -18,8 +18,6 @@
 //
 // 학생 화면이 다른 탭에 가려져 있으면 브라우저가 그 탭을 느리게 돌리거나 연결을 끊어 "풀림" 소식을
 // 못 받는 일이 있었다. 그래서 탭이 다시 보이면 서버에서 지금 상태를 바로 다시 읽는다.
-// 그래도 안 풀린 학생은 왼쪽 위 "나가기"로 스스로 풀 수 있다 — 선생님이 다음 장으로 넘기거나
-// 고정을 새로 켜면 다시 따라간다(남은 신호만으로는 다시 잠그지 않음).
 // 선생님 화면의 👥/🔒 는 이 창의 기억이 아니라 저장된 상태(sid = 켠 창)를 따른다 — 다른 창이나
 // 이전 페이지에서 켜 둔 고정이 남아 있으면 🔒 로 보이고, 누르면 푼다.
 //
@@ -232,8 +230,6 @@ function student(ref) {
   let data = null;
   let following = false;
   let heardAt = 0;          // 켜진 소식을 마지막으로 받은 시각(이 PC 시계)
-  let released = null;      // 학생이 "나가기"를 누른 때의 상태 — 이게 바뀔 때까지(다음 장·새 고정) 안 따라간다
-  const mark = (d) => `${d?.sid || ''}|${d?.path || ''}|${d?.slide ?? ''}|${d?.blank ? 1 : 0}`;
 
   const active = () => !!data?.on && Date.now() - heardAt < STALE_MS;
   const norm = (a) => { try { return decodeURIComponent(a).normalize('NFC'); } catch { return a; } };
@@ -268,13 +264,8 @@ function student(ref) {
   }
   function apply() {
     if (!active()) {
-      released = null;
       if (following) unlock();
       return;
-    }
-    if (released !== null) {
-      if (released === mark(data)) { if (following) unlock(); return; }
-      released = null;   // 선생님이 넘기거나 새로 켰다 — 다시 따라간다
     }
     // 선생님이 다른(하위) 페이지에서 발표 중이면 그 페이지로 옮겨 간다.
     const to = data.path ? target(data.path) : '';
@@ -289,13 +280,6 @@ function student(ref) {
     if (P.index() !== data.slide) P.go(data.slide || 0);
     P.setBlank(!!data.blank);
   }
-
-  // 왼쪽 위 "나가기" — 선생님이 풀었는데 이 화면만 안 풀렸을 때 학생이 스스로 푼다.
-  document.addEventListener('present:unfollow', () => {
-    if (!following) return;
-    released = mark(data);
-    unlock();
-  });
 
   // 수식·글꼴이 다 그려진 뒤에 슬라이드를 만들어야 해서(present.js 와 같은 이유) 로드 뒤에 적용한다.
   const take = (snap) => {
