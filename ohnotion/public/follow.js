@@ -26,6 +26,7 @@
 import { db, auth } from './firebase-config.js';
 import { doc, onSnapshot, setDoc, getDocFromServer, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { teacherInk, studentInk } from './ink.js';   // 발표 필기(선생님 쓰기 → 따라가는 학생에게 보임)
 
 const ADMIN_EMAIL = 'qjatjr7575@gmail.com';
 const HEARTBEAT_MS = 2 * 60 * 1000;
@@ -63,7 +64,7 @@ function start() {
     onAuthStateChanged(auth, (user) => {
       if (started) return;
       started = true;
-      if (user?.email === ADMIN_EMAIL) teacher(ref);
+      if (user?.email === ADMIN_EMAIL) { teacher(ref); teacherInk(slug); }
       else student(ref);   // 표시만 남고 로그아웃된 브라우저는 학생처럼
     });
   } else {
@@ -258,9 +259,11 @@ function student(ref) {
     return path;   // 모르면 선생님 페이지(한국어)로
   }
 
+  const ink = studentInk(slug, { following: () => following, teacherPath: () => data?.path || '' });
   function unlock() {
     following = false;
     P.setLocked(false);
+    ink.update();   // 따라가기가 끝나면 필기도 안 보이게
   }
   function apply() {
     if (!active()) {
@@ -279,6 +282,7 @@ function student(ref) {
     if (!P.isOpen()) P.open(data.slide || 0);
     if (P.index() !== data.slide) P.go(data.slide || 0);
     P.setBlank(!!data.blank);
+    ink.update();
   }
 
   // 수식·글꼴이 다 그려진 뒤에 슬라이드를 만들어야 해서(present.js 와 같은 이유) 로드 뒤에 적용한다.
