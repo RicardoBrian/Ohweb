@@ -580,6 +580,7 @@ html.lb-open, html.lb-open body { overflow: hidden; }
 .ink-bar .ink-color.hl::after { inset: 9px 4px; border-radius: 4px; opacity: 0.8; }
 .ink-bar .ink-color.on { background: rgba(255, 255, 255, 0.28); }
 .ink-bar .ink-sep { width: 1px; height: 22px; background: rgba(255, 255, 255, 0.3); margin: 0 2px; }
+.ink-bar .ink-ver { color: rgba(255, 255, 255, 0.45); font: 500 11px var(--font); margin-left: 2px; }
 
 /* 다국어 학습지 — 언어 고르기(lang.js). 발표 화면(z-index 1000) 위에 뜬다. */
 .lang-pick { position: fixed; inset: 0; z-index: 3000; background: rgba(0, 0, 0, 0.6); display: flex; align-items: center; justify-content: center; padding: 16px; }

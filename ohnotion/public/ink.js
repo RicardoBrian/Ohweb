@@ -29,6 +29,7 @@ export const COLORS = [
 ];
 const SVGNS = 'http://www.w3.org/2000/svg';
 const P = window.KakaPresent;
+const VERSION = new URL(import.meta.url).searchParams.get('v') || '';   // 도구 줄에 보여 줌(새 코드가 왔는지 확인용)
 
 // ── 공통: 장·블록 ──
 const slideEls = () => [...(P.deck()?.querySelectorAll('.deck-canvas > .slide') || [])];
@@ -198,7 +199,8 @@ export function teacherInk(slug) {
       <span class="ink-sep"></span>
       <button type="button" data-a="undo" title="이 장 마지막 획 지우기 (Z)">↶</button>
       <button type="button" data-a="clear" title="이 장 필기 다 지우기">🗑</button>
-      <button type="button" data-a="done" title="필기 끝 (D·Esc)">✕</button>`;
+      <button type="button" data-a="done" title="필기 끝 (D·Esc)">✕</button>
+      <span class="ink-ver">${VERSION ? `v${VERSION.slice(-4)}` : ''}</span>`;
     bar.addEventListener('click', (e) => {
       const b = e.target.closest('button');
       if (!b) return;

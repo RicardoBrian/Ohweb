@@ -26,7 +26,9 @@
 import { db, auth } from './firebase-config.js';
 import { doc, onSnapshot, setDoc, getDocFromServer, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { teacherInk, studentInk } from './ink.js';   // 발표 필기(선생님 쓰기 → 따라가는 학생에게 보임)
+// 발표 필기(선생님 쓰기 → 따라가는 학생에게 보임). 이 파일의 ?v=버전을 그대로 붙여 불러온다 —
+// 그냥 './ink.js' 로 부르면 버전이 안 붙어 태블릿 브라우저가 예전 필기 코드를 계속 쓰는 일이 있었다.
+const { teacherInk, studentInk } = await import(`./ink.js${new URL(import.meta.url).search}`);
 
 const ADMIN_EMAIL = 'qjatjr7575@gmail.com';
 const HEARTBEAT_MS = 2 * 60 * 1000;
