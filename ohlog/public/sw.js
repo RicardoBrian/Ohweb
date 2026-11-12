@@ -36,7 +36,8 @@ async function serverVersion() {
   return r.ok ? (await r.json()).v : null;
 }
 function refresh(force = false) {
-  if (running) return running;
+  // 강제(앱이 버전 차이를 알아챔)인데 켤 때의 일반 확인이 돌고 있으면, 그 결과('그대로')를 그대로 주지 말고 끝난 뒤 다시 받는다
+  if (running) return force ? running.then(() => refresh(true)) : running;
   running = (async () => {
     try {
       const c = await caches.open(CACHE);
