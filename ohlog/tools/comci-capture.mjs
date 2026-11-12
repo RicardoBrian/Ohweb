@@ -30,6 +30,17 @@ function existing() {
   return out;
 }
 
+// 컴시간이 '일자자료'·'일과시간' 같은 이름도 '자료136' 처럼 매번 바꾸므로, 모양을 보고 원래 이름을 붙여 둔다(서버가 이 이름을 쓴다).
+function renameKeys(raw) {
+  if (!raw?.['학급수']) return raw;
+  for (const [k, v] of Object.entries(raw)) {
+    if (!/^자료\d+$/.test(k) || !Array.isArray(v) || !v.length) continue;
+    if (!raw['일자자료'] && v.every((x) => Array.isArray(x) && x.length === 2 && /\d{2}-\d{2}-\d{2}\s*~/.test(String(x[1])))) raw['일자자료'] = v;
+    else if (!raw['일과시간'] && v.every((x) => typeof x === 'string' && /^\d+\(\d{1,2}:\d{2}\)/.test(x))) raw['일과시간'] = v;
+  }
+  return raw;
+}
+
 const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
 
 // 학교 하나: 이름으로 검색 → onclick="sc_disp(코드)" 를 누름 → 일자 목록의 주마다 해독된 시간표를 모은다
@@ -47,7 +58,21 @@ async function capture(code, query, tag) {
       return v;
     };
   });
-  const take = () => page.evaluate(() => window.__comci.splice(0)).catch(() => []);
+  // 2026-11-11: 컴시간이 해독된 시간표 안의 글자(이름·과목·날짜·주 목록)를 다시 XOR+base64 로 숨기고,
+  // 그 키를 페이지를 열 때마다 바꾼다(페이지 안 QnmsbChange). 나중에는 풀 수 없으니 여기서 페이지 함수로 풀어 저장한다.
+  const take = () => page.evaluate(() => {
+    const list = window.__comci.splice(0);
+    const dec = typeof QnmsbChange === 'function' ? QnmsbChange : null; // eslint-disable-line no-undef
+    if (!dec) return list;
+    const B64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})$/;
+    const walk = (v) => {
+      if (typeof v === 'string') { if (B64.test(v)) { try { return dec(v); } catch {} } return v; }
+      if (Array.isArray(v)) return v.map(walk);
+      if (v && typeof v === 'object') { const o = {}; for (const k of Object.keys(v)) o[k] = walk(v[k]); return o; }
+      return v;
+    };
+    return list.map(walk);
+  }).then((list) => list.map(renameKeys)).catch(() => []);
   try {
     await page.goto(HOST + '/st', { waitUntil: 'networkidle', timeout: 30000 });
     const input = page.locator('input[type=text]:visible, input:not([type]):visible').first();
