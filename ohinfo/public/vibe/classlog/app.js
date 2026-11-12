@@ -1494,7 +1494,9 @@ document.addEventListener('click', async (e) => {
     setTimeout(checkComciSync, 90000);
   }
   else if (act === 'reload-tt') {
-    const r = S.week ?? S.curWeek;
+    // 저장본(지난 주)은 r 이 음수라 서버가 'week 형식이 아님'으로 거절한다 → 컴시간이 주는 이번 주를 새로 받는다
+    const cur = S.week ?? S.curWeek;
+    const r = cur != null && cur < 0 ? S.curWeek : cur;
     S.ttFail.clear(); S.clsTT.clear(); // 화면의 시간표는 지우지 않는다 — 받기에 실패해도 보던 시간표가 남게
     $('ttRefresh')?.setAttribute('disabled', '');
     try {
