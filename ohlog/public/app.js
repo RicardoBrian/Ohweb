@@ -122,6 +122,20 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', applyThe
 let CODE_V = null, PENDING_V = null, updating = false;
 if (location.search.includes('v=')) history.replaceState(null, '', location.pathname + location.hash); // 새로고침 때 붙인 ?v= 정리
 async function fetchVersion() { return (await (await fetch('/api/version', { cache: 'no-store' })).json()).v; }
+// 지금 띄운 화면의 버전: 폰에 보관한 화면 파일(서비스 워커가 이 화면을 준 그 파일)로 /api/version 과 같은 방식으로 계산한다.
+// 예전에는 켠 뒤 1.5초에 받은 서버 값을 '내 버전'으로 삼아서, 옛 보관본으로 열렸는데 서버가 이미 새 버전이면
+// 스스로 최신이라고 여겨 '앱 업데이트 확인'을 눌러야 바뀌었다. 뒤에서 보관본이 바뀌기 전에 읽도록 바로 시작한다.
+const VERSION_FILES = ['/', '/app.js', '/ohlog.css', '/theme.css', '/admin-sky.css', '/firebase-config.js']; // functions/api/version.js 와 같은 순서
+const RUN_V = (async () => {
+  if (!navigator.serviceWorker?.controller || !self.caches || !crypto.subtle) return null; // 인터넷에서 바로 받은 화면은 그 자체가 최신
+  const parts = await Promise.all(VERSION_FILES.map(async (f) => { const r = await caches.match(f); return r ? new Uint8Array(await r.arrayBuffer()) : null; }));
+  if (parts.some((p) => !p)) return null;
+  const all = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+  let o = 0;
+  for (const p of parts) { all.set(p, o); o += p.length; }
+  const dig = new Uint8Array(await crypto.subtle.digest('SHA-256', all));
+  return [...dig.slice(0, 6)].map((b) => b.toString(16).padStart(2, '0')).join('');
+})().catch(() => null);
 const busy = () => document.querySelector('.modal-overlay.show') || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
 function reloadFresh(v) {
   updating = true;
@@ -148,9 +162,14 @@ async function checkUpdate(manual = false) {
   try {
     const v = await fetchVersion();
     if (!v) throw new Error('no version');
-    if (CODE_V == null) { CODE_V = v; if (manual) toast('최신 버전이에요'); return; }
+    if (CODE_V == null) {
+      CODE_V = (await RUN_V) || v;
+      // 같은 버전 때문에 이미 한 번 다시 열었는데도 다르면(계산이 어긋나는 기기) 되풀이하지 않고 지금 것을 기준으로 삼는다
+      if (CODE_V !== v && store.get('classlog:reloaded-for') === v) CODE_V = v;
+    }
     if (v === CODE_V) { if (manual) toast('최신 버전이에요'); return; }
     PENDING_V = v;
+    store.set('classlog:reloaded-for', v);
     if (manual || !busy()) reloadFresh(v); else $('updateBar').classList.remove('hidden');
   } catch { if (manual) toast('확인하지 못했어요. 연결을 확인해 주세요'); }
 }
@@ -1350,9 +1369,30 @@ function renderSettings() {
   $('themeSeg').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === tm));
   const fs = store.get('classlog-fs') || '1';
   $('fsSeg').querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === fs));
-  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
-  const standalone = navigator.standalone || matchMedia('(display-mode: standalone)').matches;
-  $('iosTip').classList.toggle('hidden', !(ios && !standalone));
+  renderInstall();
+}
+// 홈 화면 추가: 안드로이드·PC 크롬은 브라우저의 설치 창을 버튼 하나로 띄운다(beforeinstallprompt).
+// 아이폰은 웹페이지가 직접 추가할 수 없어서(애플 제한) 버튼을 누르면 공유 → 홈 화면에 추가 두 단계를 보여준다.
+let installEvt = null;
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isStandalone = () => navigator.standalone || matchMedia('(display-mode: standalone)').matches;
+function renderInstall() {
+  $('installCard').classList.toggle('hidden', isStandalone() || !(installEvt || isIOS()));
+}
+addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvt = e; renderInstall(); });
+addEventListener('appinstalled', () => { installEvt = null; renderInstall(); toast('홈 화면에 추가했어요'); });
+async function doInstall() {
+  if (installEvt) {
+    const e = installEvt;
+    installEvt = null;
+    // 설치 창은 이벤트마다 한 번만 띄울 수 있다. 취소하면 브라우저가 나중에 다시 줄 때 버튼이 돌아온다.
+    await e.prompt().catch(() => {});
+    await e.userChoice.catch(() => {});
+    renderInstall();
+    return;
+  }
+  $('iosSteps').classList.remove('hidden');
+  $('installBtn').classList.add('hidden');
 }
 $('hrGrade').onchange = (e) => saveHomeroom(e.target.value ? { grade: Number(e.target.value), cls: 1 } : null);
 $('hrNum').onchange = (e) => saveHomeroom({ grade: Number($('hrGrade').value), cls: Number(e.target.value) });
@@ -1473,6 +1513,7 @@ document.addEventListener('click', async (e) => {
   else if (act === 'add-extra') openExtra();
   else if (act === 'feedback') openFeedback();
   else if (act === 'check-update') checkUpdate(true);
+  else if (act === 'install') doInstall();
   else if (act === 'order') openOrder();
   else if (act === 'set-homeroom') saveHomeroom({ grade: S.cls.grade, cls: S.cls.cls });
   else if (act === 'wk') {

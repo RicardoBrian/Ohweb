@@ -91,10 +91,17 @@ const app = initializeApp({ apiKey: 'fake', projectId: 'ohweb-93062', authDomain
 export const db = getFirestore(app); connectFirestoreEmulator(db, '127.0.0.1', 8181);
 export const auth = getAuth(app); connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
 window.__signIn = (email) => signInWithCredential(auth, GoogleAuthProvider.credential(JSON.stringify({ sub: email, email, email_verified: true })));`;
-// 새 버전 감지: 실제 version.js 를 돌리고(ASSETS 는 정적 파일로 대신), '배포'는 소금 값을 올려 흉내 낸다
-const version = await import(new URL('../ohlog/functions/api/version.js', import.meta.url));
+// 새 버전 감지: 실제 version.js 를 돌리고(ASSETS 는 이 서버가 내보내는 파일 그대로), '배포'는 app.js 내용을 바꿔 흉내 낸다
+// (실제처럼 버전값 = 보내는 화면 파일의 해시. 앱은 폰에 보관한 화면 파일로 같은 값을 계산해 비교한다)
+const versionMod = () => import(new URL('../ohlog/functions/api/version.js', import.meta.url).href + `?d=${deploySalt}-${appStamp}`); // version.js 는 30초 기억하므로 배포마다 새로 불러온다
 let deploySalt = 0, appStamp = '';
-const assets = { fetch: async (u) => { const f = path.join(ROOT, new URL(u).pathname === '/' ? 'index.html' : new URL(u).pathname); return existsSync(f) ? new Response(readFileSync(f)) : new Response('', { status: 404 }); } };
+const served = (pathname) => {
+  if (pathname === '/firebase-config.js') return Buffer.from(fbconf);
+  const f = path.join(ROOT, pathname === '/' ? 'index.html' : pathname);
+  if (!f.startsWith(ROOT) || !existsSync(f)) return null;
+  return pathname === '/app.js' && (appStamp || deploySalt) ? Buffer.from(readFileSync(f, 'utf8') + `\n// stamp ${appStamp} ${deploySalt}\n`) : readFileSync(f); // 배포 흉내(내용이 바뀐 app.js)
+};
+const assets = { fetch: async (u) => { const b = served(new URL(u).pathname); return b ? new Response(b) : new Response('', { status: 404 }); } };
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.svg': 'image/svg+xml' };
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://localhost');
@@ -106,17 +113,16 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(r.status, { 'content-type': 'application/json' }); res.end(await r.text()); return;
   }
   if (u.pathname === '/api/version') {
-    const r = await version.onRequestGet({ request: new Request('http://localhost' + req.url), env: { ASSETS: assets } });
+    const r = await (await versionMod()).onRequestGet({ request: new Request('http://localhost' + req.url), env: { ASSETS: assets } });
     const { v } = await r.json();
-    res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(JSON.stringify({ v: v + '-' + deploySalt })); return;
+    res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(JSON.stringify({ v })); return;
   }
   if (u.pathname === '/__upstream') { upstream = u.searchParams.get('mode'); if (u.searchParams.get('clear')) memCache.clear(); res.writeHead(204); res.end(); return; }
   if (u.pathname === '/__deploy') { deploySalt++; res.writeHead(204); res.end(); return; }
-  if (u.pathname === '/firebase-config.js') { res.writeHead(200, { 'content-type': 'text/javascript' }); res.end(fbconf); return; }
-  const f = path.join(ROOT, u.pathname === '/' ? 'index.html' : u.pathname);
-  if (!f.startsWith(ROOT) || !existsSync(f)) { res.writeHead(404); res.end(); return; }
-  res.writeHead(200, { 'content-type': TYPES[path.extname(f)] || 'application/octet-stream' });
-  res.end(u.pathname === '/app.js' && appStamp ? readFileSync(f, 'utf8') + `\n// stamp ${appStamp}\n` : readFileSync(f)); // 배포 흉내(내용이 바뀐 app.js)
+  const b = served(u.pathname);
+  if (!b) { res.writeHead(404); res.end(); return; }
+  res.writeHead(200, { 'content-type': TYPES[path.extname(u.pathname === '/' ? 'index.html' : u.pathname)] || 'application/octet-stream' });
+  res.end(b);
 });
 await new Promise((r) => server.listen(8098, r));
 
@@ -590,6 +596,10 @@ ok('관리자 화면에 받은 피드백이 보임', (await P.textContent('#admi
 await P.click('.side-item[data-go="settings"]');
 await shot(P, '10b-settings-pc');
 ok('사이드바·상단 바에 "다크 모드" 스위치가 없음', (await P.locator('.dark-toggle, .nav-dark-label').count()) === 0);
+ok('홈 화면 추가: 설치할 수 없는 브라우저(아이폰 아님)에서는 카드가 안 보임', await P.locator('#installCard').isHidden());
+await P.evaluate(() => { const e = new Event('beforeinstallprompt'); e.prompt = async () => { window.__prompted = 1; }; e.userChoice = Promise.resolve({ outcome: 'accepted' }); dispatchEvent(e); });
+await P.click('#installBtn');
+ok('홈 화면 추가: 안드로이드·PC 크롬은 버튼 하나로 설치 창이 뜸', (await P.evaluate(() => window.__prompted)) === 1);
 await P.click('#themeSeg button[data-v="dark"]');
 ok('설정에서 다크를 고르면 어두운 화면이 됨', await P.$eval('body', (b) => b.classList.contains('dark')));
 await P.click('.side-item[data-go="week"]');
@@ -609,6 +619,7 @@ await shot(P, '10-week-dark');
   try { await p.waitForSelector('#app:not(.hidden) #weekGrid .slot', { timeout: 15000 }); } catch { offlineOk = false; }
   ok('인터넷이 끊겨도 보관한 화면과 저장된 시간표로 열림', offlineOk);
   await p.context().setOffline(false);
+  await p.waitForTimeout(2000); // 다시 연결될 때 앱이 하는 확인(online)이 끝난 뒤 배포한다 — 안 그러면 그 확인이 새 버전을 먼저 받아 다시 열기가 안 보인다
   appStamp = 'v2'; await deploy(); // 새 버전 배포(app.js 내용과 버전값이 바뀜)
   let loads = 0; const onLoad = () => loads++; p.on('load', onLoad);
   await p.reload(); // 보관본으로 먼저 뜨고, 뒤에서 비교 → 바뀌었으면 알아서 한 번 더 다시 열림
@@ -619,6 +630,21 @@ await shot(P, '10-week-dark');
   let newCode = false;
   for (let i = 0; i < 20 && !newCode; i++) { try { newCode = await p.evaluate(() => fetch('/app.js').then((r) => r.text()).then((t) => t.includes('stamp v2'))); } catch {} if (!newCode) await p.waitForTimeout(250); }
   ok('새 버전을 배포하면 보관본을 새로 받고 앱이 스스로 다시 열림', loads >= 2 && newCode, JSON.stringify({ loads, newCode }));
+  // 막힌 상태(아이폰 홈 화면 앱에서 '앱 업데이트 확인'을 눌러야 바뀌던 것): 보관본은 옛 버전인데 서비스 워커는 최신이라고 믿는다
+  // → 서비스 워커는 아무것도 안 알려주지만, 앱이 보관본으로 계산한 버전과 서버 버전이 달라서 스스로 새로 받아야 한다
+  appStamp = 'v3'; await deploy();
+  await p.evaluate(async () => {
+    const v = (await (await fetch('/api/version', { cache: 'no-store' })).json()).v;
+    await (await caches.open('classlog-shell-v1')).put('/__shell-version', new Response(v));
+  });
+  const stuck = await p.evaluate(async () => (await (await caches.match('/app.js')).text()).includes('stamp v3'));
+  let loads3 = 0; const onLoad3 = () => loads3++; p.on('load', onLoad3);
+  await p.reload(); // 옛 보관본으로 뜬다 → 앱이 버전 차이를 보고 새로 받아 한 번 더 다시 열어야 한다
+  let fixed = false;
+  for (let i = 0; i < 60 && !fixed; i++) { try { fixed = await p.evaluate(async () => (await (await caches.match('/app.js'))?.text())?.includes('stamp v3') && document.querySelector('#app:not(.hidden)') && !!navigator.serviceWorker.controller); } catch {} if (!fixed) await p.waitForTimeout(250); }
+  for (let i = 0; i < 40 && loads3 < 2; i++) await p.waitForTimeout(250);
+  p.off('load', onLoad3);
+  ok('보관본이 옛 버전인데 서비스 워커가 최신이라고 여겨도, 켜면 버튼 없이 새 버전으로 바뀜', !stuck && fixed && loads3 >= 2, JSON.stringify({ stuck, fixed, loads3 }));
   // 지난 주 저장본: 컴시간 목록에 없는 지난 주도 주 선택에 남는다
   const opts = await p.locator('#weekSel option').allTextContents();
   ok('받아 본 지난 주 시간표는 "저장본"으로 주 선택에 남음', opts.some((t) => t.includes('저장본')), JSON.stringify(opts));

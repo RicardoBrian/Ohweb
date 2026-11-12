@@ -511,9 +511,11 @@
           </div>
           <p class="muted small">자동은 폰·컴퓨터의 화면 모드 설정을 따라가요.</p>
         </div>
-        <div class="card hidden" id="iosTip">
-          <h2><span class="icon" data-ic="phone"></span><span class="ttl">홈 화면에 앱처럼 추가<small>아이폰 Safari에서</small></span></h2>
-          <ol class="tip-list"><li>아래 가운데 <b>공유</b> 버튼(네모에 위 화살표)을 눌러요</li><li><b>홈 화면에 추가</b>를 눌러요</li><li>홈 화면의 <b>수업일지</b> 아이콘으로 열면 앱처럼 시간표가 바로 떠요</li></ol>
+        <div class="card hidden" id="installCard">
+          <h2><span class="icon" data-ic="phone"></span><span class="ttl">홈 화면에 앱처럼 추가<small>아이콘으로 열면 시간표가 바로 떠요</small></span></h2>
+          <button class="btn accent" id="installBtn" data-act="install">홈 화면에 추가</button>
+          <!-- 아이폰은 웹페이지가 홈 화면 추가를 직접 띄울 수 없어서(애플 제한) 버튼을 누르면 두 단계를 안내한다 -->
+          <ol class="tip-list hidden" id="iosSteps" style="margin-top:12px"><li>Safari 아래쪽의 <b>공유</b> 버튼(네모에 위 화살표)을 눌러요. 안 보이면 <b>⋯</b>을 먼저 눌러요</li><li><b>홈 화면에 추가</b> → <b>추가</b>를 눌러요</li></ol>
         </div>
         <div class="card">
           <h2><span class="icon" data-ic="list"></span><span class="ttl">바로가기<small>자주 안 쓰는 화면</small></span></h2>
