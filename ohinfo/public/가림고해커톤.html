@@ -72,7 +72,9 @@
   .status { font-weight: 800; font-size: clamp(20px, 2.4vw, 40px); }
   .clock {
     font-weight: 900; font-variant-numeric: tabular-nums;
-    font-size: clamp(64px, 13vw, 220px);
+    font-size: clamp(60px, min(15vw, 22vh), 600px);
+    white-space: nowrap;
+    cursor: pointer;
     line-height: 1; letter-spacing: -.02em;
     color: var(--yellow);
     text-shadow: 0 0 40px rgba(245,207,59,.35);
@@ -104,6 +106,14 @@
   .tools button:hover { color: #fff; }
   :fullscreen .tools button { display: none; }
 
+  /* 전체화면 모드: 주제 카드를 숨기고 시계를 화면 가득 */
+  body.big .eyebrow, body.big .topic { display: none; }
+  body.big main { gap: 2vh; }
+  body.big .clock { font-size: min(21vw, 60vh); }
+  body.big .status { font-size: min(5vw, 7vh); }
+  body.big .sub, body.big .email { font-size: min(2.6vw, 4vh); }
+  body.big .bar { height: 16px; width: 90vw; max-width: none; }
+
   @media (max-width: 700px) { body { overflow: auto; } main { height: auto; min-height: 100%; } }
 </style>
 </head>
@@ -132,7 +142,7 @@
 
 <div class="tools">
   <span id="now"></span>
-  <button id="fs" type="button">전체화면</button>
+  <button id="fs" type="button">전체화면 (F)</button>
 </div>
 
 <script>
@@ -157,7 +167,7 @@
     $('now').textContent = '현재 ' + new Date(now).toLocaleTimeString('ko-KR', { hour12: false, timeZone: 'Asia/Seoul' });
 
     if (left <= 0) {
-      document.body.className = 'done';
+      document.body.className = big ? 'done big' : 'done';
       $('status').textContent = '시간 종료!';
       $('clock').innerHTML = `${pad(0)}<span class="sep">:</span>${pad(0)}<span class="sep">:</span>${pad(0)}`;
       $('sub').innerHTML = '<strong>손을 멈추고</strong> 작품과 발표 자료를 제출하세요';
@@ -168,7 +178,7 @@
     const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
     $('clock').innerHTML = `${pad(h)}<span class="sep">:</span>${pad(m)}<span class="sep">:</span>${pad(sec)}`;
 
-    const cls = [];
+    const cls = big ? ['big'] : [];
     if (left <= URGENT_MIN * 60000) cls.push('urgent');
     if (left <= BLINK_MIN * 60000) cls.push('blink');
     document.body.className = cls.join(' ');
@@ -177,11 +187,23 @@
     const p = Math.min(1, Math.max(0, (now - START) / (END - START)));
     $('bar').style.width = (p * 100).toFixed(2) + '%';
   }
+  // 전체화면 모드: 버튼·F 키·시계 클릭. Esc 로 나오면 원래 화면으로
+  let big = false;
+  function setBig(on) {
+    big = on;
+    tick();
+    if (on && !document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {});
+    if (!on && document.fullscreenElement) document.exitFullscreen();
+  }
+  $('fs').onclick = () => setBig(!big);
+  $('clock').onclick = () => setBig(!big);
+  addEventListener('keydown', e => { if (e.key === 'f' || e.key === 'F' || e.key === 'ㄹ') setBig(!big); });
+  document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement && big) setBig(false); });
+
   tick();
   setInterval(tick, 250);
 
-  // 전체화면 + 화면 꺼짐 방지
-  $('fs').onclick = () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+  // 화면 꺼짐 방지
   let lock = null;
   async function keepAwake() { try { lock = await navigator.wakeLock?.request('screen'); } catch (e) {} }
   keepAwake();
