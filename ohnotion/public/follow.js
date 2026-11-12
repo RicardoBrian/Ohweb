@@ -103,7 +103,7 @@ function teacher(ref) {
     if (!btn) return;
     const other = otherOn();
     btn.textContent = on || other ? '🔒' : '👥';
-    btn.title = on ? '학생 고정 풀기 (L)' : other ? '다른 창에서 켠 학생 고정이 남아 있어요 — 눌러서 풀기 (L)' : '학생 화면 고정 — 내 화면을 따라오게 (L)';
+    btn.title = on ? '학생 고정 풀기 (L)' : other ? '다른 기기·창에서 켠 학생 고정이 있어요 — 누르면 이 화면으로 가져와요 (L)' : '학생 화면 고정 — 내 화면을 따라오게 (L)';
     btn.classList.toggle('on', on || other);
     const deck = P.deck();
     deck?.classList.toggle('teacher-on', on);
@@ -113,12 +113,12 @@ function teacher(ref) {
       badge.className = 'deck-teacher';
       deck.appendChild(badge);
     }
-    if (badge) { badge.hidden = !on && !other; badge.textContent = on ? '🔒 학생 화면 고정 중' : '🔒 다른 창에서 켠 학생 고정이 남아 있어요'; }
+    if (badge) { badge.hidden = !on && !other; badge.textContent = on ? '🔒 학생 화면 고정 중' : '🔒 다른 기기·창에서 켠 학생 고정 중 — 누르면 이 화면으로'; }
   }
-  // 👥/🔒 버튼·L: 켜져 있으면 풀고, 다른 창의 고정이 남아 있으면 그것을 풀고, 아니면 켠다.
+  // 👥/🔒 버튼·L: 켜져 있으면 풀고, 아니면 이 화면에서 켠다. 다른 기기·창의 고정이 있어도 그냥 켜면
+  // 이 창 것이 새 고정이 되고, 그쪽은 이 저장을 보고 신호를 멈춘다(takenOver). 풀려면 한 번 더 누른다.
   function toggle() {
     if (on) setOn(false);
-    else if (otherOn()) { write({ on: false }); remote = { ...remote, on: false }; render(); }
     else setOn(true);
   }
   // 저장된 상태를 듣는다 — 다른 창이 켜거나 풀면 이 창은 신호 보내기를 멈춘다(마지막에 쓴 창이 이김).
@@ -128,21 +128,38 @@ function teacher(ref) {
     remoteAt = remote?.on && (at == null || Math.abs(Date.now() - at) < OLD_MS) ? Date.now() : 0;
     if (remote?.sid === sid && at) myAt = Math.max(myAt, at);
     // 내 마지막 저장보다 나중에 다른 창이 쓴 것일 때만 물러난다(이전 페이지의 늦게 온 저장은 무시).
-    if (on && !moving && remote && remote.sid !== sid && at && myAt && at > myAt) {
-      on = false;
-      clearInterval(beat);
-      clearTimeout(pending);
-      ss.del(resumeKey);
-    }
+    if (on && !moving && takenOver(remote)) stepDown();
     render();
   }, (e) => console.warn('따라가기 듣기 실패', e?.message || e));
   setInterval(render, 30 * 1000);   // 남은 고정이 5분 지나 끝나면 버튼도 👥 로
+  // 내 마지막 저장보다 나중에 다른 창(다른 기기·브라우저)이 쓴 것이면 그쪽이 새 고정이다.
+  function takenOver(d) {
+    const at = d?.at?.toMillis?.();
+    return !!d && d.sid !== sid && !!at && !!myAt && at > myAt;
+  }
+  // 물러나기 — 쓰지 않고 이 창의 고정만 끈다(새로 켠 창의 고정을 건드리지 않음).
+  function stepDown() {
+    on = false;
+    clearInterval(beat);
+    clearTimeout(pending);
+    ss.del(resumeKey);
+    render();
+  }
+  // 2분마다 보내는 신호: 보내기 전에 서버의 지금 상태를 먼저 본다. 잠자던 태블릿·노트북이 깨어나
+  // 새 고정 소식을 받기도 전에 예전 신호를 써서 고정을 도로 가져가는 일이 없게. 서버에 못 닿으면 이번엔 건너뛴다.
+  async function heartbeat() {
+    let d;
+    try { d = (await getDocFromServer(ref)).data(); } catch { return; }
+    if (!on || moving) return;
+    if (takenOver(d)) { stepDown(); return; }
+    write(state());
+  }
   function setOn(v) {
     on = v;
     clearInterval(beat);
     if (on) {
       write(state());
-      beat = setInterval(() => write(state()), HEARTBEAT_MS);
+      beat = setInterval(heartbeat, HEARTBEAT_MS);
     } else {
       // 넘기자마자(0.25초 안) 풀면 늦게 쓰는 슬라이드 저장이 on:true 로 덮어써 학생이 안 풀렸다.
       clearTimeout(pending);
