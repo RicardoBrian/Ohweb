@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>가림고 해커톤</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gowun+Dodum&display=swap">
+<style>
+  /* ── 여기만 바꾸면 됨: 아래 script 의 START / END / EMAIL ── */
+  :root {
+    --bg1: #070b1f; --bg2: #141a3a;
+    --yellow: #f5cf3b; --yellow-ink: #1c1c1c;
+    --text: #f4f5fb; --muted: #aab0cf;
+    --red: #ff5a4f;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: "Gowun Dodum", "Malgun Gothic", sans-serif;
+    background: radial-gradient(ellipse at 50% 120%, var(--bg2), var(--bg1) 70%);
+    color: var(--text);
+    overflow: hidden;
+  }
+  #sky { position: fixed; inset: 0; z-index: 0; }
+
+  main {
+    position: relative; z-index: 1;
+    height: 100%;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: clamp(14px, 2.4vh, 32px);
+    padding: 3vh 4vw;
+    text-align: center;
+  }
+
+  .eyebrow, .topic h1, .status, .clock, .tags span, .topic .label {
+    font-family: "Black Han Sans", "Malgun Gothic", sans-serif; font-weight: 400;
+  }
+  .eyebrow {
+    letter-spacing: .35em; color: var(--yellow);
+    font-size: clamp(14px, 1.6vw, 24px);
+  }
+  .clock .d { display: inline-block; width: .6em; text-align: center; }
+
+  /* 주제 카드 */
+  .topic {
+    background: var(--yellow); color: var(--yellow-ink);
+    border-radius: 18px;
+    padding: clamp(16px, 2.6vh, 34px) clamp(20px, 3vw, 48px);
+    max-width: 1200px; width: 100%;
+    text-align: left;
+    box-shadow: 0 20px 60px rgba(0,0,0,.45);
+  }
+  .topic .label { font-weight: 800; font-size: clamp(14px, 1.4vw, 22px); opacity: .8; }
+  .topic h1 {
+    font-weight: 900; line-height: 1.2; letter-spacing: -.02em;
+    font-size: clamp(26px, 3.6vw, 60px);
+    margin: .3em 0 .45em;
+  }
+  .topic p { font-size: clamp(14px, 1.35vw, 22px); line-height: 1.6; }
+  .topic p b { color: #c4170c; }
+  .tags { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 1em; }
+  .tags span {
+    background: #1d2033; color: #fff; font-weight: 700;
+    border-radius: 999px; padding: .35em 1em;
+    font-size: clamp(13px, 1.2vw, 19px);
+  }
+  .tags span.etc { background: transparent; color: var(--yellow-ink); border: 2px solid #1d2033; }
+
+  /* 카운트다운 */
+  .status { font-weight: 800; font-size: clamp(20px, 2.4vw, 40px); }
+  .clock {
+    font-weight: 900; font-variant-numeric: tabular-nums;
+    font-size: clamp(64px, 13vw, 220px);
+    line-height: 1; letter-spacing: -.02em;
+    color: var(--yellow);
+    text-shadow: 0 0 40px rgba(245,207,59,.35);
+    transition: color .3s;
+  }
+  .clock .sep { opacity: .55; margin: 0 .04em; }
+  body.urgent .clock { color: var(--red); text-shadow: 0 0 40px rgba(255,90,79,.5); }
+  body.urgent.blink .clock { animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: .35; } }
+  body.done .clock { color: var(--red); }
+
+  .bar {
+    width: min(1200px, 100%); height: 10px;
+    background: rgba(255,255,255,.12); border-radius: 99px; overflow: hidden;
+  }
+  .bar i { display: block; height: 100%; width: 0; background: var(--yellow); border-radius: 99px; transition: width 1s linear; }
+  body.urgent .bar i { background: var(--red); }
+
+  .sub { font-size: clamp(16px, 1.8vw, 30px); color: var(--muted); font-weight: 600; }
+  .sub strong { color: var(--text); }
+  .email { font-size: clamp(16px, 1.9vw, 32px); font-weight: 700; }
+  .email span { color: var(--yellow); }
+
+  .tools { position: fixed; right: 14px; bottom: 12px; z-index: 2; display: flex; gap: 12px; align-items: center; color: var(--muted); font-size: 14px; }
+  .tools button {
+    background: rgba(255,255,255,.08); color: var(--muted); border: 1px solid rgba(255,255,255,.15);
+    border-radius: 8px; padding: 6px 10px; font: inherit; cursor: pointer;
+  }
+  .tools button:hover { color: #fff; }
+  :fullscreen .tools button { display: none; }
+
+  @media (max-width: 700px) { body { overflow: auto; } main { height: auto; min-height: 100%; } }
+</style>
+</head>
+<body>
+<canvas id="sky"></canvas>
+
+<main>
+  <div class="eyebrow">GARIM HACKATHON</div>
+
+  <section class="topic">
+    <div class="label">주제 공개</div>
+    <h1>우리 학교의 문제를<br>바이브코딩으로 해결하라</h1>
+    <p>우리 학교에는 <b>급식 질서, 교복, 흡연</b> 등 다양한 학교생활 문제가 있습니다.<br>
+       이런 문제를 해결하거나 예방할 수 있는 작품(웹 · 앱 · 게임)을 만들어 보세요.</p>
+    <div class="tags">
+      <span>급식 질서</span><span>교복</span><span>흡연</span><span>분실물</span><span>공공기물</span><span class="etc">그 밖의 학교생활 문제</span>
+    </div>
+  </section>
+
+  <div class="status" id="status">마감까지 남은 시간</div>
+  <div class="clock" id="clock">--:--:--</div>
+  <div class="bar"><i id="bar"></i></div>
+  <div class="sub" id="sub"><strong id="endText">22:00</strong>까지 산출물과 발표 자료를 모두 완성하세요</div>
+  <div class="email">제출 이메일 : <span id="email"></span></div>
+</main>
+
+<div class="tools">
+  <span id="now"></span>
+  <button id="fs" type="button">전체화면</button>
+</div>
+
+<script>
+  // ── 설정: 한국 시간(+09:00) 기준 ──
+  const START = new Date('2026-11-12T18:00:00+09:00');   // 진행률 막대 시작점
+  const END   = new Date('2026-11-12T22:00:00+09:00');   // 마감
+  const EMAIL = 'jack610963@gmail.com';
+  const URGENT_MIN = 10;   // 남은 시간이 이보다 적으면 빨간색
+  const BLINK_MIN  = 1;    // 남은 시간이 이보다 적으면 깜빡임
+
+  const $ = id => document.getElementById(id);
+  // 숫자마다 폭을 고정해 초가 바뀔 때 글자가 흔들리지 않게
+  const pad = n => [...String(n).padStart(2, '0')].map(c => `<span class="d">${c}</span>`).join('');
+  const hm = d => d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Seoul' });
+
+  $('email').textContent = EMAIL;
+  $('endText').textContent = hm(END);
+
+  function tick() {
+    const now = Date.now();
+    const left = END - now;
+    $('now').textContent = '현재 ' + new Date(now).toLocaleTimeString('ko-KR', { hour12: false, timeZone: 'Asia/Seoul' });
+
+    if (left <= 0) {
+      document.body.className = 'done';
+      $('status').textContent = '시간 종료!';
+      $('clock').innerHTML = `${pad(0)}<span class="sep">:</span>${pad(0)}<span class="sep">:</span>${pad(0)}`;
+      $('sub').innerHTML = '<strong>손을 멈추고</strong> 작품과 발표 자료를 제출하세요';
+      $('bar').style.width = '100%';
+      return;
+    }
+    const s = Math.ceil(left / 1000);
+    const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
+    $('clock').innerHTML = `${pad(h)}<span class="sep">:</span>${pad(m)}<span class="sep">:</span>${pad(sec)}`;
+
+    const cls = [];
+    if (left <= URGENT_MIN * 60000) cls.push('urgent');
+    if (left <= BLINK_MIN * 60000) cls.push('blink');
+    document.body.className = cls.join(' ');
+    $('status').textContent = left <= URGENT_MIN * 60000 ? '마감 임박!' : '마감까지 남은 시간';
+
+    const p = Math.min(1, Math.max(0, (now - START) / (END - START)));
+    $('bar').style.width = (p * 100).toFixed(2) + '%';
+  }
+  tick();
+  setInterval(tick, 250);
+
+  // 전체화면 + 화면 꺼짐 방지
+  $('fs').onclick = () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+  let lock = null;
+  async function keepAwake() { try { lock = await navigator.wakeLock?.request('screen'); } catch (e) {} }
+  keepAwake();
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') keepAwake(); });
+
+  // ── 별 + 별똥별 배경 ──
+  const cv = $('sky'), ctx = cv.getContext('2d');
+  let W, H, stars = [], meteors = [];
+  function resize() {
+    const r = devicePixelRatio || 1;
+    W = innerWidth; H = innerHeight;
+    cv.width = W * r; cv.height = H * r; cv.style.width = W + 'px'; cv.style.height = H + 'px';
+    ctx.setTransform(r, 0, 0, r, 0, 0);
+    stars = Array.from({ length: Math.round(W * H / 9000) }, () => ({
+      x: Math.random() * W, y: Math.random() * H, r: Math.random() * 1.4 + .3, t: Math.random() * 6.28, v: Math.random() * .02 + .005
+    }));
+  }
+  addEventListener('resize', resize); resize();
+  function spawn() {
+    meteors.push({ x: Math.random() * W * .8 + W * .2, y: Math.random() * H * .4, vx: -(6 + Math.random() * 5), vy: 3 + Math.random() * 3, life: 1 });
+  }
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    for (const s of stars) {
+      s.t += s.v;
+      ctx.globalAlpha = .45 + Math.sin(s.t) * .4;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, 6.28); ctx.fill();
+    }
+    if (Math.random() < .008) spawn();
+    for (const m of meteors) {
+      m.x += m.vx; m.y += m.vy; m.life -= .012;
+      const g = ctx.createLinearGradient(m.x, m.y, m.x - m.vx * 22, m.y - m.vy * 22);
+      g.addColorStop(0, `rgba(255,255,255,${m.life})`); g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.globalAlpha = 1; ctx.strokeStyle = g; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(m.x, m.y); ctx.lineTo(m.x - m.vx * 22, m.y - m.vy * 22); ctx.stroke();
+    }
+    meteors = meteors.filter(m => m.life > 0);
+    requestAnimationFrame(draw);
+  }
+  draw();
+</script>
+</body>
+</html>
