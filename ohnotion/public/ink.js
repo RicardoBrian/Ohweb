@@ -15,7 +15,7 @@
 //
 // 조작(선생님): 발표 화면 ✏️ 또는 D = 필기 켜기/끄기, 1~6 = 색, Z = 이 장 마지막 획 지우기,
 //   🗑 = 이 장 필기 다 지우기, Esc = 필기 끄기. 필기 중에는 클릭·스와이프로 장이 넘어가지 않는다(키는 됨).
-//   태블릿: 필기 중 펜은 쓰고, 손가락은 위아래로 끌면 스크롤·옆으로 쓸면 장 넘기기(펜을 한 번 쓴 뒤부터).
+//   태블릿: 필기 중 펜·한 손가락은 쓰기, 두세 손가락은 위아래로 끌면 스크롤·옆으로 쓸면 장 넘기기.
 import { db } from './firebase-config.js';
 import { doc, onSnapshot, setDoc, arrayUnion, arrayRemove, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
@@ -139,8 +139,8 @@ export function teacherInk(slug) {
   let bar = null;
   let penBtn = null;
   let drawing = null;   // 그리는 중인 획 { id, pen, k, inner, pts, el }
-  let pan = null;       // 손가락 스크롤 { id, inner, x, y, top, scale }
-  let sawPen = false;   // 이 기기에서 펜을 쓴 적 있음 → 손가락은 스크롤
+  let pan = null;       // 두세 손가락 스크롤 { inner, x0, y0, x, y, top, scale, dx }
+  const touches = new Map();   // 지금 화면에 닿은 손가락 pointerId → [x, y]
   let lastPenAt = 0;
 
   const save = (data, merge = true) => setDoc(ref, { ...data, at: serverTimestamp() }, { merge })
@@ -219,7 +219,7 @@ export function teacherInk(slug) {
     P.deck()?.classList.toggle('inking', inking);
     if (bar) bar.hidden = !inking;
     penBtn?.classList.toggle('on', inking);
-    if (!inking) cancelStroke();
+    if (!inking) { cancelStroke(); pan = null; touches.clear(); }
   }
   const current = () => (mine() ? ink.slides?.[P.index()] || [] : []);
   function undo() {
@@ -239,22 +239,34 @@ export function teacherInk(slug) {
   function cancelStroke() {
     drawing?.el.remove();
     drawing = null;
-    pan = null;
   }
-  // 태블릿: 펜(또는 마우스)은 쓰고, 손가락은 위아래로 끌면 스크롤·옆으로 쓸면 장 넘기기.
-  // 펜을 한 번이라도 쓴 기기에서만 손가락을 스크롤로 본다(펜 없는 태블릿은 손가락으로 쓴다).
+  // 태블릿: 펜·마우스·한 손가락은 쓰기, 두세 손가락은 위아래로 끌면 스크롤·옆으로 쓸면 장 넘기기.
+  // 한 손가락으로 막 쓰기 시작했는데 두 번째 손가락이 닿으면 그 획은 버리고 스크롤로 바꾼다.
   // 펜으로 쓰는 중이거나 막 뗀 직후의 손가락(손바닥)은 무시한다.
+  const avg = () => {
+    const v = [...touches.values()];
+    return [v.reduce((a, p) => a + p[0], 0) / v.length, v.reduce((a, p) => a + p[1], 0) / v.length];
+  };
+  function startPan(inner) {
+    const [x, y] = avg();
+    const rect = inner?.getBoundingClientRect();
+    const dx = pan ? pan.dx + (pan.x - pan.x0) : 0;   // 손가락 수가 바뀌어도 옆 움직임은 이어서 잰다
+    pan = { inner, x0: x, y0: y, x, y, dx, top: inner?.scrollTop || 0, scale: inner ? rect.width / Math.max(inner.offsetWidth, 1) : 1 };
+  }
   document.addEventListener('pointerdown', (e) => {
     if (!inking || e.button !== 0 || !e.target.closest?.('.deck-stage')) return;
-    if (e.pointerType === 'pen') sawPen = true;
     const k = P.index();
     const inner = innerOf(k);
-    if (e.pointerType === 'touch' && sawPen) {
+    if (e.pointerType === 'touch') {
       e.preventDefault();
-      if (drawing || pan || Date.now() - lastPenAt < 400) return;   // 손바닥
-      const rect = inner?.getBoundingClientRect();
-      pan = { id: e.pointerId, inner, x: e.clientX, y: e.clientY, top: inner?.scrollTop || 0, scale: inner ? rect.width / Math.max(inner.offsetWidth, 1) : 1 };
-      return;
+      if (drawing?.pen || Date.now() - lastPenAt < 400) return;   // 펜 쓰는 중의 손바닥
+      touches.set(e.pointerId, [e.clientX, e.clientY]);
+      if (touches.size >= 2) {
+        if (drawing) cancelStroke();   // 한 손가락 획 → 스크롤로
+        startPan(inner);
+        return;
+      }
+      if (pan) return;   // 스크롤하던 손가락이 아직 남아 있음
     }
     if (!inner || drawing) return;   // 표지에는 안 쓴다 · 한 번에 한 획
     e.preventDefault();
@@ -265,10 +277,13 @@ export function teacherInk(slug) {
     try { e.target.setPointerCapture?.(e.pointerId); } catch { /* 무시 */ }
   }, true);
   document.addEventListener('pointermove', (e) => {
-    if (pan && e.pointerId === pan.id) {
-      if (drawing) return;
-      if (pan.inner) pan.inner.scrollTop = pan.top - (e.clientY - pan.y) / pan.scale;
-      return;
+    if (e.pointerType === 'touch' && touches.has(e.pointerId)) {
+      touches.set(e.pointerId, [e.clientX, e.clientY]);
+      if (pan) {
+        [pan.x, pan.y] = avg();
+        if (pan.inner) pan.inner.scrollTop = pan.top - (pan.y - pan.y0) / pan.scale;
+        return;
+      }
     }
     if (!drawing || e.pointerId !== drawing.id) return;
     const p = contentPoint(drawing.inner, e);
@@ -277,15 +292,18 @@ export function teacherInk(slug) {
     drawing.pts.push(p);
     drawing.el.setAttribute('points', drawing.pts.map((q) => q.join(',')).join(' '));
   }, true);
-  const endPan = (e) => {
-    const dx = e.clientX - pan.x;
-    const dy = e.clientY - pan.y;
+  function liftTouch(e) {
+    if (!touches.delete(e.pointerId) || !pan) return false;
+    if (touches.size) { startPan(pan.inner); return true; }   // 남은 손가락으로 계속 스크롤
+    const dx = pan.dx + (pan.x - pan.x0);
+    const dy = pan.y - pan.y0;
     pan = null;
     // 옆으로 쓸기 = 장 넘기기(위아래 움직임보다 확실히 클 때만)
     if (e.type === 'pointerup' && Math.abs(dx) > 80 && Math.abs(dx) > Math.abs(dy) * 2) P.go(P.index() + (dx < 0 ? 1 : -1));
-  };
+    return true;
+  }
   const finish = (e) => {
-    if (pan && e.pointerId === pan.id) { endPan(e); return; }
+    if (e.pointerType === 'touch' && liftTouch(e)) return;
     if (!drawing || e.pointerId !== drawing.id) return;
     const { k, inner, pts, el, pen } = drawing;
     drawing = null;
