@@ -15,7 +15,8 @@
 //
 // 조작(선생님): 발표 화면 ✏️ 또는 D = 필기 켜기/끄기, 1~6 = 색, Z = 이 장 마지막 획 지우기,
 //   🗑 = 이 장 필기 다 지우기, Esc = 필기 끄기. 필기 중에는 클릭·스와이프로 장이 넘어가지 않는다(키는 됨).
-//   태블릿: 필기 중 펜·한 손가락은 쓰기, 두 손가락은 위아래 스크롤, 세 손가락은 옆으로 쓸면 장 넘기기.
+//   태블릿: 필기 중 펜·한 손가락은 쓰기, 두 손가락은 위아래 스크롤, 세 손가락은 옆으로 쓸면 장 넘기기,
+//   두 손가락 두 번 탭 = 이 장 마지막 획 지우기(Z 와 같음).
 import { db } from './firebase-config.js';
 import { doc, onSnapshot, setDoc, arrayUnion, arrayRemove, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
@@ -143,6 +144,7 @@ export function teacherInk(slug) {
   let pan = null;       // 여러 손가락 동작 { inner, x0, y0, x, y, top, scale, dx, maxN }
   const touches = new Map();   // 지금 화면에 닿은 손가락 pointerId → [x, y]
   let lastPenAt = 0;
+  let lastTapAt = 0;    // 두 손가락 탭(두 번 탭 = 되돌리기)
 
   const save = (data, merge = true) => setDoc(ref, { ...data, at: serverTimestamp() }, { merge })
     .catch((e) => { console.error('필기 저장 실패', e); alert(`필기를 저장하지 못했어요: ${e.message}`); });
@@ -255,7 +257,9 @@ export function teacherInk(slug) {
     const rect = inner?.getBoundingClientRect();
     const dx = pan ? pan.dx + (pan.x - pan.x0) : 0;   // 손가락 수가 바뀌어도 옆 움직임은 이어서 잰다
     const maxN = Math.max(pan?.maxN || 0, touches.size);   // 이 동작에서 닿았던 가장 많은 손가락 수
-    pan = { inner, x0: x, y0: y, x, y, dx, maxN, top: inner?.scrollTop || 0, scale: inner ? rect.width / Math.max(inner.offsetWidth, 1) : 1 };
+    const t0 = pan?.t0 || Date.now();   // 이 동작이 시작된 때 · moved = 손가락이 크게 움직였나(탭 판별)
+    const moved = !!pan?.moved;
+    pan = { inner, x0: x, y0: y, x, y, dx, maxN, t0, moved, top: inner?.scrollTop || 0, scale: inner ? rect.width / Math.max(inner.offsetWidth, 1) : 1 };
   }
   document.addEventListener('pointerdown', (e) => {
     if (!inking || e.button !== 0 || !e.target.closest?.('.deck-stage')) return;
@@ -285,6 +289,7 @@ export function teacherInk(slug) {
       touches.set(e.pointerId, [e.clientX, e.clientY]);
       if (pan) {
         [pan.x, pan.y] = avg();
+        if (Math.hypot(pan.x - pan.x0, pan.y - pan.y0) > 15) pan.moved = true;
         if (pan.inner && pan.maxN < 3) pan.inner.scrollTop = pan.top - (pan.y - pan.y0) / pan.scale;   // 스크롤은 두 손가락만
         return;
       }
@@ -303,6 +308,11 @@ export function teacherInk(slug) {
     const dy = pan.y - pan.y0;
     const pan0 = pan;
     pan = null;
+    // 두 손가락 탭(짧고 거의 안 움직임) 두 번 = 되돌리기
+    if (e.type === 'pointerup' && pan0.maxN === 2 && !pan0.moved && Date.now() - pan0.t0 < 350) {
+      if (Date.now() - lastTapAt < 450) { lastTapAt = 0; undo(); } else lastTapAt = Date.now();
+      return true;
+    }
     // 세 손가락으로 옆으로 쓸기 = 장 넘기기(위아래 움직임보다 확실히 클 때만)
     if (e.type === 'pointerup' && pan0.maxN >= 3 && Math.abs(dx) > 80 && Math.abs(dx) > Math.abs(dy) * 2) P.go(P.index() + (dx < 0 ? 1 : -1));
     return true;
