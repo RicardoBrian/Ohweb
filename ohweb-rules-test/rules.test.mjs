@@ -347,5 +347,49 @@ await T('노션: 비로그인이 페이지 목록·개별 읽기(학생 화면)'
   await T('수행평가: 관리자 결과 삭제', deleteDoc(doc(admin, 'score_results/SA3_StuB')), true);
 }
 
+// ── 체험 계정(trial-student, 학교 '체험학교') ──
+{
+  const TC = '체험학교 정보';
+  await env.withSecurityRulesDisabled(async c => {
+    const db = c.firestore();
+    await setDoc(doc(db, 'students/trial-student'), { name: '체험학생', schoolName: '체험학교', registered: true, failedAttempts: 0 });
+    await setDoc(doc(db, 'student_directory/trial-student'), { schoolName: '체험학교', grade: '1', class: '1', number: '1', registered: true, locked: false, failedAttempts: 0 });
+    await setDoc(doc(db, 'posts/tp1'), { studentId: 'trial-friend1', name: '친구', classTitle: TC, likes: 0, commentCount: 0 });
+    await setDoc(doc(db, 'posts/tp1/comments/c1'), { studentId: 'trial-friend1', text: '댓글' });
+    await setDoc(doc(db, 'ai_pairs/trial-pair1'), { asId: 'trial-ai1', members: ['trial-student'], memberEmails: ['trial-student@ohinfo.local'] });
+    await setDoc(doc(db, 'ai_pairs/realpair'), { asId: 'REAL', members: ['StuA'], memberEmails: ['stua@ohinfo.local'], memberNames: { StuA: '김학생' } });
+    await setDoc(doc(db, 'ai_projects/trial-pair1_1'), { memberEmails: ['trial-student@ohinfo.local'] });
+    await setDoc(doc(db, 'ai_projects/realpair_1'), { memberEmails: ['stua@ohinfo.local'] });
+    await setDoc(doc(db, 'student_directory/StuN'), { schoolName: 'S', grade: '1', class: '2', number: 9, registered: true, locked: false, failedAttempts: 0 });
+  });
+  const TR = env.authenticatedContext('uidT', { email: 'trial-student@ohinfo.local' }).firestore();
+  const fb = (by) => ({ by, ok: true, got: 'a', want: 'a', text: '', status: 'new', at: 1 });
+  console.log('── 체험 계정: 공격 ──');
+  await T('체험: 다른 반 게시판 글 읽기', getDocs(query(collection(TR, 'posts'), where('classTitle', '==', 'C'))), false);
+  await T('체험: 다른 반 글 하나 열기', getDoc(doc(TR, 'posts/p1')), false);
+  await T('체험: 다른 반 댓글 읽기', getDocs(collection(TR, 'posts/p1/comments')), false);
+  await T('체험: 다른 반에 글 쓰기', addDoc(collection(TR, 'posts'), { studentId: 'trial-student', classTitle: 'C', subKo: 'x' }), false);
+  await T('체험: 다른 반 글에 좋아요', updateDoc(doc(TR, 'posts/p1'), { likes: 1 }), false);
+  await T('체험: 다른 반 글에 댓글', addDoc(collection(TR, 'posts/p1/comments'), { studentId: 'trial-student', text: 'x' }), false);
+  await T('체험: 내 글을 다른 반으로 옮기기', (async () => { const r = await addDoc(collection(TR, 'posts'), { studentId: 'trial-student', classTitle: TC, subKo: 'x' }); await updateDoc(r, { classTitle: 'C' }); })(), false);
+  await T('체험: 다른 학교 AI 짝(이름) 읽기', getDoc(doc(TR, 'ai_pairs/realpair')), false);
+  await T('체험: AI 짝 전체 목록', getDocs(collection(TR, 'ai_pairs')), false);
+  await T('체험: 다른 학교 웹앱에 피드백', setDoc(doc(TR, 'ai_apps/realpair_1/feedback/f1'), fb('trial-student')), false);
+  await T('체험: 비로그인이 체험 계정 잠그기', updateDoc(doc(anon, 'student_directory/trial-student'), { failedAttempts: increment(5), locked: true }), false);
+  await T('체험: 비로그인이 실패 횟수 올리기', updateDoc(doc(anon, 'student_directory/trial-student'), { failedAttempts: increment(1) }), false);
+  await T('체험: 비로그인이 students 문서 잠그기', updateDoc(doc(anon, 'students/trial-student'), { locked: true }), false);
+  await T('체험: 사진 바꾸기', updateDoc(doc(TR, 'students/trial-student'), { photoUrl: 'data:x' }), false);
+  console.log('── 체험 계정: 정상 기능 ──');
+  await T('체험: 체험학교 게시판 읽기', getDocs(query(collection(TR, 'posts'), where('classTitle', '==', TC))), true);
+  await T('체험: 체험학교 글·댓글 읽기', (async () => { await getDoc(doc(TR, 'posts/tp1')); await getDocs(collection(TR, 'posts/tp1/comments')); })(), true);
+  await T('체험: 체험학교에 글·댓글·좋아요', (async () => { await addDoc(collection(TR, 'posts'), { studentId: 'trial-student', classTitle: TC, subKo: 'x' }); await addDoc(collection(TR, 'posts/tp1/comments'), { studentId: 'trial-student', text: 'x' }); await updateDoc(doc(TR, 'posts/tp1'), { likes: 1 }); })(), true);
+  await T('체험: 체험 수업 AI 짝 읽기', getDocs(query(collection(TR, 'ai_pairs'), where('asId', '==', 'trial-ai1'))), true);
+  await T('체험: 체험 웹앱에 피드백', setDoc(doc(TR, 'ai_apps/trial-pair1_1/feedback/f1'), fb('trial-student')), true);
+  await T('체험: 로그인 성공 뒤 실패 횟수 0으로', updateDoc(doc(TR, 'student_directory/trial-student'), { failedAttempts: 0 }), true);
+  await T('다른 학생은 그대로: 다른 반 글 읽기', getDoc(doc(B, 'posts/p1')), true);
+  await T('다른 학생은 그대로: AI 짝 전체 목록', getDocs(collection(B, 'ai_pairs')), true);
+  await T('다른 학생은 그대로: 비로그인 잠금 올리기', updateDoc(doc(anon, 'student_directory/StuN'), { failedAttempts: increment(1) }), true);
+}
+
 console.log(fails ? `\n실패 ${fails}건` : '\n전부 통과'); process.exitCode = fails ? 1 : 0;
 await env.cleanup();

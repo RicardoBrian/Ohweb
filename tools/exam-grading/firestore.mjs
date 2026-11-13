@@ -92,3 +92,16 @@ export async function commitUpdates(updates) {
     await call(`${BASE}:commit`, { method: 'POST', body: JSON.stringify({ writes: writes.slice(i, i + 400) }) });
   }
 }
+
+// ── 다른 도구용(tools/trial-account): 토큰과 원시 commit. 채점 도구는 쓰지 않는다. ──
+export const accessToken = token;
+export const DOCS_ROOT = `projects/${PROJECT}/databases/(default)/documents`;
+export async function commitRaw(writes) {
+  for (let i = 0; i < writes.length; i += 400) {
+    await call(`${BASE}:commit`, { method: 'POST', body: JSON.stringify({ writes: writes.slice(i, i + 400) }) });
+  }
+}
+export async function listSub(docPath, sub) {
+  const r = await call(`${BASE}/${docPath}/${sub}?pageSize=300`);
+  return (r.documents || []).map(docOf);
+}

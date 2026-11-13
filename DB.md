@@ -24,6 +24,8 @@
 | `notion_pages`, `notion_stats`, `notion_secrets` | ohnotion | 노션 공개 페이지 |
 | `short_links` | ohshrt | 단축 URL |
 
+체험 계정(학교 `체험학교`, 학생 ID `trial-*`, 문서 ID `trial-*`)은 위 컬렉션 여러 곳에 들어 있다. 만들기·되돌리기: `tools/trial-account`.
+
 ### Firebase `ohsettle-10d43` — 정산(개인용)
 | 컬렉션 | 쓰는 앱 |
 |---|---|
