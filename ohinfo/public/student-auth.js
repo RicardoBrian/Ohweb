@@ -177,6 +177,9 @@ async function loginFallback(studentDocId, data, pw) {
 // Firebase Auth 계정 자체의 비밀번호를 바꾼다. 현재 비밀번호는 Firestore
 // 필드와 비교하는 대신 재인증(reauthenticate)으로 검증한다.
 export async function changeStudentPassword(studentDocId, currentPw, newPw) {
+  // 체험 계정(여러 사람이 같이 쓰는 공용 계정)은 비밀번호를 바꾸면 다른 사람이 못 들어온다.
+  // Auth 비밀번호는 규칙으로 못 막아서 여기서 막는다(되돌리기: tools/trial-account).
+  if (String(studentDocId).startsWith('trial-')) throw new Error('체험 계정은 비밀번호를 바꿀 수 없습니다.');
   const user = auth.currentUser;
   if (!user) throw new AuthError('not-signed-in');
   try {
