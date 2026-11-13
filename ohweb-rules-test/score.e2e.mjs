@@ -167,6 +167,24 @@ try {
   const hist = await read(async db => (await getDocs(collection(db, 'score_results', `${aid}_StuA`, 'history'))).docs.map(d => d.data()));
   ok(hist.length === 1 && hist[0].before.score === 17 && hist[0].after.score === 18 && /17 → 18/.test(hist[0].summary), '교사: 점수를 고치면 이전 값이 이력에 남음');
 
+  // 미제출 기본점수 — 평가 수정에서 기본점수 4 → 점수 빈 미제출 학생(박학생)에게 4(깎지 않음), 이력에 남음
+  await T.click('#btnEditAssess');
+  await T.fill('#fBase', '4');
+  await T.click('#fOk');
+  await T.waitForFunction(() => !document.getElementById('modal').classList.contains('open'));
+  await T.waitForSelector('#dTable tr[data-sid="StuB"] .base-tag');
+  const [aB, rB2, hB] = await read(async db => Promise.all([
+    getDoc(doc(db, 'score_assessments', aid)).then(d => d.data()), getDoc(doc(db, 'score_results', `${aid}_StuB`)).then(d => d.data()),
+    getDocs(collection(db, 'score_results', `${aid}_StuB`, 'history')).then(q => q.docs.map(d => d.data()))]));
+  ok(aB.baseScore === 4 && rB2.status === 'missing' && rB2.score === 4 && hB.length === 1 && /없음 → 4/.test(hB[0].summary), '교사: 기본점수 4 → 미제출 학생 점수 4(이력에 남음)');
+  ok(/기본점수 4/.test(await T.innerText('#dMeta')), '교사: 상단에 기본점수 표시');
+  // 화면에서 미제출로 바꾸면 기본점수, 다시 정상으로 바꾸면 원래 점수
+  const stA = '#dTable tr[data-sid="StuA"] select[data-f="status"]';
+  await T.selectOption(stA, 'missing');
+  ok(await T.inputValue(scoreInput) === '4', '교사: 미제출로 바꾸면 점수 칸이 기본점수');
+  await T.selectOption(stA, 'normal');
+  ok(await T.inputValue(scoreInput) === '18' && await T.$eval('#savebar', e => e.classList.contains('hidden')), '교사: 다시 정상으로 바꾸면 원래 점수(바뀐 것 없음)');
+
   // 반 공개(1-2만)
   await T.click('#dClasses [data-pub="S중__g1__c2"]');
   await T.waitForSelector('#dClasses [data-pub="S중__g1__c2"].on');
@@ -197,6 +215,7 @@ try {
   const det = await S.innerText('#detail');
   ok(/분량 미달/.test(det) && /<b>기한<\/b> 초과/.test(det), '학생: 감점사유 문구가 그대로 보임');
   ok((await S.innerHTML('#detail')).includes('&lt;img src=x'), '학생: 메모의 HTML 은 실행되지 않고 글자로 보임');
+  await S.click('#dispOpen');
   await S.fill('#dispText', 'A2 기한 초과가 아닌 것 같아요');
   await S.click('#dispSend');
   await S.waitForFunction(() => /보냈어요/.test(document.getElementById('dispMsg')?.innerText || ''), null, { timeout: 10000 });
@@ -322,12 +341,14 @@ try {
   await T.waitForSelector('#feSave', { timeout: 10000 });
   const fe = await T.innerText('#fePrev');
   ok(/채점 끝난 응시 1명/.test(fe) && /미제출 1명/.test(fe) && /채점 중 1명/.test(fe) && /만점 20/.test(fe), '교사: 시험에서 가져오기 미리보기(응시 1·미제출 1·채점 중 1 제외, 만점 20)');
+  await T.fill('#feBase', '3');
   await T.click('#feSave');
   await T.waitForSelector('#dTable td.crit-cell', { timeout: 10000 });
   const aid3 = await read(async db => (await getDocs(query(collection(db, 'score_assessments'), where('title', '==', '정보 기말고사')))).docs[0].id);
   const [a3, e1, e3] = await read(async db => Promise.all([getDoc(doc(db, 'score_assessments', aid3)), getDoc(doc(db, 'score_results', `${aid3}_StuA`)), getDoc(doc(db, 'score_results', `${aid3}_StuC`))]).then(x => x.map(d => d.data())));
   ok(a3.source.examId === 'EXM' && a3.criteria.length === 2 && a3.maxScore === 20 && a3.classKeys.length === 2, '교사: 시험 → 평가(출처·문항 2개 항목·만점 20·대상 반 2개)');
   ok(e1.score === 5 && e1.items[0].reason === '오답' && e1.items[1].reason === '테스트 1/2 통과' && e1.fromExam === true && e3.status === 'missing', '교사: 문항 점수·안전한 사유(정답 번호 없음)·미제출 상태');
+  ok(a3.baseScore === 3 && e3.score === 3 && e3.items.every(i => i.score == null), '교사: 시험에서 가져올 때 미제출 학생은 기본점수 3');
   ok(!(await read(async db => (await getDoc(doc(db, 'score_results', `${aid3}_StuB`))).exists())), '교사: 채점 중인 학생은 가져오지 않음');
   // 박학생 채점이 끝난 뒤 다시 가져오기
   await env.withSecurityRulesDisabled(async c => {
@@ -339,6 +360,7 @@ try {
   await T.click('#btnResync');
   await T.waitForSelector('#rsOk', { timeout: 10000 });
   ok(/새로 1/.test(await T.innerText('.modal-body')), '교사: 다시 가져오기 — 늦게 채점한 학생 1명 새로');
+  ok(/새로 1/.test(await T.innerText('.modal-body')) && /바뀜 0/.test(await T.innerText('.modal-body')), '교사: 다시 가져와도 기본점수 받은 미제출 학생은 그대로');
   await T.click('#rsOk');
   await T.waitForFunction(() => !document.getElementById('modal').classList.contains('open'));
   const e2 = await read(async db => (await getDoc(doc(db, 'score_results', `${aid3}_StuB`))).data());

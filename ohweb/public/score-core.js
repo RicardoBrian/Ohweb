@@ -285,6 +285,16 @@ export function parseScoreRows(rows, { students, poolIds, items, maxScore, crite
 }
 export function sumMax(criteria) { return (criteria || []).reduce((a, c) => a + (Number(c.max) || 0), 0); }
 
+// ── 미제출 기본점수 ──
+// 평가에 기본점수(baseScore)가 있으면 미제출 학생은 그 점수를 받는다(기본점수 그대로, 깎지 않음).
+// 점수를 따로 넣은 경우(항목 점수 포함)는 손대지 않는다.
+export function hasBase(baseScore) { return baseScore != null && baseScore !== '' && Number.isFinite(Number(baseScore)); }
+export function applyBase(v, baseScore) {
+  if (!v || v.status !== 'missing' || !hasBase(baseScore)) return v;
+  const blank = v.items?.length ? v.items.every(i => i.score == null) : v.score == null;
+  return blank ? { ...v, score: Number(baseScore) } : v;
+}
+
 // ── 제출물 파일 ↔ 학생 ──
 const baseName = n => String(n ?? '').replace(/\.[^.]+$/, '');
 // files: [{id, name, ...}] (드라이브 폴더를 훑은 결과). 파일 이름의 학번으로 찾는다.
