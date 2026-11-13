@@ -12,7 +12,8 @@
   - 서버(`functions/api/comci.js`)는 그 파일을 GitHub API 로 읽어(`lib/github.js` `listSchools`·`readSchool`, 목록 1분 캐시·파일은 sha 별) 기존 `parseTimetable` 로 해석만 한다. GitHub 이 안 되면 마지막으로 읽은 사본(3일)을 `stale` 로 준다.
   - 학교 검색(`?q=`)은 **등록된 학교 중에서만**(파일 이름) 찾는다. 컴시간 검색 응답도 암호화돼 있어서다.
   - 목록에 없는 학교: 가입 화면 '학교 코드로 추가'(이름+코드) → `POST /api/comci-sync {code,name}` → 워크플로를 그 학교만으로 실행(`inputs`, 같은 코드는 3분에 한 번) → 앱이 15초마다 `/api/comci?code=` 를 다시 봐서 나오면 이어서 진행. 코드는 컴시간학생 검색 결과의 `sc_disp(숫자)`. 검색 결과 JSON 의 다른 숫자들은 매번 바뀌는 가짜다.
-- 자동 수집 상태는 `/api/comci-sync`(GET 상태·경고, POST 다시 켜고 전체 지금 실행 — 3분에 한 번). 관리자 화면 '승인 관리'의 '컴시간 자동 수집' 카드가 이것을 쓰고, 꺼짐·실패·2시간 무실행이면 경고+텔레그램(하루 한 번). Cloudflare 비밀값 `GITHUB_TOKEN`(이 레포 Actions 읽기·쓰기 fine-grained 토큰)이 있어야 한다.
+- GitHub 은 30분 예약을 실제로는 4~8시간에 한 번만 돌린다. 그래서 앱이 `/api/comci?code=` 를 볼 때 마지막 전체 수집이 1시간 넘게 지났으면 서버가 한 번 실행시킨다(`lib/github.js` `autoKick`, 전체에서 20분에 한 번만 확인).
+- 자동 수집 상태는 `/api/comci-sync`(GET 상태·경고, POST 다시 켜고 전체 지금 실행 — 3분에 한 번). 관리자 화면 '승인 관리'의 '컴시간 자동 수집' 카드가 이것을 쓰고, 꺼짐·실패·12시간 무실행이면 경고+텔레그램(하루 한 번). Cloudflare 비밀값 `GITHUB_TOKEN`(이 레포 Actions 읽기·쓰기 fine-grained 토큰)이 있어야 한다.
 - 실패하면 Actions 실행의 `comci-capture` 아티팩트(학교별 화면·요청 기록)부터 본다. 진단: `https://classnotee.pages.dev/api/comci?diag=1`(저장소·컴시간 응답), `…/api/comci?code=43917&raw=1`(저장된 원본).
 - **`classnote.gwansan.com` 은 서버의 5xx 오류 문장을 Cloudflare "Host Error" 페이지로 가린다.** 그래서 `/api/comci` 는 오류를 424 로 돌려준다. 5xx 를 새로 쓰지 말 것.
 - 앱은 마지막 시간표를 기기(localStorage)에 보관하므로, 저장소가 안 돼도 화면에는 마지막 시간표가 남는다(최근 주를 이번 주에 맞춰 보여주고 자동 보고).

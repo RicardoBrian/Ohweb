@@ -8,7 +8,7 @@
 //   GET /api/comci?diag=1                        → 저장소·컴시간 접속 진단
 //   …&raw=1                                      → 저장된 원본(구조 확인용)
 // 등록 안 된 학교는 424 + diag.unregistered → 앱이 POST /api/comci-sync {code,name} 으로 등록(그 학교만 1~3분 안에 받음).
-import { listSchools, readSchool } from '../../lib/github.js';
+import { listSchools, readSchool, autoKick } from '../../lib/github.js';
 
 const json = (body, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -110,7 +110,7 @@ function addDays(iso, n) {
   return d.toISOString().slice(0, 10);
 }
 
-export async function onRequestGet({ request, env }) {
+export async function onRequestGet({ request, env, waitUntil }) {
   const url = new URL(request.url);
   if (url.searchParams.get('diag')) {
     // 저장소(GitHub)·컴시간 서버가 응답하는지
@@ -135,6 +135,8 @@ export async function onRequestGet({ request, env }) {
       const k = norm(q);
       return json({ schools: value.filter((s) => norm(s.name).includes(k)).slice(0, 30).map((s) => ({ region: '', name: s.name, sccode: s.code })) });
     }
+    // 마지막 자동 수집이 오래됐으면 뒤에서 한 번 실행시킨다(응답은 기다리지 않음)
+    if (waitUntil) waitUntil(autoKick(env).catch(() => {}));
     const { value: school, stale } = await readSchool(env, code, fresh);
     if (!school) return json({ error: '아직 등록되지 않은 학교예요', diag: { unregistered: true } }, 424);
     if (school.error) return json({ error: `학교를 찾지 못했어요: ${school.error}`, diag: { registerFailed: true, name: school.name, at: school.at } }, 424);

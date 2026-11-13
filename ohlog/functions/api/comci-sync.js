@@ -4,9 +4,11 @@
 //   POST /api/comci-sync {code, name} → 그 학교만 받기(새 학교 등록 — 가입 화면). 1~3분 뒤 /api/comci?code= 에 나온다.
 // Cloudflare 환경 변수(비밀값) GITHUB_TOKEN 이 필요하다: 이 레포의 Actions 읽기·쓰기 권한만 준 fine-grained 토큰.
 // 실행은 같은 요청마다 3분에 한 번만 받는다(누가 주소를 알아도 GitHub 실행만 가끔 더 생길 뿐, 데이터는 건드리지 못한다).
-import { wf, listSchools, kickCapture } from '../../lib/github.js';
+import { wf, listSchools, kickCapture, lastFullRun } from '../../lib/github.js';
 
-const STALE_H = 2; // 30분마다 도는데 2시간 넘게 안 돌았으면 경고
+// 예약은 30분마다지만 GitHub 이 실제로는 4~8시간에 한 번만 돌린다(앱이 볼 때 1시간 지났으면 따로 실행 — lib/github.js autoKick).
+// 그래서 12시간 넘게 아무 실행도 없을 때만 경고한다(진짜 멈춤).
+const STALE_H = 12;
 const json = (o, st = 200) => new Response(JSON.stringify(o), { status: st, headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' } });
 const cacheKey = (k) => new Request('https://comci-cache.invalid/' + encodeURIComponent(k));
 
@@ -17,9 +19,8 @@ async function status(env) {
     if (list) out.schools = list.value.length;
     if (!w.ok) throw new Error(`GitHub ${w.status}` + (w.status === 401 || w.status === 404 ? ' (GITHUB_TOKEN 확인)' : ''));
     out.state = (await w.json()).state; // active | disabled_inactivity | disabled_manually
-    // 등록(학교 하나) 실행은 빼고, 전체 실행(schedule·관리자 버튼)만 본다
-    const runs = r.ok ? (await r.json()).workflow_runs || [] : [];
-    const run = runs.find((x) => x.event === 'schedule' || !/\(\d+\)/.test(x.display_title || '')) || runs[0];
+    // 등록(학교 하나) 실행은 빼고, 전체 실행(schedule·관리자 버튼·자동 요청)만 본다
+    const run = lastFullRun(r.ok ? (await r.json()).workflow_runs || [] : []);
     if (run) out.lastRun = { at: run.run_started_at || run.created_at, status: run.status, conclusion: run.conclusion, url: run.html_url };
   } catch (e) {
     out.warn = '자동 수집 상태를 못 읽음: ' + e.message;

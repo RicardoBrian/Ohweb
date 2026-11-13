@@ -86,3 +86,23 @@ export async function kickCapture(env, inputs) {
     return { ok: true, enabled };
   } catch (e) { return { error: e.message }; }
 }
+
+// 마지막 전체 실행(예약·관리자 버튼·자동 요청). 학교 하나 등록 실행(제목에 '(코드)')은 뺀다.
+export const lastFullRun = (runs) => runs.find((x) => x.event === 'schedule' || !/\(\d+\)/.test(x.display_title || '')) || runs[0];
+
+// GitHub 은 30분 예약을 실제로는 4~8시간에 한 번만 돌린다(붐비면 늦추거나 건너뜀).
+// 그래서 앱이 시간표를 볼 때 마지막 전체 수집이 1시간 넘게 지났으면 여기서 한 번 실행시킨다.
+// 확인은 전체에서 20분에 한 번만(GitHub API·실행이 늘지 않게). 실패해도 시간표 응답에는 영향 없음.
+const AUTO_EVERY = 20 * 60, AUTO_AFTER_H = 1;
+export async function autoKick(env) {
+  if (!env.GITHUB_TOKEN) return;
+  const c = cache();
+  const key = ck('sync:auto');
+  if (!c || (await c.match(key))) return;
+  await c.put(key, new Response('1', { headers: { 'cache-control': `max-age=${AUTO_EVERY}` } }));
+  const r = await wf(env, '/runs?per_page=10');
+  if (!r.ok) return;
+  const run = lastFullRun((await r.json()).workflow_runs || []);
+  if (run && (run.status !== 'completed' || Date.now() - Date.parse(run.run_started_at || run.created_at) < AUTO_AFTER_H * 3600e3)) return;
+  return kickCapture(env);
+}
