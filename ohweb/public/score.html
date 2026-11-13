@@ -112,7 +112,7 @@
     .f-inp { width: 100%; padding: 6px 9px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-elevated, #fff); color: var(--text); font-size: 0.86rem; outline: none; }
     .f-inp:focus { border-color: var(--accent); }
     .f-inp.bad { border-color: var(--danger); background: var(--danger-light); }
-    .f-score { width: 72px; text-align: right; font-variant-numeric: tabular-nums; }
+    .f-score { width: 72px; display: inline-block; text-align: right; font-variant-numeric: tabular-nums; }
     .f-status { width: 86px; }
     .ded-btn { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; min-height: 30px; width: 100%; text-align: left; padding: 4px 8px; border-radius: 8px; border: 1px dashed var(--border); background: none; cursor: pointer; color: var(--sub); font-size: 0.78rem; }
     .ded-btn:hover { border-color: var(--accent); color: var(--accent); }
@@ -153,7 +153,7 @@
     /* 항목별 점수·제출물 */
     .crit-row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
     .crit-no { font-weight: 800; color: var(--accent); width: 18px; }
-    td.crit-cell { min-width: 150px; }
+    td.crit-cell { min-width: 130px; }
     td.crit-cell .f-item { width: 64px; text-align: right; margin-bottom: 4px; display: block; }
     td.crit-cell .f-reason { font-size: 0.78rem; padding: 4px 8px; }
     td.total { font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
@@ -164,8 +164,34 @@
     .file-text { white-space: pre-wrap; word-break: break-word; font-size: 0.82rem; background: var(--sky-chip); border-radius: 8px; padding: 10px; max-height: 320px; overflow: auto; }
     .toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px); background: rgba(20,24,40,0.92); color: #fff; font-size: 0.85rem; font-weight: 600; padding: 10px 22px; border-radius: 50px; z-index: 20000; transition: transform 0.3s, opacity 0.3s; opacity: 0; pointer-events: none; max-width: 92vw; }
     .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    /* 평가 만들기 칸 배치 */
+    .form-grid { display: grid; grid-template-columns: 1fr 100px 90px 90px; gap: 8px; }
+    @media (max-width: 520px) { .form-grid { grid-template-columns: 1fr 1fr; } .form-grid .fg-subj { grid-column: 1 / -1; } }
+    /* 표: 번호·이름은 가로로 밀어도 남게, 메모·비고는 한 칸에 위아래로 */
+    table.sc th.no, table.sc td.no { position: sticky; left: 0; z-index: 1; }
+    table.sc th.name, table.sc td.name { position: sticky; left: 44px; z-index: 1; box-shadow: 1px 0 0 var(--border-card, var(--border)); }
+    table.sc td.no, table.sc td.name { background: var(--bg-elevated, #fff); }
+    table.sc th.no, table.sc th.name { background: var(--bg-elevated, #fff); }
+    table.sc th.no, table.sc td.no { width: 44px; min-width: 44px; }
+    table.sc { min-width: 0; }
+    td.memo-cell { min-width: 170px; }
+    td.memo-cell .f-inp + .f-inp { margin-top: 4px; }
+    td.memo-cell .f-inp { font-size: 0.8rem; padding: 5px 8px; }
+    tr.st-missing td.name { color: var(--sub); }
+    table.sc tr.dirty td.no, table.sc tr.dirty td.name { background: linear-gradient(var(--accent-light), var(--accent-light)), var(--bg-elevated, #fff); }
+    .base-tag { display: inline-block; font-size: 0.68rem; font-weight: 700; color: var(--sub); margin-left: 4px; }
   </style>
   <link rel="stylesheet" href="admin-sky.css">
+  <style>
+    /* 하늘 테마는 .btn 을 모두 회색 칩으로 덮는다 — 주 버튼은 진한 색으로 돌려놓는다 */
+    body.ui-sky .btn.primary { background: var(--sky-cta); color: var(--sky-cta-text); border-color: transparent; }
+    body.ui-sky .btn.primary:hover { background: var(--sky-cta); filter: brightness(1.15); }
+    body.ui-sky .btn.danger { background: var(--danger-light); color: var(--danger); border-color: transparent; }
+    body.ui-sky .savebar .btn.primary { background: #fff; color: #1d1f3f; }
+    body.ui-sky.dark table.sc td.no, body.ui-sky.dark table.sc td.name, body.ui-sky.dark table.sc th.no, body.ui-sky.dark table.sc th.name { background: var(--bg-elevated); }
+    body.ui-sky table.sc tr:not(.dirty):hover td.no, body.ui-sky table.sc tr:not(.dirty):hover td.name { background: var(--bg-elevated, #fff); }
+  </style>
 </head>
 <body class="ui-sky">
 
@@ -478,13 +504,15 @@ function assessForm(a) {
   let crit = (a?.criteria || []).map(c => ({ ...c }));
   const body = `
     <div class="field"><label>평가 이름</label><input class="f-inp" id="fTitle" maxlength="80" value="${esc(a?.title || '')}" placeholder="예: 1차 수행평가 — 포트폴리오"></div>
-    <div class="field" style="display:grid;grid-template-columns:1fr 110px 90px;gap:8px">
-      <div><label>과목 (감점사유 템플릿)</label><input class="f-inp" id="fSubject" list="subjList" maxlength="40" value="${esc(a?.subject || subjects[0] || '')}">
+    <div class="field form-grid">
+      <div class="fg-subj"><label>과목 (감점사유 템플릿)</label><input class="f-inp" id="fSubject" list="subjList" maxlength="40" value="${esc(a?.subject || subjects[0] || '')}">
         <datalist id="subjList">${subjects.map(s => `<option value="${esc(s)}">`).join('')}</datalist></div>
       <div><label>학기</label><input class="f-inp" id="fTerm" maxlength="20" value="${esc(a?.term || currentTerm())}"></div>
       <div><label>만점</label><input class="f-inp" id="fMax" type="number" min="1" step="any" value="${esc(a?.maxScore ?? 100)}"></div>
+      <div><label>기본점수</label><input class="f-inp" id="fBase" type="number" min="0" step="any" value="${esc(a?.baseScore ?? '')}" placeholder="없음"></div>
     </div>
     <div class="hint" id="fSubjHint"></div>
+    <div class="hint">기본점수를 쓰면 <b>미제출</b> 학생은 점수를 따로 넣지 않아도 기본점수를 그대로 받습니다.</div>
     <div class="field"><label>평가 항목 <span style="font-weight:500">(선택 — 항목별로 점수·사유를 매길 때. 만점은 배점 합계)</span></label>
       <div id="fCrit"></div>
       <button class="btn sm" type="button" id="fCritAdd">+ 항목 추가</button>
@@ -515,14 +543,16 @@ function assessForm(a) {
     const criteria = readCrit().filter(c => c.label);
     if (criteria.some(c => !(c.max > 0))) return toast('항목마다 배점(0보다 큰 수)을 써 주세요.');
     const maxScore = criteria.length ? SC.sumMax(criteria) : Number($('fMax').value);
+    const baseRaw = $('fBase').value.trim(), baseScore = baseRaw === '' ? null : Number(baseRaw);
     const classKeys = [...$('modalCard').querySelectorAll('.chk-list input:checked')].map(i => i.value);
     if (!title) return toast('평가 이름을 써 주세요.');
     if (!(maxScore > 0)) return toast('만점은 0보다 커야 합니다.');
+    if (baseScore != null && !(Number.isFinite(baseScore) && baseScore >= 0 && baseScore <= maxScore)) return toast(`기본점수는 0 ~ ${maxScore} 사이로 써 주세요.`);
     if (!classKeys.length) return toast('대상 반을 하나 이상 골라 주세요.');
     $('fOk').disabled = true;
     try {
       if (!a) {
-        const ref = await addDoc(collection(db, 'score_assessments'), { title, subject, term, maxScore, criteria, classKeys, publishedClasses: [], createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+        const ref = await addDoc(collection(db, 'score_assessments'), { title, subject, term, maxScore, baseScore, criteria, classKeys, publishedClasses: [], createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
         closeModal(); await reloadAll(); location.hash = 'a=' + encodeURIComponent(ref.id);
         return;
       }
@@ -537,14 +567,23 @@ function assessForm(a) {
       if (maxScore < a.maxScore && Object.values(results).some(r => r.score != null && r.score > maxScore)) return fail('새 만점보다 높은 점수가 있습니다. 점수를 먼저 고쳐 주세요.');
       const critChanged = JSON.stringify(criteria) !== JSON.stringify(a.criteria || []);
       const copyChanged = title !== a.title || subject !== a.subject || term !== a.term || maxScore !== a.maxScore || critChanged;
-      await updateDoc(doc(db, 'score_assessments', a.id), { title, subject, term, maxScore, criteria, classKeys, publishedClasses: (a.publishedClasses || []).filter(k => classKeys.includes(k)), updatedAt: serverTimestamp() });
+      const oldBase = SC.hasBase(a.baseScore) ? Number(a.baseScore) : null;
+      await updateDoc(doc(db, 'score_assessments', a.id), { title, subject, term, maxScore, baseScore, criteria, classKeys, publishedClasses: (a.publishedClasses || []).filter(k => classKeys.includes(k)), updatedAt: serverTimestamp() });
       // 학생 화면용 복사본(평가명·과목·학기·만점·항목 이름/배점)도 맞춘다.
       if (copyChanged) await commitOps(Object.values(results).map(r => b => {
         const upd = { title, subject, term, maxScore };
         if (r.items?.length) upd.items = r.items.map((it, i) => ({ ...it, label: criteria[i].label, max: criteria[i].max }));
         b.update(doc(db, 'score_results', SC.resultId(a.id, r.studentId)), upd);
       }));
-      closeModal(); await reloadAll(); await openDetail(a.id); toast('저장했습니다.');
+      // 기본점수가 바뀌면 미제출 학생 중 점수가 비었거나 예전 기본점수였던 학생을 새 기본점수로(이력에 남음).
+      let nBase = 0;
+      if (baseScore !== oldBase) {
+        Object.assign(cur, { criteria, maxScore, baseScore });
+        const changes = Object.values(results).filter(r => r.status === 'missing' && !(r.items || []).some(i => i.score != null) && (r.score == null || r.score === oldBase))
+          .map(r => ({ sid: r.studentId, next: { ...norm(r), score: baseScore } }));
+        nBase = (await saveResults(changes)).n;
+      }
+      closeModal(); await reloadAll(); await openDetail(a.id); toast(`저장했습니다.${nBase ? ` 미제출 ${nBase}명에게 기본점수를 반영했습니다.` : ''}`);
     } catch (e) { toast('저장 실패: ' + e.message, 4000); $('fOk').disabled = false; }
   };
 }
@@ -601,7 +640,7 @@ const assessStudents = () => (cur.classKeys || []).flatMap(k => classByKey[k]?.s
 function renderDetail() {
   $('dTitle').textContent = cur.title;
   $('btnResync').classList.toggle('hidden', cur.source?.type !== 'exam');
-  $('dMeta').textContent = `${cur.subject || '과목 없음'} · ${cur.term || ''} · 만점 ${cur.maxScore}` + (crits().length ? ` · 항목 ${crits().map((c, i) => `${SC.circled(i)}${c.label}(${c.max})`).join(' ')}` : '');
+  $('dMeta').textContent = `${cur.subject || '과목 없음'} · ${cur.term || ''} · 만점 ${cur.maxScore}` + (SC.hasBase(cur.baseScore) ? ` · 기본점수 ${cur.baseScore}(미제출)` : '') + (crits().length ? ` · 항목 ${crits().map((c, i) => `${SC.circled(i)}${c.label}(${c.max})`).join(' ')}` : '');
   const pubs = new Set(cur.publishedClasses || []);
   $('dClasses').innerHTML = (cur.classKeys || []).map(k => {
     const list = classByKey[k]?.students || [];
@@ -616,6 +655,9 @@ function renderDetail() {
   renderTable();
   renderSavebar();
 }
+// 감점사유 칸: 과목 템플릿이 있거나 이미 감점이 들어간 평가에서만 보인다(항목별 사유만 쓰는 평가는 칸을 줄인다).
+// 항목별 평가는 항목마다 사유 칸이 있으니, 감점이 실제로 들어간 경우에만 보인다.
+const showDed = () => Object.values(results).some(r => r.deductions?.length) || (!crits().length && templateItems(cur.subject).length > 0);
 function dedCell(v) {
   return v.deductions.length ? v.deductions.map(d => `<span class="ded-chip" title="${esc(d.label)}">${esc(d.code)} ${esc(d.label)}</span>`).join('') : '+ 감점사유';
 }
@@ -624,20 +666,21 @@ function rowHtml(s) {
   const d = saved?.dispute;
   const nFiles = (saved?.files || []).length;
   const noteVal = noteDrafts.has(s.id) ? noteDrafts.get(s.id) : (notes[s.id] || '');
+  const missBase = v.status === 'missing' && v.score != null && v.score === base() && !(v.items || []).some(i => i.score != null);
   const scoreCells = crits().length
     ? crits().map((c, i) => { const k = `${s.id}#${i}`, it = v.items[i];
         return `<td class="crit-cell"><input class="f-inp f-item ${bad.has(k) ? 'bad' : ''}" data-f="item" data-i="${i}" inputmode="decimal" value="${esc(bad.has(k) ? bad.get(k) : (it.score ?? ''))}" placeholder="-">
           <input class="f-inp f-reason" data-f="reason" data-i="${i}" maxlength="500" value="${esc(it.reason)}" placeholder="사유"></td>`; }).join('')
-      + `<td class="total" data-total>${esc(v.score ?? '-')}</td>`
-    : `<td><input class="f-inp f-score ${bad.has(s.id) ? 'bad' : ''}" data-f="score" inputmode="decimal" value="${esc(bad.has(s.id) ? bad.get(s.id) : (v.score ?? ''))}" placeholder="-"></td>`;
-  return `<tr data-sid="${esc(s.id)}" class="${drafts.has(s.id) || noteDrafts.has(s.id) ? 'dirty' : ''}">
+      + `<td class="total"><span data-total>${esc(v.score ?? '-')}</span>${missBase ? '<span class="base-tag">기본</span>' : ''}</td>`
+    : `<td style="white-space:nowrap"><input class="f-inp f-score ${bad.has(s.id) ? 'bad' : ''}" data-f="score" inputmode="decimal" value="${esc(bad.has(s.id) ? bad.get(s.id) : (v.score ?? ''))}" placeholder="-">${missBase ? '<span class="base-tag">기본</span>' : ''}</td>`;
+  return `<tr data-sid="${esc(s.id)}" class="${drafts.has(s.id) || noteDrafts.has(s.id) ? 'dirty' : ''} ${v.status === 'missing' ? 'st-missing' : ''}">
     <td class="no">${esc(s.number)}</td>
     <td class="name">${esc(s.name)}</td>
     ${scoreCells}
     <td><select class="f-inp f-status" data-f="status">${SC.STATUSES.map(x => `<option value="${x.id}" ${x.id === v.status ? 'selected' : ''}>${x.label}</option>`).join('')}</select></td>
-    <td style="min-width:150px"><button class="ded-btn" data-act="ded">${dedCell(v)}</button></td>
-    <td style="min-width:140px"><input class="f-inp" data-f="memo" maxlength="500" value="${esc(v.memo)}" placeholder="메모(학생에게 보임)"></td>
-    <td style="min-width:130px"><input class="f-inp f-note" data-f="note" maxlength="500" value="${esc(noteVal)}" placeholder="비고(선생님만)"></td>
+    ${showDed() ? `<td style="min-width:150px"><button class="ded-btn" data-act="ded">${dedCell(v)}</button></td>` : ''}
+    <td class="memo-cell"><input class="f-inp" data-f="memo" maxlength="500" value="${esc(v.memo)}" placeholder="메모 (학생에게 보임)">
+      <input class="f-inp f-note" data-f="note" maxlength="500" value="${esc(noteVal)}" placeholder="비고 (선생님만)"></td>
     <td style="white-space:nowrap">
       ${nFiles ? `<button class="pill accent disp-btn" data-act="files" title="제출물 보기">제출물 ${nFiles}</button>` : ''}
       ${d ? `<button class="pill ${d.checked ? '' : 'warn'} disp-btn" data-act="disp">${d.checked ? '이의 확인함' : '이의신청'}</button>` : ''}
@@ -656,9 +699,9 @@ function renderTable() {
   const head = crits().length
     ? crits().map((c, i) => `<th>${SC.circled(i)} ${esc(c.label)} <span style="font-weight:500">/${esc(c.max)}</span></th>`).join('') + `<th>합계 /${esc(cur.maxScore)}</th>`
     : `<th>점수 / ${esc(cur.maxScore)}</th>`;
-  const cols = 8 + (crits().length ? crits().length : 0);
+  const cols = 6 + (showDed() ? 1 : 0) + (crits().length ? crits().length : 0);
   el.innerHTML = `<div class="tbl-wrap"><table class="sc">
-    <thead><tr><th>번호</th><th>이름</th>${head}<th>상태</th><th>감점사유</th><th>메모</th><th>비고</th><th></th></tr></thead>
+    <thead><tr><th class="no">번호</th><th class="name">이름</th>${head}<th>상태</th>${showDed() ? '<th>감점사유</th>' : ''}<th>메모 · 비고</th><th></th></tr></thead>
     <tbody>${list.map(rowHtml).join('') || `<tr><td colspan="${cols}" class="empty">${$('onlyDisputes').checked ? '이의신청이 없습니다.' : '이 반 학생이 없습니다.'}</td></tr>`}</tbody>
   </table></div>
   ${orphans.length ? `<p class="hint" style="margin-top:10px">명단에 없는 학생의 결과 ${orphans.length}건이 있습니다(학생이 삭제되었거나 다시 올려 ID 가 바뀐 경우). 학생 화면에는 그대로 보입니다.</p>` : ''}`;
@@ -675,13 +718,26 @@ function markRow(sid) {
   if (tr) tr.classList.toggle('dirty', drafts.has(sid) || noteDrafts.has(sid));
   return tr;
 }
+const base = () => SC.hasBase(cur?.baseScore) ? Number(cur.baseScore) : null;
 function setDraft(sid, patch) {
-  const next = { ...rowValue(sid), ...patch };
+  const prev = rowValue(sid);
+  let next = { ...prev, ...patch };
   if (next.items) next.score = SC.sumItems(next.items);
+  // 미제출로 바꾸면 기본점수, 미제출에서 다른 상태로 바꾸면 자동으로 넣은 기본점수는 비운다.
+  if (patch.status && base() != null && !next.items) {
+    if (patch.status === 'missing' && prev.status !== 'missing') next.score = base();
+    else if (patch.status !== 'missing' && prev.status === 'missing' && prev.score === base()) {
+      const saved = results[sid]; // 저장된 값이 미제출이 아니었으면 그 점수로 되돌린다
+      next.score = saved && saved.status !== 'missing' ? (saved.score ?? null) : null;
+    }
+  }
+  next = SC.applyBase(next, base());
   const saved = results[sid];
   if (saved ? sameVal(saved, next) : isBlank(next)) drafts.delete(sid); else drafts.set(sid, next);
   const tr = markRow(sid);
   const tot = tr?.querySelector('[data-total]'); if (tot) tot.textContent = next.score ?? '-';
+  const sc = tr?.querySelector('input[data-f="score"]'); if (sc && patch.status) { sc.value = next.score ?? ''; sc.classList.remove('bad'); bad.delete(sid); }
+  if (tr) tr.classList.toggle('st-missing', next.status === 'missing');
   renderSavebar();
 }
 $('dTable').addEventListener('input', e => {
@@ -826,6 +882,7 @@ $('btnScoreUpload').onclick = async () => {
   let p;
   try { p = SC.parseScoreRows(await readRows(f), { students, poolIds: assessStudents().map(s => s.id), items: templateItems(cur.subject), maxScore: Number(cur.maxScore), criteria: crits() }); }
   catch (e) { toast('파일을 읽지 못했습니다: ' + e.message, 4000); return; }
+  p.rows = p.rows.map(r => SC.applyBase(r, base())); // 미제출·점수 빈칸 → 기본점수
   // 항목이 없는 평가에 항목 열이 있는 파일 → 파일 머리글대로 항목을 정한다.
   const setCrit = !crits().length && p.fileCriteria.length ? p.fileCriteria.map(c => ({ label: c.label, max: c.max })) : null;
   if (setCrit && setCrit.some(c => !(c.max > 0))) { toast('항목 머리글에 배점을 괄호로 써 주세요. 예: "① 변수 사용(5)"', 5000); return; }
@@ -1026,19 +1083,22 @@ $('btnFromExam').onclick = async () => {
       try {
         const b = await buildFromExam(examId, asIds);
         if (!b.rows.length) { $('fePrev').innerHTML = fromExamSummary(b, '<p class="hint">가져올 학생이 없습니다.</p>'); return; }
-        $('fePrev').innerHTML = fromExamSummary(b);
+        const miss = b.rows.filter(r => r.status === 'missing').length;
+        $('fePrev').innerHTML = fromExamSummary(b, miss ? `<div class="field" style="margin-top:8px"><label>미제출 기본점수 <span style="font-weight:500">(비워 두면 점수 없음)</span></label><input class="f-inp" id="feBase" type="number" min="0" max="${esc(b.maxScore)}" step="any" placeholder="예: 4" style="max-width:140px"></div>` : '');
         $('feLoad').outerHTML = `<button class="btn primary" id="feSave">평가 만들기</button>`;
         $('feSave').onclick = async () => {
+          const baseRaw = $('feBase')?.value.trim() || '', baseScore = baseRaw === '' ? null : Number(baseRaw);
+          if (baseScore != null && !(Number.isFinite(baseScore) && baseScore >= 0 && baseScore <= b.maxScore)) return toast(`기본점수는 0 ~ ${b.maxScore} 사이로 써 주세요.`);
           $('feSave').disabled = true;
           try {
             const classKeys = [...new Set(b.rows.map(r => sidClass(r.studentId)))];
             const ref = await addDoc(collection(db, 'score_assessments'), {
-              title: b.exam.title || '시험', subject: '', term: currentTerm(), maxScore: b.maxScore, criteria: b.criteria, classKeys, publishedClasses: [],
+              title: b.exam.title || '시험', subject: '', term: currentTerm(), maxScore: b.maxScore, baseScore, criteria: b.criteria, classKeys, publishedClasses: [],
               source: { type: 'exam', examId, asIds }, createdAt: serverTimestamp(), updatedAt: serverTimestamp(),
             });
             await reloadAll(false);
             cur = assessments.find(a => a.id === ref.id); results = {}; notes = {};
-            const r = await saveResults(b.rows.map(x => ({ sid: x.studentId, next: x })), null, { fromExam: true });
+            const r = await saveResults(b.rows.map(x => ({ sid: x.studentId, next: SC.applyBase(x, baseScore) })), null, { fromExam: true });
             closeModal(); toast(`${r.n}명을 가져왔습니다. 확인 후 반별로 공개하세요.`, 3500);
             location.hash = 'a=' + encodeURIComponent(ref.id);
           } catch (e) { toast('저장 실패: ' + e.message, 4000); $('feSave').disabled = false; }
@@ -1054,6 +1114,7 @@ $('btnResync').onclick = async () => {
   openModal('시험 결과 다시 가져오기', '<div class="loading">시험 결과 읽는 중…</div>', '<button class="btn" data-close>닫기</button>');
   try {
     const b = await buildFromExam(src.examId, src.asIds || []);
+    b.rows = b.rows.map(r => SC.applyBase(r, base()));
     if (b.itemsMode && b.criteria.length !== crits().length) { $('modalCard').querySelector('.modal-body').innerHTML = `<div class="msg-list err">시험 문항 수(${b.criteria.length})가 이 평가의 항목 수(${crits().length})와 다릅니다. 시험 문항이 바뀌었으면 새 평가로 다시 가져오세요.</div>`; return; }
     // 학생이 고친 결과(이의신청 등)는 유지하고, 선생님이 이 화면에서 손댄 점수는 시험 값으로 덮어쓴다(이력에 남음).
     const fresh = b.rows.filter(r => !results[r.studentId]);

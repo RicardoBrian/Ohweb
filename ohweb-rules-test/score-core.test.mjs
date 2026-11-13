@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   decodeText, parseCSV, toCSV, parseTemplateRows, parseScoreRows, parseStatus,
-  classKey, studentKey, sameResult, describeChange, parseHakbun, hakbunInName, matchFiles, scoreHeader,
+  classKey, studentKey, sameResult, describeChange, parseHakbun, hakbunInName, matchFiles, scoreHeader, applyBase,
 } from '../ohweb/public/score-core.js';
 
 const students = [
@@ -143,4 +143,16 @@ test('항목이 있는 평가의 점수 양식 머리글은 다시 읽힌다', (
 test('이력: 항목 점수 변경도 요약', () => {
   const a = { score: 10, items: [{ label: 'x', max: 5, score: 2, reason: '' }] };
   assert.equal(describeChange(a, { score: 13, items: [{ label: 'x', max: 5, score: 5, reason: '' }] }), '점수 10 → 13, ① 2 → 5');
+});
+
+test('미제출 기본점수: 미제출·점수 빈칸이면 기본점수 그대로(깎지 않음)', () => {
+  assert.equal(applyBase({ status: 'missing', score: null }, 8).score, 8);
+  assert.equal(applyBase({ status: 'missing', score: null }, 0).score, 0);
+  assert.equal(applyBase({ status: 'missing', score: 5 }, 8).score, 5, '따로 넣은 점수는 그대로');
+  assert.equal(applyBase({ status: 'normal', score: null }, 8).score, null, '정상은 손대지 않음');
+  assert.equal(applyBase({ status: 'missing', score: null }, null).score, null, '기본점수 없는 평가');
+  assert.equal(applyBase({ status: 'missing', score: null }, '').score, null);
+  const it = [{ label: 'x', max: 5, score: null, reason: '' }];
+  assert.equal(applyBase({ status: 'missing', score: null, items: it }, 3).score, 3, '항목 평가도 총점에 기본점수');
+  assert.equal(applyBase({ status: 'missing', score: 2, items: [{ ...it[0], score: 2 }] }, 3).score, 2);
 });

@@ -84,6 +84,15 @@
   .file-name { font-size: 0.8rem; color: var(--sub); font-weight: 600; margin-bottom: 4px; word-break: break-all; }
   .file-img { max-width: 100%; border-radius: 10px; display: block; border: 1px solid var(--border); cursor: zoom-in; }
   .btn.primary { margin-top: 2px; }
+  /* 하늘 테마는 .btn 을 회색 칩으로 덮는다 — 주 버튼은 진한 색으로 */
+  body.ui-sky .btn.primary { background: var(--sky-cta); color: var(--sky-cta-text); border-color: transparent; }
+  body.ui-sky .btn.primary:hover { filter: brightness(1.15); }
+  .disp-toggle { display: flex; align-items: center; gap: 10px; width: 100%; background: none; border: none; cursor: pointer; color: var(--text); text-align: left; padding: 0; }
+  .disp-toggle .grow { flex: 1; }
+  .disp-toggle .sec-label { margin: 0; }
+  .disp-toggle .chev { color: var(--sub); transition: transform 0.2s; }
+  .disp-toggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
+  .disp-form { margin-top: 10px; }
   .file-text { white-space: pre-wrap; word-break: break-word; font-size: 0.85rem; background: var(--sky-chip); border-radius: 10px; padding: 10px 12px; max-height: 360px; overflow: auto; color: var(--text); }
 </style>
 </head>
@@ -91,6 +100,7 @@
 
 <svg width="0" height="0" style="position:absolute;">
   <defs>
+ <symbol id="ic-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="ic-back" viewBox="0 0 24 24"><path d="M18 12H5M10 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
   </defs>
 </svg>
@@ -195,6 +205,9 @@ function renderDetail(r) {
   const el = document.getElementById('detail');
   const ded = (r.deductions || []);
   const d = r.dispute;
+  // 미제출이고 항목 점수가 하나도 없으면(기본점수만 받은 경우) 항목 표·"감점 없음" 안내는 빼고 총점만 보여 준다.
+  const missing = r.status === 'missing';
+  const showItems = (r.items || []).length && !(missing && r.items.every(it => it.score == null));
   const edited = millis(r.updatedAt) && millis(r.publishedAt) && millis(r.updatedAt) > millis(r.publishedAt) + 1000;
   el.innerHTML = `
     <div class="card d-head">
@@ -205,24 +218,34 @@ function renderDetail(r) {
       ${edited ? `<div class="hint">${esc(L.updated)} · ${esc(fmt(r.updatedAt))}</div>` : ''}
       ${r.fromExam ? `<a class="btn" href="exam.html" style="display:inline-block;margin-top:12px;text-decoration:none">${esc(L.examLink)}</a>` : ''}
     </div>
-    ${(r.items || []).length ? `<div class="card"><div class="sec-label">${esc(L.items)}</div>${r.items.map((it, i) => `<div class="crit">
+    ${showItems ? `<div class="card"><div class="sec-label">${esc(L.items)}</div>${r.items.map((it, i) => `<div class="crit">
       <div class="crit-top"><span class="crit-name">${'①②③④⑤⑥⑦⑧⑨⑩'[i] || (i + 1) + '.'} ${esc(it.label)}</span><span class="crit-score">${it.score == null ? '-' : esc(it.score)}<small> / ${esc(it.max)}</small></span></div>
       ${it.reason ? `<div class="crit-reason">${esc(it.reason)}</div>` : ''}</div>`).join('')}</div>` : ''}
-    ${ded.length || !(r.items || []).length ? `<div class="card">
+    ${ded.length || (!(r.items || []).length && !missing) ? `<div class="card">
       <div class="sec-label">${esc(L.ded)}</div>
       ${ded.length ? ded.map(x => `<div class="ded"><span class="code">${esc(x.code)}</span><span>${esc(x.label)}</span></div>`).join('') : `<div class="none">${esc(L.noDed)}</div>`}
     </div>` : ''}
     ${(r.files || []).length ? `<div class="card"><div class="sec-label">${esc(L.files)}</div>${r.files.map((f, i) => `<div class="file-box" data-fi="${i}"><div class="file-name">${esc(f.name)}</div><div class="file-body"><div class="hint">${esc(L.loading)}</div></div></div>`).join('')}</div>` : ''}
     ${r.memo ? `<div class="card"><div class="sec-label">${esc(L.memo)}</div><div class="memo">${esc(r.memo)}</div></div>` : ''}
     <div class="card">
-      <div class="sec-label">${esc(L.dispute)}</div>
-      ${d ? `<div class="hint" style="margin:0 0 4px">${esc(L.mine)} · ${esc(fmt(d.at))} · ${esc(d.checked ? L.checked : L.received)}</div><div class="quote">${esc(d.text)}</div>` : ''}
-      <div class="hint" style="margin:0 0 8px">${esc(L.disputeHelp)}</div>
-      <textarea class="inp" id="dispText" maxlength="500" placeholder="${esc(L.disputePh)}"></textarea>
-      <div class="row"><span class="cnt" id="dispCnt">0/500</span><span class="grow"></span><button class="btn primary" id="dispSend">${esc(d ? L.resend : L.send)}</button></div>
+      <button class="disp-toggle" id="dispOpen" aria-expanded="false"><span class="sec-label">${esc(L.dispute)}</span><span class="grow"></span>
+        ${d ? `<span class="pill ${d.checked ? 'ok' : 'warn'}">${esc(d.checked ? L.checked : L.received)}</span>` : ''}<svg class="chev" width="18" height="18"><use href="#ic-chev"/></svg></button>
+      ${d ? `<div class="hint" style="margin:8px 0 4px">${esc(L.mine)} · ${esc(fmt(d.at))}</div><div class="quote">${esc(d.text)}</div>` : ''}
+      <div class="disp-form hidden" id="dispForm">
+        <div class="hint" style="margin:0 0 8px">${esc(L.disputeHelp)}</div>
+        <textarea class="inp" id="dispText" maxlength="500" placeholder="${esc(L.disputePh)}"></textarea>
+        <div class="row"><span class="cnt" id="dispCnt">0/500</span><span class="grow"></span><button class="btn primary" id="dispSend">${esc(d ? L.resend : L.send)}</button></div>
+      </div>
       <div class="msg" id="dispMsg"></div>
     </div>`;
   loadFiles(r);
+  const tog = document.getElementById('dispOpen');
+  tog.onclick = () => {
+    const open = tog.getAttribute('aria-expanded') !== 'true';
+    tog.setAttribute('aria-expanded', open);
+    document.getElementById('dispForm').classList.toggle('hidden', !open);
+    if (open) document.getElementById('dispText').focus();
+  };
   const ta = document.getElementById('dispText');
   ta.oninput = () => { document.getElementById('dispCnt').textContent = `${ta.value.length}/500`; };
   document.getElementById('dispSend').onclick = async () => {
