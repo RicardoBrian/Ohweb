@@ -258,13 +258,23 @@ service cloud.firestore {
     // 응답: 설문 만든 학생·응답한 본인·관리자만 읽는다 — 예전엔 누구나 모든
     // 설문의 응답(이름·답변·첨부)을 읽을 수 있었다. 응답은 비로그인 허용 설문이면
     // 'anonymous'로, 아니면 로그인한 본인 ID로만 낼 수 있다.
+    function formAllowsEdit(formId) {
+      let f = get(/databases/$(database)/documents/student_forms/$(formId)).data;
+      return f.get('allowEdit', false) == true && f.get('status', 'open') == 'open';
+    }
     match /student_form_responses/{id} {
       allow read: if isAdmin()
           || isOwnStudentAuth(resource.data.get('ownerId', ''))
           || isOwnStudentAuth(resource.data.get('respondentId', ''));
       allow create: if request.resource.data.get('respondentId', '') == 'anonymous'
           || isOwnStudentAuth(request.resource.data.get('respondentId', ''));
-      allow update: if isAdmin();
+      // 응답 수정: 설문 만든 학생이 '응답 수정 허용(allowEdit)'을 켠 열린 설문에서,
+      // 로그인해서 낸 본인 응답만. 답·점수·수정 시각만 바꿀 수 있다(응답자·설문·
+      // 제출 시각은 못 바꾼다). 익명 응답은 isOwnStudentAuth('anonymous')가 거짓이라 못 고친다.
+      allow update: if isAdmin()
+          || (isOwnStudentAuth(resource.data.get('respondentId', ''))
+              && formAllowsEdit(resource.data.get('formId', ''))
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['answers', 'score', 'total', 'editedAt']));
       allow delete: if isAdmin() || isOwnStudentAuth(resource.data.get('ownerId', ''));
     }
     // ── 시험 ──

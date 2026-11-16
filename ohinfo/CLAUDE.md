@@ -31,4 +31,4 @@
 - `apps-script/ailab-drive.gs`: AI 실습실 이미지를 구글 드라이브에 올리는 Apps Script (자동 배포 안 됨, Apps Script 편집기에 붙여넣기)
 - `apps-script/score-drive.gs`: 수행평가 제출물(선생님 드라이브)을 본인 학생에게만 보내는 Apps Script. 프로젝트 "수행평가 제출물"로 배포됨, 주소는 `ohweb/public/score-config.js`·`ohinfo/public/score-config.js` (README 참고)
 - `scripts/migrate-students-to-auth.mjs`: 한 번 쓰고 끝난 학생 계정 전환 스크립트
-- 테스트: `ohweb-rules-test` 에서 `npm run test:login`, `npm run test:exam`
+- 테스트: `ohweb-rules-test` 에서 `npm run test:login`, `npm run test:exam`, `npm run test:form`(설문 응답 수정)
