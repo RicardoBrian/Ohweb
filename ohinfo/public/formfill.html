@@ -201,6 +201,9 @@
         <div class="score-total" id="scoreTotal"></div>
       </div>
       <div id="quizReview"></div>
+      <div id="editAgainWrap" class="hidden" style="text-align:center;margin-top:16px;">
+        <button class="btn" onclick="location.reload()"><span id="editAgainTxt">응답 수정하기</span></button>
+      </div>
     </div>
   </div>
 </div>
@@ -234,6 +237,7 @@ const T = {
     quizDoneTitle:'퀴즈 완료!', quizDoneMsg:'결과를 확인하세요.',
     scoreOf1:'문제 중 ', scoreOf2:'개 정답 (',
     correct:'정답', wrong:'오답 — 정답: ', myAns:'내 답: ',
+    editing:'이전 응답 수정 중', editSubmit:'수정 제출', editDoneTitle:'수정 완료!', editDoneMsg:'응답이 수정되었습니다.', editAgain:'응답 수정하기', editLoadErr:'이전 응답을 불러오지 못했습니다: ',
     alreadyTitle:'이미 제출하셨습니다', alreadyMsg:'이 설문은 1인 1회만 참여할 수 있습니다.',
     pts:'점',
   },
@@ -256,6 +260,7 @@ const T = {
     quizDoneTitle:'测验完成!', quizDoneMsg:'请查看结果。',
     scoreOf1:'题中答对了', scoreOf2:'题 (',
     correct:'正确', wrong:'错误 — 正确答案: ', myAns:'我的答案: ',
+    editing:'正在修改之前的回答', editSubmit:'提交修改', editDoneTitle:'修改完成!', editDoneMsg:'您的回答已修改。', editAgain:'修改回答', editLoadErr:'无法加载之前的回答: ',
     alreadyTitle:'您已经提交过了', alreadyMsg:'此问卷每人只能参与一次。',
     pts:'分',
   },
@@ -278,6 +283,7 @@ const T = {
     quizDoneTitle:'Тест завершён!', quizDoneMsg:'Ваш результат:',
     scoreOf1:' из ', scoreOf2:' правильно (',
     correct:'Верно', wrong:'Неверно — ответ: ', myAns:'Ваш ответ: ',
+    editing:'Изменение прежнего ответа', editSubmit:'Сохранить изменения', editDoneTitle:'Изменено!', editDoneMsg:'Ваш ответ изменён.', editAgain:'Изменить ответ', editLoadErr:'Не удалось загрузить прежний ответ: ',
     alreadyTitle:'Вы уже ответили', alreadyMsg:'На этот опрос можно отвечать только один раз.',
     pts:'очков',
   },
@@ -300,6 +306,7 @@ const T = {
     quizDoneTitle:'Quiz done!', quizDoneMsg:'Check your result.',
     scoreOf1:' out of ', scoreOf2:' correct (',
     correct:'Correct', wrong:'Wrong — answer: ', myAns:'Your answer: ',
+    editing:'Editing your previous response', editSubmit:'Save changes', editDoneTitle:'Updated!', editDoneMsg:'Your response has been updated.', editAgain:'Edit response', editLoadErr:'Failed to load your previous response: ',
     alreadyTitle:'Already submitted', alreadyMsg:'This survey only allows one response per person.',
     pts:'pts',
   },
@@ -308,6 +315,8 @@ const T = {
 let currentLang = localStorage.getItem('ohinfo_lang') || 'ko';
 let FORM = null, SESSION = null;
 let sections = [], curSection = 0, allAnswers = {};
+// 응답 수정 허용(allowEdit) 설문에서 로그인한 학생이 이미 낸 응답 — 있으면 그 문서를 고친다.
+let EDIT_DOC = null;
 let isLastSection = false;
 
 // ── 파일 업로드 (GAS 웹앱 → 개인 드라이브) ──
@@ -395,7 +404,8 @@ function applyLang() {
   // nav buttons (only if form is shown)
   const btnNextTxt = document.getElementById('btnNextTxt');
   const btnPrevTxt = document.getElementById('btnPrevTxt');
-  if (btnNextTxt) btnNextTxt.textContent = isLastSection ? t.submit : t.next;
+  if (btnNextTxt) btnNextTxt.textContent = isLastSection ? (EDIT_DOC ? t.editSubmit : t.submit) : t.next;
+  const eaTxt = document.getElementById('editAgainTxt'); if (eaTxt) eaTxt.textContent = t.editAgain;
   if (btnPrevTxt) btnPrevTxt.textContent = t.prev;
 }
 applyLang();
@@ -485,7 +495,21 @@ async function init() {
 
   // 응답 조회·제출은 로그인 계정 기준으로 권한을 본다 — 로그인 복원을 기다린다.
   if (SESSION) await authReady();
-  if (FORM.limitOnce && SESSION && _authMatches()) {
+  // 응답 수정 허용 설문: 로그인한 본인 응답이 있으면 불러와 채워 두고, 제출하면 그 응답을 고친다.
+  // (1인 1회 설문이어도 수정은 되므로 아래 '이미 제출' 화면보다 먼저 본다.)
+  if (FORM.allowEdit && SESSION && _authMatches()) {
+    try {
+      const q = query(collection(db,'student_form_responses'), where('formId','==',formId), where('respondentId','==',SESSION.id));
+      const ex = await getDocs(q);
+      if (!ex.empty) {
+        // 예전에 여러 번 냈다면 가장 최근 응답을 고친다
+        const latest = ex.docs.slice().sort((a, b) => (b.data().submittedAt?.seconds || 0) - (a.data().submittedAt?.seconds || 0))[0];
+        EDIT_DOC = { id: latest.id, ...latest.data() };
+        prefillAnswers(EDIT_DOC.answers || []);
+      }
+    } catch(e) { console.error('edit load:', e); showErr('ic-alert', t.loadErr, t.editLoadErr + e.message); return; }
+  }
+  if (!EDIT_DOC && FORM.limitOnce && SESSION && _authMatches()) {
     try {
       const q = query(collection(db,'student_form_responses'), where('formId','==',formId), where('respondentId','==',SESSION.id));
       const ex = await getDocs(q);
@@ -503,6 +527,23 @@ async function init() {
   document.getElementById('pageLoading').classList.add('hidden');
   document.getElementById('pageFill').classList.remove('hidden');
   renderSection(0);
+}
+
+// ── 이전 응답 채우기 ──
+// 저장된 answers는 문항 순서대로 {question, type, answer}. 설문이 그 뒤에 고쳐졌을 수
+// 있으니 같은 자리의 질문·유형이 맞으면 그대로, 아니면 같은 질문을 찾아 넣는다.
+function prefillAnswers(saved) {
+  const allQ = (FORM.questions || []).filter(q => q.type !== 'section');
+  const used = new Set();
+  const same = (a, q) => a && a.type === q.type && a.question === (q.text || q.title || '');
+  allQ.forEach((q, i) => {
+    let k = same(saved[i], q) && !used.has(i) ? i : saved.findIndex((a, j) => !used.has(j) && same(a, q));
+    if (k < 0) return;
+    used.add(k);
+    const v = saved[k].answer;
+    if (v === null || v === undefined) return;
+    allAnswers[i] = Array.isArray(v) ? v.slice() : v;
+  });
 }
 
 // ── build sections ──
@@ -541,6 +582,7 @@ function renderFormHeader() {
   if (FORM.isQuiz)    tags.push(t.quiz);
   if (FORM.deadline)  { const dl = new Date(FORM.deadline); if (!isNaN(dl)) tags.push(dl.toLocaleDateString() + ' ' + t.deadline); }
   if (FORM.limitOnce) tags.push(t.limitOnce);
+  if (EDIT_DOC)       tags.push(t.editing);
   document.getElementById('fillMeta').innerHTML = tags.map(tg => `<span class="meta-badge">${tg}</span>`).join('');
   if (sections.length > 1) document.getElementById('progressWrap').style.display = '';
 }
@@ -576,7 +618,7 @@ function renderSection(idx) {
   document.getElementById('btnPrevTxt').textContent = t.prev;
 
   if (isLastSection) {
-    document.getElementById('btnNextTxt').textContent = t.submit;
+    document.getElementById('btnNextTxt').textContent = EDIT_DOC ? t.editSubmit : t.submit;
     btnNext.onclick = submitForm;
   } else {
     document.getElementById('btnNextTxt').textContent = t.next;
@@ -714,7 +756,7 @@ async function submitForm() {
   //   설문이름-학교-N학년 / M반 / 날짜_학번_이름.확장자
   // 폴더 경로의 '/'는 GAS(_folder)가 하위 폴더로 나눠 만든다. 각 이름 안의
   // '/' 등은 _safe가 '_'로 바꿔 경로가 의도치 않게 쪼개지지 않게 한다.
-  const hasFiles = allQ.some((q, i) => q.type === 'file' && Array.isArray(allAnswers[i]) && allAnswers[i].length && allAnswers[i][0] instanceof File);
+  const hasFiles = allQ.some((q, i) => q.type === 'file' && Array.isArray(allAnswers[i]) && allAnswers[i].some(f => f instanceof File));
   if (hasFiles) {
     const me = asMe ? SESSION : null;   // 익명 제출이면 로그인 정보를 쓰지 않는다
     const _num = v => String(v || '').replace(/[^0-9]/g, '') || String(v || '').trim();
@@ -734,15 +776,18 @@ async function submitForm() {
       for (let i = 0; i < allQ.length; i++) {
         if (allQ[i].type !== 'file') continue;
         const files = allAnswers[i];
-        if (Array.isArray(files) && files.length && files[0] instanceof File) {
+        if (Array.isArray(files) && files.length) {
           const uploaded = [];
-          for (const f of files) { seq++; uploaded.push(await uploadOneFile(f, folder, `${date}_${who}${seq > 1 ? '_' + seq : ''}${ext(f.name)}`)); }
+          for (const f of files) {
+            if (!(f instanceof File)) { uploaded.push(f); continue; }   // 수정 시 예전에 올린 파일
+            seq++; uploaded.push(await uploadOneFile(f, folder, `${date}_${who}${seq > 1 ? '_' + seq : ''}${ext(f.name)}`));
+          }
           allAnswers[i] = uploaded;
         } else { allAnswers[i] = []; }
       }
     } catch (e) {
       btn.disabled = false;
-      document.getElementById('btnNextTxt').textContent = t.submit;
+      document.getElementById('btnNextTxt').textContent = EDIT_DOC ? t.editSubmit : t.submit;
       alert('파일 업로드 실패: ' + e.message); return;
     }
   }
@@ -782,12 +827,19 @@ async function submitForm() {
   if (FORM.isQuiz) { payload.score = score; payload.total = total; }
 
   try {
-    await addDoc(collection(db,'student_form_responses'), payload);
-    updateDoc(doc(db,'student_forms',formId), { responseCount: increment(1) }).catch(()=>{});
+    if (EDIT_DOC && asMe) {
+      // 수정: 답과 점수만 바꾼다(처음 제출 시각·응답자는 그대로 — 규칙도 이것만 허용)
+      const upd = { answers: answersArr, editedAt: serverTimestamp() };
+      if (FORM.isQuiz) { upd.score = score; upd.total = total; }
+      await updateDoc(doc(db,'student_form_responses',EDIT_DOC.id), upd);
+    } else {
+      await addDoc(collection(db,'student_form_responses'), payload);
+      updateDoc(doc(db,'student_forms',formId), { responseCount: increment(1) }).catch(()=>{});
+    }
   }
   catch(e) {
     btn.disabled = false;
-    document.getElementById('btnNextTxt').textContent = t.submit;
+    document.getElementById('btnNextTxt').textContent = EDIT_DOC ? t.editSubmit : t.submit;
     alert(t.submitErr + e.message); return;
   }
 
@@ -812,8 +864,13 @@ async function submitForm() {
       </div>`;
     }).join('');
   } else {
-    document.getElementById('doneTitle').textContent = t.doneTitle;
-    document.getElementById('doneMsg').textContent   = t.doneMsg;
+    document.getElementById('doneTitle').textContent = EDIT_DOC ? t.editDoneTitle : t.doneTitle;
+    document.getElementById('doneMsg').textContent   = EDIT_DOC ? t.editDoneMsg : t.doneMsg;
+  }
+  // 수정 허용 설문이면 로그인 응답자에게 다시 고칠 수 있는 버튼을 보여 준다
+  if (FORM.allowEdit && asMe) {
+    document.getElementById('editAgainTxt').textContent = t.editAgain;
+    document.getElementById('editAgainWrap').classList.remove('hidden');
   }
 }
 

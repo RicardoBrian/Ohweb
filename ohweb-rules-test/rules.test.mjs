@@ -23,6 +23,12 @@ await env.withSecurityRulesDisabled(async c => {
   await setDoc(doc(db, 'student_forms/F1'), { ownerId: 'StuA', title: '설문', status: 'open', responseCount: 1, questions: [] });
   await setDoc(doc(db, 'student_form_responses/R1'), { formId: 'F1', ownerId: 'StuA', respondentId: 'StuB', respondentName: '4 박학생', answers: ['비밀 답'] });
   await setDoc(doc(db, 'student_form_responses/R2'), { formId: 'F1', ownerId: 'StuA', respondentId: 'anonymous', respondentName: '익명', answers: ['x'] });
+  // 응답 수정 허용 설문(F2, 열림)과 수정 허용인데 마감된 설문(F3)
+  await setDoc(doc(db, 'student_forms/F2'), { ownerId: 'StuA', title: '수정 허용', status: 'open', allowEdit: true, responseCount: 2, questions: [] });
+  await setDoc(doc(db, 'student_forms/F3'), { ownerId: 'StuA', title: '마감', status: 'closed', allowEdit: true, responseCount: 1, questions: [] });
+  await setDoc(doc(db, 'student_form_responses/R3'), { formId: 'F2', ownerId: 'StuA', respondentId: 'StuB', respondentName: '4 박학생', answers: ['처음 답'], submittedAt: new Date() });
+  await setDoc(doc(db, 'student_form_responses/R4'), { formId: 'F2', ownerId: 'StuA', respondentId: 'anonymous', respondentName: '익명', answers: ['y'] });
+  await setDoc(doc(db, 'student_form_responses/R5'), { formId: 'F3', ownerId: 'StuA', respondentId: 'StuB', respondentName: '4 박학생', answers: ['z'] });
   await setDoc(doc(db, 'qna_threads/StuA/messages/m1'), { text: '비밀 상담', sender: 'student' });
   await setDoc(doc(db, 'exam_progress/AS1_StuA'), { studentId: 'StuA', name: '김학생', status: 'started', alertCount: 1, startTime: new Date('2026-01-01T00:00:00Z') });
   await setDoc(doc(db, 'exam_progress/AS3_StuA'), { studentId: 'StuA', status: 'started', alertCount: 1 });
@@ -109,6 +115,13 @@ await T('설문: 남 이름으로 설문 생성', setDoc(doc(B, 'student_forms/F
 await T('설문: 응답 수 크게 조작', updateDoc(doc(anon, 'student_forms/F1'), { responseCount: 999 }), false);
 await T('설문: 소유자 바꿔치기', updateDoc(doc(A, 'student_forms/F1'), { ownerId: 'StuB' }), false);
 await T('설문: 남의 응답 삭제', deleteDoc(doc(B, 'student_form_responses/R2')), false);
+await T('설문 수정: 수정 허용 안 한 설문의 내 응답 고치기', updateDoc(doc(B, 'student_form_responses/R1'), { answers: ['바꿈'], editedAt: serverTimestamp() }), false);
+await T('설문 수정: 마감된 설문의 내 응답 고치기', updateDoc(doc(B, 'student_form_responses/R5'), { answers: ['바꿈'], editedAt: serverTimestamp() }), false);
+await T('설문 수정: 남의 응답 고치기', updateDoc(doc(L, 'student_form_responses/R3'), { answers: ['바꿈'] }), false);
+await T('설문 수정: 익명 응답을 비로그인이 고치기', updateDoc(doc(anon, 'student_form_responses/R4'), { answers: ['바꿈'] }), false);
+await T('설문 수정: 응답자 바꿔치기', updateDoc(doc(B, 'student_form_responses/R3'), { answers: ['바꿈'], respondentId: 'StuL' }), false);
+await T('설문 수정: 제출 시각 조작', updateDoc(doc(B, 'student_form_responses/R3'), { answers: ['바꿈'], submittedAt: serverTimestamp() }), false);
+await T('설문 수정: 설문 만든 학생이 응답 내용 고치기', updateDoc(doc(A, 'student_form_responses/R3'), { answers: ['바꿈'] }), false);
 if (PHASE === 2) {
   await T('[2단계] 비로그인이 학생 명단(이름·사진) 읽기', getDocs(collection(anon, 'students')), false);
   await T('[2단계] 다른 학생 문서 읽기', getDoc(doc(B, 'students/StuA')), false);
@@ -175,6 +188,7 @@ await T('설문(formfill): 1회 제한 확인 — 내 응답 조회', getDocs(qu
 await T('설문(formfill): 로그인 응답 제출', addDoc(collection(B, 'student_form_responses'), { formId: 'F1', ownerId: 'StuA', respondentId: 'StuB', respondentName: '4 박', answers: [], submittedAt: serverTimestamp() }), true);
 await T('설문(formfill): 비로그인 익명 응답 제출', addDoc(collection(anon, 'student_form_responses'), { formId: 'F1', ownerId: 'StuA', respondentId: 'anonymous', respondentName: '익명', answers: [] }), true);
 await T('설문(formfill): 응답 수 +1(비로그인)', updateDoc(doc(anon, 'student_forms/F1'), { responseCount: increment(1) }), true);
+await T('설문(formfill): 수정 허용 설문에서 내 응답 고치기', updateDoc(doc(B, 'student_form_responses/R3'), { answers: ['고친 답'], score: 1, total: 2, editedAt: serverTimestamp() }), true);
 await T('설문(formlab): 내 설문 목록', getDocs(query(collection(A, 'student_forms'), where('ownerId', '==', 'StuA'))), true);
 await T('설문(formlab): 내 설문 응답 조회', getDocs(query(collection(A, 'student_form_responses'), where('formId', '==', 'F1'), where('ownerId', '==', 'StuA'))), true);
 await T('설문(formlab): 새 설문 만들기', addDoc(collection(A, 'student_forms'), { ownerId: 'StuA', title: 't', status: 'open', responseCount: 0 }), true);

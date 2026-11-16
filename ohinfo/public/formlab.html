@@ -262,6 +262,10 @@
           <input type="checkbox" id="bShowResult">
           <span style="font-weight:600;">응답자에게 결과 공개</span>
         </label>
+        <label style="display:flex;align-items:center;gap:8px;font-size:0.83rem;cursor:pointer;" title="로그인해서 응답한 학생은 같은 링크로 다시 들어와 자기 응답을 고칠 수 있습니다. 비로그인(익명) 응답은 고칠 수 없습니다.">
+          <input type="checkbox" id="bAllowEdit">
+          <span style="font-weight:600;">제출 후 응답 수정 허용 (로그인 응답자만)</span>
+        </label>
       </div>
     </div>
 
@@ -435,6 +439,7 @@ window.initBuilder = (formId) => {
   document.getElementById('bDesc').value = '';
   document.getElementById('bAnon').checked = true;
   document.getElementById('bShowResult').checked = false;
+  document.getElementById('bAllowEdit').checked = false;
   document.getElementById('bSaveMsg').innerText = '';
   renderDescImg();
   if (formId) {
@@ -447,6 +452,7 @@ window.initBuilder = (formId) => {
       document.getElementById('bDesc').value = d.description || '';
       document.getElementById('bAnon').checked = !!d.allowAnon;
       document.getElementById('bShowResult').checked = !!d.showResultToRespondent;
+      document.getElementById('bAllowEdit').checked = !!d.allowEdit;
       formDescImage = d.descImage || '';
       renderDescImg();
       questions = d.questions ? JSON.parse(JSON.stringify(d.questions)) : [];
@@ -638,6 +644,7 @@ window.saveForm = async () => {
     descImage: formDescImage || '',
     allowAnon: document.getElementById('bAnon').checked,
     showResultToRespondent: document.getElementById('bShowResult').checked,
+    allowEdit: document.getElementById('bAllowEdit').checked,
     questions,
     ownerId: SESSION.id,
     ownerName: SESSION.name,
@@ -675,7 +682,7 @@ window.openResults = async (formId) => {
       .sort((a, b) => (b.submittedAt?.seconds || 0) - (a.submittedAt?.seconds || 0));
 
     document.getElementById('resTitle').innerText = currentFormData.title || '(제목 없음)';
-    document.getElementById('resMeta').innerText = `응답 ${responses.length}개 · ${currentFormData.allowAnon?'비로그인 허용':'로그인 필요'} · ${currentFormData.showResultToRespondent?'결과 공개':'결과 비공개'}`;
+    document.getElementById('resMeta').innerText = `응답 ${responses.length}개 · ${currentFormData.allowAnon?'비로그인 허용':'로그인 필요'} · ${currentFormData.showResultToRespondent?'결과 공개':'결과 비공개'}${currentFormData.allowEdit?' · 응답 수정 허용':''}`;
 
     // Cloudflare Pages는 .html을 떼고 서빙해서(/formlab) pathname에
     // 'formlab.html'이 없다 — 문자열 치환이 안 먹혀 공유 링크가 로그인이
@@ -793,7 +800,7 @@ function renderIndividual(el) {
     const name = r.respondentName || (r.respondentId ? `학생 #${r.respondentId.slice(-4)}` : '익명');
     const time = r.submittedAt ? new Date(r.submittedAt.toDate?r.submittedAt.toDate():r.submittedAt).toLocaleString() : '';
     return `<div class="resp-row" onclick="toggleDetail('rd_${i}')">
-      <div><b>${escHtml(name)}</b> <span style="color:var(--sub);font-size:0.75rem;">${time}</span></div>
+      <div><b>${escHtml(name)}</b> <span style="color:var(--sub);font-size:0.75rem;">${time}${r.editedAt ? ' (수정됨)' : ''}</span></div>
       <div style="display:flex;align-items:center;gap:6px;">
         <button class="icon-action danger" title="이 응답 삭제" onclick="event.stopPropagation();deleteResponse(${jsArg(r.id)})"><svg width="15" height="15"><use href="#ic-trash"/></svg></button>
         <span style="color:var(--sub);">▾</span>
@@ -829,7 +836,7 @@ window.deleteResponse = async (respId) => {
     // 카운터(responseCount)를 쓰는 곳이 있으니 같이 맞춰둔다.
     updateDoc(doc(db, 'student_forms', currentFormId), { responseCount: increment(-1) }).catch(() => {});
     responses = responses.filter(x => x.id !== respId);
-    document.getElementById('resMeta').innerText = `응답 ${responses.length}개 · ${currentFormData.allowAnon?'비로그인 허용':'로그인 필요'} · ${currentFormData.showResultToRespondent?'결과 공개':'결과 비공개'}`;
+    document.getElementById('resMeta').innerText = `응답 ${responses.length}개 · ${currentFormData.allowAnon?'비로그인 허용':'로그인 필요'} · ${currentFormData.showResultToRespondent?'결과 공개':'결과 비공개'}${currentFormData.allowEdit?' · 응답 수정 허용':''}`;
     renderResStats();
     showResTabContent(resTabMode);
   } catch(e) { alert('삭제 오류: ' + e.message); }
