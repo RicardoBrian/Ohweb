@@ -46,7 +46,7 @@
 | snakeiogwansan | Firebase 실시간 DB (주소는 Cloudflare 비밀값 `FIREBASE_DATABASE_URL`) | 행사 |
 | moral | Google Apps Script(시트) — Cloudflare 비밀값 `GAS_URL`·`GAS_KEY` | 수업 |
 | gwresearch | Cloudflare KV `gwresearch-pdf`, Apps Script | 수업 |
-| dapp (웨이트 기록) | Firebase `dapp-leanmassup` — `sessions`, `routines`, `logs`, `meals`, `plans`, `reports`, `aiRequests` | 개인 |
+| dapp (웨이트 기록) | Firebase `dapp-leanmassup` — `sessions`, `routines`, `logs`, `meals`, `plans`, `reports`, `pushSubs`, `aiRequests` | 개인 |
 | oHtravel | Firebase `ohtravel-3540c` — `trips` | 개인 |
 | Olink | Firebase `olink-76ad8` — `links` | 개인 |
 | OHktx, OHsplan, ohplayer, asdebate, appinventorcheck | 없음(기기 저장만) | – |
