@@ -83,7 +83,7 @@
     .empty { padding: 40px 10px; text-align: center; color: var(--sub); font-size: 0.92rem; }
 
     /* 무대(테마) + 교실 */
-    .board-wrap { display: grid; grid-template-columns: minmax(240px, 340px) 1fr; gap: 16px; align-items: start; }
+    .board-wrap { display: grid; grid-template-columns: minmax(260px, 380px) 1fr; gap: 16px; align-items: start; }
     @media (max-width: 900px) { .board-wrap { grid-template-columns: 1fr; } .th-svg { max-height: 240px; } .mag { max-height: 110px; } }
 
     .stage { position: relative; overflow: hidden; padding: 14px; }
@@ -102,6 +102,17 @@
       box-shadow: inset 0 -2px 3px rgba(0,0,0,0.15); transition: transform 0.08s;
     }
     .mag .b.hot { transform: scale(1.3); background: radial-gradient(circle at 35% 30%, #fff, #ff8f6b 55%, #e8432d); color: #fff; }
+
+    /* 뽑는 동안 무대를 화면 가운데로 크게 (스포트라이트) — 끝나면 제자리로 */
+    .spot-dim { position: fixed; inset: 0; z-index: 8990; background: rgba(10,12,30,0.55); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); opacity: 0; transition: opacity 0.35s; pointer-events: none; }
+    .spot-dim.show { opacity: 1; }
+    .board-wrap .stage.spot.spot { position: fixed; z-index: 8995; margin: 0; display: flex; flex-direction: column; background: var(--bg-elevated, #fff); box-shadow: 0 30px 90px rgba(0,0,0,0.45); border-radius: 26px; transition: left 0.42s cubic-bezier(.2,.9,.3,1), top 0.42s cubic-bezier(.2,.9,.3,1), width 0.42s cubic-bezier(.2,.9,.3,1), height 0.42s cubic-bezier(.2,.9,.3,1); }
+    .board-wrap .stage.spot.spot .stage-info { flex-direction: row; justify-content: space-between; min-width: 0; margin: 0 4px 8px; font-size: 1.1rem; }
+    .board-wrap .stage.spot.spot .stage-info b { font-size: 1.7rem; }
+    .board-wrap .stage.spot.spot .theme-box { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 0; }
+    .board-wrap .stage.spot.spot .th-svg { flex: 1; min-height: 0; width: 100%; height: 100%; max-height: none; }
+    .board-wrap .stage.spot.spot .mag { flex: none; max-height: 20%; max-width: none; margin-top: 8px; justify-content: center; }
+    .stage-ph { min-height: 0; }
 
     /* 뽑힌 학생 크게 보여 주기 */
     .reveal { position: fixed; inset: 0; z-index: 9500; display: flex; align-items: center; justify-content: center; pointer-events: none; opacity: 0; transition: opacity 0.2s; }
@@ -211,8 +222,8 @@
     body.ui-sky.present .wrap { margin: 0 auto; max-width: none; padding: 12px 16px; height: 100vh; display: flex; flex-direction: column; }
     body.present .toolbar { flex: none; margin-bottom: 10px; }
     body.present .board-wrap { flex: 1; min-height: 0; align-items: stretch; }
-    body.present .board-wrap.lay-side { grid-template-columns: 32% minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
-    body.present .board-wrap.lay-bottom { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) 33%; }
+    body.present .board-wrap.lay-side { grid-template-columns: 35% minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+    body.present .board-wrap.lay-bottom { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) 36%; }
     body.present .board-wrap.lay-bottom .room { order: -1; }
     body.present .lay-bottom .stage { flex-direction: row; gap: 18px; }
     body.present .lay-bottom .stage-info { flex-direction: column; justify-content: center; gap: 14px; min-width: 150px; margin: 0; }
@@ -278,6 +289,7 @@
     <symbol id="ic-sound" viewBox="0 0 24 24"><path d="M4 9v6h3l6 4V5L7 9Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M16.5 9a4 4 0 0 1 0 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
     <symbol id="ic-mute" viewBox="0 0 24 24"><path d="M4 9v6h3l6 4V5L7 9Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
     <symbol id="ic-expand" viewBox="0 0 24 24"><path d="M8 4H4v4M16 4h4v4M8 20H4v-4M16 20h4v-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-spot" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
     <symbol id="ic-fast" viewBox="0 0 24 24"><path d="M4 6l8 6-8 6ZM12 6l8 6-8 6Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
     <symbol id="ic-school" viewBox="0 0 24 24"><path d="M12 4 3 8.5 12 13l9-4.5Z M7 10.8V16c0 1.2 2.2 3 5 3s5-1.8 5-3v-5.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
     <symbol id="ic-people" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
@@ -331,6 +343,7 @@
     <button class="btn" id="btnUndo"><svg><use href="#ic-undo"/></svg>되돌리기</button>
     <button class="btn" id="btnReset"><svg><use href="#ic-refresh"/></svg>다시 하기</button>
     <div class="grow"></div>
+    <button class="icon-btn" id="btnSpot" title="뽑을 때 무대를 크게 보기 (켜기/끄기)"><svg><use href="#ic-spot"/></svg></button>
     <button class="icon-btn" id="btnFlip" title="보는 방향 바꾸기 (학생 시점 ↔ 교사 시점)"><svg><use href="#ic-flip"/></svg></button>
     <button class="icon-btn" id="btnSound" title="소리"><svg><use href="#ic-sound"/></svg></button>
     <button class="icon-btn" id="btnPresent" title="발표 모드 (전체 화면)"><svg><use href="#ic-expand"/></svg></button>
@@ -433,7 +446,7 @@ let excluded = new Set();   // 결석(뽑기에서 뺌) 학생 ID
 let undoStack = [];
 let dirty = false, busy = false, runAll = false;
 let pickNo = 0;             // 바꾸려고 고른 자리
-let flipped = store.get('flip', false), soundOn = store.get('sound', true);
+let flipped = store.get('flip', false), soundOn = store.get('sound', true), spotOn = store.get('spot', true);
 let theme = THEMES.find(t => t.id === store.get('theme', 'cannon')) || THEMES[0];
 setSound(soundOn);
 
@@ -522,7 +535,7 @@ function fitPresent() {
   const W = bw.clientWidth, H = bw.clientHeight, { colGap, rowGap } = gapLines(curRoom);
   const cu = colGap.reduce((a, x) => a + (x ? 0.35 : 1), 0), ru = rowGap.reduce((a, x) => a + (x ? 0.35 : 1), 0);
   const seat = (w, h) => Math.min((w - 40) / cu, (h - 110) / ru * 1.3);
-  bw.classList.add(seat(W * 0.68, H) >= seat(W, H * 0.67) ? 'lay-side' : 'lay-bottom');
+  bw.classList.add(seat(W * 0.65, H) >= seat(W, H * 0.64) ? 'lay-side' : 'lay-bottom');
 }
 
 function renderStage() {
@@ -549,6 +562,7 @@ function renderButtons() {
   $('btnSave').disabled = busy || !assign.size;
   $('btnPrint').disabled = !curRoom;
   $('btnFlip').classList.toggle('on', flipped);
+  $('btnSpot').classList.toggle('on', spotOn);
   $('btnSound').querySelector('use').setAttribute('href', soundOn ? '#ic-sound' : '#ic-mute');
 }
 
@@ -587,6 +601,29 @@ function showReveal(seatNo, p, color) {
 }
 function hideReveal() { clearTimeout(revealTimer); $('reveal').classList.remove('show'); }
 
+// ── 스포트라이트: 뽑는 동안 무대를 화면 가운데로 크게 ──
+// 무대 자리에는 같은 크기의 빈칸(.stage-ph)을 남겨 교실 배치가 움직이지 않게 한다.
+let spotState = null;
+async function spotIn() {
+  const st = document.querySelector('.stage'), r = st.getBoundingClientRect();
+  const ph = document.createElement('div'); ph.className = 'stage-ph'; ph.style.height = r.height + 'px'; st.before(ph);
+  const dim = document.createElement('div'); dim.className = 'spot-dim'; document.body.appendChild(dim);
+  const put = b => Object.assign(st.style, { left: b.left + 'px', top: b.top + 'px', width: b.width + 'px', height: b.height + 'px' });
+  put(r); st.classList.add('spot'); void st.offsetWidth;
+  const W = Math.min(innerWidth * (innerWidth < 700 ? 0.92 : 0.62), innerHeight * 0.84, 900), H = Math.min(innerHeight * 0.88, W * 1.08);
+  put({ left: (innerWidth - W) / 2, top: (innerHeight - H) / 2, width: W, height: H }); dim.classList.add('show');
+  spotState = { st, ph, dim, put };
+  await wait(440);
+}
+async function spotOut() {
+  if (!spotState) return;
+  const { st, ph, dim, put } = spotState; spotState = null;
+  put(ph.getBoundingClientRect()); dim.classList.remove('show');
+  await wait(440);
+  st.classList.remove('spot'); ['left', 'top', 'width', 'height'].forEach(k => st.style[k] = '');
+  ph.remove(); dim.remove(); applyGrid(); fitPresent();
+}
+
 // ── 테마 ──
 const themeItems = () => pool().map(s => ({ id: s.id, label: showNum(s), name: s.name }));
 function setTheme(id) {
@@ -611,7 +648,11 @@ async function fireOnce(fast = false) {
     const target = seatEl(seatNo);
     target?.scrollIntoView({ block: 'nearest', behavior: fast ? 'auto' : 'smooth' });
     const items = themeItems(), me = items.find(x => x.id === chosen.id);
-    const from = await theme.play({ items, chosen: me, fast, reduce, target: target ? centerOf(target) : null });
+    const big = spotOn && !fast && !reduce;
+    const to0 = target ? centerOf(target) : null;
+    if (big) await spotIn();
+    const from = await theme.play({ items, chosen: me, fast, reduce, target: to0 });
+    if (big) spotOut();
     await fly(showNum(p), color, theme.token, from, centerOf(seatEl(seatNo) || target), fast ? 360 : reduce ? 300 : 850);
     snapshot(); assign.set(seatNo, p); touch();
     renderRoom(); renderStage(); renderRoster();
@@ -623,6 +664,7 @@ async function fireOnce(fast = false) {
     console.error(e); toast('연출 중 오류가 났습니다: ' + e.message, 4000);
     theme.update(themeItems());
   } finally {
+    await spotOut();
     busy = false; $('selTheme').disabled = false; renderRoom(); renderButtons();
   }
   return true;
@@ -695,6 +737,7 @@ $('btnReset').onclick = () => {
   $('mResetDraw').onclick = () => { snapshot(); [...assign].forEach(([k, v]) => { if (!v.manual) assign.delete(k); }); pickNo = 0; touch(); closeModal(); renderAll(); };
   $('mResetAll').onclick = () => { snapshot(); assign.clear(); pickNo = 0; touch(); closeModal(); renderAll(); };
 };
+$('btnSpot').onclick = () => { spotOn = !spotOn; store.set('spot', spotOn); renderButtons(); toast(spotOn ? '뽑을 때 무대를 크게 보여 줍니다.' : '무대를 제자리에서 보여 줍니다.'); };
 $('btnFlip').onclick = () => { flipped = !flipped; store.set('flip', flipped); renderRoom(); renderButtons(); };
 $('btnSound').onclick = () => { soundOn = !soundOn; setSound(soundOn); store.set('sound', soundOn); renderButtons(); if (soundOn) sfx.tick(880); };
 function setPresent(on) {
