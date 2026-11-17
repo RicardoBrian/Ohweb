@@ -22,6 +22,7 @@
 | `formfill.html`, `formlab.html` | 설문 제출 |
 | `score.html` + `score-config.js` | 수행평가 점수·항목별 점수·내 제출물 확인·이의신청(`score_results`, 본인·공개된 것만). 제출물은 Apps Script `score-drive.gs` 가 본인 확인 뒤 보내 줌. 홈 타일은 `appSettings` 의 `score` |
 | `ailab.html`·`ailab.js`, `aiapp.html`, `aicode.*`, `ai-*.js` | AI 실습실. `ai-i18n.js`(135KB)는 번역 문장 모음 — 통째로 읽지 말 것 |
+| `자리바꾸기.html` + `seats-themes.js` | 공개용 자리 바꾸기(kakainfo.com/자리바꾸기, 로그인·DB 없음). 관리자 `ohweb/public/seats.html` 에서 DB·로그인을 뺀 판 — 명렬표(번호 이름 붙여넣기/CSV)·교실 모양·지금 배치는 브라우저 localStorage, 결과는 PDF(html2canvas+jsPDF, cdnjs). `seats-themes.js` 는 ohweb 것과 **같은 파일**(테스트 `npm run test:seats-public` 이 확인) — 고치면 둘 다 |
 | `평택타이머1~3.html`, `활성함수.html`, `견본/`, `프롬프트/`, `vcexample/` | 연수·수업용 단독 페이지 |
 
 ## 서버(functions/api/)
