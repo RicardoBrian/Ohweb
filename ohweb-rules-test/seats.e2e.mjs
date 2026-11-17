@@ -80,10 +80,29 @@ try {
 
   // 한 번 발사 → 1번 자리
   await page.click('#btnFire');
-  await page.waitForFunction(() => document.querySelector('.seat[data-no="1"]')?.classList.contains('filled') && !document.querySelector('.ball'), null, { timeout: 8000 });
+  await page.waitForFunction(() => document.querySelector('.seat[data-no="1"]')?.classList.contains('filled') && !document.querySelector('.tok'), null, { timeout: 8000 });
   ok('첫 발사는 1번 자리에', true);
   ok('남은 학생 11', (await page.textContent('#leftCount')) === '11');
-  if (SHOT) { await page.click('#btnFire'); await page.waitForTimeout(1450); await page.screenshot({ path: SHOT + '/seats-flying.png' }); await page.waitForFunction(() => !document.querySelector('.ball') && !document.querySelector('#btnFire').disabled); }
+  if (SHOT) { await page.click('#btnFire'); await page.waitForTimeout(1450); await page.screenshot({ path: SHOT + '/seats-flying.png' }); await page.waitForFunction(() => !document.querySelector('.tok') && !document.querySelector('#btnFire').disabled); }
+
+  // 테마 6개: 하나씩 골라 한 번씩 뽑아 본다 (보통 속도)
+  const themes = await page.$$eval('#selTheme option', os => os.map(o => o.value));
+  ok('테마 6개', themes.length === 6, themes.join(','));
+  for (const th of themes) {
+    if (th === 'cannon') continue;
+    const before = await page.locator('.seat.filled').count();
+    await page.selectOption('#selTheme', th);
+    await page.waitForTimeout(150);
+    await page.click('#btnFire');
+    if (SHOT) { await page.waitForTimeout(th === 'swipe' ? 1500 : th === 'crane' ? 2400 : 1100); await page.screenshot({ path: SHOT + `/theme-${th}.png` }); }
+    await page.waitForFunction(n => document.querySelectorAll('.seat.filled').length === n + 1 && !document.querySelector('.tok') && !document.querySelector('#btnFire').disabled, before, { timeout: 15000 });
+    ok(`테마 ${th}: 다음 자리에 기입`, (await page.textContent('#leftCount')) === String(12 - before - 1));
+  }
+  await page.selectOption('#selTheme', 'cannon');
+  // 지금까지 뽑은 걸 비우고 원래 흐름으로
+  await page.click('#btnReset'); await page.click('#mResetAll');
+  await page.click('#btnFire');
+  await page.waitForFunction(() => document.querySelector('.seat[data-no="1"]')?.classList.contains('filled') && !document.querySelector('.tok') && !document.querySelector('#btnFire').disabled, null, { timeout: 8000 });
 
   // 고정석: 16번 빈자리에 12번 학생
   await page.click('.seat[data-no="16"]');
@@ -100,7 +119,7 @@ try {
 
   // 빠르게 모두
   await page.click('#btnAll');
-  await page.waitForFunction(() => document.querySelector('#leftCount').textContent === '0' && !document.querySelector('.ball') && document.querySelector('#btnAll span').textContent === '빠르게 모두' && !document.querySelector('#btnReset').disabled, null, { timeout: 20000 });
+  await page.waitForFunction(() => document.querySelector('#leftCount').textContent === '0' && !document.querySelector('.tok') && document.querySelector('#btnAll span').textContent === '빠르게 모두' && !document.querySelector('#btnReset').disabled, null, { timeout: 20000 });
   const filled = await page.evaluate(() => [...document.querySelectorAll('.seat.filled')].map(s => +s.dataset.no).sort((a, b) => a - b));
   ok('11명 앉음(결석 1명 제외)', filled.length === 11, JSON.stringify(filled));
   ok('번호 순서대로 채움(1~10 + 고정 16)', JSON.stringify(filled) === JSON.stringify([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 16]), JSON.stringify(filled));
@@ -141,6 +160,14 @@ try {
   await page.click('#btnPresent');
   ok('발표 모드', await page.evaluate(() => document.body.classList.contains('present')));
   if (SHOT) await page.screenshot({ path: SHOT + '/seats-present.png' });
+  // 발표 모드에서 뽑기 장면 (인형뽑기)
+  await page.click('#btnReset'); await page.click('#mResetAll');
+  await page.selectOption('#selTheme', 'crane');
+  await page.click('#btnFire');
+  if (SHOT) { await page.waitForTimeout(2300); await page.screenshot({ path: SHOT + '/present-crane.png' }); }
+  await page.waitForFunction(() => document.querySelectorAll('.seat.filled').length === 1 && !document.querySelector('.tok') && !document.querySelector('#btnFire').disabled, null, { timeout: 15000 });
+  if (SHOT) { await page.waitForTimeout(200); await page.screenshot({ path: SHOT + '/present-reveal.png' }); }
+  ok('발표 모드에서 뽑기', true);
 
   // 모바일 폭
   await page.click('#btnExitPresent');
