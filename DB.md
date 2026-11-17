@@ -41,7 +41,7 @@
 
 | 레포 | DB | 성격 |
 |---|---|---|
-| gwansanattend (출결) | **Firebase `gwansan-work`**(2026-11-09 전환) — `apps/attend/…`(반·기록·신고서·보호자·허용·신청·접속 기록), 공용 명렬표 `years/{연도}/students`. 예전 `gwsattend` 는 백업으로 남김 | 학교 |
+| gwansanattend (출결) | **Firebase `gwansan-work`**(2026-11-09 전환) — `apps/attend/…`(반·기록·신고서·보호자·함께 맡은 담임 `classes/{반}/coteachers`·허용·신청·접속 기록), 공용 명렬표 `years/{연도}/students`. 예전 `gwsattend` 는 백업으로 남김 | 학교 |
 | GWBS (방송부) | **Firebase `gwansan-work`**(2026-11-09 전환) — `apps/broadcast/…`(일정·출결·매뉴얼·신청곡, 부원 `members` = 명렬표 학생 ID). 예전 `gwbs-3ec22` 는 백업으로 남김 | 학교 |
 | GWVS (봉사활동) | **Firebase `gwansan-work`**(업무용 통합, 2026-11-09 전환) — 공용 `staff`·`admins`·`years/{학년도}/students`, 봉사 `apps/volunteer/…`. 예전 `gwvs-77114` 는 백업으로 남김 | 학교 |
 | snakeiogwansan | Firebase 실시간 DB (주소는 Cloudflare 비밀값 `FIREBASE_DATABASE_URL`) | 행사 |
