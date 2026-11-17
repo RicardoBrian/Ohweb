@@ -481,6 +481,16 @@ function decodeText(buf) {
   try { return new TextDecoder('utf-8', { fatal: true }).decode(buf).replace(/^﻿/, ''); }
   catch { return new TextDecoder('euc-kr').decode(buf); }
 }
+// 명렬표 양식: 엑셀에서 바로 열리는 CSV(UTF-8 BOM). 번호 1~30 이 미리 있고 이름만 채우면 된다.
+// 이름이 빈 줄은 불러올 때 건너뛰므로 학생 수가 적어도 그대로 올리면 된다.
+function downloadTemplate() {
+  const rows = ['번호,이름'];
+  for (let i = 1; i <= 30; i++) rows.push(`${i},`);
+  const blob = new Blob(['﻿' + rows.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = '명렬표_양식.csv';
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast('양식을 내려받았습니다. 엑셀에서 이름을 채워 저장한 뒤 [파일에서 불러오기]로 올려 주세요.', 4500);
+}
 function openRosterEditor(roster) {
   const text = roster ? roster.students.slice().sort((a, b) => numOf(a.number) - numOf(b.number)).map(s => `${s.number}\t${s.name}`).join('\n') : '';
   openModal(`<div class="modal-head">${roster ? '명렬표 고치기' : '새 반 명렬표'}<button class="icon-btn" data-close style="border:none"><svg><use href="#ic-close"/></svg></button></div>
@@ -489,6 +499,7 @@ function openRosterEditor(roster) {
       <div class="field"><label>학생 — 한 줄에 한 명, "번호 이름"</label>
         <textarea class="inp" id="rsText" rows="12" placeholder="1 김하늘&#10;2 이도윤&#10;3 박서연&#10;…&#10;&#10;엑셀에서 번호·이름 두 칸을 복사해 그대로 붙여 넣어도 됩니다.">${esc(text)}</textarea></div>
       <div class="row2" style="align-items:center">
+        <button class="btn sm" id="rsTpl"><svg><use href="#ic-save"/></svg>양식 내려받기 (.csv)</button>
         <button class="btn sm" id="rsFileBtn"><svg><use href="#ic-plus"/></svg>파일에서 불러오기 (.csv, .txt)</button>
         <span class="hint" id="rsCount"></span>
       </div>
@@ -503,6 +514,7 @@ function openRosterEditor(roster) {
   const count = () => { const n = parseRoster($('rsText').value).length; $('rsCount').textContent = n ? `${n}명 인식됨` : ''; };
   $('rsText').oninput = count; count();
   $('rsFileBtn').onclick = () => $('rsFile').click();
+  $('rsTpl').onclick = downloadTemplate;
   $('rsFile').onchange = async e => { const f = e.target.files[0]; if (!f) return; $('rsText').value = decodeText(await f.arrayBuffer()); count(); e.target.value = ''; };
   if ($('rsDel')) $('rsDel').onclick = () => deleteRoster(roster);
   $('rsSave').onclick = () => {
