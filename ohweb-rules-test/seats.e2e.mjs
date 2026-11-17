@@ -165,9 +165,11 @@ try {
   await page.selectOption('#selTheme', 'crane');
   await page.click('#btnFire');
   if (SHOT) { await page.waitForTimeout(2300); await page.screenshot({ path: SHOT + '/present-crane.png' }); }
+  ok('뽑는 동안 무대 크게(스포트라이트)', await page.evaluate(() => !!document.querySelector('.stage.spot') && !!document.querySelector('.spot-dim')));
   await page.waitForFunction(() => document.querySelectorAll('.seat.filled').length === 1 && !document.querySelector('.tok') && !document.querySelector('#btnFire').disabled, null, { timeout: 15000 });
   if (SHOT) { await page.waitForTimeout(200); await page.screenshot({ path: SHOT + '/present-reveal.png' }); }
   ok('발표 모드에서 뽑기', true);
+  ok('뽑기 끝나면 무대 제자리', await page.evaluate(() => !document.querySelector('.stage.spot') && !document.querySelector('.spot-dim') && !document.querySelector('.stage-ph')));
 
   // 모바일 폭
   await page.click('#btnExitPresent');
