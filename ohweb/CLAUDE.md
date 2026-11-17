@@ -17,6 +17,7 @@
 | `public/messages.html`, `notice.html` | 메시지·공지 |
 | `public/settle.html` + `settle-firebase-config.js` | 정산(개인용, DB `ohsettle-10d43`) |
 | `public/timer.html` | 타이머 |
+| `public/seats.html` | 자리 배치: 교실 모양 편집(`seat_rooms`)·대포 뽑기(남은 학생 중 하나 → 1번 빈자리부터 차례로)·고정석·결석·자리 바꾸기·발표 모드·인쇄·저장/기록(`seat_plans`) |
 | `functions/api/reset-student-password.js` | 학생 비밀번호 초기화(서버, `FIREBASE_SERVICE_ACCOUNT_KEY`) |
 | `functions/api/translate.js` | 번역(서버, `GOOGLE_TRANSLATE_KEY`) |
 
