@@ -405,5 +405,10 @@ await T('노션: 비로그인이 페이지 목록·개별 읽기(학생 화면)'
   await T('다른 학생은 그대로: 비로그인 잠금 올리기', updateDoc(doc(anon, 'student_directory/StuN'), { failedAttempts: increment(1) }), true);
 }
 
+console.log('── 자리 배치 ──');
+await T('자리 배치: 관리자 교실·배치 쓰기·읽기', (async () => { await setDoc(doc(admin, 'seat_rooms/R1'), { name: '컴퓨터실', rows: 1, cols: 2, cells: 'ss', order: 'row' }); await setDoc(doc(admin, 'seat_plans/P1'), { classKey: 'k', seats: [{ no: 1, sid: 'StuA' }] }); await getDocs(collection(admin, 'seat_plans')); })(), true);
+await T('자리 배치: 학생이 배치 읽기', getDoc(doc(A, 'seat_plans/P1')), false);
+await T('자리 배치: 비로그인이 교실 목록', getDocs(collection(anon, 'seat_rooms')), false);
+await T('자리 배치: 학생이 배치 쓰기', setDoc(doc(B, 'seat_plans/P2'), { classKey: 'k' }), false);
 console.log(fails ? `\n실패 ${fails}건` : '\n전부 통과'); process.exitCode = fails ? 1 : 0;
 await env.cleanup();

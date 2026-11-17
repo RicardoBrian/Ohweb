@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>자리 배치 — kakainfo 관리자</title>
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="theme.css">
+  <script src="admin-auth.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); line-height: 1.6; color: var(--text); }
+    .hidden { display: none !important; }
+    button, input, select, textarea { font-family: inherit; }
+
+    /* NAV (score.html 과 같은 틀 — admin-nav.js 가 메뉴를 넣는다) */
+    .nav {
+      position: sticky; top: 0; z-index: 200;
+      background: var(--glass-nav); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border-bottom: 1px solid var(--border); padding: 0 20px; height: var(--nav-h);
+      display: flex; align-items: center; gap: 12px;
+    }
+    .waffle-btn {
+      width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border-card);
+      background: var(--glass); color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .dark-toggle { width: 42px; height: 24px; border-radius: 50px; background: var(--glass); border: 1px solid var(--border); cursor: pointer; position: relative; transition: 0.3s; flex-shrink: 0; }
+    body.dark .dark-toggle { background: rgba(42,92,230,0.6); border-color: rgba(100,140,255,0.4); }
+    .dark-toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.2); transition: transform 0.3s; }
+    body.dark .dark-toggle::after { transform: translateX(18px); }
+    .nav-brand { display: flex; align-items: center; gap: 8px; text-decoration: none; color: var(--text); font-weight: 800; }
+    .nav-brand img { height: 26px; }
+
+    .app-modal { display: none; position: fixed; inset: 0; z-index: 10000; background: rgba(20,22,40,0.45); align-items: center; justify-content: center; }
+    .app-modal.open { display: flex; }
+    .app-modal-card { background: var(--bg-elevated, #fff); border-radius: 22px; padding: 24px; width: min(460px, 92vw); box-shadow: 0 24px 70px rgba(0,0,0,0.3); }
+    .app-modal-head { display: flex; align-items: center; justify-content: space-between; font-size: 1.05rem; font-weight: 900; color: var(--text); margin-bottom: 18px; }
+    .app-modal-x { background: none; border: none; cursor: pointer; color: var(--sub); }
+    .app-modal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .app-modal-item { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 18px 8px; border-radius: 16px; cursor: pointer; background: var(--sky-chip); border: 1px solid var(--border-card); font-size: 0.85rem; font-weight: 700; color: var(--text); }
+
+    /* LAYOUT */
+    .wrap { max-width: 1280px; margin: 0 auto; padding: 24px 20px 120px; }
+    @media (max-width: 600px) { .wrap { padding: 16px 14px 140px; } }
+    .page-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+    .page-head h1 { font-size: 1.45rem; font-weight: 900; letter-spacing: -0.03em; }
+    .grow { flex: 1; }
+    .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+    .sep { width: 1px; height: 22px; background: var(--hairline); margin: 0 2px; }
+
+    .btn {
+      font-size: 0.85rem; font-weight: 600; cursor: pointer; border-radius: 50px; padding: 7px 16px;
+      border: 1px solid var(--border); background: var(--surface); color: var(--text); white-space: nowrap;
+      display: inline-flex; align-items: center; gap: 6px; transition: background 0.15s, transform 0.1s;
+    }
+    .btn:hover { background: var(--sky-chip); }
+    .btn:active { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.45; cursor: default; transform: none; }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .btn.primary:hover { background: var(--accent-hover, var(--accent)); }
+    .btn.danger { color: var(--danger); border-color: rgba(239,68,68,0.3); background: var(--danger-light); }
+    .btn.fire { background: linear-gradient(180deg, #ff7a45, #e8432d); border-color: transparent; color: #fff; font-weight: 800; padding: 9px 22px; font-size: 0.95rem; box-shadow: 0 6px 18px rgba(232,67,45,0.35); }
+    .btn.fire:hover { background: linear-gradient(180deg, #ff8a5a, #ef4f38); }
+    .btn.sm { padding: 4px 11px; font-size: 0.78rem; }
+    .btn.on { background: var(--accent-light); color: var(--accent); border-color: transparent; }
+    .btn svg { width: 15px; height: 15px; }
+    .icon-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); cursor: pointer; color: var(--sub); display: inline-flex; align-items: center; justify-content: center; }
+    .icon-btn:hover { background: var(--sky-chip); color: var(--text); }
+    .icon-btn svg { width: 16px; height: 16px; }
+    .kbd { font-size: 0.68rem; font-weight: 700; opacity: 0.8; border: 1px solid rgba(255,255,255,0.5); border-radius: 5px; padding: 0 5px; }
+
+    .sel {
+      font-size: 0.88rem; font-weight: 600; padding: 7px 30px 7px 14px; border-radius: 50px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--text); cursor: pointer; max-width: 240px;
+      appearance: none; -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 11px center;
+    }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 16px 18px; box-shadow: var(--shadow-sm, none); }
+    .hint { font-size: 0.8rem; color: var(--sub); }
+    .empty { padding: 40px 10px; text-align: center; color: var(--sub); font-size: 0.92rem; }
+
+    /* 무대(대포) + 교실 */
+    .board-wrap { display: grid; grid-template-columns: minmax(240px, 320px) 1fr; gap: 16px; align-items: start; }
+    @media (max-width: 900px) { .board-wrap { grid-template-columns: 1fr; } .stage-svg { max-width: 240px; margin: 0 auto; } .mag { max-height: 110px; } }
+
+    .stage { position: relative; overflow: hidden; padding: 14px; }
+    .stage-svg { width: 100%; height: auto; display: block; }
+    .stage-info { display: flex; justify-content: space-between; align-items: baseline; margin: 4px 2px 8px; font-size: 0.82rem; color: var(--sub); }
+    .stage-info b { color: var(--text); font-size: 1.05rem; }
+    .mag { display: flex; flex-wrap: wrap; gap: 5px; max-height: 210px; overflow-y: auto; padding: 2px; }
+    .mag .b {
+      width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+      font-size: 0.74rem; font-weight: 800; color: #6b3a00;
+      background: radial-gradient(circle at 35% 30%, #fff6d6, #ffc94a 55%, #e79a12);
+      box-shadow: inset 0 -2px 3px rgba(0,0,0,0.15); transition: transform 0.08s;
+    }
+    .mag .b.hot { transform: scale(1.3); background: radial-gradient(circle at 35% 30%, #fff, #ff8f6b 55%, #e8432d); color: #fff; }
+    .mag-empty { font-size: 0.8rem; color: var(--sub); padding: 6px 2px; }
+
+    .banner {
+      position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%) scale(0.6); opacity: 0; pointer-events: none;
+      background: var(--bg-elevated, #fff); color: var(--text); border-radius: 18px; padding: 10px 22px; text-align: center;
+      box-shadow: 0 16px 40px rgba(0,0,0,0.25); white-space: nowrap; transition: transform 0.25s cubic-bezier(.2,1.6,.4,1), opacity 0.2s;
+    }
+    .banner.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    .banner .bn { font-size: 2.2rem; font-weight: 900; line-height: 1.1; color: #e8432d; }
+    .banner .bm { font-size: 1.1rem; font-weight: 800; }
+    .banner .bs { font-size: 0.75rem; color: var(--sub); }
+
+    .room { padding: 16px; }
+    .room-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+    .room-title { font-weight: 800; font-size: 1rem; }
+    .room-meta { font-size: 0.8rem; color: var(--sub); }
+    .front {
+      text-align: center; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.3em; color: var(--sub);
+      background: var(--sky-chip, var(--glass)); border: 1px solid var(--sky-chip-line, var(--border)); border-radius: 10px; padding: 6px; margin: 0 auto 14px; width: 60%;
+    }
+    .front.bottom { margin: 14px auto 0; }
+    .seatgrid { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 8px; container-type: inline-size; }
+    .cell-gap { aspect-ratio: 1.3; }
+    .seat {
+      position: relative; aspect-ratio: 1.3; border-radius: 12px; border: 1.5px dashed var(--sky-chip-line, rgba(0,0,0,0.18));
+      background: var(--glass); display: flex; flex-direction: column; align-items: center; justify-content: center;
+      cursor: pointer; user-select: none; min-width: 0; overflow: hidden; transition: background 0.15s, box-shadow 0.15s;
+    }
+    .seat:hover { background: var(--sky-chip, var(--glass-strong)); }
+    .seat .no { position: absolute; top: 3px; left: 7px; font-size: clamp(9px, calc(100cqw / var(--cols) * 0.11), 13px); font-weight: 700; color: var(--sub); }
+    .seat .snum { font-weight: 900; line-height: 1; font-size: clamp(13px, calc(100cqw / var(--cols) * 0.3), 46px); color: var(--accent); }
+    .seat .sname { font-weight: 700; line-height: 1.2; margin-top: 2px; font-size: clamp(10px, calc(100cqw / var(--cols) * 0.14), 20px); max-width: 94%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .seat.filled { border-style: solid; border-color: var(--border); background: var(--bg-elevated, #fff); box-shadow: var(--shadow-sm); }
+    .seat.next { border-color: #e8432d; border-style: solid; box-shadow: 0 0 0 3px rgba(232,67,45,0.18); animation: nextPulse 1.2s ease-in-out infinite; }
+    @keyframes nextPulse { 50% { box-shadow: 0 0 0 7px rgba(232,67,45,0.06); } }
+    .seat.pick { outline: 3px solid #f59e0b; outline-offset: 1px; }
+    .seat.manual::after { content: '고정'; position: absolute; top: 3px; right: 6px; font-size: 0.6rem; font-weight: 800; color: #b45309; background: rgba(245,158,11,0.18); border-radius: 6px; padding: 0 5px; }
+    .seat.landed { animation: land 0.45s cubic-bezier(.2,1.6,.4,1); }
+    @keyframes land { 0% { transform: scale(0.75); } 100% { transform: scale(1); } }
+
+    .roster { margin-top: 16px; }
+    .roster-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+    .roster-head h3 { font-size: 0.95rem; font-weight: 800; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip { font-size: 0.8rem; font-weight: 600; padding: 4px 11px; border-radius: 50px; border: 1px solid var(--border); background: var(--bg-elevated, #fff); color: var(--text); cursor: pointer; }
+    .chip b { color: var(--accent); margin-right: 4px; }
+    .chip.off { opacity: 0.45; text-decoration: line-through; background: transparent; }
+    .chip.done { background: var(--success-light); border-color: transparent; }
+
+    /* 날아가는 공 */
+    .ball {
+      position: fixed; left: 0; top: 0; z-index: 9000; width: 56px; height: 56px; margin: -28px 0 0 -28px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.3rem; color: #fff; pointer-events: none;
+      background: radial-gradient(circle at 35% 30%, #fff 0%, #ff9b73 25%, #e8432d 65%, #a8231a 100%);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.35); will-change: transform;
+    }
+    .trail { position: fixed; z-index: 8999; width: 14px; height: 14px; margin: -7px 0 0 -7px; border-radius: 50%; background: rgba(255,140,90,0.55); pointer-events: none; animation: trail 0.5s ease-out forwards; }
+    @keyframes trail { to { transform: scale(0.2); opacity: 0; } }
+    .spark { position: fixed; z-index: 9001; width: 9px; height: 9px; margin: -4px 0 0 -4px; border-radius: 3px; pointer-events: none; }
+
+    /* 모달 */
+    .modal { display: none; position: fixed; inset: 0; z-index: 10001; background: rgba(20,22,40,0.45); align-items: center; justify-content: center; padding: 16px; }
+    .modal.open { display: flex; }
+    .modal-card { background: var(--bg-elevated, #fff); color: var(--text); border-radius: 20px; width: min(560px, 100%); max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 24px 70px rgba(0,0,0,0.3); }
+    .modal-card.wide { width: min(860px, 100%); }
+    .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 10px; font-weight: 900; font-size: 1.05rem; }
+    .modal-body { padding: 4px 20px 12px; overflow-y: auto; font-size: 0.9rem; }
+    .modal-foot { display: flex; gap: 8px; justify-content: flex-end; padding: 12px 20px 18px; flex-wrap: wrap; }
+    .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
+    .field label { font-size: 0.75rem; font-weight: 700; color: var(--sub); }
+    .inp { padding: 8px 12px; border-radius: 10px; border: 1px solid var(--hairline); background: var(--glass); color: var(--text); font-size: 0.92rem; }
+    .inp:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+    .row2 { display: flex; gap: 10px; flex-wrap: wrap; }
+    .row2 .field { flex: 1; min-width: 110px; }
+    .presets { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+    .ed-grid { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 5px; touch-action: none; user-select: none; container-type: inline-size; }
+    .ed-cell { aspect-ratio: 1.3; border-radius: 8px; border: 1.5px dashed var(--hairline); background: transparent; display: flex; align-items: center; justify-content: center; font-size: clamp(9px, calc(100cqw / var(--cols) * 0.22), 15px); font-weight: 800; color: var(--sub); cursor: pointer; }
+    .ed-cell.s { background: var(--accent-light); border: 1.5px solid var(--accent); color: var(--accent); }
+    .ed-front { text-align: center; font-size: 0.72rem; font-weight: 800; letter-spacing: 0.3em; color: var(--sub); border-bottom: 2px solid var(--hairline); padding-bottom: 4px; margin-bottom: 8px; }
+    .list-item { display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px solid var(--hairline); }
+    .list-item:last-child { border-bottom: none; }
+    .list-item .t { font-weight: 700; }
+    .list-item .m { font-size: 0.78rem; color: var(--sub); }
+    .pick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 6px; }
+    .pick-grid button { text-align: left; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--hairline); background: var(--glass); color: var(--text); cursor: pointer; font-size: 0.86rem; font-weight: 600; }
+    .pick-grid button:hover { border-color: var(--accent); }
+    .pick-grid b { color: var(--accent); margin-right: 5px; }
+
+    .toast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%) translateY(20px); background: rgba(20,22,40,0.92); color: #fff; padding: 10px 18px; border-radius: 50px; font-size: 0.88rem; font-weight: 600; opacity: 0; pointer-events: none; transition: 0.25s; z-index: 20000; max-width: 90vw; text-align: center; }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .print-head { display: none; }
+
+    /* 발표 모드 — 메뉴를 숨기고 대포·교실만 크게 */
+    body.present .nav, body.present .tabbar, body.present .setup-only { display: none !important; }
+    body.ui-sky.present .wrap { margin: 0 auto; max-width: none; padding: 14px 18px 20px; }
+    body.present .board-wrap { grid-template-columns: minmax(240px, 22vw) 1fr; }
+    .present-only { display: none; }
+    body.present .present-only { display: inline-flex; }
+  </style>
+  <link rel="stylesheet" href="admin-sky.css">
+  <style>
+    body.ui-sky .btn.primary { background: var(--sky-cta); color: var(--sky-cta-text); border-color: transparent; }
+    body.ui-sky .btn.primary:hover { background: var(--sky-cta); filter: brightness(1.15); }
+    body.ui-sky .btn.danger { background: var(--danger-light); color: var(--danger); border-color: transparent; }
+    /* 대포 발사는 테마(html body.ui-sky .btn)보다 세게 — 주황 그대로 */
+    html body.ui-sky .btn.fire { background: linear-gradient(180deg, #ff7a45, #e8432d); color: #fff; box-shadow: 0 6px 18px rgba(232,67,45,0.35); }
+    html body.ui-sky .btn.fire:hover { background: linear-gradient(180deg, #ff8a5a, #ef4f38); }
+    html body.ui-sky .btn.fire .kbd { border-color: rgba(255,255,255,0.5); }
+
+    @media print {
+      @page { size: A4 landscape; margin: 12mm; }
+      body { background: #fff !important; color: #000; }
+      .nav, .tabbar, .toolbar, .page-head, .stage, .roster, .room-head, .toast, .modal, .app-modal { display: none !important; }
+      body.ui-sky .wrap, .wrap { margin: 0 !important; padding: 0 !important; max-width: none !important; }
+      .board-wrap { display: block; }
+      .card { border: none; box-shadow: none; background: #fff; padding: 0; }
+      .print-head { display: block; text-align: center; margin-bottom: 10px; }
+      .print-head h2 { font-size: 20pt; }
+      .print-head p { font-size: 10pt; color: #444; }
+      .seat { border: 1.5px solid #333 !important; background: #fff !important; box-shadow: none !important; animation: none !important; }
+      .seat .snum { color: #000; }
+      .seat.manual::after { display: none; }
+      .front { border: 1.5px solid #333; color: #000; background: #fff; }
+    }
+  </style>
+</head>
+<body class="ui-sky">
+
+<svg width="0" height="0" style="position:absolute;">
+  <defs>
+    <symbol id="ic-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+    <symbol id="ic-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-trash" viewBox="0 0 24 24"><path d="M5 7h14M9 7V5h6v2M7 7l1 13h8l1-13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-undo" viewBox="0 0 24 24"><path d="M9 7 4 12l5 5M4 12h10a6 6 0 0 1 0 12h-2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" transform="translate(0 -3)"/></symbol>
+    <symbol id="ic-refresh" viewBox="0 0 24 24"><path d="M5 12a7 7 0 0 1 12-4.9M19 12a7 7 0 0 1-12 4.9M17 3v4h-4M7 21v-4h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-history" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4M12 8v4l3 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-print" viewBox="0 0 24 24"><path d="M7 9V4h10v5M7 17H5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2M7 14h10v6H7Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-save" viewBox="0 0 24 24"><path d="M5 4h11l3 3v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1ZM8 4v5h7V4M8 20v-6h8v6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-flip" viewBox="0 0 24 24"><path d="M7 4v16M7 20l-3-3M7 20l3-3M17 20V4M17 4l-3 3M17 4l3 3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-sound" viewBox="0 0 24 24"><path d="M4 9v6h3l6 4V5L7 9Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M16.5 9a4 4 0 0 1 0 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-mute" viewBox="0 0 24 24"><path d="M4 9v6h3l6 4V5L7 9Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M16 9.5l5 5M21 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-expand" viewBox="0 0 24 24"><path d="M8 4H4v4M16 4h4v4M8 20H4v-4M16 20h4v-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-fast" viewBox="0 0 24 24"><path d="M4 6l8 6-8 6ZM12 6l8 6-8 6Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-school" viewBox="0 0 24 24"><path d="M12 4 3 8.5 12 13l9-4.5Z M7 10.8V16c0 1.2 2.2 3 5 3s5-1.8 5-3v-5.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-people" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 19c0-3 2.5-5 5.5-5s5.5 2 5.5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-clipboard" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 4h6v3H9zM8 12h8M8 16h6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+    <symbol id="ic-check" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 12.5l2.8 2.8L16 9.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-doc" viewBox="0 0 24 24"><path d="M7 3.5h7l4 4v13H6v-17Z M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-chat" viewBox="0 0 24 24"><path d="M4 5.5h16v11.5H9l-4.5 4V17H4Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-timer" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 13V8.5M12 13l3 1.5M9.5 2.5h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="ic-seat" viewBox="0 0 24 24"><rect x="3.5" y="4" width="7" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="13.5" y="4" width="7" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="3.5" y="14" width="7" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="13.5" y="14" width="7" height="6" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+  </defs>
+</svg>
+
+<nav class="nav">
+  <a href="admin.html" class="nav-brand"><img src="logo.png" alt="kakainfo"><span class="nav-brand-title">자리 배치</span></a>
+  <div style="flex:1"></div>
+  <button class="waffle-btn" title="메뉴" onclick="openAppModal()">
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor"><rect width="5" height="5" rx="1.2"/><rect x="6.5" width="5" height="5" rx="1.2"/><rect x="13" width="5" height="5" rx="1.2"/><rect y="6.5" width="5" height="5" rx="1.2"/><rect x="6.5" y="6.5" width="5" height="5" rx="1.2"/><rect x="13" y="6.5" width="5" height="5" rx="1.2"/><rect y="13" width="5" height="5" rx="1.2"/><rect x="6.5" y="13" width="5" height="5" rx="1.2"/><rect x="13" y="13" width="5" height="5" rx="1.2"/></svg>
+  </button>
+  <div class="dark-toggle" onclick="toggleDark()" title="다크모드 전환"></div>
+</nav>
+
+<div class="app-modal" id="appModal" onclick="if(event.target===this)closeAppModal()">
+  <div class="app-modal-card">
+    <div class="app-modal-head"><span>메뉴</span><button class="app-modal-x" onclick="closeAppModal()"><svg width="16" height="16"><use href="#ic-close"/></svg></button></div>
+    <div class="app-modal-grid">
+      <button class="app-modal-item" onclick="location.href='admin.html#schools'"><svg width="28" height="28"><use href="#ic-school"/></svg><span>학교</span></button>
+      <button class="app-modal-item" onclick="location.href='admin.html#students'"><svg width="28" height="28"><use href="#ic-people"/></svg><span>학생</span></button>
+      <button class="app-modal-item" onclick="location.href='admin.html#exam'"><svg width="28" height="28"><use href="#ic-clipboard"/></svg><span>시험</span></button>
+      <button class="app-modal-item" onclick="location.href='score.html'"><svg width="28" height="28"><use href="#ic-check"/></svg><span>시험 점수 확인</span></button>
+      <button class="app-modal-item" onclick="location.href='forms.html'"><svg width="28" height="28"><use href="#ic-doc"/></svg><span>설문지</span></button>
+      <button class="app-modal-item" onclick="location.href='timer.html'"><svg width="28" height="28"><use href="#ic-timer"/></svg><span>타이머</span></button>
+      <button class="app-modal-item" onclick="closeAppModal()"><svg width="28" height="28"><use href="#ic-seat"/></svg><span>자리 배치</span></button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="page-head setup-only">
+    <h1>자리 배치</h1>
+    <div class="grow"></div>
+    <select class="sel" id="selClass" title="반"></select>
+    <select class="sel" id="selRoom" title="교실"></select>
+    <button class="icon-btn" id="btnEditRoom" title="이 교실 모양 고치기"><svg><use href="#ic-edit"/></svg></button>
+    <button class="icon-btn" id="btnNewRoom" title="새 교실 만들기"><svg><use href="#ic-plus"/></svg></button>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn fire" id="btnFire">대포 발사 <span class="kbd">Space</span></button>
+    <button class="btn" id="btnAll"><svg><use href="#ic-fast"/></svg><span>빠르게 모두</span></button>
+    <button class="btn" id="btnUndo"><svg><use href="#ic-undo"/></svg>되돌리기</button>
+    <button class="btn" id="btnReset"><svg><use href="#ic-refresh"/></svg>다시 하기</button>
+    <div class="grow"></div>
+    <button class="icon-btn" id="btnFlip" title="보는 방향 바꾸기 (학생 시점 ↔ 교사 시점)"><svg><use href="#ic-flip"/></svg></button>
+    <button class="icon-btn" id="btnSound" title="소리"><svg><use href="#ic-sound"/></svg></button>
+    <button class="icon-btn" id="btnPresent" title="발표 모드 (전체 화면)"><svg><use href="#ic-expand"/></svg></button>
+    <span class="sep setup-only"></span>
+    <button class="btn setup-only" id="btnHistory"><svg><use href="#ic-history"/></svg>기록</button>
+    <button class="btn setup-only" id="btnPrint"><svg><use href="#ic-print"/></svg>인쇄</button>
+    <button class="btn primary setup-only" id="btnSave"><svg><use href="#ic-save"/></svg>저장</button>
+    <button class="btn present-only" id="btnExitPresent">발표 끝내기</button>
+  </div>
+
+  <div class="board-wrap">
+    <div class="card stage">
+      <svg class="stage-svg" id="stageSvg" viewBox="0 0 300 200" aria-hidden="true">
+        <defs>
+          <linearGradient id="gBarrel" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#6b7280"/><stop offset="0.35" stop-color="#9ca3af"/><stop offset="1" stop-color="#374151"/>
+          </linearGradient>
+          <radialGradient id="gWheel" cx="0.4" cy="0.35" r="0.7">
+            <stop offset="0" stop-color="#b9824f"/><stop offset="1" stop-color="#6b3f1d"/>
+          </radialGradient>
+          <radialGradient id="gFlash" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0" stop-color="#fff8c2"/><stop offset="0.45" stop-color="#ffb13b"/><stop offset="1" stop-color="#ff5a1f" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <ellipse cx="105" cy="182" rx="95" ry="8" fill="currentColor" opacity="0.08"/>
+        <g id="barrel" transform="rotate(-25 100 140)">
+          <g id="barrelInner">
+            <rect x="78" y="124" width="150" height="32" rx="12" fill="url(#gBarrel)"/>
+            <rect x="214" y="119" width="20" height="42" rx="6" fill="#4b5563"/>
+            <rect x="120" y="122" width="8" height="36" rx="3" fill="#4b5563"/>
+            <rect x="160" y="123" width="8" height="34" rx="3" fill="#4b5563"/>
+            <circle cx="80" cy="140" r="17" fill="#4b5563"/>
+            <circle cx="66" cy="140" r="7" fill="#374151"/>
+            <g id="flash" opacity="0">
+              <circle cx="252" cy="140" r="34" fill="url(#gFlash)"/>
+              <path d="M236 140l40-16-12 16 12 16Z" fill="#fff3b0" opacity="0.9"/>
+            </g>
+          </g>
+        </g>
+        <path d="M58 178 L92 128 L130 128 L150 178 Z" fill="#8b5a2b"/>
+        <path d="M58 178 L92 128 L100 128 L70 178 Z" fill="#a8723f"/>
+        <circle cx="100" cy="140" r="7" fill="#d1d5db" stroke="#4b5563" stroke-width="2"/>
+        <g id="wheel">
+          <circle cx="112" cy="166" r="22" fill="url(#gWheel)" stroke="#4a2a12" stroke-width="3"/>
+          <g stroke="#4a2a12" stroke-width="3" stroke-linecap="round">
+            <path d="M112 146v40M92 166h40M98 152l28 28M126 152l-28 28"/>
+          </g>
+          <circle cx="112" cy="166" r="5" fill="#d1d5db"/>
+        </g>
+        <g id="smoke"></g>
+      </svg>
+      <div class="banner" id="banner"><div class="bs" id="bannerSeat"></div><div class="bn" id="bannerNum"></div><div class="bm" id="bannerName"></div></div>
+      <div class="stage-info"><span>남은 학생 <b id="leftCount">0</b>명</span><span>다음 자리 <b id="nextSeat">-</b></span></div>
+      <div class="mag" id="mag"></div>
+    </div>
+
+    <div class="card room">
+      <div class="print-head" id="printHead"></div>
+      <div class="room-head">
+        <span class="room-title" id="roomTitle"></span>
+        <span class="room-meta" id="roomMeta"></span>
+        <div class="grow"></div>
+        <span class="hint setup-only" id="roomHint">빈자리를 누르면 학생을 직접 앉히고, 앉은 자리 두 곳을 차례로 누르면 서로 바뀝니다.</span>
+      </div>
+      <div id="roomBody"><div class="empty">불러오는 중…</div></div>
+    </div>
+  </div>
+
+  <div class="card roster setup-only">
+    <div class="roster-head">
+      <h3>학생</h3>
+      <span class="hint" id="rosterMeta"></span>
+      <div class="grow"></div>
+      <span class="hint">이름을 누르면 결석(뽑기에서 빼기)으로 바뀝니다.</span>
+    </div>
+    <div class="chips" id="roster"></div>
+  </div>
+</div>
+
+<div class="modal" id="modal" onclick="if(event.target===this&&!this.dataset.lock)this.classList.remove('open')"><div class="modal-card" id="modalCard"></div></div>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+await window.AdminAuth.ready;
+if (!window.AdminAuth.isValid()) { location.href = 'index.html'; throw new Error('관리자 아님'); }
+import { db } from './firebase-config.js';
+import {
+  collection, getDocs, doc, setDoc, addDoc, deleteDoc, query, where, serverTimestamp,
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { nv, classKey, classLabel } from './score-core.js';
+
+// ── 유틸 ──
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const numOf = s => { const n = parseInt(String(s ?? '').replace(/[^0-9]/g, ''), 10); return isNaN(n) ? 9999 : n; };
+const millis = ts => ts?.toMillis ? ts.toMillis() : (ts?.seconds ? ts.seconds * 1000 : 0);
+const fmtDate = ms => ms ? new Date(ms).toLocaleString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+const today = () => new Date().toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' });
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('seats_' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('seats_' + k, JSON.stringify(v)); } catch {} },
+};
+let toastTimer;
+function toast(msg, ms = 2600) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), ms); }
+function openModal(html, wide = false) { const c = $('modalCard'); c.className = 'modal-card' + (wide ? ' wide' : ''); c.innerHTML = html; $('modal').classList.add('open'); }
+function closeModal() { $('modal').classList.remove('open'); }
+const modalOpen = () => $('modal').classList.contains('open');
+$('modalCard').addEventListener('click', e => { if (e.target.closest('[data-close]')) closeModal(); });
+
+// ── 교실 모양 ──
+// cells: 행 순서로 이어 붙인 글자열. 's' = 자리, '.' = 통로(빈칸). Firestore 는 2차원 배열을 못 담아서 글자열로 둔다.
+// 자리 번호는 order 대로 1번부터 매긴다. 뽑기는 1번 자리부터 차례로 채운다.
+const ORDERS = { row: '가로 (앞줄 왼쪽부터)', snake: '지그재그 (앞줄 왼→오, 다음 줄 오→왼)', col: '세로 (왼쪽 줄 앞부터)' };
+const repeatRow = (rows, pattern) => pattern.repeat(rows);
+const PRESETS = [
+  { name: '교실 — 짝꿍 3분단', rows: 5, cols: 8, cells: repeatRow(5, 'ss.ss.ss'), order: 'row' },
+  { name: '교실 — 한 줄씩 6×6', rows: 6, cols: 6, cells: repeatRow(6, 'ssssss'), order: 'row' },
+  { name: '컴퓨터실 — 4+4 다섯 줄', rows: 5, cols: 9, cells: repeatRow(5, 'ssss.ssss'), order: 'row' },
+  { name: '컴퓨터실 — 벽 둘레(ㄷ자)', rows: 6, cols: 9, cells: 's.......s'.repeat(5) + 'sssssssss', order: 'col' },
+];
+function seatIndex(room) {
+  const { rows, cols, cells, order } = room;
+  const noByCell = new Array(rows * cols).fill(0), cellByNo = [null];
+  const visit = (r, c) => { const i = r * cols + c; if (cells[i] === 's') { cellByNo.push(i); noByCell[i] = cellByNo.length - 1; } };
+  if (order === 'col') { for (let c = 0; c < cols; c++) for (let r = 0; r < rows; r++) visit(r, c); }
+  else for (let r = 0; r < rows; r++) for (let k = 0; k < cols; k++) visit(r, order === 'snake' && r % 2 ? cols - 1 - k : k);
+  return { noByCell, cellByNo, count: cellByNo.length - 1 };
+}
+const cleanRoom = r => ({ id: r.id, name: r.name || '이름 없는 교실', rows: +r.rows || 1, cols: +r.cols || 1, cells: String(r.cells || ''), order: ORDERS[r.order] ? r.order : 'row' });
+
+// ── 상태 ──
+let students = [], classes = [], classByKey = {};
+let rooms = [];
+let curClass = null, curRoom = null, idx = { noByCell: [], cellByNo: [null], count: 0 };
+let assign = new Map();     // 자리 번호 → { id, number, name, manual }
+let excluded = new Set();   // 결석(뽑기에서 뺌) 학생 ID
+let undoStack = [];
+let dirty = false, busy = false, runAll = false;
+let pickNo = 0;             // 바꾸려고 고른 자리
+let flipped = store.get('flip', false), soundOn = store.get('sound', true);
+
+async function loadBase() {
+  const [stSnap, rSnap] = await Promise.all([getDocs(collection(db, 'students')), getDocs(collection(db, 'seat_rooms'))]);
+  students = stSnap.docs.map(d => { const x = d.data(); return { id: d.id, schoolName: x.schoolName || '', grade: x.grade, class: x.class, number: x.number, name: x.name || '' }; })
+    .filter(s => s.schoolName && nv(s.grade) && nv(s.class));
+  classByKey = {};
+  students.forEach(s => {
+    const k = classKey(s.schoolName, s.grade, s.class);
+    (classByKey[k] ||= { key: k, label: classLabel(s.schoolName, s.grade, s.class), school: s.schoolName.trim(), grade: numOf(s.grade), cls: numOf(s.class), students: [] }).students.push(s);
+  });
+  classes = Object.values(classByKey).sort((a, b) => a.school.localeCompare(b.school) || a.grade - b.grade || a.cls - b.cls);
+  classes.forEach(c => c.students.sort((a, b) => numOf(a.number) - numOf(b.number) || a.name.localeCompare(b.name)));
+  rooms = rSnap.docs.map(d => cleanRoom({ id: d.id, ...d.data() })).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function fillSelects() {
+  const bySchool = {};
+  classes.forEach(c => (bySchool[c.school] ||= []).push(c));
+  $('selClass').innerHTML = classes.length
+    ? Object.entries(bySchool).map(([s, cs]) => `<optgroup label="${esc(s)}">${cs.map(c => `<option value="${esc(c.key)}">${esc(c.grade)}학년 ${esc(c.cls)}반 (${c.students.length}명)</option>`).join('')}</optgroup>`).join('')
+    : '<option value="">학생 명단 없음</option>';
+  $('selRoom').innerHTML = rooms.length ? rooms.map(r => `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('') : '<option value="">교실 없음</option>';
+  if (curClass) $('selClass').value = curClass.key;
+  if (curRoom && rooms.some(r => r.id === curRoom.id)) $('selRoom').value = curRoom.id;
+}
+
+// ── 뽑기 대상 ──
+const classStudents = () => curClass ? curClass.students : [];
+const assignedIds = () => new Set([...assign.values()].map(p => p.id));
+function pool() { const used = assignedIds(); return classStudents().filter(s => !excluded.has(s.id) && !used.has(s.id)); }
+function nextEmptySeat() { for (let n = 1; n <= idx.count; n++) if (!assign.has(n)) return n; return 0; }
+const person = s => ({ id: s.id, number: s.number ?? '', name: s.name || '' });
+const showNum = p => (p.number === '' || p.number == null) ? '?' : String(p.number);
+
+function snapshot() { undoStack.push({ assign: new Map([...assign].map(([k, v]) => [k, { ...v }])), excluded: new Set(excluded) }); if (undoStack.length > 300) undoStack.shift(); }
+function touch() { dirty = true; }
+
+// ── 그리기 ──
+function renderAll() { renderRoom(); renderStage(); renderRoster(); renderButtons(); }
+
+function renderRoom() {
+  const body = $('roomBody');
+  if (!curRoom) {
+    $('roomTitle').textContent = '교실이 없습니다'; $('roomMeta').textContent = '';
+    body.innerHTML = `<div class="empty">먼저 교실 모양을 만들어 주세요.<br><br><button class="btn primary" id="btnFirstRoom"><svg><use href="#ic-plus"/></svg>교실 만들기</button></div>`;
+    $('btnFirstRoom').onclick = () => openRoomEditor(null);
+    return;
+  }
+  $('roomTitle').textContent = curRoom.name;
+  $('roomMeta').textContent = `자리 ${idx.count}개 · ${curClass ? curClass.label : ''} ${flipped ? '· 교사 시점' : ''}`;
+  const { rows, cols, cells } = curRoom, nextN = busy ? 0 : nextEmptySeat();
+  let html = '';
+  for (let dr = 0; dr < rows; dr++) for (let dc = 0; dc < cols; dc++) {
+    const r = flipped ? rows - 1 - dr : dr, c = flipped ? cols - 1 - dc : dc, i = r * cols + c;
+    if (cells[i] !== 's') { html += '<div class="cell-gap"></div>'; continue; }
+    const n = idx.noByCell[i], p = assign.get(n);
+    const cls = ['seat', p ? 'filled' : '', p?.manual ? 'manual' : '', !p && n === nextN && pool().length ? 'next' : '', pickNo === n ? 'pick' : ''].filter(Boolean).join(' ');
+    html += `<div class="${cls}" data-no="${n}"><span class="no">${n}</span>${p ? `<span class="snum">${esc(showNum(p))}</span><span class="sname">${esc(p.name)}</span>` : ''}</div>`;
+  }
+  const front = `<div class="front${flipped ? ' bottom' : ''}">칠판 · 교탁</div>`;
+  body.innerHTML = (flipped ? '' : front) + `<div class="seatgrid" style="--cols:${cols}">${html}</div>` + (flipped ? front : '');
+  $('printHead').innerHTML = `<h2>${esc(curClass ? curClass.label : '')} 자리 배치</h2><p>${esc(curRoom.name)} · ${today()}</p>`;
+}
+const seatEl = n => document.querySelector(`.seat[data-no="${n}"]`);
+
+function renderStage() {
+  const p = pool();
+  $('leftCount').textContent = p.length;
+  const n = nextEmptySeat();
+  $('nextSeat').textContent = n ? n + '번' : '없음';
+  $('mag').innerHTML = p.length
+    ? p.map(s => `<span class="b" data-sid="${esc(s.id)}" title="${esc(s.name)}">${esc(showNum(s))}</span>`).join('')
+    : `<div class="mag-empty">${classStudents().length ? '모두 앉았어요 🎉' : '이 반 학생이 없습니다'}</div>`;
+}
+
+function renderRoster() {
+  const list = classStudents(), used = assignedIds();
+  $('rosterMeta').textContent = curClass ? `${curClass.label} · 전체 ${list.length}명 · 결석 ${list.filter(s => excluded.has(s.id)).length}명 · 자리 ${idx.count}개` : '';
+  $('roster').innerHTML = list.map(s => `<button type="button" class="chip${excluded.has(s.id) ? ' off' : ''}${used.has(s.id) ? ' done' : ''}" data-sid="${esc(s.id)}"><b>${esc(showNum(s))}</b>${esc(s.name)}</button>`).join('') || '<span class="hint">학생이 없습니다.</span>';
+}
+
+function renderButtons() {
+  const can = !!curRoom && pool().length > 0 && nextEmptySeat() > 0;
+  $('btnFire').disabled = busy || !can;
+  $('btnAll').disabled = !runAll && (busy || !can);
+  $('btnAll').querySelector('span').textContent = runAll ? '멈추기' : '빠르게 모두';
+  $('btnAll').classList.toggle('on', runAll);
+  $('btnUndo').disabled = busy || !undoStack.length;
+  $('btnReset').disabled = busy || !assign.size;
+  $('btnSave').disabled = busy || !assign.size;
+  $('btnPrint').disabled = !curRoom;
+  $('btnFlip').classList.toggle('on', flipped);
+  $('btnSound').querySelector('use').setAttribute('href', soundOn ? '#ic-sound' : '#ic-mute');
+}
+
+// ── 소리 (Web Audio 로 직접 만든다 — 파일 없음) ──
+let actx = null;
+function ac() { if (!soundOn) return null; try { actx ||= new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); return actx; } catch { return null; } }
+function sBoom(vol = 1) {
+  const a = ac(); if (!a) return; const t = a.currentTime;
+  const len = Math.floor(a.sampleRate * 0.6), buf = a.createBuffer(1, len, a.sampleRate), d = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.5);
+  const src = a.createBufferSource(); src.buffer = buf;
+  const f = a.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(1400, t); f.frequency.exponentialRampToValueAtTime(120, t + 0.5);
+  const g = a.createGain(); g.gain.setValueAtTime(0.9 * vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+  src.connect(f).connect(g).connect(a.destination); src.start(t);
+  const o = a.createOscillator(), og = a.createGain(); o.type = 'sine';
+  o.frequency.setValueAtTime(110, t); o.frequency.exponentialRampToValueAtTime(38, t + 0.35);
+  og.gain.setValueAtTime(0.8 * vol, t); og.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
+  o.connect(og).connect(a.destination); o.start(t); o.stop(t + 0.45);
+}
+function sBlip(freq, dur = 0.05, vol = 0.12, type = 'square') {
+  const a = ac(); if (!a) return; const t = a.currentTime;
+  const o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g).connect(a.destination); o.start(t); o.stop(t + dur + 0.02);
+}
+function sLand() { const a = ac(); if (!a) return; sBlip(660, 0.09, 0.15, 'triangle'); setTimeout(() => sBlip(990, 0.14, 0.13, 'triangle'), 70); }
+
+// ── 대포 ──
+const PIVOT = { x: 100, y: 140 }, MUZZLE = 150; // 대포 SVG 안의 회전 중심, 포구까지 거리
+let barrelAngle = -25;
+function svgToScreen(x, y) { const svg = $('stageSvg'), pt = svg.createSVGPoint(); pt.x = x; pt.y = y; const m = svg.getScreenCTM(); const r = pt.matrixTransform(m); return { x: r.x, y: r.y }; }
+function setBarrel(a) { barrelAngle = a; $('barrel').setAttribute('transform', `rotate(${a.toFixed(2)} ${PIVOT.x} ${PIVOT.y})`); }
+function tween(ms, fn) { return new Promise(res => { if (ms <= 0) { fn(1); res(); return; } const t0 = performance.now(); const step = now => { const t = Math.min(1, (now - t0) / ms); fn(t); t < 1 ? requestAnimationFrame(step) : res(); }; requestAnimationFrame(step); }); }
+const easeInOut = t => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+function angleTo(target) {
+  const p = svgToScreen(PIVOT.x, PIVOT.y);
+  let a = Math.atan2(target.y - p.y, target.x - p.x) * 180 / Math.PI - 22; // 포물선이라 살짝 위로 겨눈다
+  return Math.max(-80, Math.min(80, a));
+}
+async function aim(target, ms) { const from = barrelAngle, to = angleTo(target); await tween(ms, t => setBarrel(from + (to - from) * easeInOut(t))); }
+async function recoil() {
+  const inner = $('barrelInner'), flash = $('flash');
+  flash.setAttribute('opacity', '1');
+  puffSmoke();
+  await tween(90, t => inner.setAttribute('transform', `translate(${-14 * t} 0)`));
+  flash.setAttribute('opacity', '0');
+  await tween(220, t => inner.setAttribute('transform', `translate(${-14 * (1 - t)} 0)`));
+}
+function puffSmoke() {
+  const g = $('smoke'), rad = barrelAngle * Math.PI / 180;
+  const mx = PIVOT.x + Math.cos(rad) * MUZZLE, my = PIVOT.y + Math.sin(rad) * MUZZLE;
+  for (let i = 0; i < 5; i++) {
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    c.setAttribute('cx', mx); c.setAttribute('cy', my); c.setAttribute('r', 6); c.setAttribute('fill', '#9ca3af'); c.setAttribute('opacity', '0.6');
+    g.appendChild(c);
+    const dx = (Math.random() - 0.3) * 50, dy = -10 - Math.random() * 35, rr = 10 + Math.random() * 12;
+    tween(700 + i * 80, t => { c.setAttribute('cx', mx + dx * t); c.setAttribute('cy', my + dy * t); c.setAttribute('r', 6 + rr * t); c.setAttribute('opacity', (0.55 * (1 - t)).toFixed(3)); }).then(() => c.remove());
+  }
+}
+function muzzleScreen() { const rad = barrelAngle * Math.PI / 180; return svgToScreen(PIVOT.x + Math.cos(rad) * MUZZLE, PIVOT.y + Math.sin(rad) * MUZZLE); }
+function centerOf(el) { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }
+
+async function fly(label, from, to, ms) {
+  const ball = document.createElement('div'); ball.className = 'ball'; ball.textContent = label;
+  ball.style.transform = `translate(${from.x}px, ${from.y}px) scale(0.55)`; document.body.appendChild(ball);
+  const dist = Math.hypot(to.x - from.x, to.y - from.y);
+  const ctrl = { x: (from.x + to.x) / 2, y: Math.min(from.y, to.y) - Math.max(90, dist * 0.35) };
+  let lastTrail = 0;
+  await tween(ms, t => {
+    const u = 1 - t, x = u * u * from.x + 2 * u * t * ctrl.x + t * t * to.x, y = u * u * from.y + 2 * u * t * ctrl.y + t * t * to.y;
+    const s = 0.55 + Math.sin(t * Math.PI) * 0.6 + t * 0.25;
+    ball.style.transform = `translate(${x}px, ${y}px) scale(${s.toFixed(3)}) rotate(${(t * 540).toFixed(1)}deg)`;
+    if (ms > 300 && t - lastTrail > 0.06) { lastTrail = t; const tr = document.createElement('div'); tr.className = 'trail'; tr.style.left = x + 'px'; tr.style.top = y + 'px'; document.body.appendChild(tr); setTimeout(() => tr.remove(), 520); }
+  });
+  ball.remove();
+}
+function sparks(at, n = 12) {
+  const colors = ['#ff7a45', '#ffc94a', '#4ade80', '#60a5fa', '#f472b6'];
+  for (let i = 0; i < n; i++) {
+    const s = document.createElement('div'); s.className = 'spark'; s.style.background = colors[i % colors.length];
+    document.body.appendChild(s);
+    const a = Math.random() * Math.PI * 2, d = 30 + Math.random() * 50;
+    tween(500, t => { const e = 1 - Math.pow(1 - t, 3); s.style.transform = `translate(${at.x + Math.cos(a) * d * e}px, ${at.y + Math.sin(a) * d * e + 30 * t * t}px) rotate(${t * 360}deg)`; s.style.opacity = String(1 - t); }).then(() => s.remove());
+  }
+}
+let bannerTimer;
+function showBanner(seatNo, p) {
+  $('bannerSeat').textContent = `${seatNo}번 자리`; $('bannerNum').textContent = showNum(p) + '번'; $('bannerName').textContent = p.name;
+  $('banner').classList.add('show'); clearTimeout(bannerTimer); bannerTimer = setTimeout(() => $('banner').classList.remove('show'), 1600);
+}
+
+async function roulette(list, chosen, ms) {
+  if (ms <= 0 || list.length < 2) return;
+  const balls = [...$('mag').querySelectorAll('.b')];
+  const t0 = performance.now(); let gap = 45, last = null;
+  while (performance.now() - t0 < ms) {
+    if (last) last.classList.remove('hot');
+    last = balls[Math.floor(Math.random() * balls.length)]; last?.classList.add('hot');
+    sBlip(500 + Math.random() * 500, 0.03, 0.06);
+    await sleep(gap); gap *= 1.08;
+  }
+  if (last) last.classList.remove('hot');
+  const hit = $('mag').querySelector(`.b[data-sid="${CSS.escape(chosen.id)}"]`);
+  if (hit) { hit.classList.add('hot'); await sleep(260); }
+}
+
+// 한 번 발사: 남은 학생 중 하나를 뽑아 → 다음 빈자리(번호 순)로 날린다
+async function fireOnce(fast = false) {
+  if (busy || !curRoom) return false;
+  const list = pool(), seatNo = nextEmptySeat();
+  if (!list.length) { toast('남은 학생이 없습니다.'); return false; }
+  if (!seatNo) { toast(`자리가 모자랍니다 — ${list.length}명이 남았어요. 교실 모양에 자리를 더 만들어 주세요.`, 4000); return false; }
+  busy = true; pickNo = 0; renderButtons();
+  const chosen = list[Math.floor(crypto.getRandomValues(new Uint32Array(1))[0] / 2 ** 32 * list.length)];
+  const p = person(chosen);
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  try {
+    const target = seatEl(seatNo);
+    target?.scrollIntoView({ block: 'nearest', behavior: fast ? 'auto' : 'smooth' });
+    await roulette(list, chosen, fast || reduce ? 0 : 900);
+    const to = target ? centerOf(target) : muzzleScreen();
+    await aim(to, fast ? 90 : 320);
+    $('mag').querySelector(`.b[data-sid="${CSS.escape(chosen.id)}"]`)?.remove();
+    sBoom(fast ? 0.45 : 1);
+    const rec = recoil();
+    await fly(showNum(p), muzzleScreen(), centerOf(seatEl(seatNo) || target), fast ? 360 : reduce ? 300 : 900);
+    snapshot(); assign.set(seatNo, p); touch();
+    renderRoom(); renderStage(); renderRoster();
+    const el = seatEl(seatNo); el?.classList.add('landed');
+    if (el) sparks(centerOf(el), fast ? 6 : 14);
+    sLand();
+    if (!fast) showBanner(seatNo, p);
+    await rec;
+  } finally {
+    busy = false; renderRoom(); renderButtons();
+  }
+  return true;
+}
+
+async function fireAll() {
+  if (runAll) { runAll = false; renderButtons(); return; }
+  runAll = true; renderButtons();
+  while (runAll && pool().length && nextEmptySeat()) {
+    const ok = await fireOnce(true);
+    if (!ok) break;
+    await sleep(90);
+  }
+  runAll = false; renderButtons();
+  if (!pool().length && classStudents().length) toast('모두 앉았어요!');
+}
+
+// ── 자리 직접 고치기: 빈자리 → 학생 고르기, 앉은 자리 두 곳 → 서로 바꾸기 ──
+$('roomBody').addEventListener('click', e => {
+  const el = e.target.closest('.seat'); if (!el || busy || runAll) return;
+  const n = +el.dataset.no, p = assign.get(n);
+  if (pickNo) {
+    if (pickNo === n) { askClear(n); return; }
+    const a = assign.get(pickNo), b = assign.get(n);
+    snapshot();
+    if (b) assign.set(pickNo, b); else assign.delete(pickNo);
+    if (a) assign.set(n, a); else assign.delete(n);
+    pickNo = 0; touch(); renderAll(); return;
+  }
+  if (p) { pickNo = n; renderRoom(); toast('바꿀 자리를 누르세요. 같은 자리를 한 번 더 누르면 비울 수 있어요.'); return; }
+  openPlacePicker(n);
+});
+function askClear(n) {
+  const p = assign.get(n);
+  openModal(`<div class="modal-head">${n}번 자리</div>
+    <div class="modal-body">${esc(showNum(p))}번 ${esc(p.name)} 학생을 이 자리에서 빼고 다시 뽑기 대상으로 돌려놓을까요?</div>
+    <div class="modal-foot"><button class="btn" data-close id="mKeep">그대로 두기</button><button class="btn danger" id="mClear">자리 비우기</button></div>`);
+  $('mKeep').onclick = () => { pickNo = 0; renderRoom(); };
+  $('mClear').onclick = () => { snapshot(); assign.delete(n); pickNo = 0; touch(); closeModal(); renderAll(); };
+}
+function openPlacePicker(n) {
+  const list = pool();
+  if (!list.length) { toast('앉힐 학생이 남아 있지 않습니다.'); return; }
+  openModal(`<div class="modal-head">${n}번 자리에 앉힐 학생<button class="icon-btn" data-close style="border:none"><svg><use href="#ic-close"/></svg></button></div>
+    <div class="modal-body"><p class="hint" style="margin-bottom:10px">미리 정해 둘 학생(예: 앞자리가 필요한 학생)을 고르면 '고정'으로 표시되고, 뽑기는 나머지 자리를 채웁니다.</p>
+    <div class="pick-grid">${list.map(s => `<button data-sid="${esc(s.id)}"><b>${esc(showNum(s))}</b>${esc(s.name)}</button>`).join('')}</div></div>`);
+  $('modalCard').querySelector('.pick-grid').onclick = e => {
+    const b = e.target.closest('button[data-sid]'); if (!b) return;
+    const s = classStudents().find(x => x.id === b.dataset.sid); if (!s) return;
+    snapshot(); assign.set(n, { ...person(s), manual: true }); touch(); closeModal(); renderAll();
+  };
+}
+
+// ── 결석 ──
+$('roster').addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b || busy || runAll) return;
+  const id = b.dataset.sid;
+  if (assignedIds().has(id)) { toast('이미 앉은 학생입니다. 자리를 먼저 비워 주세요.'); return; }
+  snapshot(); excluded.has(id) ? excluded.delete(id) : excluded.add(id);
+  renderAll();
+});
+
+// ── 버튼 ──
+$('btnFire').onclick = () => fireOnce(false);
+$('btnAll').onclick = fireAll;
+$('btnUndo').onclick = () => { const s = undoStack.pop(); if (!s) return; assign = s.assign; excluded = s.excluded; pickNo = 0; touch(); renderAll(); };
+$('btnReset').onclick = () => {
+  openModal(`<div class="modal-head">다시 하기</div><div class="modal-body">앉힌 자리를 모두 비울까요? (결석 표시는 그대로 둡니다)</div>
+    <div class="modal-foot"><button class="btn" data-close>취소</button><button class="btn" id="mResetDraw">뽑은 자리만 비우기</button><button class="btn danger" id="mResetAll">모두 비우기</button></div>`);
+  $('mResetDraw').onclick = () => { snapshot(); [...assign].forEach(([k, v]) => { if (!v.manual) assign.delete(k); }); pickNo = 0; touch(); closeModal(); renderAll(); };
+  $('mResetAll').onclick = () => { snapshot(); assign.clear(); pickNo = 0; touch(); closeModal(); renderAll(); };
+};
+$('btnFlip').onclick = () => { flipped = !flipped; store.set('flip', flipped); renderRoom(); renderButtons(); };
+$('btnSound').onclick = () => { soundOn = !soundOn; store.set('sound', soundOn); renderButtons(); if (soundOn) sBlip(880, 0.08, 0.1, 'triangle'); };
+function setPresent(on) {
+  document.body.classList.toggle('present', on);
+  if (on && !document.fullscreenElement) document.documentElement.requestFullscreen?.().catch(() => {});
+  if (!on && document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
+}
+$('btnPresent').onclick = () => setPresent(!document.body.classList.contains('present'));
+$('btnExitPresent').onclick = () => setPresent(false);
+document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) document.body.classList.remove('present'); });
+$('btnPrint').onclick = () => window.print();
+
+document.addEventListener('keydown', e => {
+  if (modalOpen() || $('appModal').classList.contains('open')) { if (e.key === 'Escape' && !$('modal').dataset.lock) closeModal(); return; }
+  if (e.target.closest('input, select, textarea')) return;
+  if (e.code === 'Space' || e.key === 'Enter') { e.preventDefault(); if (!e.repeat) fireOnce(false); }
+  else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); $('btnUndo').click(); }
+  else if (e.key === 'Escape') { if (pickNo) { pickNo = 0; renderRoom(); } else if (document.body.classList.contains('present')) setPresent(false); }
+});
+
+// ── 반·교실 바꾸기 ──
+function confirmDiscard(go) {
+  if (!dirty || !assign.size) { go(); return; }
+  openModal(`<div class="modal-head">저장하지 않은 배치</div><div class="modal-body">지금 배치를 저장하지 않았습니다. 버리고 바꿀까요?</div>
+    <div class="modal-foot"><button class="btn" data-close id="mNo">취소</button><button class="btn danger" id="mYes">버리고 바꾸기</button></div>`);
+  $('mNo').onclick = fillSelects;
+  $('mYes').onclick = () => { closeModal(); go(); };
+}
+function resetDraw() { assign = new Map(); excluded = new Set(); undoStack = []; dirty = false; pickNo = 0; }
+function setClass(key) { curClass = classByKey[key] || null; store.set('class', key); }
+function setRoom(room) { curRoom = room; idx = room ? seatIndex(room) : { noByCell: [], cellByNo: [null], count: 0 }; if (room?.id) store.set('room', room.id); }
+$('selClass').onchange = e => { const v = e.target.value; confirmDiscard(() => { setClass(v); resetDraw(); fillSelects(); renderAll(); }); };
+$('selRoom').onchange = e => { const v = e.target.value; confirmDiscard(() => { setRoom(rooms.find(r => r.id === v) || null); resetDraw(); fillSelects(); renderAll(); }); };
+
+// ── 교실 모양 편집 ──
+let ed = null;
+$('btnEditRoom').onclick = () => curRoom?.id && rooms.some(r => r.id === curRoom.id) ? openRoomEditor(curRoom) : openRoomEditor(null);
+$('btnNewRoom').onclick = () => openRoomEditor(null);
+function openRoomEditor(room) {
+  ed = room ? { ...room } : { id: null, ...PRESETS[0], name: '' };
+  openModal(`<div class="modal-head">${room ? '교실 모양 고치기' : '새 교실'}<button class="icon-btn" data-close style="border:none"><svg><use href="#ic-close"/></svg></button></div>
+    <div class="modal-body">
+      <div class="field"><label>교실 이름</label><input class="inp" id="edName" maxlength="40" placeholder="예: 컴퓨터실 1, 2학년 3반 교실" value="${esc(ed.name)}"></div>
+      ${room ? '' : `<div class="field"><label>본보기로 시작</label><div class="presets">${PRESETS.map((p, i) => `<button class="btn sm" data-preset="${i}">${esc(p.name)}</button>`).join('')}</div></div>`}
+      <div class="row2">
+        <div class="field"><label>줄 (앞→뒤)</label><input class="inp" id="edRows" type="number" min="1" max="15" value="${ed.rows}"></div>
+        <div class="field"><label>칸 (왼→오)</label><input class="inp" id="edCols" type="number" min="1" max="15" value="${ed.cols}"></div>
+        <div class="field" style="flex:2"><label>자리 번호 매기는 순서 (뽑기도 이 순서로 채움)</label><select class="inp" id="edOrder">${Object.entries(ORDERS).map(([k, v]) => `<option value="${k}"${ed.order === k ? ' selected' : ''}>${v}</option>`).join('')}</select></div>
+      </div>
+      <p class="hint" style="margin-bottom:8px">칸을 누르거나 끌어서 <b>자리</b> ↔ <b>통로</b>를 바꿉니다. 숫자는 자리 번호입니다.</p>
+      <div class="ed-front">칠판 · 교탁</div>
+      <div class="ed-grid" id="edGrid"></div>
+      <p class="hint" id="edCount" style="margin-top:8px"></p>
+    </div>
+    <div class="modal-foot">
+      ${room ? '<button class="btn danger" id="edDel" style="margin-right:auto"><svg><use href="#ic-trash"/></svg>교실 지우기</button>' : ''}
+      <button class="btn" data-close>취소</button><button class="btn primary" id="edSave">저장</button>
+    </div>`, true);
+  $('modal').dataset.lock = '1';
+  const resize = () => {
+    const nr = Math.max(1, Math.min(15, +$('edRows').value || 1)), nc = Math.max(1, Math.min(15, +$('edCols').value || 1));
+    let cells = '';
+    for (let r = 0; r < nr; r++) for (let c = 0; c < nc; c++) cells += (r < ed.rows && c < ed.cols) ? (ed.cells[r * ed.cols + c] || 's') : 's';
+    Object.assign(ed, { rows: nr, cols: nc, cells }); drawEd();
+  };
+  $('edRows').oninput = resize; $('edCols').oninput = resize;
+  $('edOrder').onchange = e => { ed.order = e.target.value; drawEd(); };
+  $('modalCard').querySelectorAll('[data-preset]').forEach(b => b.onclick = () => {
+    const p = PRESETS[+b.dataset.preset]; Object.assign(ed, { rows: p.rows, cols: p.cols, cells: p.cells, order: p.order });
+    if (!$('edName').value.trim()) $('edName').value = p.name.split(' — ')[0];
+    $('edRows').value = p.rows; $('edCols').value = p.cols; $('edOrder').value = p.order; drawEd();
+  });
+  // 누르고 끌어서 칠하기
+  const grid = $('edGrid'); let paint = null;
+  const hit = e => { const el = document.elementFromPoint(e.clientX, e.clientY)?.closest('.ed-cell'); return el && grid.contains(el) ? +el.dataset.i : -1; };
+  const put = i => { if (i < 0 || ed.cells[i] === paint) return; ed.cells = ed.cells.slice(0, i) + paint + ed.cells.slice(i + 1); drawEd(); };
+  grid.onpointerdown = e => { const i = hit(e); if (i < 0) return; paint = ed.cells[i] === 's' ? '.' : 's'; put(i); };
+  grid.onpointermove = e => { if (paint) put(hit(e)); };
+  const stop = () => { paint = null; };
+  window.addEventListener('pointerup', stop); window.addEventListener('pointercancel', stop);
+  $('edSave').onclick = saveRoom;
+  if ($('edDel')) $('edDel').onclick = () => deleteRoom(room);
+  $('modalCard').querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => delete $('modal').dataset.lock));
+  drawEd();
+}
+function drawEd() {
+  const { noByCell, count } = seatIndex(ed);
+  $('edGrid').style.setProperty('--cols', ed.cols);
+  $('edGrid').innerHTML = [...ed.cells].map((ch, i) => `<div class="ed-cell${ch === 's' ? ' s' : ''}" data-i="${i}">${ch === 's' ? noByCell[i] : ''}</div>`).join('');
+  const n = classStudents().length;
+  $('edCount').textContent = `자리 ${count}개` + (n ? ` · ${curClass.label} ${n}명${count < n ? ` — 자리가 ${n - count}개 모자랍니다` : ''}` : '');
+}
+async function saveRoom() {
+  const name = $('edName').value.trim();
+  if (!name) { toast('교실 이름을 적어 주세요.'); $('edName').focus(); return; }
+  if (!ed.cells.includes('s')) { toast('자리가 하나도 없습니다.'); return; }
+  const data = { name, rows: ed.rows, cols: ed.cols, cells: ed.cells, order: ed.order, updatedAt: serverTimestamp() };
+  $('edSave').disabled = true;
+  try {
+    let id = ed.id;
+    if (id) await setDoc(doc(db, 'seat_rooms', id), data, { merge: true });
+    else id = (await addDoc(collection(db, 'seat_rooms'), { ...data, createdAt: serverTimestamp() })).id;
+    const room = cleanRoom({ id, ...data });
+    rooms = rooms.filter(r => r.id !== id).concat(room).sort((a, b) => a.name.localeCompare(b.name));
+    const wasCurrent = curRoom?.id === id;
+    delete $('modal').dataset.lock; closeModal();
+    const apply = () => {
+      setRoom(room);
+      // 같은 교실을 고친 경우: 남아 있는 자리 번호의 학생은 그대로 둔다
+      if (wasCurrent) { for (const k of [...assign.keys()]) if (k > idx.count) assign.delete(k); undoStack = []; } else resetDraw();
+      fillSelects(); renderAll();
+    };
+    if (!wasCurrent) confirmDiscard(apply); else apply();
+    toast('교실을 저장했습니다.');
+  } catch (e) { console.error(e); toast('저장하지 못했습니다: ' + e.message, 5000); $('edSave').disabled = false; }
+}
+function deleteRoom(room) {
+  openModal(`<div class="modal-head">교실 지우기</div><div class="modal-body"><b>${esc(room.name)}</b> 교실 모양을 지울까요? 저장해 둔 자리 배치 기록은 남습니다.</div>
+    <div class="modal-foot"><button class="btn" data-close>취소</button><button class="btn danger" id="mDel">지우기</button></div>`);
+  delete $('modal').dataset.lock;
+  $('mDel').onclick = async () => {
+    try {
+      await deleteDoc(doc(db, 'seat_rooms', room.id));
+      rooms = rooms.filter(r => r.id !== room.id);
+      if (curRoom?.id === room.id) { setRoom(rooms[0] || null); resetDraw(); }
+      closeModal(); fillSelects(); renderAll(); toast('지웠습니다.');
+    } catch (e) { toast('지우지 못했습니다: ' + e.message, 5000); }
+  };
+}
+
+// ── 저장·기록 ──
+$('btnSave').onclick = () => {
+  if (!curRoom || !curClass) return;
+  const left = pool().length;
+  openModal(`<div class="modal-head">자리 배치 저장</div>
+    <div class="modal-body">
+      <div class="field"><label>제목</label><input class="inp" id="svTitle" maxlength="60" value="${esc(`${curClass.label} · ${curRoom.name} · ${today()}`)}"></div>
+      <p class="hint">${assign.size}명 앉음${left ? ` · 아직 ${left}명이 남았습니다` : ''}${excluded.size ? ` · 결석 ${excluded.size}명` : ''}</p>
+    </div>
+    <div class="modal-foot"><button class="btn" data-close>취소</button><button class="btn primary" id="svGo">저장</button></div>`);
+  $('svTitle').select();
+  $('svGo').onclick = async () => {
+    $('svGo').disabled = true;
+    const seats = [...assign].sort((a, b) => a[0] - b[0]).map(([no, p]) => ({ no, sid: p.id, number: String(p.number ?? ''), name: p.name, manual: !!p.manual }));
+    try {
+      await addDoc(collection(db, 'seat_plans'), {
+        title: $('svTitle').value.trim() || `${curClass.label} 자리 배치`,
+        classKey: curClass.key, classLabel: curClass.label,
+        roomId: curRoom.id || '', room: { name: curRoom.name, rows: curRoom.rows, cols: curRoom.cols, cells: curRoom.cells, order: curRoom.order },
+        seats, absent: [...excluded], createdAt: serverTimestamp(),
+      });
+      dirty = false; closeModal(); toast('저장했습니다. [기록]에서 다시 불러올 수 있어요.');
+    } catch (e) { console.error(e); toast('저장하지 못했습니다: ' + e.message, 5000); $('svGo').disabled = false; }
+  };
+};
+$('btnHistory').onclick = async () => {
+  if (!curClass) return;
+  openModal(`<div class="modal-head">${esc(curClass.label)} 자리 배치 기록<button class="icon-btn" data-close style="border:none"><svg><use href="#ic-close"/></svg></button></div><div class="modal-body" id="hList"><div class="empty">불러오는 중…</div></div>`);
+  try {
+    const snap = await getDocs(query(collection(db, 'seat_plans'), where('classKey', '==', curClass.key)));
+    const plans = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => millis(b.createdAt) - millis(a.createdAt));
+    const el = $('hList'); if (!el) return;
+    el.innerHTML = plans.length ? plans.map(p => `<div class="list-item">
+        <div style="flex:1;min-width:0"><div class="t">${esc(p.title)}</div><div class="m">${fmtDate(millis(p.createdAt))} · ${esc(p.room?.name || '')} · ${(p.seats || []).length}명</div></div>
+        <button class="btn sm" data-load="${esc(p.id)}">불러오기</button>
+        <button class="icon-btn" title="지우기" data-del="${esc(p.id)}"><svg><use href="#ic-trash"/></svg></button></div>`).join('')
+      : '<div class="empty">저장한 기록이 없습니다.</div>';
+    el.onclick = e => {
+      const lb = e.target.closest('[data-load]'), db_ = e.target.closest('[data-del]');
+      if (lb) { const p = plans.find(x => x.id === lb.dataset.load); closeModal(); confirmDiscard(() => loadPlan(p)); }
+      if (db_) delPlan(db_.dataset.del, db_.closest('.list-item'));
+    };
+  } catch (e) { console.error(e); const el = $('hList'); if (el) el.innerHTML = `<div class="empty">불러오지 못했습니다: ${esc(e.message)}</div>`; }
+};
+function loadPlan(p) {
+  // 저장할 때의 교실 모양으로 보여 준다 (교실을 나중에 고쳤거나 지웠어도 그대로)
+  const live = rooms.find(r => r.id === p.roomId);
+  const snapRoom = cleanRoom({ id: p.roomId || null, ...p.room });
+  const same = live && live.cells === snapRoom.cells && live.rows === snapRoom.rows && live.cols === snapRoom.cols && live.order === snapRoom.order;
+  setRoom(same ? live : { ...snapRoom, id: same ? live.id : null, name: snapRoom.name + (live ? ' (저장 당시 모양)' : '') });
+  resetDraw();
+  const byId = Object.fromEntries(classStudents().map(s => [s.id, s]));
+  (p.seats || []).forEach(s => { if (s.no >= 1 && s.no <= idx.count) { const cur = byId[s.sid]; assign.set(s.no, { id: s.sid, number: cur ? cur.number ?? '' : s.number, name: cur ? cur.name : s.name, manual: !!s.manual }); } });
+  (p.absent || []).forEach(id => excluded.add(id));
+  fillSelects(); renderAll(); toast('불러왔습니다.');
+}
+async function delPlan(id, row) {
+  if (!confirm('이 기록을 지울까요?')) return;
+  try { await deleteDoc(doc(db, 'seat_plans', id)); row?.remove(); toast('지웠습니다.'); }
+  catch (e) { toast('지우지 못했습니다: ' + e.message, 5000); }
+}
+
+window.addEventListener('beforeunload', e => { if (dirty && assign.size) { e.preventDefault(); e.returnValue = ''; } });
+window.addEventListener('resize', () => { /* 대포 각도는 발사 때 다시 잰다 */ });
+
+// ── 시작 ──
+try {
+  await loadBase();
+  setClass(classByKey[store.get('class', '')] ? store.get('class', '') : (classes[0]?.key || ''));
+  setRoom(rooms.find(r => r.id === store.get('room', '')) || rooms[0] || null);
+  fillSelects(); renderAll();
+  if (!rooms.length) openRoomEditor(null);
+} catch (e) {
+  console.error(e);
+  $('roomBody').innerHTML = `<div class="empty">불러오지 못했습니다: ${esc(e.message)}<br><span class="hint">권한 오류라면 Firestore 규칙에 자리 배치(seat_rooms, seat_plans) 부분이 게시됐는지 확인하세요.</span></div>`;
+}
+</script>
+
+<script>
+function toggleDark() { const d = document.body.classList.toggle('dark'); localStorage.setItem('dark', d ? '1' : '0'); }
+function openAppModal() { document.getElementById('appModal').classList.add('open'); }
+function closeAppModal() { document.getElementById('appModal').classList.remove('open'); }
+(function () { if (localStorage.getItem('dark') === '1') document.body.classList.add('dark'); })();
+</script>
+<script src="admin-nav.js"></script>
+</body>
+</html>

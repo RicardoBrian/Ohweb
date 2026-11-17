@@ -20,6 +20,7 @@
 | `student_forms`, `student_form_responses` | ohweb `forms.html`, ohinfo `formfill.html` | 설문·제출 |
 | `exams`, `exam_questions`, `exam_assignments`, `exam_progress`, `exam_answers`, `exam_results` | ohweb `admin.html`(시험 관리), ohinfo `exam.html`, `ohinfo/functions/api/exam.js`, 채점 도구 `tools/exam-grading`(서비스 밖, 선생님 CLI 로그인), ohweb `score.html`(시험에서 가져오기, 읽기만) | 시험 |
 | `ai_projects`(+하위 `images`, `feedback`), `ai_apps`, `ai_pairs`, `ai_assignments` | ohinfo `ailab*`, `aiapp.html`, ohweb `admin-ailab.js` | AI 실습실 |
+| `seat_rooms`, `seat_plans` | ohweb `seats.html`(자리 배치) | 교실 모양(`cells` 글자열: `s`=자리 `.`=통로, 번호 순서 `order`)·저장한 자리 배치(그때의 교실 모양·`seats [{no, sid, number, name}]`·결석). 관리자만 |
 | `classlog_users`, `classlog_feedback` | ohlog(수업일지) | 수업일지 사용자·의견 |
 | `notion_pages`, `notion_stats`, `notion_secrets` | ohnotion | 노션 공개 페이지 |
 | `short_links` | ohshrt | 단축 URL |
