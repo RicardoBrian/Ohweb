@@ -40,6 +40,14 @@ try {
   await page.goto('http://localhost:8096/' + encodeURIComponent('자리바꾸기'));
   await page.waitForSelector('#rsText', { timeout: 10000 });
   ok('처음 열면 명렬표 창', true);
+  // 양식 내려받기 → 이름 채워 불러오기
+  const [tpl] = await Promise.all([page.waitForEvent('download'), page.click('#rsTpl')]);
+  const tplText = readFileSync(await tpl.path(), 'utf8');
+  ok('양식 내려받기', tpl.suggestedFilename() === '명렬표_양식.csv' && tplText.startsWith('\uFEFF번호,이름') && tplText.includes('30,'), tpl.suggestedFilename());
+  const filledCsv = tplText.replace('1,\r\n', '1,김하늘\r\n').replace('2,\r\n', '2,이도윤\r\n');
+  await page.setInputFiles('#rsFile', { name: '명렬표.csv', mimeType: 'text/csv', buffer: Buffer.from(filledCsv, 'utf8') });
+  await page.waitForFunction(() => document.querySelector('#rsCount').textContent === '2명 인식됨');
+  ok('채운 양식 불러오기 (빈 줄 건너뜀)', true);
   // 엑셀에서 복사한 것처럼: 머리줄 + 탭, 학번 칸이 섞인 줄, 번호 없는 줄
   await page.fill('#rsName', '2학년 3반');
   await page.fill('#rsText', '번호\t이름\n1\t김하늘\n2\t이도윤\n3 박서연\n4,최지호\n5\t20305\t정하린\n6 강민준\n7 조수아\n8 윤지우\n9 장서준\n10 임예린');
