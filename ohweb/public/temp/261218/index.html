@@ -9,8 +9,9 @@
 <meta property="og:description" content="일정 확인 후 참여 여부를 알려주세요.">
 <meta property="og:image" content="img/room.jpg">
 <meta name="theme-color" content="#13294b">
-<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
 <style>
   :root {
     --navy: #13294b; --navy-2: #1d3a66; --teal: #1597a3; --orange: #f07b2a;
@@ -21,7 +22,7 @@
   html { -webkit-text-size-adjust: 100%; }
   body {
     margin: 0; background: var(--bg); color: var(--ink);
-    font-family: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    font-family: "IBM Plex Sans", "IBM Plex Sans KR", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
     line-height: 1.5; word-break: keep-all;
   }
   img { display: block; max-width: 100%; }
@@ -45,7 +46,7 @@
   .hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(19,41,75,.35) 0%, rgba(19,41,75,.82) 100%); }
   .hero .wrap { position: relative; z-index: 1; padding-top: 88px; padding-bottom: 36px; }
   .eyebrow { color: #7fe0e8; font-weight: 700; letter-spacing: .12em; font-size: 15px; margin: 0 0 4px; }
-  .hero h1 { margin: 0; font-size: clamp(36px, 10vw, 52px); font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
+  .hero h1 { margin: 0; font-size: clamp(36px, 10vw, 52px); font-weight: 700; letter-spacing: -.02em; line-height: 1.15; }
   .hero .date { margin: 12px 0 2px; font-size: clamp(19px, 5vw, 24px); font-weight: 600; }
   .hero .place { margin: 0; opacity: .85; font-size: 15px; }
   .hero .cta {
@@ -55,7 +56,7 @@
 
   /* 날짜 */
   .day { display: flex; align-items: center; gap: 14px; margin: 36px 0 18px; }
-  .day .pill { color: #fff; font-weight: 800; font-size: 26px; padding: 6px 26px; border-radius: 999px; background: var(--navy); }
+  .day .pill { color: #fff; font-weight: 700; font-size: 26px; padding: 6px 26px; border-radius: 999px; background: var(--navy); }
   .day.teal .pill { background: var(--teal); }
   .day .dow { font-size: 19px; font-weight: 700; }
 
@@ -71,7 +72,7 @@
   .item .card { display: grid; grid-template-columns: 1fr; gap: 14px; }
   .item.has-photo .card { grid-template-columns: 1fr 44%; align-items: center; }
   .tag { display: inline-block; font-size: 13px; font-weight: 700; color: #fff; padding: 2px 11px; border-radius: 999px; background: var(--dot, var(--teal)); }
-  .item h3 { margin: 8px 0 4px; font-size: 21px; font-weight: 800; letter-spacing: -.01em; }
+  .item h3 { margin: 8px 0 4px; font-size: 21px; font-weight: 700; letter-spacing: -.01em; }
   .item p { margin: 2px 0; font-size: 15px; color: var(--sub); }
   .item p.strong { color: var(--navy-2); font-weight: 600; }
   .item .note { font-size: 14px; }
@@ -95,7 +96,7 @@
 
   /* 참여 조사 */
   .survey { margin: 44px 0 20px; scroll-margin-top: 16px; }
-  .survey h2 { margin: 0 0 4px; font-size: 24px; font-weight: 800; color: var(--navy); }
+  .survey h2 { margin: 0 0 4px; font-size: 24px; font-weight: 700; color: var(--navy); }
   .survey .lead { margin: 0 0 18px; color: var(--sub); font-size: 15px; }
   .field { margin-bottom: 20px; }
   .field > label, .field > .label { display: block; font-weight: 700; margin-bottom: 8px; }
@@ -120,7 +121,7 @@
   .msg { margin: 12px 0 0; font-size: 14px; min-height: 1.5em; }
   .msg.err { color: #c0392b; }
   .done { text-align: center; padding: 30px 20px; }
-  .done .check { width: 56px; height: 56px; margin: 0 auto 10px; border-radius: 50%; background: #e3f6f7; color: var(--teal); display: grid; place-items: center; font-size: 30px; font-weight: 800; }
+  .done .check { width: 56px; height: 56px; margin: 0 auto 10px; border-radius: 50%; background: #e3f6f7; color: var(--teal); display: grid; place-items: center; font-size: 30px; font-weight: 700; }
   .done h3 { margin: 0 0 4px; font-size: 20px; }
   .done p { margin: 0; color: var(--sub); }
   .linkbtn { margin-top: 14px; background: none; border: 0; color: var(--teal); font: inherit; font-size: 14px; text-decoration: underline; cursor: pointer; }
