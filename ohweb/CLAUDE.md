@@ -17,6 +17,7 @@
 | `public/messages.html`, `notice.html` | 메시지·공지 |
 | `public/settle.html` + `settle-firebase-config.js` | 정산(개인용, DB `ohsettle-10d43`) |
 | `public/timer.html` | 타이머 |
+| `public/temp/{번호}/` | 행사용 임시 페이지(예: `261218` = 12/18 교직원 연수 안내·참여 조사). 공개 주소 `gwansan.com/{번호}` — gwresearch 의 `functions/_middleware.js` 가 `admin.kakainfo.com/temp/{번호}/` 를 대신 보여 준다. DB 는 업무용 `gwansan-work` 의 `apps/temp/events/{번호}/responses`(누구나 제출, 관리자만 결과). 견본 빌드에서 빠짐 |
 | `public/seats.html` + `seats-themes.js` | 자리 배치: 교실 모양 편집(`seat_rooms`)·뽑기(남은 학생 중 하나 → 1번 빈자리부터 차례로)·고정석·결석·자리 바꾸기·발표 모드(화면 꽉 채움, 무대 옆/아래 자동)·인쇄·저장/기록(`seat_plans`). 뽑기 연출 테마 6개(대포·캡슐·인형뽑기·포토카드·숏폼·풍선)는 `seats-themes.js` — 테마는 연출만, 누가 뽑힐지·기입은 seats.html (테스트 `npm run test:seats`). 공개용 판 `ohinfo/public/자리바꾸기.html` 이 따로 있고 `seats-themes.js` 를 똑같이 복사해 쓴다 — 테마를 고치면 두 곳 다 |
 | `functions/api/reset-student-password.js` | 학생 비밀번호 초기화(서버, `FIREBASE_SERVICE_ACCOUNT_KEY`) |
 | `functions/api/translate.js` | 번역(서버, `GOOGLE_TRANSLATE_KEY`) |

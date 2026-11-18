@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>12/18 교직원 연수 안내 | 관산중학교</title>
+<meta name="description" content="12월 18일(금)~19일(토) 교직원 연수·워크숍 일정 안내와 참여 조사">
+<meta property="og:title" content="12/18 교직원 연수 안내">
+<meta property="og:description" content="일정 확인 후 참여 여부를 알려주세요.">
+<meta property="og:image" content="img/room.jpg">
+<meta name="theme-color" content="#13294b">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pretendard@1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.css">
+<style>
+  :root {
+    --navy: #13294b; --navy-2: #1d3a66; --teal: #1597a3; --orange: #f07b2a;
+    --bg: #f3f6fa; --card: #fff; --ink: #1b2433; --sub: #5b6676; --line: #dde3ec;
+    --shadow: 0 6px 24px rgba(19, 41, 75, .08);
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+    line-height: 1.5; word-break: keep-all;
+  }
+  img { display: block; max-width: 100%; }
+  a { color: inherit; }
+  .wrap { max-width: 620px; margin: 0 auto; padding: 0 16px; }
+
+  /* 맨 위 오른쪽 로그인 */
+  .auth { position: fixed; top: 10px; right: 10px; z-index: 20; display: flex; gap: 6px; align-items: center; }
+  .auth button {
+    font: inherit; font-size: 12px; border: 0; border-radius: 999px; padding: 5px 11px; cursor: pointer;
+    background: rgba(255,255,255,.18); color: #fff; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  }
+  .auth button:hover { background: rgba(255,255,255,.3); }
+  .auth.scrolled button { background: rgba(19,41,75,.08); color: var(--navy); }
+  .auth .who { font-size: 11px; color: rgba(255,255,255,.85); }
+  .auth.scrolled .who { color: var(--sub); }
+
+  /* 머리 */
+  .hero { position: relative; color: #fff; overflow: hidden; }
+  .hero img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(19,41,75,.35) 0%, rgba(19,41,75,.82) 100%); }
+  .hero .wrap { position: relative; z-index: 1; padding-top: 88px; padding-bottom: 36px; }
+  .eyebrow { color: #7fe0e8; font-weight: 700; letter-spacing: .12em; font-size: 15px; margin: 0 0 4px; }
+  .hero h1 { margin: 0; font-size: clamp(36px, 10vw, 52px); font-weight: 800; letter-spacing: -.02em; line-height: 1.15; }
+  .hero .date { margin: 12px 0 2px; font-size: clamp(19px, 5vw, 24px); font-weight: 600; }
+  .hero .place { margin: 0; opacity: .85; font-size: 15px; }
+  .hero .cta {
+    display: inline-block; margin-top: 20px; padding: 11px 20px; border-radius: 999px;
+    background: #fff; color: var(--navy); font-weight: 700; text-decoration: none; font-size: 15px;
+  }
+
+  /* 날짜 */
+  .day { display: flex; align-items: center; gap: 14px; margin: 36px 0 18px; }
+  .day .pill { color: #fff; font-weight: 800; font-size: 26px; padding: 6px 26px; border-radius: 999px; background: var(--navy); }
+  .day.teal .pill { background: var(--teal); }
+  .day .dow { font-size: 19px; font-weight: 700; }
+
+  /* 타임라인 */
+  .timeline { position: relative; padding-left: 30px; }
+  .timeline::before { content: ""; position: absolute; left: 8px; top: 28px; bottom: 28px; width: 3px; border-radius: 3px; background: #c9d7e8; }
+  .item { position: relative; margin-bottom: 16px; }
+  .item::before {
+    content: ""; position: absolute; left: -28px; top: 34px; width: 13px; height: 13px; border-radius: 50%;
+    background: var(--dot, var(--teal)); box-shadow: 0 0 0 4px var(--bg);
+  }
+  .card { background: var(--card); border-radius: 18px; box-shadow: var(--shadow); padding: 20px; }
+  .item .card { display: grid; grid-template-columns: 1fr; gap: 14px; }
+  .item.has-photo .card { grid-template-columns: 1fr 44%; align-items: center; }
+  .tag { display: inline-block; font-size: 13px; font-weight: 700; color: #fff; padding: 2px 11px; border-radius: 999px; background: var(--dot, var(--teal)); }
+  .item h3 { margin: 8px 0 4px; font-size: 21px; font-weight: 800; letter-spacing: -.01em; }
+  .item p { margin: 2px 0; font-size: 15px; color: var(--sub); }
+  .item p.strong { color: var(--navy-2); font-weight: 600; }
+  .item .note { font-size: 14px; }
+  .item .photo { border-radius: 12px; overflow: hidden; aspect-ratio: 4 / 3; background: #e6ecf3; }
+  .item .photo img { width: 100%; height: 100%; object-fit: cover; }
+  .map {
+    display: inline-flex; align-items: center; gap: 5px; margin-top: 10px; padding: 6px 12px; border-radius: 999px;
+    background: #eef3f9; color: var(--navy-2); text-decoration: none; font-size: 13px; font-weight: 600;
+  }
+  .map:hover { background: #e2eaf5; }
+  .map svg { width: 14px; height: 14px; }
+  .item.meal { --dot: var(--orange); }
+  .item.stay { --dot: var(--navy); }
+
+  .room { position: relative; margin: 6px 0 0; border-radius: 18px; overflow: hidden; box-shadow: var(--shadow); }
+  .room img { width: 100%; aspect-ratio: 16 / 7; object-fit: cover; }
+  .room figcaption {
+    position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 16px 12px; color: #fff; font-size: 14px;
+    background: linear-gradient(180deg, transparent, rgba(0,0,0,.55));
+  }
+
+  /* 참여 조사 */
+  .survey { margin: 44px 0 20px; scroll-margin-top: 16px; }
+  .survey h2 { margin: 0 0 4px; font-size: 24px; font-weight: 800; color: var(--navy); }
+  .survey .lead { margin: 0 0 18px; color: var(--sub); font-size: 15px; }
+  .field { margin-bottom: 20px; }
+  .field > label, .field > .label { display: block; font-weight: 700; margin-bottom: 8px; }
+  .req { color: var(--orange); }
+  input[type=text] {
+    width: 100%; font: inherit; font-size: 17px; padding: 12px 14px; border: 1.5px solid var(--line); border-radius: 12px; background: #fff;
+  }
+  input[type=text]:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 3px rgba(21,151,163,.15); }
+  .choices { display: grid; gap: 10px; }
+  .choice {
+    display: flex; gap: 12px; align-items: flex-start; padding: 14px; border: 1.5px solid var(--line); border-radius: 12px; cursor: pointer; background: #fff;
+  }
+  .choice input { margin: 3px 0 0; width: 18px; height: 18px; accent-color: var(--teal); flex: none; }
+  .choice b { display: block; font-size: 16px; }
+  .choice small { color: var(--sub); font-size: 13px; }
+  .choice:has(input:checked) { border-color: var(--teal); background: #effafb; }
+  .submit {
+    width: 100%; font: inherit; font-size: 17px; font-weight: 700; padding: 14px; border: 0; border-radius: 12px;
+    background: var(--navy); color: #fff; cursor: pointer;
+  }
+  .submit:disabled { opacity: .55; cursor: default; }
+  .msg { margin: 12px 0 0; font-size: 14px; min-height: 1.5em; }
+  .msg.err { color: #c0392b; }
+  .done { text-align: center; padding: 30px 20px; }
+  .done .check { width: 56px; height: 56px; margin: 0 auto 10px; border-radius: 50%; background: #e3f6f7; color: var(--teal); display: grid; place-items: center; font-size: 30px; font-weight: 800; }
+  .done h3 { margin: 0 0 4px; font-size: 20px; }
+  .done p { margin: 0; color: var(--sub); }
+  .linkbtn { margin-top: 14px; background: none; border: 0; color: var(--teal); font: inherit; font-size: 14px; text-decoration: underline; cursor: pointer; }
+
+  /* 결과(관리자) */
+  .results { margin: 30px 0; }
+  .results h2 { margin: 0 0 12px; font-size: 20px; color: var(--navy); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .results h2 button { font: inherit; font-size: 13px; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line); background: #fff; cursor: pointer; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+  .stat { background: #f5f8fc; border-radius: 12px; padding: 10px; text-align: center; }
+  .stat b { display: block; font-size: 26px; color: var(--navy); }
+  .stat span { font-size: 12px; color: var(--sub); }
+  .stat.c-stay b { color: var(--navy); } .stat.c-meal b { color: var(--orange); } .stat.c-no b { color: #8a94a3; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--sub); font-weight: 600; font-size: 12px; }
+  td.time { color: var(--sub); font-size: 12px; white-space: nowrap; }
+  td .old { color: #a0a8b4; font-size: 12px; }
+  td button { font: inherit; font-size: 12px; border: 0; background: none; color: #c0392b; cursor: pointer; padding: 0; }
+  .badge { display: inline-block; font-size: 12px; padding: 1px 8px; border-radius: 999px; color: #fff; white-space: nowrap; }
+  .badge.stay { background: var(--navy); } .badge.meal { background: var(--orange); } .badge.no { background: #8a94a3; }
+  .empty { color: var(--sub); font-size: 14px; }
+
+  footer { text-align: center; color: #98a2b0; font-size: 12px; padding: 24px 0 40px; }
+
+  @media (max-width: 480px) {
+    .item.has-photo .card { grid-template-columns: 1fr; }
+    .item.has-photo .photo { order: -1; aspect-ratio: 16 / 9; }
+    .day .pill { font-size: 22px; padding: 5px 20px; }
+    .room img { aspect-ratio: 16 / 9; }
+  }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="auth" id="auth">
+  <span class="who" id="who" hidden></span>
+  <button type="button" id="loginBtn">로그인</button>
+  <button type="button" id="logoutBtn" hidden>로그아웃</button>
+</div>
+
+<header class="hero">
+  <img src="img/room.jpg" alt="">
+  <div class="wrap">
+    <p class="eyebrow">SCHEDULE</p>
+    <h1>연수 일정 안내</h1>
+    <p class="date">2026. 12. 18 (금) – 12. 19 (토)</p>
+    <p class="place">안산 · 시흥 &nbsp;|&nbsp; 시흥 거북섬</p>
+    <a class="cta" href="#survey">참여 여부 알려주기 ↓</a>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="day"><span class="pill">12/18</span><span class="dow">금요일</span></div>
+  <div class="timeline">
+    <section class="item">
+      <div class="card"><div>
+        <span class="tag">연수</span>
+        <h3>6교시 이후 연수 진행</h3>
+        <p class="strong">안산 · 시흥 인근 지역</p>
+        <p class="note">※ 수업시간 단축 예정</p>
+      </div></div>
+    </section>
+
+    <section class="item meal has-photo">
+      <div class="card">
+        <div>
+          <span class="tag">식사</span>
+          <h3>연수 후 저녁 식사</h3>
+          <p>시흥 거북섬 지역으로 이동</p>
+          <p class="strong">식당 &nbsp;101 더 테라스 (거북섬본점)</p>
+          <p class="note">경기 시흥시 거북섬로 116, 1층</p>
+          <a class="map" href="https://naver.me/5xgbeif6" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z"/></svg>네이버 지도</a>
+        </div>
+        <div class="photo"><img src="img/restaurant.jpg" alt="101 더 테라스 식당 내부" loading="lazy"></div>
+      </div>
+    </section>
+
+    <section class="item stay has-photo">
+      <div class="card">
+        <div>
+          <span class="tag">숙박</span>
+          <h3>숙박 (희망자)</h3>
+          <p class="strong">웨이브엠 웨스트 호텔</p>
+          <p>2인 1실</p>
+          <p class="note">경기 시흥시 거북섬로 112</p>
+          <p class="note">※ 숙박 희망 선생님 대상</p>
+          <a class="map" href="https://www.wavemhotel.co.kr/west/" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4h4a2 2 0 0 1 2 2v10h-6v-4h-6v4H3zm4-14v2h2V7H7zm4 0v2h2V7h-2zm-4 4v2h2v-2H7zm4 0v2h2v-2h-2z"/></svg>호텔 홈페이지</a>
+        </div>
+        <div class="photo"><img src="img/hotel.jpg" alt="웨이브엠 웨스트 호텔 전경" loading="lazy"></div>
+      </div>
+    </section>
+  </div>
+
+  <figure class="room">
+    <img src="img/room.jpg" alt="웨이브엠 웨스트 호텔 객실" loading="lazy">
+    <figcaption>Wave M West Hotel · 객실</figcaption>
+  </figure>
+
+  <div class="day teal"><span class="pill">12/19</span><span class="dow">토요일</span></div>
+  <div class="timeline">
+    <section class="item">
+      <div class="card"><div>
+        <span class="tag">마무리</span>
+        <h3>아침식사 후 개별 이동</h3>
+      </div></div>
+    </section>
+  </div>
+
+  <!-- 참여 조사 -->
+  <section class="survey card" id="survey">
+    <div id="formBox">
+      <h2>참여 여부 조사</h2>
+      <p class="lead">일정 확인 후 참여 여부를 알려주세요.</p>
+      <form id="form" novalidate>
+        <div class="field">
+          <label for="name">성함 <span class="req">*</span></label>
+          <input type="text" id="name" maxlength="30" autocomplete="name" placeholder="예) 홍길동" required>
+        </div>
+        <div class="field">
+          <span class="label">숙박 희망 여부 <span class="req">*</span></span>
+          <div class="choices">
+            <label class="choice"><input type="radio" name="choice" value="stay"><span><b>숙박 희망</b><small>연수 · 저녁 식사 · 숙박까지</small></span></label>
+            <label class="choice"><input type="radio" name="choice" value="meal"><span><b>숙박 비희망 (식사 후 귀가)</b><small>연수 · 저녁 식사까지</small></span></label>
+            <label class="choice"><input type="radio" name="choice" value="no"><span><b>연수 참여 비희망</b><small>16:30까지 근무 후 퇴근</small></span></label>
+          </div>
+        </div>
+        <button class="submit" id="submitBtn" type="submit">제출하기</button>
+        <p class="msg" id="msg" role="status"></p>
+      </form>
+    </div>
+    <div class="done" id="doneBox" hidden>
+      <div class="check">✓</div>
+      <h3>제출되었습니다</h3>
+      <p id="doneText"></p>
+      <button class="linkbtn" id="againBtn" type="button">응답 바꾸기 (다시 제출)</button>
+    </div>
+  </section>
+
+  <!-- 결과: 관리자만 -->
+  <section class="results card" id="results" hidden>
+    <h2>응답 결과 <button type="button" id="csvBtn">CSV 받기</button></h2>
+    <div class="stats" id="stats"></div>
+    <div id="table"></div>
+  </section>
+  <p class="msg err" id="adminMsg" hidden></p>
+</main>
+
+<footer>관산중학교</footer>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, serverTimestamp, query, orderBy }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+// 업무용 DB(gwansan-work). 규칙: apps/temp/events/{날짜}/responses — 누구나 제출, 관리자(admins)만 읽기.
+const app = initializeApp({
+  apiKey: "AIzaSyAP8AhRYa38nVzgU2C1xvA7OLKaSJo4daw",
+  authDomain: "gwansan-work.firebaseapp.com",
+  projectId: "gwansan-work",
+  storageBucket: "gwansan-work.firebasestorage.app",
+  messagingSenderId: "286002258248",
+  appId: "1:286002258248:web:08318792b1ba536aecd37d",
+});
+const db = getFirestore(app);
+const auth = getAuth(app);
+const EVENT = "261218";
+const COL = collection(db, "apps", "temp", "events", EVENT, "responses");
+const LABEL = { stay: "숙박 희망", meal: "식사 후 귀가", no: "연수 비희망" };
+const LABEL_LONG = { stay: "숙박 희망", meal: "숙박 비희망 (식사 후 귀가)", no: "연수 참여 비희망 (16:30까지 근무 후 퇴근)" };
+const KEY = "temp-" + EVENT;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const store = {
+  get() { try { return JSON.parse(localStorage.getItem(KEY) || "null"); } catch { return null; } },
+  set(v) { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch {} },
+};
+
+// ── 제출 ──
+function showDone(v) {
+  $("doneText").textContent = `${v.name} 선생님 · ${LABEL_LONG[v.choice]}`;
+  $("formBox").hidden = true;
+  $("doneBox").hidden = false;
+}
+const prev = store.get();
+if (prev) showDone(prev);
+$("againBtn").onclick = () => {
+  const p = store.get();
+  if (p) {
+    $("name").value = p.name;
+    const r = document.querySelector(`input[name=choice][value="${p.choice}"]`);
+    if (r) r.checked = true;
+  }
+  $("doneBox").hidden = true;
+  $("formBox").hidden = false;
+  $("msg").textContent = "다시 제출하면 마지막 응답으로 반영됩니다.";
+  $("msg").className = "msg";
+};
+
+$("form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = $("name").value.trim().replace(/\s+/g, " ");
+  const choice = (document.querySelector("input[name=choice]:checked") || {}).value;
+  const msg = $("msg");
+  msg.className = "msg err";
+  if (!name) { msg.textContent = "성함을 적어주세요."; $("name").focus(); return; }
+  if (!choice) { msg.textContent = "숙박 희망 여부를 골라주세요."; return; }
+  $("submitBtn").disabled = true;
+  msg.className = "msg"; msg.textContent = "제출 중…";
+  try {
+    await addDoc(COL, { name, choice, at: serverTimestamp() });
+    store.set({ name, choice });
+    msg.textContent = "";
+    showDone({ name, choice });
+  } catch (err) {
+    console.error(err);
+    msg.className = "msg err";
+    msg.textContent = "제출하지 못했습니다. 잠시 후 다시 시도해 주세요. (" + (err.code || err.message) + ")";
+  } finally {
+    $("submitBtn").disabled = false;
+  }
+});
+
+// ── 로그인 · 결과(관리자만) ──
+const authBox = $("auth");
+addEventListener("scroll", () => authBox.classList.toggle("scrolled", scrollY > 120), { passive: true });
+$("loginBtn").onclick = async () => {
+  try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+  catch (err) { if (err.code !== "auth/popup-closed-by-user" && err.code !== "auth/cancelled-popup-request") alert("로그인 실패: " + (err.code || err.message)); }
+};
+$("logoutBtn").onclick = () => signOut(auth);
+
+let unsub = null, rows = [];
+onAuthStateChanged(auth, (user) => {
+  $("loginBtn").hidden = !!user;
+  $("logoutBtn").hidden = !user;
+  $("who").hidden = !user;
+  $("who").textContent = user ? user.email : "";
+  $("adminMsg").hidden = true;
+  if (unsub) { unsub(); unsub = null; }
+  $("results").hidden = true;
+  if (!user) return;
+  unsub = onSnapshot(query(COL, orderBy("at", "desc")), (snap) => {
+    rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    $("results").hidden = false;
+    render();
+  }, (err) => {
+    $("adminMsg").hidden = false;
+    $("adminMsg").textContent = err.code === "permission-denied"
+      ? "이 계정은 결과를 볼 수 없습니다." : "결과를 불러오지 못했습니다: " + (err.code || err.message);
+  });
+});
+
+const keyOf = (n) => String(n).replace(/\s+/g, "");
+const fmt = (ts) => {
+  const d = ts && ts.toDate ? ts.toDate() : null;
+  return d ? `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}` : "";
+};
+// 같은 이름은 마지막 응답만 센다 (예전 응답은 회색으로)
+function latest() {
+  const seen = new Set();
+  return rows.map((r) => { const k = keyOf(r.name); const old = seen.has(k); seen.add(k); return { ...r, old }; });
+}
+function render() {
+  const list = latest();
+  const cur = list.filter((r) => !r.old);
+  const count = { stay: 0, meal: 0, no: 0 };
+  cur.forEach((r) => { if (count[r.choice] != null) count[r.choice]++; });
+  $("stats").innerHTML = ["stay", "meal", "no"].map((c) =>
+    `<div class="stat c-${c}"><b>${count[c]}</b><span>${LABEL[c]}</span></div>`).join("");
+  if (!list.length) { $("table").innerHTML = '<p class="empty">아직 응답이 없습니다.</p>'; return; }
+  const sorted = [...cur].sort((a, b) => a.choice.localeCompare(b.choice) || a.name.localeCompare(b.name, "ko"))
+    .concat(list.filter((r) => r.old));
+  $("table").innerHTML = `<p class="empty">총 ${cur.length}명</p><table><thead><tr><th>성함</th><th>응답</th><th>시각</th><th></th></tr></thead><tbody>` +
+    sorted.map((r) => `<tr><td>${esc(r.name)}${r.old ? ' <span class="old">(이전 응답)</span>' : ""}</td>` +
+      `<td><span class="badge ${esc(r.choice)}">${esc(LABEL[r.choice] || r.choice)}</span></td>` +
+      `<td class="time">${fmt(r.at)}</td><td><button type="button" data-del="${esc(r.id)}">삭제</button></td></tr>`).join("") +
+    "</tbody></table>";
+}
+$("table").addEventListener("click", async (e) => {
+  const id = e.target.dataset && e.target.dataset.del;
+  if (!id) return;
+  const r = rows.find((x) => x.id === id);
+  if (!confirm(`${r ? r.name : ""} 응답을 지울까요?`)) return;
+  try { await deleteDoc(doc(COL, id)); } catch (err) { alert("삭제 실패: " + (err.code || err.message)); }
+});
+$("csvBtn").onclick = () => {
+  const cur = latest().filter((r) => !r.old);
+  const lines = [["성함", "응답", "제출 시각"], ...cur.map((r) => [r.name, LABEL_LONG[r.choice] || r.choice, fmt(r.at)])]
+    .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","));
+  const blob = new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+  const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: `연수참여조사_${EVENT}.csv` });
+  a.click(); URL.revokeObjectURL(a.href);
+};
+</script>
+</body>
+</html>

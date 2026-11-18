@@ -98,7 +98,7 @@ def copy_tree(src_dir: Path, dst_dir: Path, include=None, exclude=(), keep=()):
 def build_teacher():
     """관리자 화면 (ohweb/public) → vibe/teacher. 학생 화면과 같은 저장 공간(vibe-school)."""
     copy_tree(ROOT / 'ohweb/public', VIBE / 'teacher',
-              exclude=['_headers', 'settle.html', 'settle-firebase-config.js'],
+              exclude=['_headers', 'settle.html', 'settle-firebase-config.js', 'temp'],  # temp = 행사용 임시 페이지(업무용 DB)
               keep=['firebase-config.js'])
 
 

@@ -43,6 +43,7 @@
 |---|---|---|
 | gwansanattend (출결) | **Firebase `gwansan-work`**(2026-11-09 전환) — `apps/attend/…`(반·기록·신고서·보호자·함께 맡은 담임 `classes/{반}/coteachers`·허용·신청·접속 기록), 공용 명렬표 `years/{연도}/students`. 예전 `gwsattend` 는 백업으로 남김 | 학교 |
 | GWBS (방송부) | **Firebase `gwansan-work`**(2026-11-09 전환) — `apps/broadcast/…`(일정·출결·매뉴얼·신청곡, 부원 `members` = 명렬표 학생 ID). 예전 `gwbs-3ec22` 는 백업으로 남김 | 학교 |
+| Ohweb `ohweb/public/temp/{번호}/` (행사용 임시 페이지, gwansan.com/{번호}) | **Firebase `gwansan-work`** — `apps/temp/events/{번호}/responses`(참여 조사: 이름·선택·시각. 누구나 제출, 관리자 `admins` 만 읽기·삭제). 규칙은 업무용 공용 규칙 파일(workapps-merge/GWVS `firestore.rules`) | 학교 |
 | GWVS (봉사활동) | **Firebase `gwansan-work`**(업무용 통합, 2026-11-09 전환) — 공용 `staff`·`admins`·`years/{학년도}/students`, 봉사 `apps/volunteer/…`. 예전 `gwvs-77114` 는 백업으로 남김 | 학교 |
 | snakeiogwansan | Firebase 실시간 DB (주소는 Cloudflare 비밀값 `FIREBASE_DATABASE_URL`) | 행사 |
 | moral | Google Apps Script(시트) — Cloudflare 비밀값 `GAS_URL`·`GAS_KEY` | 수업 |
