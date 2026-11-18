@@ -56,10 +56,10 @@ export async function onRequestPost({ request, env }) {
         body: JSON.stringify({ values: [[now, safe(name), label, name.replace(/\s+/g, ''), docId]] }),
       },
     );
-    if (!res.ok) return json(request, { error: 'sheets', status: res.status, detail: (await res.text()).slice(0, 300) }, 502);
+    if (!res.ok) return json(request, { error: 'sheets', status: res.status, detail: (await res.text()).slice(0, 300) }, 200);
     return json(request, { ok: true });
   } catch (e) {
-    return json(request, { error: String(e.message || e).slice(0, 300) }, 500);
+    return json(request, { error: String(e.message || e).slice(0, 300) }, 200);
   }
 }
 

@@ -32,6 +32,16 @@ PAL = {
     'sc.operators': ('#2e8a2e', '#8fdc8f', '#59C059'),
     'sc.vars':      ('#c2610a', '#ffaa55', '#FF8C1A'),
     'sc.myblocks':  ('#d63a58', '#ff95a8', '#FF6680'),
+    # AI 코딩(kakainfo.com/aicode). 색은 ohinfo/public/ai-blocks.js 의 COLORS
+    'ac.event':   ('#a67c00', '#ffd24d', '#FFBF00'),
+    'ac.ai':      ('#0b8f6a', '#4fe0b6', '#0FBD8C'),
+    'ac.motion':  ('#2f6fd8', '#7fb0ff', '#4C97FF'),
+    'ac.looks':   ('#7a4fd6', '#b99cff', '#9966FF'),
+    'ac.sound':   ('#b043b0', '#e48fe4', '#CF63CF'),
+    'ac.control': ('#b87300', '#ffc04d', '#FFAB19'),
+    'ac.sense':   ('#2a87ad', '#7fd0ee', '#5CB1D6'),
+    'ac.op':      ('#2e8a2e', '#8fdc8f', '#59C059'),
+    'ac.vars':    ('#c2610a', '#ffaa55', '#FF8C1A'),
 }
 CAT_LABEL = {  # 칩에 적는 서랍 이름
     'ai.ctrl': {'ko': '이벤트·제어', 'en': 'Control', 'zh': '控制', 'ru': 'Управление'},
@@ -52,6 +62,16 @@ CAT_LABEL = {  # 칩에 적는 서랍 이름
     'sc.operators': {'ko': '연산', 'en': 'Operators', 'zh': '运算', 'ru': 'Операторы'},
     'sc.vars': {'ko': '변수', 'en': 'Variables', 'zh': '变量', 'ru': 'Переменные'},
     'sc.myblocks': {'ko': '나만의 블록', 'en': 'My Blocks', 'zh': '自制积木', 'ru': 'Мои блоки'},
+    # 이름은 ohinfo/public/ai-i18n.js 의 b_c* (AI 코딩 화면에 보이는 서랍 이름)
+    'ac.event': {'ko': '이벤트', 'en': 'Events', 'zh': '事件', 'ru': 'События'},
+    'ac.ai': {'ko': 'AI', 'en': 'AI', 'zh': 'AI', 'ru': 'ИИ'},
+    'ac.motion': {'ko': '동작', 'en': 'Motion', 'zh': '运动', 'ru': 'Движение'},
+    'ac.looks': {'ko': '모양', 'en': 'Looks', 'zh': '外观', 'ru': 'Внешность'},
+    'ac.sound': {'ko': '소리', 'en': 'Sound', 'zh': '声音', 'ru': 'Звук'},
+    'ac.control': {'ko': '제어', 'en': 'Control', 'zh': '控制', 'ru': 'Управление'},
+    'ac.sense': {'ko': '감지', 'en': 'Sensing', 'zh': '侦测', 'ru': 'Сенсоры'},
+    'ac.op': {'ko': '연산', 'en': 'Operators', 'zh': '运算', 'ru': 'Операторы'},
+    'ac.vars': {'ko': '변수', 'en': 'Variables', 'zh': '变量', 'ru': 'Переменные'},
 }
 SHAPE_LABEL = {
     'term': {'ko': '터미널', 'en': 'Terminal', 'zh': '起止', 'ru': 'Начало/конец'},
@@ -343,7 +363,8 @@ LEGEND_SVG = {
     'dec': '<polygon class="dec" points="22,3 42,15 22,27 2,15"/>',
     'io': '<polygon class="io" points="10,5 42,5 34,25 2,25"/>',
 }
-LIGHT_CHIPS = {'sc.events', 'sc.control', 'sc.sensing', 'sc.operators', 'sc.vars'}  # 밝은 칩은 검은 글자
+LIGHT_CHIPS = {'sc.events', 'sc.control', 'sc.sensing', 'sc.operators', 'sc.vars',
+               'ac.event', 'ac.ai', 'ac.control', 'ac.sense', 'ac.op', 'ac.vars'}  # 밝은 칩은 검은 글자
 
 
 def build(spec, lang):
