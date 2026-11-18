@@ -264,7 +264,7 @@
 
   <!-- 결과: 관리자만 -->
   <section class="results card" id="results" hidden>
-    <h2>응답 결과 <button type="button" id="csvBtn">CSV 받기</button></h2>
+    <h2>응답 결과 <span><button type="button" onclick="window.open('https://docs.google.com/spreadsheets/d/1_RLO0JiStT-sIJuwOeRsjP-bUoV8jsny-eBbQfrB1x8/edit')">구글 시트</button> <button type="button" id="csvBtn">CSV 받기</button></span></h2>
     <div class="stats" id="stats"></div>
     <div id="table"></div>
   </section>
@@ -335,8 +335,13 @@ $("form").addEventListener("submit", async (e) => {
   $("submitBtn").disabled = true;
   msg.className = "msg"; msg.textContent = "제출 중…";
   try {
-    await addDoc(COL, { name, choice, at: serverTimestamp() });
+    const ref = await addDoc(COL, { name, choice, at: serverTimestamp() });
     store.set({ name, choice });
+    // 관리자 공유용 구글 시트에도 한 줄 (실패해도 제출은 된 것 — 원본은 DB)
+    fetch("https://admin.kakainfo.com/api/temp-sheet", {
+      method: "POST", headers: { "Content-Type": "application/json" }, keepalive: true,
+      body: JSON.stringify({ event: EVENT, id: ref.id, name, choice }),
+    }).catch(() => {});
     msg.textContent = "";
     showDone({ name, choice });
   } catch (err) {
