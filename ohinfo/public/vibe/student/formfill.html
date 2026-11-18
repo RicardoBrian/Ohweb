@@ -98,6 +98,8 @@
     .form-header { margin-bottom: 22px; }
     .form-header h1 { font-size: 1.5rem; font-weight: 900; margin-bottom: 6px; }
     .form-header p { font-size: 0.9rem; color: var(--sub); }
+    /* 설명란 줄바꿈·연속 공백 유지 (작성 textarea 입력 그대로 표시) */
+    #fillDesc, .q-desc, .section-title-card p { white-space: pre-wrap; overflow-wrap: anywhere; }
     .form-meta-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 10px; }
     .meta-badge { font-size: 0.75rem; padding: 3px 10px; border-radius: 50px; background: var(--glass); border: 1px solid var(--border-card); color: var(--sub); }
     .status-screen { text-align: center; padding: 60px 20px; }
