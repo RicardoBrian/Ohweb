@@ -8,8 +8,7 @@ python3 flowchart.py bomb.json -o out/              # spec 의 langs 전부
 python3 flowchart.py demo.json -o out/ --lang en    # 한 언어만
 ```
 
-예제: `bomb.json`(앱인벤터, 한국어), `demo.json`(스크래치, 반복·분기, 한국어+영어),
-`facelab.json`(AI 코딩 — 표정 분류 프로그램, 한국어·영어·중국어·러시아어 4개 언어).
+예제: `bomb.json`(앱인벤터, 한국어), `demo.json`(스크래치, 반복·분기, 한국어+영어).
 글자가 상자 밖으로 넘칠 것 같으면 `주의:` 로 알려 준다. 그 줄을 나눈다.
 
 ## 작성 규칙
@@ -48,14 +47,6 @@ python3 flowchart.py demo.json -o out/ --lang en    # 한 언어만
 **노션에 넣기**
 - 페이지에서 `## 순서도` 제목 → 한 줄 설명 → 파일 첨부(임베드) 순서로 둔다.
 - 노션은 HTML 파일을 다운로드로만 열어서, 사이트 화면에서만 순서도가 보인다.
-- 올리는 법(Claude): `notion-create-file-upload` 로 파일마다 주소를 받고 `curl -X POST <upload_url> -H "authorization: …" -F file=@파일.html` 로 보낸 뒤,
-  페이지에 `<embed source="file-upload://…" />` 를 쓴다(`notion-update-page` 의 `update_content`).
-
-**AI 코딩 순서도 쓰는 법(`facelab.json` 참고)**
-- 카메라는 `📷 카메라 켜기` 뒤에 `3`·`2`·`1` 을 1초씩 말하게 한 다음 `🤖 AI에게 지금 사진 물어보기` 로 찍는다. 사진은 `🖼 사진 올리기(고를 때까지 기다리기)` 가 무대로 끌어다 놓은 사진을 기다린다(끌어다 놓기·붙여넣기·파일 고르기 모두 된다).
-- `만약 / 다른 경우 / 아니라면` 은 판단 하나로 못 그린다. 판단 하나 = 순서도 한 장으로 나눠, 앞 장의 아니오 쪽에서 "④ 다른 경우로"처럼 다음 장을 가리킨다.
-- `묻고 기다리기`·`대답` 은 AI 서랍(`ac.ai`), `=` 는 연산(`ac.op`), `만약`·`무한 반복`·`기다리기`·`멈추기` 는 제어(`ac.control`).
-- 분기 안 상자가 넓이를 넘으면 한 블록을 두 줄로 나눈다(`lines` 를 언어별로 따로 쓴다).
 
 ## JSON 형식
 
@@ -92,5 +83,3 @@ python3 flowchart.py demo.json -o out/ --lang en    # 한 언어만
 **서랍 이름**
 - 앱인벤터: `ai.ctrl` `ai.logic` `ai.math` `ai.text` `ai.color` `ai.list` `ai.var` `ai.set`(컴포넌트 속성) `ai.call`(컴포넌트 호출)
 - 스크래치: `sc.motion` `sc.looks` `sc.sound` `sc.events` `sc.control` `sc.sensing` `sc.operators` `sc.vars` `sc.myblocks`
-- AI 코딩(kakainfo.com/aicode): `ac.event` `ac.ai` `ac.motion` `ac.looks` `ac.sound` `ac.control` `ac.sense` `ac.op` `ac.vars`.
-  서랍 이름·색은 `ohinfo/public/ai-blocks.js`(COLORS), 블록 글자는 `ohinfo/public/ai-i18n.js` 의 `b_*`·`k_*` 에서 언어별로 그대로 가져온다(번역을 새로 짓지 않는다).
