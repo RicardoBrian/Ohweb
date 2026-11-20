@@ -265,6 +265,7 @@
   <!-- 결과: 관리자만 -->
   <section class="results card" id="results" hidden>
     <h2>응답 결과 <span><button type="button" onclick="window.open('https://docs.google.com/spreadsheets/d/1_RLO0JiStT-sIJuwOeRsjP-bUoV8jsny-eBbQfrB1x8/edit')">구글 시트</button> <button type="button" id="csvBtn">CSV 받기</button></span></h2>
+    <p class="empty" id="syncState" style="margin:-6px 0 10px"></p>
     <div class="stats" id="stats"></div>
     <div id="table"></div>
   </section>
@@ -376,12 +377,35 @@ onAuthStateChanged(auth, (user) => {
     rows = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     $("results").hidden = false;
     render();
+    if (!snap.metadata.hasPendingWrites) syncSheet(user);
   }, (err) => {
     $("adminMsg").hidden = false;
     $("adminMsg").textContent = err.code === "permission-denied"
       ? "이 계정은 결과를 볼 수 없습니다." : "결과를 불러오지 못했습니다: " + (err.code || err.message);
   });
 });
+
+// 구글 시트 [응답] 탭을 DB 와 똑같이 (DB 가 기준). 결과가 바뀔 때마다, 잠깐 모았다가 한 번.
+let syncTimer = null;
+function syncSheet(user) {
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(async () => {
+    const st = $("syncState");
+    try {
+      const data = rows.filter((r) => r.at && r.at.toMillis)
+        .map((r) => ({ id: r.id, name: r.name, choice: r.choice, at: r.at.toMillis() }));
+      st.textContent = "시트 맞추는 중…";
+      const res = await fetch("https://admin.kakainfo.com/api/temp-sheet", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ event: EVENT, mode: "sync", idToken: await user.getIdToken(), rows: data }),
+      });
+      const out = await res.json().catch(() => ({}));
+      st.textContent = out.ok ? `시트 맞춤 완료 (${out.rows}줄)` : "시트 맞추기 실패: " + (out.error || res.status);
+    } catch (err) {
+      st.textContent = "시트 맞추기 실패: " + (err.message || err);
+    }
+  }, 1500);
+}
 
 const keyOf = (n) => String(n).replace(/\s+/g, "");
 const fmt = (ts) => {
