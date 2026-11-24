@@ -385,7 +385,7 @@
     </div>
     <span class="group-label">카카오페이 송금 링크 <span style="text-transform:none;letter-spacing:0;font-weight:500;">— 넣고 싶은 사람만</span></span>
     <div class="inset-group" id="payLinkList"></div>
-    <p class="text-sm" style="margin:-12px 4px 8px;">링크가 없으면 정산 탭 [카카오톡] 버튼은 금액을 복사하고 카톡을 열어요(채팅방 → + → 송금에 붙여넣기). 받을 사람이 카카오페이 송금 코드 링크(qr.kakaopay.com/…)를 여기 넣어 두면 그 사람에게 바로 가는 송금 화면이 열려요.</p>
+    <p class="text-sm" style="margin:-12px 4px 8px;">링크가 없으면 정산 탭 [카카오톡] 버튼은 금액을 복사하고 카톡 송금 화면을 열어요(받을 사람 고르고 붙여넣기). 받을 사람이 카카오페이 송금 코드 링크(qr.kakaopay.com/…)를 여기 넣어 두면 그 사람에게 바로 가는 송금 화면이 열려요.</p>
   </div>
 </div>
 
@@ -545,8 +545,9 @@ function setTrip(id, d) {
 }
 
 // ── 카카오페이 송금 링크 ──
-// 링크 없는 사람에게 보낼 때 여는 카카오톡 주소. 송금 화면까지 가는 주소를 찾으면 여기만 바꾼다(kakao-test.html 로 시험).
-const KAKAOTALK_URL = 'kakaotalk://';
+// 링크 없는 사람에게 보낼 때 여는 카카오톡 송금 화면(받을 사람은 직접 선택). 공식 문서는 없고 카카오톡 앱 안에 있는 주소다.
+// 안 되면 여기만 바꾼다(kakao-test.html 로 시험). 다른 후보: kakaotalk://kakaopay/money/to/bank?amount=금액 (계좌송금)
+const KAKAOTALK_URL = 'kakaotalk://kakaopay/money/send';
 // 받는 사람이 붙여넣은 글에서 qr.kakaopay.com 주소만 뽑는다. 아니면 ''.
 function kakaoLink(text) {
   const m = String(text || '').match(/(?:https?:\/\/)?qr\.kakaopay\.com\/[A-Za-z0-9_-]+/);
@@ -744,8 +745,7 @@ function renderStats(bal) {
 $('settleList').addEventListener('click', async (e) => {
   // 카카오페이:
   //  - 받는 사람이 송금 링크(qr.kakaopay.com, 일반 웹주소)를 넣어 뒀으면 그 링크를 연다 — 받는 사람이 정해진 송금 화면
-  //  - 없으면 금액을 복사하고 카카오톡을 연다(kakaotalk://, 아이폰은 "카카오톡에서 여시겠습니까?"). 카톡 송금 화면까지
-  //    여는 공개 주소는 없다. 카카오페이 앱 주소(kakaopay://)는 별도 앱이 없으면 아이폰에서 "주소가 유효하지 않음" 오류라 안 쓴다.
+  //  - 없으면 금액을 복사하고 카카오톡 송금 화면을 연다(KAKAOTALK_URL, 아이폰은 "카카오톡에서 여시겠습니까?"). 카카오페이 앱 주소(kakaopay://)는 별도 앱이 없으면 아이폰에서 "주소가 유효하지 않음" 오류라 안 쓴다.
   const payBtn = e.target.closest('[data-pay]');
   if (payBtn) {
     const r = settleRows[Number(payBtn.dataset.pay)];
@@ -757,7 +757,7 @@ $('settleList').addEventListener('click', async (e) => {
       toast(`${fmt(r.amt)} 을 금액에 붙여넣어 보내고, 돌아와서 ✓ 를 눌러 주세요.`, 5000);
       window.open(link, '_blank', 'noopener');
     } else {
-      toast(`${fmt(r.amt)} 복사했어요. 카톡 ${r.to} 채팅방 → + → 송금에 붙여넣어 보내고, 돌아와서 ✓ 를 눌러 주세요.`, 8000);
+      toast(`${fmt(r.amt)} 복사했어요. 카톡 송금에서 ${r.to}을(를) 골라 금액을 붙여넣어 보내고, 돌아와서 ✓ 를 눌러 주세요.`, 8000);
       if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform))) {
         location.href = KAKAOTALK_URL;
       }
