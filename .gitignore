@@ -2,3 +2,4 @@ node_modules/
 serviceAccountKey*.json
 *-firebase-adminsdk-*.json
 *-debug.log
+.claude/settings.local.json
