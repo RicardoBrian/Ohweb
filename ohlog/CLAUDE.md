@@ -23,3 +23,8 @@
 - 화면 파일을 새로 추가하면 `sw.js` 의 `SHELL` 목록에도 넣는다(안 넣으면 그 파일은 그냥 인터넷에서 받는다). `/api/*`·외부 주소는 손대지 않는다.
 - 견본에는 서비스 워커를 넣지 않는다(`ohinfo/tools/vibe/build.py` `build_classlog`). `app.js` 의 `navigator.serviceWorker.register('/sw.js')` 줄을 바꾸면 거기도 맞춘다(안 맞추면 견본 빌드가 실패한다).
 - 지난 주 시간표: 컴시간은 지난 주를 안 주므로 받아 본 주를 기기에 최근 12주 보관(`classlog:arch:*`)해 주 목록에 '저장본'(음수 r)으로 붙인다.
+
+## 수업일지(ohlog) — 사용 기록
+- 선생님이 그날 연 화면과 일지 저장 수를 `classlog_users/{uid}/plans/_usage` 한 문서에 `{ days: { 'YYYY-MM-DD': { today: true, week: true, save: 3 } } }` 로 남긴다(`app.js` `track`). 같은 날 같은 화면은 한 번만 쓴다. 관리자 본인은 남기지 않는다.
+- `plans` 에 두는 건 Firestore 규칙을 바꾸지 않기 위해서다. `planDocs()` 는 `items` 배열이 있는 문서만 계획으로 보므로 `_prefs`·`_usage` 는 계획 목록에 안 나온다.
+- 관리자 '승인 관리' → '사용 기록' 카드: 날짜별로 쓴 선생님·화면·저장 수, 최근 30일 화면별 사용 교사 수. 2026-11-24 부터 기록.

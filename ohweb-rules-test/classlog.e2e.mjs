@@ -274,6 +274,28 @@ await p.click('#planSave');
 await p.waitForSelector('#planSave[disabled]');
 await shot(p, '05-plan-m');
 
+// 5-1) 사용 기록: 교사가 연 화면·일지 저장 수가 plans/_usage 에 남고, 관리자 '사용 기록'에 그날 쓴 선생님으로 나옴
+{
+  let u = null;
+  for (let i = 0; i < 30 && !u?.save; i++) {
+    await env.withSecurityRulesDisabled(async (c) => {
+      const t = (await c.firestore().collection('classlog_users').where('email', '==', 'teacher@gmail.com').get()).docs[0];
+      u = (await t.ref.collection('plans').doc('_usage').get()).data()?.days?.['2026-10-29'];
+    });
+    if (!u?.save) await new Promise((r) => setTimeout(r, 200));
+  }
+  ok('사용 기록: 교사가 연 화면과 일지 저장 수가 그날 날짜로 남음', u?.week && u?.today && u?.plan && u?.save === 1, JSON.stringify(u));
+  await A.page.click('.side-item[data-go="admin"]');
+  await A.page.click('[data-act="usage-reload"]');
+  await A.page.waitForFunction(() => /일지 저장 1번/.test(document.getElementById('usageBox')?.textContent || ''));
+  const txt = await A.page.textContent('#usageBox');
+  ok('관리자 사용 기록: 그날 쓴 선생님·화면·저장 수가 보이고, 관리자 본인은 안 셈', /이날 쓴 선생님 1명 \/ 승인 1명/.test(txt) && /시간표/.test(txt) && /1일 사용/.test(txt), txt.slice(0, 200));
+  await A.page.fill('#usageDate', '2026-10-28');
+  await A.page.dispatchEvent('#usageDate', 'change');
+  ok('관리자 사용 기록: 다른 날을 고르면 그날 기준으로 바뀜', /이날 쓴 선생님이 없어요/.test(await A.page.textContent('#usageBox')));
+  await shot(A.page, '05-usage');
+}
+
 // 6) 계획이 생긴 뒤: 기본은 비어 있고, 추천 칩·▾ 목록에서 골라 채움
 await p.click('.tab[data-go="today"]');
 await p.locator('#todayList .lesson').first().click();
