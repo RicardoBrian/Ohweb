@@ -385,7 +385,7 @@
     </div>
     <span class="group-label">카카오페이 송금 링크 <span style="text-transform:none;letter-spacing:0;font-weight:500;">— 넣고 싶은 사람만</span></span>
     <div class="inset-group" id="payLinkList"></div>
-    <p class="text-sm" style="margin:-12px 4px 8px;">링크가 없으면 정산 탭 버튼은 금액만 복사해요(카톡 채팅방 → + → 송금에 붙여넣기). 받을 사람이 카카오페이 송금 코드 링크(qr.kakaopay.com/…)를 여기 넣어 두면 그 사람에게 바로 가는 송금 화면이 열려요.</p>
+    <p class="text-sm" style="margin:-12px 4px 8px;">링크가 없으면 정산 탭 [카카오톡] 버튼은 금액을 복사하고 카톡을 열어요(채팅방 → + → 송금에 붙여넣기). 받을 사람이 카카오페이 송금 코드 링크(qr.kakaopay.com/…)를 여기 넣어 두면 그 사람에게 바로 가는 송금 화면이 열려요.</p>
   </div>
 </div>
 
@@ -545,6 +545,8 @@ function setTrip(id, d) {
 }
 
 // ── 카카오페이 송금 링크 ──
+// 링크 없는 사람에게 보낼 때 여는 카카오톡 주소. 송금 화면까지 가는 주소를 찾으면 여기만 바꾼다(kakao-test.html 로 시험).
+const KAKAOTALK_URL = 'kakaotalk://';
 // 받는 사람이 붙여넣은 글에서 qr.kakaopay.com 주소만 뽑는다. 아니면 ''.
 function kakaoLink(text) {
   const m = String(text || '').match(/(?:https?:\/\/)?qr\.kakaopay\.com\/[A-Za-z0-9_-]+/);
@@ -715,7 +717,7 @@ function renderStats(bal) {
     const canPay = !me || r.from === me;   // 남의 송금 줄에는 버튼을 안 보인다
     const pay = !canPay ? '' : link
       ? `<button class="kakao-btn" title="${escHtml(r.to)}에게 카카오페이로 보내기" data-pay="${r.i}">카카오페이</button>`
-      : `<button class="kakao-btn" title="금액을 복사해요 — 카톡 송금에 붙여넣기" data-pay="${r.i}">금액 복사</button>`;
+      : `<button class="kakao-btn" title="금액을 복사하고 카카오톡을 열어요 — 송금에 붙여넣기" data-pay="${r.i}">카카오톡</button>`;
     return `<div class="settle-row ${me && r.from === me ? 'mine' : ''}">
       <span class="settle-who">${escHtml(r.from)}<svg width="14" height="14"><use href="#ic-arrow"/></svg>${escHtml(r.to)}</span>
       <span class="settle-amt">${fmt(r.amt)}</span>
@@ -742,8 +744,8 @@ function renderStats(bal) {
 $('settleList').addEventListener('click', async (e) => {
   // 카카오페이:
   //  - 받는 사람이 송금 링크(qr.kakaopay.com, 일반 웹주소)를 넣어 뒀으면 그 링크를 연다 — 받는 사람이 정해진 송금 화면
-  //  - 없으면 금액만 복사하고 카톡 송금 방법을 안내한다. 카톡 송금 화면을 여는 공개 주소는 없고,
-  //    카카오페이 앱 주소(kakaopay://)는 별도 앱이 없으면 아이폰에서 "주소가 유효하지 않음" 오류라 쓰지 않는다.
+  //  - 없으면 금액을 복사하고 카카오톡을 연다(kakaotalk://, 아이폰은 "카카오톡에서 여시겠습니까?"). 카톡 송금 화면까지
+  //    여는 공개 주소는 없다. 카카오페이 앱 주소(kakaopay://)는 별도 앱이 없으면 아이폰에서 "주소가 유효하지 않음" 오류라 안 쓴다.
   const payBtn = e.target.closest('[data-pay]');
   if (payBtn) {
     const r = settleRows[Number(payBtn.dataset.pay)];
@@ -755,7 +757,10 @@ $('settleList').addEventListener('click', async (e) => {
       toast(`${fmt(r.amt)} 을 금액에 붙여넣어 보내고, 돌아와서 ✓ 를 눌러 주세요.`, 5000);
       window.open(link, '_blank', 'noopener');
     } else {
-      toast(`${fmt(r.amt)} 복사했어요. 카톡에서 ${r.to} 채팅방 → + → 송금에 붙여넣어 보내고, 돌아와서 ✓ 를 눌러 주세요.`, 7000);
+      toast(`${fmt(r.amt)} 복사했어요. 카톡 ${r.to} 채팅방 → + → 송금에 붙여넣어 보내고, 돌아와서 ✓ 를 눌러 주세요.`, 8000);
+      if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.platform))) {
+        location.href = KAKAOTALK_URL;
+      }
     }
     return;
   }
