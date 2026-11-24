@@ -1,4 +1,4 @@
-/* 관리 페이지 공통 하늘(ui-sky) 모양 — admin.html·forms.html·messages.html·settle.html 이 같이 쓴다.
+/* 관리 페이지 공통 하늘(ui-sky) 모양 — admin.html·forms.html·messages.html 이 같이 쓴다.
    색·판 재료 토큰은 theme.css 의 body.ui-sky, 메뉴 마크업은 admin-nav.js. */
 /* ============================================================
    하늘(ui-sky) 디자인 — PC: 왼쪽 사이드바, 태블릿: 상단 바, 모바일: 상단 바 + 하단 탭바
@@ -118,7 +118,7 @@ body.ui-sky .select-controls select.inp { padding-top: 7px; padding-bottom: 7px;
   body.ui-sky .pane-list div:has(> .list-item + .list-item) > .list-item { margin-bottom: 0; }
 }
 
-/* ── 관리 페이지 공통 부품: 제목·현황 카드·세그먼트·검색 줄 (forms·messages·settle) ── */
+/* ── 관리 페이지 공통 부품: 제목·현황 카드·세그먼트·검색 줄 (forms·messages) ── */
 body.ui-sky .page-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 body.ui-sky .page-head h1 { font-size: 2.1rem; font-weight: 300; letter-spacing: -0.03em; }
 body.ui-sky .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); }
