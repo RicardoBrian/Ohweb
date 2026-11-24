@@ -162,6 +162,24 @@
   .mt8 { margin-top: 8px; } .mt16 { margin-top: 16px; } .mt24 { margin-top: 24px; }
   /* 하늘(ui-sky) 디자인: 주 버튼은 남색(해 질 녘은 라벤더) */
   body.ui-sky .cta, body.ui-sky .fab { background: var(--sky-cta); color: var(--sky-cta-text); }
+
+  /* ── 추가: 링크 입장·편집·참여자 관리 ── */
+  .recent-row { display: flex; align-items: center; gap: 12px; padding: 12px 8px 12px 16px; min-height: 52px; position: relative; cursor: pointer; transition: background 0.12s; }
+  .recent-row + .recent-row::before { content: ''; position: absolute; top: 0; left: 16px; right: 0; height: 1px; background: var(--hairline, rgba(120,120,128,0.2)); }
+  .recent-row:active { background: var(--glass); }
+  .recent-name { flex: 1; min-width: 0; font-size: 0.95rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .list-item.tappable { cursor: pointer; transition: background 0.12s; }
+  .list-item.tappable:active { background: var(--glass); }
+  .split-remain { padding: 10px 16px; font-size: 0.8rem; color: var(--sub); text-align: right; font-variant-numeric: tabular-nums; }
+  .split-remain.bad { color: var(--danger); }
+  .member-edit { display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 16px; min-height: 48px; position: relative; }
+  .member-edit + .member-edit::before { content: ''; position: absolute; top: 0; left: 16px; right: 0; height: 1px; background: var(--hairline, rgba(120,120,128,0.2)); }
+  .member-edit input { flex: 1; border: none; background: none; font-family: inherit; font-size: 0.95rem; color: var(--text); outline: none; min-width: 0; }
+  .cta.secondary { background: var(--glass); color: var(--text); }
+  body.ui-sky .cta.secondary { background: var(--glass); color: var(--text); }
+  .danger-link { color: var(--danger); }
+  .danger-link:hover { color: var(--danger); }
+  .home-foot { position: static; align-items: center; text-align: center; margin: -80px auto 0; padding: 0 18px 32px; }
 </style>
 </head>
 <body class="ui-sky">
@@ -172,19 +190,20 @@
     <symbol id="ic-wallet" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 9h14a3 3 0 0 1 3 3v0" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="16.5" cy="13" r="1.3" fill="currentColor"/></symbol>
     <symbol id="ic-swap" viewBox="0 0 24 24"><path d="M4 8h13M17 8l-3.5-3.5M17 8l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 16H7M7 16l3.5-3.5M7 16l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="ic-arrow" viewBox="0 0 24 24"><path d="M5 12h13M14 7l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-chevron" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="ic-download" viewBox="0 0 24 24"><line x1="12" y1="4" x2="12" y2="15" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="7,10 12,15 17,10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><line x1="5" y1="19" x2="19" y2="19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
     <symbol id="ic-trash" viewBox="0 0 24 24"><line x1="5" y1="7" x2="19" y2="7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M8 7V5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M7 7l1 13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1l1-13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><line x1="10" y1="11" x2="10" y2="17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><line x1="14" y1="11" x2="14" y2="17" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
-    <symbol id="ic-refresh" viewBox="0 0 24 24"><path d="M5 12a7 7 0 0 1 12-4.9M19 12a7 7 0 0 1-12 4.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><polyline points="17,3 17,7.5 12.5,7.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><polyline points="7,21 7,16.5 11.5,16.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="ic-close" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
     <symbol id="ic-exit" viewBox="0 0 24 24"><path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 8l4 4-4 4M19 12H9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="ic-check" viewBox="0 0 24 24"><polyline points="5,13 9.5,17.5 19,6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-    <symbol id="ic-doc" viewBox="0 0 24 24"><path d="M7 3.5h7l4 4v13a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 3.5V8h4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><line x1="8.5" y1="13" x2="15.5" y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="8.5" y1="16.5" x2="13" y2="16.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+    <symbol id="ic-share" viewBox="0 0 24 24"><path d="M12 15V4M8 8l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 11H5a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7a1 1 0 0 0-1-1h-1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-people" viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M15.5 5.6a3.2 3.2 0 0 1 0 5.8M17 14.2a5.5 5.5 0 0 1 3.5 4.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
   </defs>
 </svg>
 
 <div id="toast" class="toast"></div>
 
-<!-- 홈: 입장 -->
+<!-- 홈 -->
 <div id="page-home" class="page active">
   <nav class="nav">
     <span class="nav-brand"><img src="logo.png" alt="kakainfo"><span class="nav-brand-title">정산</span></span>
@@ -199,57 +218,51 @@
       </div>
     </div>
 
-    <div id="loginSection">
-      <span class="group-label">프로젝트 입장</span>
-      <div class="inset-group">
-        <div class="inset-row">
-          <span class="row-label">프로젝트</span>
-          <select id="tripSelect" class="placeholder" onchange="this.classList.toggle('placeholder', !this.value)"><option value="">선택</option></select>
-        </div>
-        <div class="inset-row">
-          <span class="row-label">비밀코드</span>
-          <input type="password" id="loginCode" placeholder="입력" onkeydown="if(event.key==='Enter')doLogin()">
-        </div>
-      </div>
-      <button class="cta" onclick="doLogin()">입장</button>
-      <button class="link-btn" onclick="toggleRegister(true)">새 프로젝트 만들기</button>
+    <div id="recentSection" class="hidden">
+      <span class="group-label">이 기기에서 연 프로젝트</span>
+      <div class="inset-group" id="recentList"></div>
     </div>
 
-    <div id="registerSection" class="hidden">
-      <span class="group-label">새 프로젝트</span>
-      <div class="inset-group">
-        <div class="inset-row">
-          <span class="row-label">이름</span>
-          <input type="text" id="regName" placeholder="예: 제주 여행">
-        </div>
-        <div class="inset-row">
-          <span class="row-label">비밀코드</span>
-          <input type="password" id="regCode" placeholder="설정">
-        </div>
-        <div class="inset-row">
-          <span class="row-label">참여자</span>
-          <input type="text" id="regMembers" placeholder="철수, 영희, 민수">
-        </div>
+    <span class="group-label">새 프로젝트</span>
+    <div class="inset-group">
+      <div class="inset-row">
+        <span class="row-label">이름</span>
+        <input type="text" id="regName" placeholder="예: 제주 여행" maxlength="60">
       </div>
-      <button class="cta" onclick="doRegister()">등록 신청</button>
-      <p class="text-sm text-center mt8">등록 후 관리자 승인이 필요합니다</p>
-      <button class="link-btn" onclick="toggleRegister(false)">돌아가기</button>
+      <div class="inset-row">
+        <span class="row-label">참여자</span>
+        <input type="text" id="regMembers" placeholder="철수, 영희, 민수" onkeydown="if(event.key==='Enter')doCreate()">
+      </div>
     </div>
+    <button class="cta" id="createBtn" onclick="doCreate()">만들기</button>
+    <p class="text-sm text-center mt8">만들면 생기는 링크를 함께 정산할 사람에게 보내세요</p>
+
+    <span class="group-label mt24" style="display:block;">받은 링크로 열기</span>
+    <div class="inset-group">
+      <div class="inset-row">
+        <input type="text" id="joinLink" placeholder="링크 붙여넣기" style="text-align:left;" onkeydown="if(event.key==='Enter')doJoin()">
+      </div>
+    </div>
+    <button class="cta secondary" onclick="doJoin()">열기</button>
   </div>
   <footer class="home-foot">
-    <span>오범석과 친구들을 위한 공간입니다.</span>
-    <span>공용 프로젝트이니 개인정보 입력에 유의하세요.</span>
+    <span>링크를 가진 사람은 누구나 보고 고칠 수 있어요.</span>
+    <span>개인정보 입력에 유의하세요.</span>
   </footer>
 </div>
 
 <!-- 메인 -->
 <div id="page-main" class="page">
   <nav class="nav">
-    <div>
-      <div class="nav-brand-title" id="mainTitle">프로젝트명</div>
+    <div style="min-width:0;">
+      <div class="nav-brand-title" id="mainTitle" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">프로젝트명</div>
       <div class="text-sm" id="mainMemberCount" style="margin-top:1px;"></div>
     </div>
-    <button class="icon-action" title="나가기" onclick="exitTrip()"><svg width="18" height="18"><use href="#ic-exit"/></svg></button>
+    <div style="display:flex;gap:2px;flex-shrink:0;">
+      <button class="icon-action" title="링크 공유" onclick="shareLink()"><svg width="18" height="18"><use href="#ic-share"/></svg></button>
+      <button class="icon-action" title="참여자·이름" onclick="openSettings()"><svg width="18" height="18"><use href="#ic-people"/></svg></button>
+      <button class="icon-action" title="나가기" onclick="goHome()"><svg width="18" height="18"><use href="#ic-exit"/></svg></button>
+    </div>
   </nav>
 
   <div class="wrap">
@@ -261,50 +274,42 @@
 
     <div class="seg" id="mainSeg">
       <button class="on" id="seg-history" onclick="switchView('history')">내역</button>
-      <button id="seg-stats" onclick="switchView('stats')">현황</button>
+      <button id="seg-stats" onclick="switchView('stats')">정산</button>
     </div>
 
     <!-- 내역 -->
     <div id="view-history">
-      <div class="toolbar">
-        <span class="t-label">최근 내역</span>
-        <div class="t-actions">
-          <button class="icon-action" title="새로고침" onclick="refreshData()"><svg width="17" height="17"><use href="#ic-refresh"/></svg></button>
-        </div>
-      </div>
       <div class="inset-group" id="dataList" style="margin-bottom:0;"><div class="spinner"></div></div>
+      <p class="text-sm text-center mt8" id="listHint"></p>
     </div>
 
-    <!-- 현황 -->
+    <!-- 정산 -->
     <div id="view-stats" class="hidden">
+      <span class="group-label">보낼 돈</span>
+      <div class="inset-group" id="settleList"></div>
+      <button class="link-btn hidden" id="copyBtn" onclick="copySettlement()" style="margin:-8px auto 22px;">결과 복사하기</button>
+
       <span class="group-label">참여자별 현황</span>
       <div class="inset-group" id="memberBalanceList"></div>
 
-      <span class="group-label">정산</span>
-      <div class="inset-group" id="settleList">
-        <div class="empty" id="settleEmpty">아래 버튼을 눌러 최소 송금 경로를 계산합니다</div>
-      </div>
-      <button class="cta" onclick="showSettlement()">정산 계산하기</button>
-      <button class="link-btn hidden" id="copyBtn" onclick="copySettlement()">결과 복사하기</button>
-
-      <span class="group-label" style="margin-top:26px;display:block;">관리</span>
+      <span class="group-label">관리</span>
       <div class="inset-group">
         <div class="inset-row tappable" onclick="downloadCSV()">
           <svg width="17" height="17" style="color:var(--sub);flex-shrink:0;"><use href="#ic-download"/></svg>
           <span style="flex:1;font-size:0.92rem;">CSV 내보내기</span>
         </div>
-        <div class="inset-row tappable" onclick="deleteData()">
+        <div class="inset-row tappable" onclick="deleteTrip()">
           <svg width="17" height="17" style="color:var(--danger);flex-shrink:0;"><use href="#ic-trash"/></svg>
-          <span style="flex:1;font-size:0.92rem;color:var(--danger);">데이터 삭제 및 종료</span>
+          <span style="flex:1;font-size:0.92rem;color:var(--danger);">프로젝트 삭제</span>
         </div>
       </div>
     </div>
   </div>
 
-  <button class="fab" title="추가" onclick="openSheet('expense')"><svg width="24" height="24"><use href="#ic-plus"/></svg></button>
+  <button class="fab" title="추가" onclick="openEntry('expense')"><svg width="24" height="24"><use href="#ic-plus"/></svg></button>
 </div>
 
-<!-- 바텀 시트: 입력 -->
+<!-- 바텀 시트 -->
 <div class="sheet-bg" id="sheetBg" onclick="closeSheet()"></div>
 <div class="sheet" id="sheet">
   <div class="sheet-grab"></div>
@@ -313,517 +318,699 @@
     <button class="icon-action" onclick="closeSheet()"><svg width="18" height="18"><use href="#ic-close"/></svg></button>
   </div>
 
-  <div class="seg">
-    <button class="on" id="sheet-seg-expense" onclick="switchSheetMode('expense')">지출</button>
-    <button id="sheet-seg-transfer" onclick="switchSheetMode('transfer')">송금</button>
-  </div>
-
-  <div id="sheet-expense">
-    <div class="inset-group">
-      <div class="inset-row"><span class="row-label">날짜</span><input type="date" id="date_e"></div>
-      <div class="inset-row"><span class="row-label">내용</span><input type="text" id="desc_e" placeholder="예: 저녁 식사"></div>
-      <div class="inset-row"><span class="row-label">금액</span><input type="number" id="amt_e" placeholder="0" min="1" inputmode="numeric"></div>
-      <div class="inset-row"><span class="row-label">결제자</span><select id="payer_e"></select></div>
+  <!-- 지출·송금 입력/수정 -->
+  <div id="panel-entry">
+    <div class="seg" id="entrySeg">
+      <button class="on" id="sheet-seg-expense" onclick="switchSheetMode('expense')">지출</button>
+      <button id="sheet-seg-transfer" onclick="switchSheetMode('transfer')">송금</button>
     </div>
-    <span class="group-label">참여자</span>
-    <div class="inset-group">
-      <div class="split-toggle">
-        <span>금액 직접 입력</span>
-        <label class="switch"><input type="checkbox" id="splitToggle" onchange="toggleSplit()"><span class="knob"></span></label>
+
+    <div id="sheet-expense">
+      <div class="inset-group">
+        <div class="inset-row"><span class="row-label">날짜</span><input type="date" id="date_e"></div>
+        <div class="inset-row"><span class="row-label">내용</span><input type="text" id="desc_e" placeholder="예: 저녁 식사" maxlength="100"></div>
+        <div class="inset-row"><span class="row-label">금액</span><input type="number" id="amt_e" placeholder="0" min="1" inputmode="numeric" oninput="updateSplitRemain()"></div>
+        <div class="inset-row"><span class="row-label">결제자</span><select id="payer_e"></select></div>
       </div>
-      <div id="memberList"></div>
+      <span class="group-label">나눌 사람</span>
+      <div class="inset-group">
+        <div class="split-toggle">
+          <span>금액 직접 입력</span>
+          <label class="switch"><input type="checkbox" id="splitToggle" onchange="toggleSplit()"><span class="knob"></span></label>
+        </div>
+        <div id="memberList"></div>
+        <div class="split-remain hidden" id="splitRemain"></div>
+      </div>
+      <button class="cta" id="saveExpenseBtn" onclick="saveExpense()">지출 추가</button>
     </div>
-    <button class="cta" onclick="addExpense()">지출 추가</button>
+
+    <div id="sheet-transfer" class="hidden">
+      <p class="text-sm" style="margin:0 4px 14px;">정산 전에 미리 보낸 돈을 기록하면 계산에 반영됩니다.</p>
+      <div class="inset-group">
+        <div class="inset-row"><span class="row-label">날짜</span><input type="date" id="date_t"></div>
+        <div class="inset-row"><span class="row-label">보낸 사람</span><select id="sender_t"></select></div>
+        <div class="inset-row"><span class="row-label">받은 사람</span><select id="receiver_t"></select></div>
+        <div class="inset-row"><span class="row-label">금액</span><input type="number" id="amt_t" placeholder="0" min="1" inputmode="numeric"></div>
+        <div class="inset-row"><span class="row-label">메모</span><input type="text" id="memo_t" placeholder="선택" maxlength="100"></div>
+      </div>
+      <button class="cta" id="saveTransferBtn" onclick="saveTransfer()">송금 기록 저장</button>
+    </div>
+
+    <button class="link-btn danger-link hidden" id="deleteEntryBtn" onclick="deleteEntry()">이 내역 삭제</button>
   </div>
 
-  <div id="sheet-transfer" class="hidden">
-    <p class="text-sm" style="margin:0 4px 14px;">정산 전 미리 보낸 금액을 기록하면 최종 계산에 반영됩니다.</p>
+  <!-- 프로젝트 이름·참여자 -->
+  <div id="panel-settings" class="hidden">
+    <span class="group-label">프로젝트 이름</span>
     <div class="inset-group">
-      <div class="inset-row"><span class="row-label">날짜</span><input type="date" id="date_t"></div>
-      <div class="inset-row"><span class="row-label">보낸 사람</span><select id="sender_t"></select></div>
-      <div class="inset-row"><span class="row-label">받은 사람</span><select id="receiver_t"></select></div>
-      <div class="inset-row"><span class="row-label">금액</span><input type="number" id="amt_t" placeholder="0" min="1" inputmode="numeric"></div>
-      <div class="inset-row"><span class="row-label">메모</span><input type="text" id="memo_t" placeholder="선택"></div>
+      <div class="inset-row"><input type="text" id="setName" maxlength="60" style="text-align:left;" onchange="saveTripName()" onkeydown="if(event.key==='Enter')this.blur()"></div>
     </div>
-    <button class="cta" onclick="addTransfer()">송금 기록 저장</button>
+    <span class="group-label">참여자 <span style="text-transform:none;letter-spacing:0;font-weight:500;">— 이름을 고치면 지난 내역에도 반영돼요</span></span>
+    <div class="inset-group" id="memberEditList"></div>
+    <div class="inset-group">
+      <div class="member-edit">
+        <input type="text" id="newMember" placeholder="참여자 추가" maxlength="20" onkeydown="if(event.key==='Enter')addMember()">
+        <button class="icon-action" title="추가" onclick="addMember()"><svg width="18" height="18"><use href="#ic-plus"/></svg></button>
+      </div>
+    </div>
   </div>
 </div>
 
 <script type="module">
 import { db } from './firebase-config.js';
 import {
-  collection, addDoc, getDocs, getDoc, doc, deleteDoc, updateDoc, query, where, serverTimestamp
+  collection, addDoc, getDoc, getDocs, doc, deleteDoc, updateDoc, onSnapshot, writeBatch, serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-let currentTripId = '', currentTripName = '', currentCode = '';
-let tripMembers = [];
-let allDataCache = { expenses: [], transfers: [] };
-let settleRows = []; // {from, to, amt, done}
-let settleReport = '';
+// ── 상태 ──
+const RECENT_KEY = 'ohsettle_recent';
+let trip = null;                       // { id, name, members[] }
+let data = { expenses: [], transfers: [] };
+let loaded = { expenses: false, transfers: false };
+let unsubs = [];
+let editing = null;                    // { type: 'expense'|'transfer', id }
+let settleRows = [];
 
+// ── 공통 ──
+function $(id) { return document.getElementById(id); }
 function toast(msg) {
-  const el = document.getElementById('toast');
+  const el = $('toast');
   el.textContent = msg; el.classList.add('show');
   clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('show'), 2600);
 }
 function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
+  $(id).classList.add('active');
   window.scrollTo(0, 0);
 }
 function fmt(n) { return '₩' + Math.round(Number(n) || 0).toLocaleString('ko-KR'); }
-function today() { return new Date().toISOString().substring(0, 10); }
+function today() { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
 function escHtml(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function toInt(v) { return Math.round(Number(v) || 0); }
+function tsMs(t) { return t && typeof t.toMillis === 'function' ? t.toMillis() : Date.now(); }
+function tripLink(id) { return location.origin + location.pathname + '#' + id; }
+// 참여자 이름: 1~20자, 쉼표·콜론 불가(지출 기록 형식에 쓰임)
+function memberNameError(name, list, except) {
+  if (!name) return '이름을 입력해주세요.';
+  if (name.length > 20) return '이름은 20자 이내로 입력해주세요.';
+  if (/[,:]/.test(name)) return '이름에 쉼표(,)나 콜론(:)은 쓸 수 없어요.';
+  if (list.some(m => m === name && m !== except)) return '같은 이름의 참여자가 이미 있어요.';
+  return '';
+}
+function normMembers(raw) {
+  if (Array.isArray(raw)) return raw.map(m => String(m).trim()).filter(Boolean);
+  return String(raw || '').split(',').map(m => m.trim()).filter(Boolean);
+}
 
 window.toggleDark = () => { document.body.classList.toggle('dark'); localStorage.setItem('dark', document.body.classList.contains('dark') ? '1' : '0'); };
 if (localStorage.getItem('dark') === '1') document.body.classList.add('dark');
 
-window.toggleRegister = (show) => {
-  document.getElementById('loginSection').classList.toggle('hidden', show);
-  document.getElementById('registerSection').classList.toggle('hidden', !show);
-};
-
-// ── 초기 로드 ──
-document.getElementById('date_e').value = today();
-document.getElementById('date_t').value = today();
-init();
-
-async function init() {
-  await loadTrips();
-  // 마지막 입장 기억 → 자동 재입장
-  let reentered = false;
-  try {
-    const last = JSON.parse(localStorage.getItem('ohsettle_last') || 'null');
-    if (last && last.tripId && last.code) {
-      const ok = await enterTrip(last.tripId, last.code, true);
-      if (!ok) localStorage.removeItem('ohsettle_last');
-      reentered = ok;
-    }
-  } catch {}
-
-  // URL로 넘어온 여행 이름 자동 채움 (ohtravel "정산" 링크 연동)
-  if (!reentered) {
-    const urlName = new URLSearchParams(location.search).get('name');
-    if (urlName) {
-      document.getElementById('regName').value = urlName;
-      toggleRegister(true);
-    }
-  }
-}
-
-async function loadTrips() {
-  const snap = await getDocs(collection(db, 'settle_trips'));
-  const sel = document.getElementById('tripSelect');
-  sel.innerHTML = '<option value="">선택</option>';
-  sel.classList.add('placeholder');
-  snap.docs.forEach(d => {
-    const data = d.data();
-    if (data.status === 'done') return;
-    const o = document.createElement('option');
-    o.value = d.id;
-    o.textContent = data.status === 'pending' ? `${data.name} (승인 대기)` : data.name;
-    sel.appendChild(o);
-  });
-}
-
-// ── 등록 ──
-window.doRegister = async () => {
-  const name = document.getElementById('regName').value.trim();
-  const code = document.getElementById('regCode').value.trim();
-  const membersRaw = document.getElementById('regMembers').value.trim();
-  if (!name || !code || !membersRaw) { toast('모든 항목을 입력해주세요.'); return; }
-  if (code.length < 4) { toast('비밀코드는 4자 이상으로 설정해주세요.'); return; }
-  const members = membersRaw.split(',').map(m => m.trim()).filter(Boolean);
-  if (members.length < 2) { toast('참여자를 2명 이상 입력해주세요.'); return; }
-  try {
-    const dupSnap = await getDocs(query(collection(db, 'settle_trips'), where('name', '==', name)));
-    if (!dupSnap.empty) { toast('이미 존재하는 프로젝트 이름입니다.'); return; }
-    await addDoc(collection(db, 'settle_trips'), { name, code, status: 'pending', members, memo: '', createdAt: serverTimestamp() });
-    toast('등록 신청이 완료되었습니다. 관리자 승인 후 이용 가능합니다.');
-    document.getElementById('regName').value = '';
-    document.getElementById('regCode').value = '';
-    document.getElementById('regMembers').value = '';
-    toggleRegister(false);
-    loadTrips();
-  } catch (e) { toast('오류: ' + e.message); }
-};
-
-// ── 입장 ──
-async function enterTrip(tripId, code, silent) {
-  try {
-    const snap = await getDoc(doc(db, 'settle_trips', tripId));
-    if (!snap.exists() || snap.data().code !== code) { if (!silent) toast('인증 실패. 비밀코드를 확인해주세요.'); return false; }
-    const data = snap.data();
-    if (data.status !== 'approved') { if (!silent) toast('아직 승인 대기 중입니다.'); return false; }
-    currentTripId = tripId; currentTripName = data.name; currentCode = code;
-    tripMembers = Array.isArray(data.members) ? data.members : String(data.members || '').split(',').map(m => m.trim()).filter(Boolean);
-    localStorage.setItem('ohsettle_last', JSON.stringify({ tripId, code }));
-    document.getElementById('mainTitle').textContent = data.name;
-    document.getElementById('mainMemberCount').textContent = `참여자 ${tripMembers.length}명`;
-    showPage('page-main');
-    initUI();
-    refreshData();
-    return true;
-  } catch (e) { if (!silent) toast('오류: ' + e.message); return false; }
-}
-
-window.doLogin = async () => {
-  const tripId = document.getElementById('tripSelect').value;
-  const code = document.getElementById('loginCode').value.trim();
-  if (!tripId) { toast('프로젝트를 선택해주세요.'); return; }
-  if (!code) { toast('비밀코드를 입력해주세요.'); return; }
-  await enterTrip(tripId, code, false);
-};
-
-window.exitTrip = () => {
+// ── 이 기기에서 연 프로젝트 ──
+function getRecent() { try { const l = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); return Array.isArray(l) ? l : []; } catch { return []; } }
+function saveRecent(list) { localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 20))); }
+function rememberTrip(id, name) { saveRecent([{ id, name, at: Date.now() }, ...getRecent().filter(r => r.id !== id)]); }
+function forgetTrip(id) { saveRecent(getRecent().filter(r => r.id !== id)); }
+// 예전 판(비밀코드 입장)에서 마지막으로 들어간 프로젝트는 목록으로 옮긴다
+try {
+  const last = JSON.parse(localStorage.getItem('ohsettle_last') || 'null');
+  if (last && last.tripId && !getRecent().some(r => r.id === last.tripId)) saveRecent([...getRecent(), { id: last.tripId, name: '', at: 0 }]);
   localStorage.removeItem('ohsettle_last');
-  location.reload();
-};
+} catch {}
 
-// ── 메인 UI 초기화 ──
-function initUI() {
-  ['payer_e', 'sender_t', 'receiver_t'].forEach(id => {
-    const el = document.getElementById(id);
-    el.innerHTML = '';
-    tripMembers.forEach(m => { const o = document.createElement('option'); o.value = m; o.textContent = m; el.appendChild(o); });
-  });
-  const ml = document.getElementById('memberList');
-  ml.innerHTML = tripMembers.map((m, i) => `
-    <div class="member-row">
-      <label class="member-label"><input type="checkbox" class="mem-chk" value="${escHtml(m)}" checked>${escHtml(m)}</label>
-      <input type="number" id="amt_${i}" class="custom-amt" placeholder="0" inputmode="numeric">
+function renderRecent() {
+  const list = getRecent();
+  $('recentSection').classList.toggle('hidden', !list.length);
+  $('recentList').innerHTML = list.map(r => `
+    <div class="recent-row" data-open="${escHtml(r.id)}">
+      <span class="recent-name">${escHtml(r.name || '이름 없는 프로젝트')}</span>
+      <button class="icon-action" title="목록에서 빼기" data-forget="${escHtml(r.id)}"><svg width="15" height="15"><use href="#ic-close"/></svg></button>
+      <svg width="15" height="15" style="color:var(--text-3,#a0a4b0);flex-shrink:0;"><use href="#ic-chevron"/></svg>
     </div>`).join('');
 }
+$('recentList').addEventListener('click', (e) => {
+  const f = e.target.closest('[data-forget]');
+  if (f) { e.stopPropagation(); forgetTrip(f.dataset.forget); renderRecent(); return; }
+  const o = e.target.closest('[data-open]');
+  if (o) openTrip(o.dataset.open);
+});
 
-window.switchView = (mode) => {
-  document.getElementById('view-history').classList.toggle('hidden', mode !== 'history');
-  document.getElementById('view-stats').classList.toggle('hidden', mode !== 'stats');
-  document.getElementById('seg-history').classList.toggle('on', mode === 'history');
-  document.getElementById('seg-stats').classList.toggle('on', mode === 'stats');
-  if (mode === 'stats') refreshStats();
+// ── 만들기 / 링크로 열기 ──
+window.doCreate = async () => {
+  const name = $('regName').value.trim();
+  const members = [...new Set($('regMembers').value.split(/[,\n]/).map(m => m.trim()).filter(Boolean))];
+  if (!name) { toast('프로젝트 이름을 입력해주세요.'); return; }
+  if (members.length < 2) { toast('참여자를 2명 이상 입력해주세요 (쉼표로 구분).'); return; }
+  for (const m of members) { const err = memberNameError(m, []); if (err) { toast(`"${m}": ${err}`); return; } }
+  const btn = $('createBtn'); btn.disabled = true;
+  try {
+    const ref = await addDoc(collection(db, 'settle_trips'), { name, members, createdAt: serverTimestamp(), v: 2 });
+    $('regName').value = ''; $('regMembers').value = '';
+    await openTrip(ref.id);
+    toast('만들었어요. 위쪽 공유 버튼으로 링크를 보내세요.');
+  } catch (e) { toast('오류: ' + e.message); }
+  finally { btn.disabled = false; }
 };
 
-// ── 바텀 시트 ──
-window.openSheet = (mode) => {
-  switchSheetMode(mode);
-  document.getElementById('sheetBg').classList.add('open');
-  document.getElementById('sheet').classList.add('open');
-};
-window.closeSheet = () => {
-  document.getElementById('sheetBg').classList.remove('open');
-  document.getElementById('sheet').classList.remove('open');
-};
-window.switchSheetMode = (mode) => {
-  document.getElementById('sheet-expense').classList.toggle('hidden', mode !== 'expense');
-  document.getElementById('sheet-transfer').classList.toggle('hidden', mode !== 'transfer');
-  document.getElementById('sheet-seg-expense').classList.toggle('on', mode === 'expense');
-  document.getElementById('sheet-seg-transfer').classList.toggle('on', mode === 'transfer');
-  document.getElementById('sheetTitle').textContent = mode === 'expense' ? '지출 추가' : '송금 기록';
+function parseTripId(text) {
+  const s = String(text || '').trim();
+  const m = s.match(/#([A-Za-z0-9]{10,40})\s*$/) || s.match(/^([A-Za-z0-9]{10,40})$/);
+  return m ? m[1] : '';
+}
+window.doJoin = () => {
+  const id = parseTripId($('joinLink').value);
+  if (!id) { toast('링크를 확인해주세요.'); return; }
+  $('joinLink').value = '';
+  openTrip(id);
 };
 
-window.toggleSplit = () => {
-  const on = document.getElementById('splitToggle').checked;
-  document.querySelectorAll('.custom-amt').forEach(el => { el.style.display = on ? 'block' : 'none'; });
-};
+// ── 프로젝트 열기 / 닫기 ──
+function stopListening() { unsubs.forEach(u => { try { u(); } catch {} }); unsubs = []; }
 
-// ── 지출 추가 ──
-window.addExpense = async () => {
-  const date = document.getElementById('date_e').value;
-  const desc = document.getElementById('desc_e').value.trim();
-  const amt = Number(document.getElementById('amt_e').value);
-  const payer = document.getElementById('payer_e').value;
-  if (!desc) { toast('내용을 입력해주세요.'); return; }
-  if (!(amt > 0)) { toast('금액을 올바르게 입력해주세요.'); return; }
-
-  let memberData = '';
-  if (document.getElementById('splitToggle').checked) {
-    const pairs = []; let sum = 0;
-    document.querySelectorAll('.mem-chk').forEach((c, i) => {
-      if (c.checked) {
-        const val = Number(document.getElementById('amt_'+i).value);
-        if (val > 0) { pairs.push(`${c.value}:${val}`); sum += val; }
-      }
-    });
-    if (!pairs.length) { toast('참여자별 금액을 입력해주세요.'); return; }
-    if (Math.abs(sum - amt) > 1) {
-      if (!confirm(`총액(${fmt(amt)})과 입력 합계(${fmt(sum)})가 다릅니다.\n그래도 저장하시겠습니까?`)) return;
-    }
-    memberData = pairs.join(',');
-  } else {
-    const checked = [...document.querySelectorAll('.mem-chk:checked')].map(el => el.value);
-    if (!checked.length) { toast('참여자를 한 명 이상 선택해주세요.'); return; }
-    memberData = checked.join(',');
+async function openTrip(id) {
+  stopListening();
+  let snap;
+  try { snap = await getDoc(doc(db, 'settle_trips', id)); }
+  catch (e) { toast('불러오기 실패: ' + e.message); return false; }
+  if (!snap.exists() || snap.data().status === 'done') {
+    toast(snap.exists() ? '종료된 프로젝트입니다.' : '프로젝트를 찾을 수 없어요. 링크를 확인해주세요.');
+    forgetTrip(id); goHome(); return false;
   }
+  setTrip(id, snap.data());
+  data = { expenses: [], transfers: [] };
+  loaded = { expenses: false, transfers: false };
+  if (location.hash !== '#' + id) history.replaceState(null, '', '#' + id);
+  switchView('history');
+  showPage('page-main');
+  renderAll();
 
-  try {
-    await addDoc(collection(db, 'settle_trips', currentTripId, 'expenses'), { date, desc, amount: amt, payer, memberData, createdAt: serverTimestamp() });
-    toast('저장되었습니다.');
-    document.getElementById('desc_e').value = '';
-    document.getElementById('amt_e').value = '';
-    closeSheet();
-    refreshData();
-  } catch (e) { toast('오류: ' + e.message); }
-};
-
-// ── 송금 기록 ──
-window.addTransfer = async () => {
-  const date = document.getElementById('date_t').value;
-  const sender = document.getElementById('sender_t').value;
-  const receiver = document.getElementById('receiver_t').value;
-  const amt = Number(document.getElementById('amt_t').value);
-  const memo = document.getElementById('memo_t').value.trim();
-  if (sender === receiver) { toast('보낸 사람과 받은 사람이 같습니다.'); return; }
-  if (!(amt > 0)) { toast('금액을 올바르게 입력해주세요.'); return; }
-  try {
-    await addDoc(collection(db, 'settle_trips', currentTripId, 'transfers'), { date, sender, receiver, amount: amt, memo, createdAt: serverTimestamp() });
-    toast('송금 내역이 기록되었습니다.');
-    document.getElementById('amt_t').value = '';
-    document.getElementById('memo_t').value = '';
-    closeSheet();
-    refreshData();
-  } catch (e) { toast('오류: ' + e.message); }
-};
-
-// ── 내역 조회/표시 ──
-async function fetchTripData() {
-  const [expSnap, trSnap] = await Promise.all([
-    getDocs(collection(db, 'settle_trips', currentTripId, 'expenses')),
-    getDocs(collection(db, 'settle_trips', currentTripId, 'transfers')),
-  ]);
-  return {
-    expenses: expSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-    transfers: trSnap.docs.map(d => ({ id: d.id, ...d.data() })),
-  };
+  const onErr = (e) => toast('실시간 반영 오류: ' + e.message);
+  unsubs.push(onSnapshot(doc(db, 'settle_trips', id), s => {
+    if (!s.exists()) { toast('프로젝트가 삭제되었어요.'); forgetTrip(id); goHome(); return; }
+    setTrip(id, s.data()); renderAll();
+  }, onErr));
+  ['expenses', 'transfers'].forEach(sub => {
+    unsubs.push(onSnapshot(collection(db, 'settle_trips', id, sub), s => {
+      data[sub] = s.docs.map(d => ({ id: d.id, ...d.data() }));
+      loaded[sub] = true;
+      renderAll();
+    }, onErr));
+  });
+  return true;
 }
 
-window.refreshData = async () => {
-  document.getElementById('dataList').innerHTML = '<div class="spinner"></div>';
-  try {
-    allDataCache = await fetchTripData();
-    updateHero();
-    renderList();
-    if (!document.getElementById('view-stats').classList.contains('hidden')) refreshStats();
-  } catch (e) { document.getElementById('dataList').innerHTML = `<div class="empty">불러오기 실패: ${escHtml(e.message)}</div>`; }
+function setTrip(id, d) {
+  const prevMembers = trip && trip.id === id ? trip.members.join('\n') : null;
+  trip = { id, name: String(d.name || ''), members: normMembers(d.members) };
+  rememberTrip(id, trip.name);
+  $('mainTitle').textContent = trip.name;
+  $('mainMemberCount').textContent = `참여자 ${trip.members.length}명`;
+  document.title = `${trip.name} — 정산`;
+  if (prevMembers !== trip.members.join('\n')) buildMemberInputs();
+  if (!$('panel-settings').classList.contains('hidden')) renderSettings();
+}
+
+window.goHome = () => {
+  stopListening();
+  closeSheet();
+  trip = null;
+  if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+  document.title = '정산 — kakainfo';
+  renderRecent();
+  showPage('page-home');
 };
 
-function updateHero() {
-  const total = allDataCache.expenses.reduce((s, e) => s + Number(e.amount), 0);
-  document.getElementById('summaryTotal').textContent = fmt(total);
-  document.getElementById('summarySub').textContent = `지출 ${allDataCache.expenses.length}건 · 송금 ${allDataCache.transfers.length}건 · 참여자 ${tripMembers.length}명`;
+window.addEventListener('hashchange', () => {
+  const id = parseTripId(location.hash);
+  if (id && (!trip || trip.id !== id)) openTrip(id);
+  else if (!id && trip) goHome();
+});
+
+window.shareLink = async () => {
+  if (!trip) return;
+  const url = tripLink(trip.id);
+  if (navigator.share) {
+    try { await navigator.share({ title: trip.name + ' — 정산', url }); return; }
+    catch (e) { if (e.name === 'AbortError') return; }
+  }
+  try { await navigator.clipboard.writeText(url); toast('링크를 복사했어요.'); }
+  catch { prompt('이 링크를 복사해 보내세요', url); }
+};
+
+// ── 계산 ──
+// memberData: "철수,영희"(똑같이 나눔) 또는 "철수:3000,영희:7000"(직접 입력)
+function parseMemberData(md) {
+  const s = String(md || '');
+  if (s.includes(':')) {
+    return { custom: true, pairs: s.split(',').map(p => { const i = p.lastIndexOf(':'); return [p.slice(0, i).trim(), toInt(p.slice(i + 1))]; }).filter(([n]) => n) };
+  }
+  return { custom: false, names: [...new Set(s.split(',').map(x => x.trim()).filter(Boolean))] };
+}
+// 사람별 부담액(원 단위 정수). 똑같이 나눌 때 남는 원은 결제자부터 1원씩 더 부담한다.
+function expenseShares(e) {
+  const amt = toInt(e.amount);
+  const p = parseMemberData(e.memberData);
+  const out = new Map();
+  if (p.custom) { p.pairs.forEach(([n, v]) => out.set(n, (out.get(n) || 0) + v)); return out; }
+  if (!p.names.length) return out;
+  const base = Math.floor(amt / p.names.length);
+  let rem = amt - base * p.names.length;
+  const order = p.names.includes(e.payer) ? [e.payer, ...p.names.filter(n => n !== e.payer)] : p.names;
+  order.forEach(n => { out.set(n, base + (rem > 0 ? 1 : 0)); if (rem > 0) rem--; });
+  return out;
+}
+// balance > 0 : 받을 돈, < 0 : 보낼 돈 (중간 송금 반영)
+function computeBalances() {
+  const m = new Map();
+  const get = (n) => { if (!m.has(n)) m.set(n, { name: n, paid: 0, share: 0, sent: 0, recv: 0 }); return m.get(n); };
+  (trip ? trip.members : []).forEach(get);
+  data.expenses.forEach(e => {
+    get(e.payer).paid += toInt(e.amount);
+    expenseShares(e).forEach((v, n) => { get(n).share += v; });
+  });
+  data.transfers.forEach(t => { const a = toInt(t.amount); get(t.sender).sent += a; get(t.receiver).recv += a; });
+  return [...m.values()].map(r => ({ ...r, balance: r.paid - r.share + r.sent - r.recv }));
+}
+// 남은 잔액 → 최소 송금 (큰 금액끼리 먼저 맞춤)
+function computeSettlement(bal) {
+  const debt = bal.filter(b => b.balance < 0).map(b => ({ name: b.name, amt: -b.balance })).sort((a, b) => b.amt - a.amt);
+  const cred = bal.filter(b => b.balance > 0).map(b => ({ name: b.name, amt: b.balance })).sort((a, b) => b.amt - a.amt);
+  const rows = [];
+  let i = 0, j = 0;
+  while (i < debt.length && j < cred.length) {
+    const pay = Math.min(debt[i].amt, cred[j].amt);
+    if (pay > 0) rows.push({ from: debt[i].name, to: cred[j].name, amt: pay });
+    debt[i].amt -= pay; cred[j].amt -= pay;
+    if (debt[i].amt <= 0) i++;
+    if (cred[j].amt <= 0) j++;
+  }
+  return rows;
+}
+
+// ── 그리기 ──
+function renderAll() {
+  if (!trip) return;
+  const total = data.expenses.reduce((s, e) => s + toInt(e.amount), 0);
+  $('summaryTotal').textContent = fmt(total);
+  const bal = computeBalances();
+  settleRows = computeSettlement(bal);
+  $('summarySub').textContent = `지출 ${data.expenses.length}건 · 송금 ${data.transfers.length}건` +
+    (data.expenses.length ? (settleRows.length ? ` · 남은 송금 ${settleRows.length}건` : ' · 정산 끝') : '');
+  renderList();
+  renderStats(bal);
 }
 
 function renderList() {
-  const list = document.getElementById('dataList');
+  const list = $('dataList');
+  if (!loaded.expenses || !loaded.transfers) { list.innerHTML = '<div class="spinner"></div>'; return; }
   const combined = [
-    ...allDataCache.expenses.map(e => ({ ...e, type: 'expense' })),
-    ...allDataCache.transfers.map(t => ({ ...t, type: 'transfer' })),
-  ].sort((a, b) => String(b.date).localeCompare(String(a.date)));
+    ...data.expenses.map(e => ({ ...e, type: 'expense' })),
+    ...data.transfers.map(t => ({ ...t, type: 'transfer' })),
+  ].sort((a, b) => String(b.date).localeCompare(String(a.date)) || tsMs(b.createdAt) - tsMs(a.createdAt));
 
-  if (!combined.length) { list.innerHTML = '<div class="empty">아직 내역이 없습니다.<br>오른쪽 아래 + 버튼으로 지출을 추가해보세요.</div>'; return; }
+  $('listHint').textContent = combined.length ? '내역을 누르면 고치거나 지울 수 있어요' : '';
+  if (!combined.length) { list.innerHTML = '<div class="empty">아직 내역이 없어요.<br>오른쪽 아래 + 버튼으로 지출을 추가해보세요.</div>'; return; }
 
   list.innerHTML = combined.map(item => {
+    const date = escHtml(String(item.date || '').slice(0, 10));
     if (item.type === 'expense') {
-      const mem = item.memberData.includes(':') ? '개별 정산' : item.memberData;
-      return `<div class="list-item">
+      const p = parseMemberData(item.memberData);
+      const who = p.custom ? '금액 직접 입력' : (trip.members.length && p.names.length === trip.members.length && trip.members.every(m => p.names.includes(m)) ? '모두' : p.names.join(', '));
+      return `<div class="list-item tappable" data-type="expense" data-id="${item.id}">
         <div class="list-icon"><svg width="16" height="16"><use href="#ic-wallet"/></svg></div>
         <div class="list-body">
           <div class="list-name">${escHtml(item.desc)}</div>
-          <div class="list-meta">${item.date} · ${escHtml(item.payer)} 결제 · ${escHtml(mem)}</div>
+          <div class="list-meta">${date} · ${escHtml(item.payer)} 결제 · ${escHtml(who)}</div>
         </div>
         <span class="list-amount">${fmt(item.amount)}</span>
-        <button class="icon-action danger list-del" title="삭제" data-type="expense" data-id="${item.id}"><svg width="15" height="15"><use href="#ic-trash"/></svg></button>
       </div>`;
     }
-    return `<div class="list-item">
+    return `<div class="list-item tappable" data-type="transfer" data-id="${item.id}">
       <div class="list-icon"><svg width="16" height="16"><use href="#ic-swap"/></svg></div>
       <div class="list-body">
         <div class="list-name">${escHtml(item.sender)} → ${escHtml(item.receiver)}</div>
-        <div class="list-meta">${item.date} · 송금${item.memo ? ' · ' + escHtml(item.memo) : ''}</div>
+        <div class="list-meta">${date} · 송금${item.memo ? ' · ' + escHtml(item.memo) : ''}</div>
       </div>
       <span class="list-amount">${fmt(item.amount)}</span>
-      <button class="icon-action danger list-del" title="삭제" data-type="transfer" data-id="${item.id}"><svg width="15" height="15"><use href="#ic-trash"/></svg></button>
     </div>`;
   }).join('');
 }
-
-document.getElementById('dataList').addEventListener('click', async (e) => {
-  const btn = e.target.closest('.list-del');
-  if (!btn) return;
-  if (!confirm('해당 내역을 삭제하시겠습니까?')) return;
-  const sub = btn.dataset.type === 'expense' ? 'expenses' : 'transfers';
-  try {
-    await deleteDoc(doc(db, 'settle_trips', currentTripId, sub, btn.dataset.id));
-    toast('삭제되었습니다.');
-    window.refreshData();
-  } catch (err) { toast('오류: ' + err.message); }
+$('dataList').addEventListener('click', (e) => {
+  const row = e.target.closest('.list-item[data-id]');
+  if (row) openEdit(row.dataset.type, row.dataset.id);
 });
 
-// ── 통계 ──
-function computeMemberSummary() {
-  const paid = {}, share = {};
-  allDataCache.expenses.forEach(e => {
-    const amt = Number(e.amount);
-    paid[e.payer] = (paid[e.payer] || 0) + amt;
-    if (!e.memberData.includes(':')) {
-      const mems = e.memberData.split(',').map(m => m.trim()).filter(Boolean);
-      const split = amt / mems.length;
-      mems.forEach(m => { share[m] = (share[m] || 0) + split; });
-    } else {
-      e.memberData.split(',').forEach(p => {
-        const [m, cost] = p.split(':');
-        share[m.trim()] = (share[m.trim()] || 0) + Number(cost);
-      });
-    }
-  });
-  const all = new Set([...Object.keys(paid), ...Object.keys(share)]);
-  return [...all].map(m => ({
-    name: m, paid: Math.round(paid[m] || 0), share: Math.round(share[m] || 0),
-    balance: Math.round((paid[m] || 0) - (share[m] || 0)),
-  }));
-}
-
-window.refreshStats = () => {
-  const el = document.getElementById('memberBalanceList');
-  const data = computeMemberSummary();
-  if (!data.length) { el.innerHTML = '<div class="empty">데이터 없음</div>'; return; }
-  el.innerHTML = data.map(m => {
-    const cls = m.balance > 0 ? 'balance-pos' : m.balance < 0 ? 'balance-neg' : 'balance-zero';
-    const sign = m.balance > 0 ? '+' : '';
-    return `<div class="balance-row">
-      <div><div style="font-weight:600;font-size:0.92rem;">${escHtml(m.name)}</div><div class="text-sm">결제 ${fmt(m.paid)} / 부담 ${fmt(m.share)}</div></div>
-      <div class="${cls}">${sign}${fmt(m.balance)}</div>
-    </div>`;
-  }).join('');
-};
-
-// ── 정산 계산 (전체 잔액 → 최소 송금) ──
-window.showSettlement = () => {
-  const owed = {};
-  function add(p, amt) { owed[p] = (owed[p] || 0) + amt; }
-
-  let report = `=== [${currentTripName}] 정산 결과 ===\n\n`;
-  let totalSpent = 0;
-  report += '[지출 내역]\n';
-  allDataCache.expenses.forEach(e => {
-    const amt = Number(e.amount);
-    totalSpent += amt;
-    report += `- ${e.desc}: ${fmt(amt)} (${e.payer} 결제)\n`;
-    add(e.payer, -amt);
-    if (!e.memberData.includes(':')) {
-      const mems = e.memberData.split(',').map(m => m.trim()).filter(Boolean);
-      const split = amt / mems.length;
-      mems.forEach(m => add(m, split));
-    } else {
-      e.memberData.split(',').forEach(p => {
-        const [m, cost] = p.split(':');
-        add(m.trim(), Number(cost));
-      });
-    }
-  });
-  report += `\n총 지출: ${fmt(totalSpent)}\n`;
-
-  if (allDataCache.transfers.length) {
-    report += '\n[중간 송금 내역]\n';
-    allDataCache.transfers.forEach(t => {
-      report += `- ${t.sender} → ${t.receiver}: ${fmt(t.amount)}\n`;
-      add(t.sender, -Number(t.amount));
-      add(t.receiver, Number(t.amount));
-    });
-  }
-
-  report += '\n[최종 정산 요청]\n';
-  const debtors = [], creditors = [];
-  Object.entries(owed).forEach(([p, v]) => {
-    const r = Math.round(v);
-    if (r > 10) debtors.push({ name: p, amt: r });
-    else if (r < -10) creditors.push({ name: p, amt: -r });
-  });
-  debtors.sort((a, b) => b.amt - a.amt);
-  creditors.sort((a, b) => b.amt - a.amt);
-
-  settleRows = [];
-  let di = 0, ci = 0;
-  while (di < debtors.length && ci < creditors.length) {
-    const d = debtors[di], c = creditors[ci];
-    const pay = Math.min(d.amt, c.amt);
-    settleRows.push({ from: d.name, to: c.name, amt: pay, done: false });
-    report += `${d.name} → ${c.name} : ${fmt(pay)}\n`;
-    d.amt -= pay; c.amt -= pay;
-    if (d.amt <= 10) di++;
-    if (c.amt <= 10) ci++;
-  }
-  if (!settleRows.length) report += '정산할 내용이 없습니다.';
-  settleReport = report;
-  renderSettleRows();
-  document.getElementById('copyBtn').classList.toggle('hidden', !settleRows.length);
-};
-
-function renderSettleRows() {
-  const el = document.getElementById('settleList');
-  if (!settleRows.length) { el.innerHTML = '<div class="empty">정산할 내용이 없습니다.</div>'; return; }
-  el.innerHTML = settleRows.map((r, i) => `
-    <div class="settle-row ${r.done ? 'done' : ''}">
+function renderStats(bal) {
+  const sl = $('settleList');
+  if (!data.expenses.length) sl.innerHTML = '<div class="empty">지출을 추가하면 누가 누구에게 보낼지 계산돼요.</div>';
+  else if (!settleRows.length) sl.innerHTML = '<div class="empty">모두 정산됐어요.</div>';
+  else sl.innerHTML = settleRows.map((r, i) => `
+    <div class="settle-row">
       <span class="settle-who">${escHtml(r.from)}<svg width="14" height="14"><use href="#ic-arrow"/></svg>${escHtml(r.to)}</span>
       <span class="settle-amt">${fmt(r.amt)}</span>
-      <button class="icon-action" title="송금 완료로 기록" data-idx="${i}" ${r.done ? 'disabled' : ''}><svg width="16" height="16"><use href="#ic-check"/></svg></button>
+      <button class="icon-action" title="보냈어요 (송금 기록 추가)" data-idx="${i}"><svg width="16" height="16"><use href="#ic-check"/></svg></button>
     </div>`).join('');
+  $('copyBtn').classList.toggle('hidden', !settleRows.length);
+
+  const el = $('memberBalanceList');
+  if (!bal.length) { el.innerHTML = '<div class="empty">참여자가 없어요.</div>'; return; }
+  el.innerHTML = bal.map(m => {
+    const cls = m.balance > 0 ? 'balance-pos' : m.balance < 0 ? 'balance-neg' : 'balance-zero';
+    const label = m.balance > 0 ? `받을 돈 ${fmt(m.balance)}` : m.balance < 0 ? `보낼 돈 ${fmt(-m.balance)}` : '끝';
+    const moved = (m.sent ? ` · 보냄 ${fmt(m.sent)}` : '') + (m.recv ? ` · 받음 ${fmt(m.recv)}` : '');
+    return `<div class="balance-row">
+      <div style="min-width:0;"><div style="font-weight:600;font-size:0.92rem;">${escHtml(m.name)}</div><div class="text-sm">결제 ${fmt(m.paid)} · 부담 ${fmt(m.share)}${moved}</div></div>
+      <div class="${cls}" style="flex-shrink:0;">${label}</div>
+    </div>`;
+  }).join('');
 }
 
-// 정산 행 → 송금 기록으로 전환
-document.getElementById('settleList').addEventListener('click', async (e) => {
+// 정산 행 → 송금 기록
+$('settleList').addEventListener('click', async (e) => {
   const btn = e.target.closest('[data-idx]');
   if (!btn || btn.disabled) return;
   const r = settleRows[Number(btn.dataset.idx)];
-  if (!r || r.done) return;
-  if (!confirm(`${r.from} → ${r.to} ${fmt(r.amt)}\n송금 완료로 기록하시겠습니까?`)) return;
+  if (!r) return;
+  if (!confirm(`${r.from} → ${r.to} ${fmt(r.amt)}\n보낸 것으로 기록할까요?`)) return;
+  btn.disabled = true;
   try {
-    await addDoc(collection(db, 'settle_trips', currentTripId, 'transfers'), {
+    await addDoc(collection(db, 'settle_trips', trip.id, 'transfers'), {
       date: today(), sender: r.from, receiver: r.to, amount: r.amt, memo: '정산', createdAt: serverTimestamp(),
     });
-    r.done = true;
-    renderSettleRows();
-    toast('송금 기록에 추가되었습니다.');
-    allDataCache = await fetchTripData();
-    updateHero();
-    renderList();
-    refreshStats();
-  } catch (err) { toast('오류: ' + err.message); }
+    toast('송금 기록에 추가했어요.');
+  } catch (err) { btn.disabled = false; toast('오류: ' + err.message); }
 });
 
 window.copySettlement = async () => {
-  try {
-    await navigator.clipboard.writeText(settleReport || '');
-    toast('복사되었습니다.');
-  } catch (e) { toast('복사 실패: ' + e.message); }
+  const lines = [`[${trip.name}] 정산`, `총 지출 ${fmt(data.expenses.reduce((s, e) => s + toInt(e.amount), 0))}`, ''];
+  settleRows.forEach(r => lines.push(`${r.from} → ${r.to} : ${fmt(r.amt)}`));
+  lines.push('', '자세히: ' + tripLink(trip.id));
+  try { await navigator.clipboard.writeText(lines.join('\n')); toast('복사했어요.'); }
+  catch (e) { toast('복사 실패: ' + e.message); }
 };
 
-// ── CSV 내보내기 ──
-window.downloadCSV = () => {
-  if (!allDataCache.expenses.length && !allDataCache.transfers.length) { toast('내보낼 데이터가 없습니다.'); return; }
-  let csv = '﻿구분,날짜,내용,금액,결제자,참여자\n';
-  allDataCache.expenses.forEach(e => { csv += `지출,${e.date},${e.desc},${e.amount},${e.payer},"${e.memberData}"\n`; });
-  allDataCache.transfers.forEach(t => { csv += `송금,${t.date},${t.sender},${t.amount},${t.receiver},${t.memo || ''}\n`; });
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob); a.download = `${currentTripName}_정산내역.csv`; a.click();
-  toast('CSV 파일을 저장했습니다.');
+window.switchView = (mode) => {
+  $('view-history').classList.toggle('hidden', mode !== 'history');
+  $('view-stats').classList.toggle('hidden', mode !== 'stats');
+  $('seg-history').classList.toggle('on', mode === 'history');
+  $('seg-stats').classList.toggle('on', mode === 'stats');
 };
 
-// ── 데이터 삭제 및 종료 ──
-window.deleteData = async () => {
-  if (!confirm('데이터를 삭제하면 복구할 수 없습니다.\n삭제 전 CSV 저장을 권장합니다.\n계속하시겠습니까?')) return;
+// ── 바텀 시트 ──
+function openSheetPanel(panel, title) {
+  $('panel-entry').classList.toggle('hidden', panel !== 'entry');
+  $('panel-settings').classList.toggle('hidden', panel !== 'settings');
+  $('sheetTitle').textContent = title;
+  $('sheetBg').classList.add('open');
+  $('sheet').classList.add('open');
+}
+window.closeSheet = () => {
+  $('sheetBg').classList.remove('open');
+  $('sheet').classList.remove('open');
+  editing = null;
+};
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSheet(); });
+
+function fillSelect(id, value) {
+  const el = $(id);
+  const names = [...trip.members];
+  if (value && !names.includes(value)) names.push(value);   // 참여자 목록에 없는 옛 이름(예: 공금)
+  el.innerHTML = names.map(m => `<option value="${escHtml(m)}">${escHtml(m)}</option>`).join('');
+  if (value) el.value = value;
+}
+function buildMemberInputs(extra = []) {
+  if (!trip) return;
+  const names = [...trip.members, ...extra.filter(n => !trip.members.includes(n))];
+  $('memberList').innerHTML = names.map(m => `
+    <div class="member-row">
+      <label class="member-label"><input type="checkbox" class="mem-chk" value="${escHtml(m)}" checked onchange="updateSplitRemain()">${escHtml(m)}</label>
+      <input type="number" class="custom-amt" data-name="${escHtml(m)}" placeholder="0" inputmode="numeric" oninput="updateSplitRemain()">
+    </div>`).join('');
+  toggleSplit();
+}
+
+window.switchSheetMode = (mode) => {
+  $('sheet-expense').classList.toggle('hidden', mode !== 'expense');
+  $('sheet-transfer').classList.toggle('hidden', mode !== 'transfer');
+  $('sheet-seg-expense').classList.toggle('on', mode === 'expense');
+  $('sheet-seg-transfer').classList.toggle('on', mode === 'transfer');
+  if (!editing) $('sheetTitle').textContent = mode === 'expense' ? '지출 추가' : '송금 기록';
+};
+
+window.toggleSplit = () => {
+  const on = $('splitToggle').checked;
+  document.querySelectorAll('.custom-amt').forEach(el => { el.style.display = on ? 'block' : 'none'; });
+  updateSplitRemain();
+};
+window.updateSplitRemain = () => {
+  const el = $('splitRemain');
+  if (!$('splitToggle').checked) { el.classList.add('hidden'); return; }
+  const amt = toInt($('amt_e').value);
+  let sum = 0;
+  document.querySelectorAll('.mem-chk').forEach(c => {
+    if (c.checked) sum += toInt(c.closest('.member-row').querySelector('.custom-amt').value);
+  });
+  const left = amt - sum;
+  el.classList.remove('hidden');
+  el.classList.toggle('bad', left !== 0);
+  el.textContent = left === 0 ? `합계 ${fmt(sum)} — 맞아요` : left > 0 ? `${fmt(left)} 더 나눠야 해요` : `${fmt(-left)} 넘쳤어요`;
+};
+
+window.openEntry = (mode) => {
+  if (!trip) return;
+  editing = null;
+  $('entrySeg').classList.remove('hidden');
+  $('deleteEntryBtn').classList.add('hidden');
+  $('saveExpenseBtn').textContent = '지출 추가';
+  $('saveTransferBtn').textContent = '송금 기록 저장';
+  $('date_e').value = today(); $('desc_e').value = ''; $('amt_e').value = '';
+  $('date_t').value = today(); $('amt_t').value = ''; $('memo_t').value = '';
+  fillSelect('payer_e'); fillSelect('sender_t'); fillSelect('receiver_t');
+  if (trip.members[1]) $('receiver_t').value = trip.members[1];
+  $('splitToggle').checked = false;
+  buildMemberInputs();
+  openSheetPanel('entry', '');
+  switchSheetMode(mode);
+};
+
+function openEdit(type, id) {
+  const item = (type === 'expense' ? data.expenses : data.transfers).find(x => x.id === id);
+  if (!item) return;
+  editing = { type, id };
+  $('entrySeg').classList.add('hidden');
+  $('deleteEntryBtn').classList.remove('hidden');
+  if (type === 'expense') {
+    const p = parseMemberData(item.memberData);
+    const names = p.custom ? p.pairs.map(([n]) => n) : p.names;
+    $('date_e').value = String(item.date || '').slice(0, 10);
+    $('desc_e').value = item.desc || '';
+    $('amt_e').value = toInt(item.amount) || '';
+    fillSelect('payer_e', item.payer);
+    $('splitToggle').checked = p.custom;
+    buildMemberInputs(names);
+    document.querySelectorAll('.mem-chk').forEach(c => {
+      c.checked = names.includes(c.value);
+      if (p.custom) {
+        const pair = p.pairs.find(([n]) => n === c.value);
+        c.closest('.member-row').querySelector('.custom-amt').value = pair ? pair[1] : '';
+      }
+    });
+    updateSplitRemain();
+    $('saveExpenseBtn').textContent = '저장';
+  } else {
+    $('date_t').value = String(item.date || '').slice(0, 10);
+    fillSelect('sender_t', item.sender);
+    fillSelect('receiver_t', item.receiver);
+    $('amt_t').value = toInt(item.amount) || '';
+    $('memo_t').value = item.memo || '';
+    $('saveTransferBtn').textContent = '저장';
+  }
+  openSheetPanel('entry', type === 'expense' ? '지출 고치기' : '송금 고치기');
+  switchSheetMode(type);
+}
+
+window.saveExpense = async () => {
+  const date = $('date_e').value || today();
+  const desc = $('desc_e').value.trim();
+  const amount = toInt($('amt_e').value);
+  const payer = $('payer_e').value;
+  if (!desc) { toast('내용을 입력해주세요.'); return; }
+  if (!(amount > 0)) { toast('금액을 올바르게 입력해주세요.'); return; }
+  if (!payer) { toast('결제자를 골라주세요.'); return; }
+
+  let memberData;
+  if ($('splitToggle').checked) {
+    const pairs = []; let sum = 0;
+    document.querySelectorAll('.mem-chk').forEach(c => {
+      const v = toInt(c.closest('.member-row').querySelector('.custom-amt').value);
+      if (c.checked && v > 0) { pairs.push(`${c.value}:${v}`); sum += v; }
+    });
+    if (!pairs.length) { toast('사람별 금액을 입력해주세요.'); return; }
+    if (sum !== amount) { toast(`사람별 합계(${fmt(sum)})가 금액(${fmt(amount)})과 달라요.`); return; }
+    memberData = pairs.join(',');
+  } else {
+    const checked = [...document.querySelectorAll('.mem-chk:checked')].map(el => el.value);
+    if (!checked.length) { toast('나눌 사람을 한 명 이상 골라주세요.'); return; }
+    memberData = checked.join(',');
+  }
+
+  const btn = $('saveExpenseBtn'); btn.disabled = true;
   try {
-    const data = await fetchTripData();
-    await Promise.all([
-      ...data.expenses.map(e => deleteDoc(doc(db, 'settle_trips', currentTripId, 'expenses', e.id))),
-      ...data.transfers.map(t => deleteDoc(doc(db, 'settle_trips', currentTripId, 'transfers', t.id))),
-    ]);
-    await updateDoc(doc(db, 'settle_trips', currentTripId), { status: 'done' });
-    localStorage.removeItem('ohsettle_last');
-    toast('삭제되었습니다.');
-    setTimeout(() => location.reload(), 1200);
+    if (editing) await updateDoc(doc(db, 'settle_trips', trip.id, 'expenses', editing.id), { date, desc, amount, payer, memberData, updatedAt: serverTimestamp() });
+    else await addDoc(collection(db, 'settle_trips', trip.id, 'expenses'), { date, desc, amount, payer, memberData, createdAt: serverTimestamp() });
+    toast(editing ? '고쳤어요.' : '추가했어요.');
+    closeSheet();
+  } catch (e) { toast('오류: ' + e.message); }
+  finally { btn.disabled = false; }
+};
+
+window.saveTransfer = async () => {
+  const date = $('date_t').value || today();
+  const sender = $('sender_t').value;
+  const receiver = $('receiver_t').value;
+  const amount = toInt($('amt_t').value);
+  const memo = $('memo_t').value.trim();
+  if (!sender || !receiver) { toast('보낸 사람과 받은 사람을 골라주세요.'); return; }
+  if (sender === receiver) { toast('보낸 사람과 받은 사람이 같아요.'); return; }
+  if (!(amount > 0)) { toast('금액을 올바르게 입력해주세요.'); return; }
+  const btn = $('saveTransferBtn'); btn.disabled = true;
+  try {
+    if (editing) await updateDoc(doc(db, 'settle_trips', trip.id, 'transfers', editing.id), { date, sender, receiver, amount, memo, updatedAt: serverTimestamp() });
+    else await addDoc(collection(db, 'settle_trips', trip.id, 'transfers'), { date, sender, receiver, amount, memo, createdAt: serverTimestamp() });
+    toast(editing ? '고쳤어요.' : '기록했어요.');
+    closeSheet();
+  } catch (e) { toast('오류: ' + e.message); }
+  finally { btn.disabled = false; }
+};
+
+window.deleteEntry = async () => {
+  if (!editing) return;
+  if (!confirm('이 내역을 지울까요?')) return;
+  const sub = editing.type === 'expense' ? 'expenses' : 'transfers';
+  try {
+    await deleteDoc(doc(db, 'settle_trips', trip.id, sub, editing.id));
+    toast('지웠어요.');
+    closeSheet();
   } catch (e) { toast('오류: ' + e.message); }
 };
+
+// ── 프로젝트 이름·참여자 ──
+window.openSettings = () => {
+  if (!trip) return;
+  editing = null;
+  renderSettings();
+  openSheetPanel('settings', '프로젝트 설정');
+};
+function memberUsed(name) {
+  return data.expenses.some(e => e.payer === name || expenseShares(e).has(name)) ||
+         data.transfers.some(t => t.sender === name || t.receiver === name);
+}
+function renderSettings() {
+  if (document.activeElement !== $('setName')) $('setName').value = trip.name;
+  $('memberEditList').innerHTML = trip.members.map(m => `
+    <div class="member-edit">
+      <input type="text" value="${escHtml(m)}" data-old="${escHtml(m)}" maxlength="20" onkeydown="if(event.key==='Enter')this.blur()">
+      <button class="icon-action danger" title="빼기" data-remove="${escHtml(m)}"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
+    </div>`).join('');
+}
+window.saveTripName = async () => {
+  const name = $('setName').value.trim();
+  if (!name) { $('setName').value = trip.name; toast('이름을 입력해주세요.'); return; }
+  if (name === trip.name) return;
+  try { await updateDoc(doc(db, 'settle_trips', trip.id), { name, updatedAt: serverTimestamp() }); toast('이름을 바꿨어요.'); }
+  catch (e) { toast('오류: ' + e.message); }
+};
+window.addMember = async () => {
+  const name = $('newMember').value.trim();
+  const err = memberNameError(name, trip.members);
+  if (err) { toast(err); return; }
+  try {
+    await updateDoc(doc(db, 'settle_trips', trip.id), { members: [...trip.members, name], updatedAt: serverTimestamp() });
+    $('newMember').value = '';
+    toast(`${name} 추가했어요.`);
+  } catch (e) { toast('오류: ' + e.message); }
+};
+$('memberEditList').addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-remove]');
+  if (!btn) return;
+  const name = btn.dataset.remove;
+  if (memberUsed(name)) { toast(`${name}은(는) 내역에 있어서 뺄 수 없어요. 이름은 고칠 수 있어요.`); return; }
+  if (trip.members.length <= 2) { toast('참여자는 2명 이상이어야 해요.'); return; }
+  if (!confirm(`${name}을(를) 참여자에서 뺄까요?`)) return;
+  try { await updateDoc(doc(db, 'settle_trips', trip.id), { members: trip.members.filter(m => m !== name), updatedAt: serverTimestamp() }); }
+  catch (err) { toast('오류: ' + err.message); }
+});
+// 이름 고치기 → 참여자 목록과 지난 지출·송금 기록을 한 번에 바꾼다
+$('memberEditList').addEventListener('change', async (e) => {
+  const input = e.target.closest('input[data-old]');
+  if (!input) return;
+  const old = input.dataset.old, neu = input.value.trim();
+  if (neu === old) return;
+  const err = memberNameError(neu, trip.members, old);
+  if (err) { toast(err); input.value = old; return; }
+  const batch = writeBatch(db);
+  let n = 1;
+  batch.update(doc(db, 'settle_trips', trip.id), { members: trip.members.map(m => m === old ? neu : m), updatedAt: serverTimestamp() });
+  data.expenses.forEach(x => {
+    const p = parseMemberData(x.memberData);
+    const usedInSplit = p.custom ? p.pairs.some(([m]) => m === old) : p.names.includes(old);
+    if (x.payer !== old && !usedInSplit) return;
+    const memberData = p.custom ? p.pairs.map(([m, v]) => `${m === old ? neu : m}:${v}`).join(',') : p.names.map(m => m === old ? neu : m).join(',');
+    batch.update(doc(db, 'settle_trips', trip.id, 'expenses', x.id), { payer: x.payer === old ? neu : x.payer, memberData, updatedAt: serverTimestamp() });
+    n++;
+  });
+  data.transfers.forEach(t => {
+    if (t.sender !== old && t.receiver !== old) return;
+    batch.update(doc(db, 'settle_trips', trip.id, 'transfers', t.id), { sender: t.sender === old ? neu : t.sender, receiver: t.receiver === old ? neu : t.receiver, updatedAt: serverTimestamp() });
+    n++;
+  });
+  if (n > 500) { toast('내역이 너무 많아 한 번에 바꿀 수 없어요.'); input.value = old; return; }
+  try { await batch.commit(); toast(`${old} → ${neu} 바꿨어요.`); }
+  catch (err) { toast('오류: ' + err.message); input.value = old; }
+});
+
+// ── CSV 내보내기 ──
+function csvCell(v) { const s = String(v ?? ''); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; }
+window.downloadCSV = () => {
+  if (!data.expenses.length && !data.transfers.length) { toast('내보낼 내역이 없어요.'); return; }
+  const rows = [['구분', '날짜', '내용', '금액', '결제자/보낸 사람', '나눈 사람/받은 사람', '메모']];
+  data.expenses.forEach(e => rows.push(['지출', String(e.date || '').slice(0, 10), e.desc, toInt(e.amount), e.payer, e.memberData, '']));
+  data.transfers.forEach(t => rows.push(['송금', String(t.date || '').slice(0, 10), '', toInt(t.amount), t.sender, t.receiver, t.memo || '']));
+  const csv = '﻿' + rows.map(r => r.map(csvCell).join(',')).join('\n') + '\n';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+  a.download = `${trip.name}_정산내역.csv`; a.click();
+  toast('CSV 파일을 저장했어요.');
+};
+
+// ── 프로젝트 삭제 ──
+window.deleteTrip = async () => {
+  if (!confirm(`"${trip.name}" 프로젝트와 모든 내역을 지웁니다.\n링크를 가진 모든 사람에게서 사라지고 되돌릴 수 없어요.\n(필요하면 먼저 CSV로 저장하세요)\n\n지울까요?`)) return;
+  const id = trip.id;
+  stopListening();
+  try {
+    const [ex, tr] = await Promise.all(['expenses', 'transfers'].map(s => getDocs(collection(db, 'settle_trips', id, s))));
+    const refs = [...ex.docs, ...tr.docs].map(d => d.ref);
+    for (let i = 0; i < refs.length; i += 450) {
+      const b = writeBatch(db);
+      refs.slice(i, i + 450).forEach(r => b.delete(r));
+      await b.commit();
+    }
+    await deleteDoc(doc(db, 'settle_trips', id));
+    forgetTrip(id);
+    toast('지웠어요.');
+    goHome();
+  } catch (e) { toast('오류: ' + e.message); openTrip(id); }
+};
+
+// ── 시작 ──
+(function init() {
+  const id = parseTripId(location.hash);
+  if (id) { openTrip(id); return; }
+  renderRecent();
+  // 다른 앱에서 이름을 넘겨 준 경우 (?name=)
+  const urlName = new URLSearchParams(location.search).get('name');
+  if (urlName) { $('regName').value = urlName; $('regMembers').focus(); }
+})();
 </script>
 </body>
 </html>

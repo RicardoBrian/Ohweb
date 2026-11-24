@@ -10,7 +10,7 @@
 | `ohlog/` | 수업일지 | classnote.gwansan.com |
 | `ohnotion/` | 노션 페이지 공개 | – |
 | `ohshrt/` | 단축 URL | – |
-| `ohsettle/` | 정산(개인용, DB 따로) | settle.kakainfo.com |
+| `ohsettle/` | 정산(개인용, DB 따로, 초대 링크로 입장) | settle.kakainfo.com |
 | `ohweb-rules-test/` | Firestore 규칙·화면 테스트 (`npm run test`) | – |
 | `tools/exam-grading/` | 시험 채점 도구(내보내기·반영, 운영 DB 직접). 세션 절차는 스킬 `/exam-grading` | – |
 | `tools/trial-account/` | kakainfo 체험 계정(체험학교) 만들기·되돌리기(운영 DB 직접) | – |
