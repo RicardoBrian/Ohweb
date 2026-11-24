@@ -90,6 +90,7 @@ function ttError(e) {
   const raw = String(e?.message || e);
   const first = raw.split('\n').map((x) => x.trim()).filter(Boolean).at(-1) || raw; // 맨 마지막 줄이 가장 구체적인 원인
   const msg = e?.diag?.recheck ? '컴시간 주소가 바뀌어 새 주소를 찾는 중이에요. 1~2분 뒤 자동으로 다시 받아요(그동안은 저장해 둔 시간표).'
+    : e?.diag?.unregistered ? '우리 학교 시간표를 컴시간에서 처음 받는 중이에요. 1~3분 뒤 자동으로 나타나요.'
     : /컴시간 접속 실패|시간표 저장소|못 찾음|HTTP 5\d\d|HTTP 424|Failed to fetch|Timeout|aborted|NetworkError|Load failed/i.test(raw)
     ? '컴시간이 지금 응답하지 않아요. 저장해 둔 시간표를 보여드려요. 잠시 뒤 다시 눌러주세요.'
     : `시간표를 불러오지 못했어요: ${raw.split('\n')[0]}`;
@@ -535,9 +536,35 @@ function scheduleRecheck() {
   }, [90, 120, 180][recheckN] * 1000);
   return true;
 }
-async function reportComciFailure(e) {
+// 승인된 선생님인데 학교 시간표가 저장소에 없으면(수집 방식이 바뀌기 전 가입 등) 가입 화면의 '학교 코드로 추가'와 같은
+// 등록을 프로필의 학교 코드·이름으로 대신 요청하고, 나올 때까지(최대 약 4분) 뒤에서 다시 받아 본다. 실패할 때만 보고한다.
+let regTry = 0;
+const REG_POLL = window.__regPoll || [30000, 20000]; // 처음 기다림·다시 확인 간격(ms). 테스트는 짧게 바꾼다
+async function autoRegister() {
+  const p = S.profile;
+  if (regTry || !p?.schoolCode || !p.schoolName) return false;
+  regTry = 1;
+  try {
+    const r = await fetch('/api/comci-sync', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code: String(p.schoolCode), name: p.schoolName }) });
+    if (!(await r.json().catch(() => ({}))).ok) { regTry = 0; return false; }
+  } catch { regTry = 0; return false; }
+  const tick = async () => {
+    try {
+      await loadWeek(null, true);
+      regTry = 0; S.ttFail.clear(); S.clsTT.clear();
+      toast('우리 학교 시간표를 받았어요'); renderAll();
+    } catch (err) {
+      if (err?.diag?.unregistered && regTry++ < 12) return setTimeout(tick, REG_POLL[1]);
+      regTry = 0; reportComciFailure(err, true);
+    }
+  };
+  setTimeout(tick, REG_POLL[0]);
+  return true;
+}
+async function reportComciFailure(e, noRegister) {
   if (!e?.status) return; // 서버가 컴시간 실패를 알려준 경우만(폰이 잠깐 오프라인인 건 보고하지 않음)
   if (e?.diag?.recheck && scheduleRecheck()) return;
+  if (e?.diag?.unregistered && !noRegister && (regTry || (await autoRegister()))) return;
   try {
     const day = todayISO();
     if (store.get('classlog:comci-report') === day) return;

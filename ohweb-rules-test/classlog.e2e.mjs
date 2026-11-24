@@ -72,7 +72,7 @@ globalThis.fetch = (orig => async (url, opt) => {
   if (!u.startsWith('https://api.github.com/repos/')) return orig(url, opt);
   const p = new URL(u).pathname.replace(/^\/repos\/[^/]+\/[^/]+/, '');
   if (p.startsWith('/actions/')) {
-    if (p.endsWith('/dispatches')) { const b = JSON.parse(opt.body); dispatched.push(b.inputs || {}); if (b.inputs?.code === '55555') STORE.set(`55555_${b.inputs.name}.json`, schoolFile(55555, '새학교중학교')); return new Response(null, { status: 204 }); }
+    if (p.endsWith('/dispatches')) { const b = JSON.parse(opt.body); dispatched.push(b.inputs || {}); if (b.inputs?.code === '55555') STORE.set(`55555_${b.inputs.name}.json`, schoolFile(55555, '새학교중학교')); if (b.inputs?.code === '66666') STORE.set('66666_옛학교중학교.json', schoolFile(66666, '옛학교중학교')); return new Response(null, { status: 204 }); }
     if (p.endsWith('/runs')) return new Response(JSON.stringify({ workflow_runs: [] }));
     return new Response(JSON.stringify({ state: 'active' }));
   }
@@ -135,7 +135,7 @@ let fails = 0;
 const ok = (label, cond, extra = '') => { if (cond) console.log('✅ ' + label); else { fails++; console.log('❌ ' + label + (extra ? ' — ' + extra : '')); } };
 async function open(email, viewport = { width: 1440, height: 1000 }) {
   const ctx = await browser.newContext({ viewport, acceptDownloads: true, timezoneId: 'Asia/Seoul' });
-  await ctx.addInitScript(() => { window.__obPoll = [200, 200]; }); // 새 학교 등록 확인 간격(앱은 20·15초)
+  await ctx.addInitScript(() => { window.__obPoll = [200, 200]; window.__regPoll = [300, 300]; }); // 새 학교 등록 확인 간격(앱은 20·15초)
   await ctx.route('**/*', (route) => {
     const u = route.request().url();
     const m = u.match(/^https:\/\/www\.gstatic\.com\/firebasejs\/10\.12\.2\/([A-Za-z0-9_-]+\.js)$/);
@@ -670,6 +670,22 @@ await shot(P, '10-week-dark');
   // 지난 주 저장본: 컴시간 목록에 없는 지난 주도 주 선택에 남는다
   const opts = await p.locator('#weekSel option').allTextContents();
   ok('받아 본 지난 주 시간표는 "저장본"으로 주 선택에 남음', opts.some((t) => t.includes('저장본')), JSON.stringify(opts));
+}
+
+// 9z) 승인된 선생님인데 학교 시간표가 저장소에 없음(수집 방식이 바뀌기 전 가입 등) → 앱이 스스로 등록을 요청하고, 받아지면 시간표가 나옴
+{
+  const O = await open('oldschool@gmail.com', { width: 390, height: 844 });
+  const uid = await O.page.evaluate(async () => (await import('./firebase-config.js')).auth.currentUser?.uid);
+  await env.withSecurityRulesDisabled(async (c) => {
+    await c.firestore().doc('classlog_users/' + uid).set({ email: 'oldschool@gmail.com', name: '옛선생', schoolCode: 66666, schoolName: '옛학교중학교', region: '경기',
+      teacherId: 10, teacherName: '교사10*', status: 'approved', privacyVersion: '2026-11-04' });
+  });
+  await O.page.waitForSelector('#app:not(.hidden)');
+  let got = false;
+  for (let i = 0; i < 60 && !got; i++) { got = (await O.page.locator('#weekGrid .slot').count()) > 0; if (!got) await O.page.waitForTimeout(250); }
+  ok('학교가 저장소에 없는 승인된 선생님: 앱이 프로필의 학교 코드·이름으로 등록을 요청하고, 받아지면 시간표가 나옴',
+    dispatched.some((x) => x.code === '66666' && x.name === '옛학교중학교') && got, JSON.stringify(dispatched));
+  await O.ctx.close();
 }
 
 // 10) 해상도별 화면(SHOTS 를 줄 때만): 휴대폰·태블릿·노트북·큰 모니터
