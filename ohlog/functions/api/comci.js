@@ -42,7 +42,7 @@ export function parseTimetable(raw, keys = {}) {
   if (!(table && teachers && subjects)) {
     const tables = [];
     for (const [k, v] of Object.entries(raw)) {
-      if (!/^자료\d+$/.test(k) || !Array.isArray(v)) continue;
+      if (!/^(?:자료\d+|[A-Za-z]{2,6}\d{2,6})$/.test(k) || !Array.isArray(v)) continue; // '자료136' / 2026-11-24~ 'HTN451'
       const strings = v.slice(1).every((x) => typeof x === 'string');
       if (v[0] === '' && strings) teachers ??= v;
       else if (typeof v[0] === 'number' && v.length > 1 && strings) subjects ??= v;

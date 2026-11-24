@@ -31,10 +31,12 @@ function existing() {
 }
 
 // 컴시간이 '일자자료'·'일과시간' 같은 이름도 '자료136' 처럼 매번 바꾸므로, 모양을 보고 원래 이름을 붙여 둔다(서버가 이 이름을 쓴다).
+// 2026-11-24 부터는 'HTN451' 처럼 영문 3자+숫자 3자로 바뀌었다(이것도 매번 바뀜).
+const RANDOM_KEY = /^(?:자료\d+|[A-Za-z]{2,6}\d{2,6})$/;
 function renameKeys(raw) {
   if (!raw?.['학급수']) return raw;
   for (const [k, v] of Object.entries(raw)) {
-    if (!/^자료\d+$/.test(k) || !Array.isArray(v) || !v.length) continue;
+    if (!RANDOM_KEY.test(k) || !Array.isArray(v) || !v.length) continue;
     if (!raw['일자자료'] && v.every((x) => Array.isArray(x) && x.length === 2 && /\d{2}-\d{2}-\d{2}\s*~/.test(String(x[1])))) raw['일자자료'] = v;
     else if (!raw['일과시간'] && v.every((x) => typeof x === 'string' && /^\d+\(\d{1,2}:\d{2}\)/.test(x))) raw['일과시간'] = v;
   }
@@ -62,8 +64,17 @@ async function capture(code, query, tag) {
   // 그 키를 페이지를 열 때마다 바꾼다(페이지 안 QnmsbChange). 나중에는 풀 수 없으니 여기서 페이지 함수로 풀어 저장한다.
   const take = () => page.evaluate(() => {
     const list = window.__comci.splice(0);
-    const dec = typeof QnmsbChange === 'function' ? QnmsbChange : null; // eslint-disable-line no-undef
-    if (!dec) return list;
+    // 2026-11-24: 푸는 함수 이름도 페이지를 열 때마다 바뀐다(QnmsbChange → LBa9N3 …). 이름 대신 내용(atob + euc-kr 해독)으로 찾는다.
+    let dec = typeof QnmsbChange === 'function' ? QnmsbChange : null; // eslint-disable-line no-undef
+    if (!dec)
+      for (const k of Object.keys(window)) {
+        try {
+          const f = window[k];
+          if (typeof f === 'function' && f.length === 1 && /atob\(/.test(String(f)) && /TextDecoder\(\s*['"]euc-kr/.test(String(f))) { dec = f; break; }
+        } catch {}
+      }
+    // 못 찾으면 시간표를 버린다(가려진 이름을 저장하면 서버가 못 읽는다). 이전에 저장한 시간표가 그대로 남는다.
+    if (!dec) return list.filter((v) => !v['학급수']);
     const B64 = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4})$/;
     const walk = (v) => {
       if (typeof v === 'string') { if (B64.test(v)) { try { return dec(v); } catch {} } return v; }
