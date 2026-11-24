@@ -108,7 +108,7 @@
   .settle-row.done .settle-who, .settle-row.done .settle-amt { opacity: 0.35; text-decoration: line-through; }
   .settle-who { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .settle-row.mine { background: var(--accent-light, rgba(0,113,227,0.08)); }
-  .kakao-btn { border: none; border-radius: 50px; padding: 6px 11px; background: #fee500; color: #191919; font-family: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer; flex-shrink: 0; white-space: nowrap; }
+  .kakao-btn { display: inline-flex; align-items: center; justify-content: center; line-height: 0; border: none; border-radius: 50px; padding: 5px 10px; background: #fee500; color: #191919; font-family: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer; flex-shrink: 0; white-space: nowrap; }
   .kakao-btn:active { opacity: 0.75; }
 
   .empty { text-align: center; padding: 40px 16px; color: var(--sub); font-size: 0.85rem; }
@@ -202,6 +202,7 @@
     <symbol id="ic-exit" viewBox="0 0 24 24"><path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 8l4 4-4 4M19 12H9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="ic-check" viewBox="0 0 24 24"><polyline points="5,13 9.5,17.5 19,6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="ic-share" viewBox="0 0 24 24"><path d="M12 15V4M8 8l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 11H5a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7a1 1 0 0 0-1-1h-1" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="ic-kakaopay" viewBox="0 0 44 18"><path d="M8 2.2c-4.1 0-7.4 2.6-7.4 5.8 0 2.1 1.4 3.9 3.5 4.9l-.8 3c-.1.3.2.5.4.3l3.5-2.3c.3 0 .5.1.8.1 4.1 0 7.4-2.6 7.4-5.9S12.1 2.2 8 2.2Z" fill="#191919"/><text x="17.5" y="13.2" font-family="-apple-system, 'Helvetica Neue', Arial, sans-serif" font-size="12.5" font-weight="800" letter-spacing="-0.3" fill="#191919">pay</text></symbol>
     <symbol id="ic-people" viewBox="0 0 24 24"><circle cx="9" cy="8.5" r="3.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M15.5 5.6a3.2 3.2 0 0 1 0 5.8M17 14.2a5.5 5.5 0 0 1 3.5 4.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
   </defs>
 </svg>
@@ -386,7 +387,7 @@
     </div>
     <span class="group-label">카카오페이 송금 링크 <span style="text-transform:none;letter-spacing:0;font-weight:500;">— 넣고 싶은 사람만</span></span>
     <div class="inset-group" id="payLinkList"></div>
-    <p class="text-sm" style="margin:-12px 4px 8px;">링크가 없으면 정산 탭 [카카오톡] 버튼은 금액을 복사하고 카톡 송금 화면을 열어요(받을 사람 고르고 붙여넣기). 받을 사람이 카카오페이 송금 코드 링크(qr.kakaopay.com/…)를 여기 넣어 두면 그 사람에게 바로 가는 송금 화면이 열려요.</p>
+    <p class="text-sm" style="margin:-12px 4px 8px;">링크가 없으면 정산 탭의 카카오페이 버튼은 금액을 복사하고 카톡 송금 화면을 열어요(받을 사람 고르고 붙여넣기). 받을 사람이 카카오페이 송금 코드 링크(qr.kakaopay.com/…)를 여기 넣어 두면 그 사람에게 바로 가는 송금 화면이 열려요.</p>
   </div>
 </div>
 
@@ -547,7 +548,7 @@ function setTrip(id, d) {
 
 // ── 카카오페이 송금 링크 ──
 // 링크 없는 사람에게 보낼 때 여는 카카오톡 송금 화면(받을 사람은 직접 선택). 공식 문서는 없고 카카오톡 앱 안에 있는 주소다.
-// 안 되면 여기만 바꾼다(kakao-test.html 로 시험). 다른 후보: kakaotalk://kakaopay/money/to/bank?amount=금액 (계좌송금)
+// 아이폰에서 동작 확인(2026-11-24). 다른 후보: kakaotalk://kakaopay/money/to/bank?amount=금액 (계좌송금)
 const KAKAOTALK_URL = 'kakaotalk://kakaopay/money/send';
 // 받는 사람이 붙여넣은 글에서 qr.kakaopay.com 주소만 뽑는다. 아니면 ''.
 function kakaoLink(text) {
@@ -717,9 +718,8 @@ function renderStats(bal) {
   else sl.innerHTML = rows.map(r => {
     const link = trip.payLinks[r.to];
     const canPay = !me || r.from === me;   // 남의 송금 줄에는 버튼을 안 보인다
-    const pay = !canPay ? '' : link
-      ? `<button class="kakao-btn" title="${escHtml(r.to)}에게 카카오페이로 보내기" data-pay="${r.i}">카카오페이</button>`
-      : `<button class="kakao-btn" title="금액을 복사하고 카카오톡을 열어요 — 송금에 붙여넣기" data-pay="${r.i}">카카오톡</button>`;
+    const payTitle = link ? `${r.to}에게 카카오페이로 보내기` : '카카오페이 송금 열기 (금액 복사, 받을 사람 선택)';
+    const pay = !canPay ? '' : `<button class="kakao-btn" title="${escHtml(payTitle)}" aria-label="${escHtml(payTitle)}" data-pay="${r.i}"><svg width="44" height="18" aria-hidden="true"><use href="#ic-kakaopay"/></svg></button>`;
     return `<div class="settle-row ${me && r.from === me ? 'mine' : ''}">
       <span class="settle-who">${escHtml(r.from)}<svg width="14" height="14"><use href="#ic-arrow"/></svg>${escHtml(r.to)}</span>
       <span class="settle-amt">${fmt(r.amt)}</span>
