@@ -38,6 +38,7 @@ await T('금액 0', addDoc(collection(anon, 'settle_trips/T1/expenses'), exp({ a
 await T('금액 소수', addDoc(collection(anon, 'settle_trips/T1/expenses'), exp({ amount: 10.5 })), false);
 await T('금액 문자열', addDoc(collection(anon, 'settle_trips/T1/expenses'), exp({ amount: '100' })), false);
 await T('지출에 엉뚱한 필드', addDoc(collection(anon, 'settle_trips/T1/expenses'), exp({ x: 1 })), false);
+await T('송금 링크를 지도 아닌 값으로', updateDoc(doc(anon, 'settle_trips/T1'), { payLinks: 'x' }), false);
 await T('자기 자신에게 송금', addDoc(collection(anon, 'settle_trips/T1/transfers'), tr({ receiver: '영희' })), false);
 
 console.log('── 되어야 함 ──');
@@ -50,6 +51,7 @@ await T('지출 고치기', updateDoc(doc(anon, 'settle_trips/T1/expenses/E1'), 
 await T('예전 지출 고치기(소수 금액 → 정수)', updateDoc(doc(anon, 'settle_trips/OLD/expenses/E1'), { amount: 2000, desc: '숙소비', updatedAt: serverTimestamp() }), true);
 await T('송금 기록', addDoc(collection(anon, 'settle_trips/T1/transfers'), tr()), true);
 await T('참여자 추가', updateDoc(doc(anon, 'settle_trips/T1'), { members: ['철수', '영희', '민수'], updatedAt: serverTimestamp() }), true);
+await T('카카오페이 송금 링크 저장', updateDoc(doc(anon, 'settle_trips/T1'), { payLinks: { '철수': 'https://qr.kakaopay.com/Abc123' }, updatedAt: serverTimestamp() }), true);
 await T('예전 프로젝트 이름 바꾸기', updateDoc(doc(anon, 'settle_trips/OLD'), { name: '옛 여행 2', updatedAt: serverTimestamp() }), true);
 await T('지출 지우기', deleteDoc(doc(anon, 'settle_trips/T1/expenses/E1')), true);
 await T('프로젝트 지우기', deleteDoc(doc(anon, 'settle_trips/T1')), true);

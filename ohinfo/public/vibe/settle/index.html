@@ -106,6 +106,11 @@
   .settle-who svg { color: var(--sub); flex-shrink: 0; }
   .settle-amt { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 0.92rem; flex-shrink: 0; }
   .settle-row.done .settle-who, .settle-row.done .settle-amt { opacity: 0.35; text-decoration: line-through; }
+  .settle-who { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .settle-row.mine { background: var(--accent-light, rgba(0,113,227,0.08)); }
+  .kakao-btn { border: none; border-radius: 50px; padding: 6px 11px; background: #fee500; color: #191919; font-family: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer; flex-shrink: 0; white-space: nowrap; }
+  .kakao-btn:active { opacity: 0.75; }
+  .no-link { font-size: 0.72rem; color: var(--text-3, #a0a4b0); flex-shrink: 0; }
 
   .empty { text-align: center; padding: 40px 16px; color: var(--sub); font-size: 0.85rem; }
 
@@ -286,7 +291,13 @@
 
     <!-- 정산 -->
     <div id="view-stats" class="hidden">
-      <span class="group-label">보낼 돈</span>
+      <div class="inset-group">
+        <div class="inset-row">
+          <span class="row-label">나는</span>
+          <select id="meSelect" onchange="setMe(this.value)"></select>
+        </div>
+      </div>
+      <span class="group-label" id="settleLabel">보낼 돈</span>
       <div class="inset-group" id="settleList"></div>
       <button class="link-btn hidden" id="copyBtn" onclick="copySettlement()" style="margin:-8px auto 22px;">결과 복사하기</button>
 
@@ -374,6 +385,9 @@
         <button class="icon-action" title="추가" onclick="addMember()"><svg width="18" height="18"><use href="#ic-plus"/></svg></button>
       </div>
     </div>
+    <span class="group-label">카카오페이 송금 링크 <span style="text-transform:none;letter-spacing:0;font-weight:500;">— 받을 사람이 자기 링크를 붙여넣어요</span></span>
+    <div class="inset-group" id="payLinkList"></div>
+    <p class="text-sm" style="margin:-12px 4px 8px;">카카오페이 앱에서 내 송금 코드(QR)의 링크(qr.kakaopay.com/…)를 복사해 붙여넣으면, 정산 탭에서 그 사람에게 바로 보낼 수 있어요.</p>
   </div>
 </div>
 
@@ -521,13 +535,38 @@ async function openTrip(id) {
 
 function setTrip(id, d) {
   const prevMembers = trip && trip.id === id ? trip.members.join('\n') : null;
-  trip = { id, name: String(d.name || ''), members: normMembers(d.members) };
+  const payLinks = {};
+  if (d.payLinks && typeof d.payLinks === 'object') Object.entries(d.payLinks).forEach(([k, v]) => { const u = kakaoLink(v); if (u) payLinks[k] = u; });
+  trip = { id, name: String(d.name || ''), members: normMembers(d.members), payLinks };
   rememberTrip(id, trip.name);
   $('mainTitle').textContent = trip.name;
   $('mainMemberCount').textContent = `참여자 ${trip.members.length}명`;
   document.title = `${trip.name} — 정산`;
-  if (prevMembers !== trip.members.join('\n')) buildMemberInputs();
+  if (prevMembers !== trip.members.join('\n')) { buildMemberInputs(); buildMeSelect(); }
   if (!$('panel-settings').classList.contains('hidden')) renderSettings();
+}
+
+// ── 카카오페이 송금 링크 ──
+// 받는 사람이 붙여넣은 글에서 qr.kakaopay.com 주소만 뽑는다. 아니면 ''.
+function kakaoLink(text) {
+  const m = String(text || '').match(/(?:https?:\/\/)?qr\.kakaopay\.com\/[A-Za-z0-9_-]+/);
+  return m ? 'https://' + m[0].replace(/^https?:\/\//, '') : '';
+}
+// "나는 누구" — 이 기기에서 프로젝트별로 기억한다
+const ME_KEY = 'ohsettle_me';
+function getMe() { try { return (JSON.parse(localStorage.getItem(ME_KEY) || '{}') || {})[trip?.id] || ''; } catch { return ''; } }
+window.setMe = (name) => {
+  let all = {}; try { all = JSON.parse(localStorage.getItem(ME_KEY) || '{}') || {}; } catch {}
+  if (name) all[trip.id] = name; else delete all[trip.id];
+  localStorage.setItem(ME_KEY, JSON.stringify(all));
+  renderAll();
+};
+function buildMeSelect() {
+  const me = getMe();
+  $('meSelect').innerHTML = '<option value="">선택 안 함 (전체 보기)</option>' +
+    trip.members.map(m => `<option value="${escHtml(m)}">${escHtml(m)}</option>`).join('');
+  $('meSelect').value = trip.members.includes(me) ? me : '';
+  $('meSelect').classList.toggle('placeholder', !$('meSelect').value);
 }
 
 window.goHome = () => {
@@ -662,14 +701,30 @@ $('dataList').addEventListener('click', (e) => {
 
 function renderStats(bal) {
   const sl = $('settleList');
+  const me = trip.members.includes(getMe()) ? getMe() : '';
+  $('meSelect').value = me;
+  $('meSelect').classList.toggle('placeholder', !me);
+  // 나를 고르면 내가 보낼 것 → 내가 받을 것만, 아니면 전체
+  const rows = settleRows.map((r, i) => ({ ...r, i }))
+    .filter(r => !me || r.from === me || r.to === me)
+    .sort((a, b) => (me ? (b.from === me) - (a.from === me) : 0));
+  $('settleLabel').textContent = me ? `${me}의 정산` : '보낼 돈';
   if (!data.expenses.length) sl.innerHTML = '<div class="empty">지출을 추가하면 누가 누구에게 보낼지 계산돼요.</div>';
   else if (!settleRows.length) sl.innerHTML = '<div class="empty">모두 정산됐어요.</div>';
-  else sl.innerHTML = settleRows.map((r, i) => `
-    <div class="settle-row">
+  else if (!rows.length) sl.innerHTML = `<div class="empty">${escHtml(me)}은(는) 주고받을 돈이 없어요.</div>`;
+  else sl.innerHTML = rows.map(r => {
+    const link = trip.payLinks[r.to];
+    const canPay = !me || r.from === me;   // 남의 송금 줄에는 버튼을 안 보인다
+    const pay = !canPay ? '' : link
+      ? `<button class="kakao-btn" title="${escHtml(r.to)}에게 카카오페이로 보내기" data-pay="${r.i}">카카오페이</button>`
+      : '<span class="no-link" title="받을 사람이 참여자 설정에서 카카오페이 송금 링크를 넣으면 생겨요">링크 없음</span>';
+    return `<div class="settle-row ${me && r.from === me ? 'mine' : ''}">
       <span class="settle-who">${escHtml(r.from)}<svg width="14" height="14"><use href="#ic-arrow"/></svg>${escHtml(r.to)}</span>
       <span class="settle-amt">${fmt(r.amt)}</span>
-      <button class="icon-action" title="보냈어요 (송금 기록 추가)" data-idx="${i}"><svg width="16" height="16"><use href="#ic-check"/></svg></button>
-    </div>`).join('');
+      ${pay}
+      <button class="icon-action" title="보냈어요 (송금 기록 추가)" data-idx="${r.i}"><svg width="16" height="16"><use href="#ic-check"/></svg></button>
+    </div>`;
+  }).join('');
   $('copyBtn').classList.toggle('hidden', !settleRows.length);
 
   const el = $('memberBalanceList');
@@ -687,6 +742,18 @@ function renderStats(bal) {
 
 // 정산 행 → 송금 기록
 $('settleList').addEventListener('click', async (e) => {
+  // 카카오페이: 금액을 복사해 두고 받는 사람의 송금 링크를 연다 (링크에 금액을 넣는 공식 방법은 없다)
+  const payBtn = e.target.closest('[data-pay]');
+  if (payBtn) {
+    const r = settleRows[Number(payBtn.dataset.pay)];
+    const link = r && trip.payLinks[r.to];
+    if (!link) return;
+    // 복사는 기다리지 않고 시작만 한다 — await 뒤에 열면 휴대폰 브라우저가 새 창을 막을 수 있다
+    try { navigator.clipboard.writeText(String(r.amt)).catch(() => {}); } catch {}
+    toast(`${fmt(r.amt)} 을 금액에 붙여넣어 보내고, 돌아와서 ✓ 를 눌러 주세요.`);
+    window.open(link, '_blank', 'noopener');
+    return;
+  }
   const btn = e.target.closest('[data-idx]');
   if (!btn || btn.disabled) return;
   const r = settleRows[Number(btn.dataset.idx)];
@@ -912,7 +979,35 @@ function renderSettings() {
       <input type="text" value="${escHtml(m)}" data-old="${escHtml(m)}" maxlength="20" onkeydown="if(event.key==='Enter')this.blur()">
       <button class="icon-action danger" title="빼기" data-remove="${escHtml(m)}"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
     </div>`).join('');
+  const focused = document.activeElement && document.activeElement.dataset ? document.activeElement.dataset.pay : null;
+  $('payLinkList').innerHTML = trip.members.map(m => `
+    <div class="inset-row">
+      <span class="row-label">${escHtml(m)}</span>
+      <input type="url" data-pay="${escHtml(m)}" value="${escHtml(trip.payLinks[m] || '')}" placeholder="qr.kakaopay.com/…" inputmode="url" autocomplete="off" onkeydown="if(event.key==='Enter')this.blur()">
+    </div>`).join('');
+  if (focused) { const el = [...document.querySelectorAll('#payLinkList input')].find(i => i.dataset.pay === focused); if (el) el.focus(); }
 }
+function payLinksWithout(names, rename) {
+  const out = {};
+  Object.entries(trip.payLinks).forEach(([k, v]) => {
+    if (names.includes(k)) return;
+    out[rename && k === rename[0] ? rename[1] : k] = v;
+  });
+  return out;
+}
+// 송금 링크 저장: 붙여넣은 글에서 qr.kakaopay.com 주소만 뽑아 저장, 비우면 지움
+$('payLinkList').addEventListener('change', async (e) => {
+  const input = e.target.closest('input[data-pay]');
+  if (!input) return;
+  const name = input.dataset.pay, raw = input.value.trim();
+  const url = kakaoLink(raw);
+  if (raw && !url) { toast('카카오페이 송금 링크(qr.kakaopay.com/…)가 아니에요.'); input.value = trip.payLinks[name] || ''; return; }
+  if (url === (trip.payLinks[name] || '')) { input.value = url; return; }
+  const payLinks = payLinksWithout([name]);
+  if (url) payLinks[name] = url;
+  try { await updateDoc(doc(db, 'settle_trips', trip.id), { payLinks, updatedAt: serverTimestamp() }); toast(url ? `${name} 송금 링크를 저장했어요.` : `${name} 송금 링크를 지웠어요.`); }
+  catch (err) { toast('오류: ' + err.message); input.value = trip.payLinks[name] || ''; }
+});
 window.saveTripName = async () => {
   const name = $('setName').value.trim();
   if (!name) { $('setName').value = trip.name; toast('이름을 입력해주세요.'); return; }
@@ -937,7 +1032,7 @@ $('memberEditList').addEventListener('click', async (e) => {
   if (memberUsed(name)) { toast(`${name}은(는) 내역에 있어서 뺄 수 없어요. 이름은 고칠 수 있어요.`); return; }
   if (trip.members.length <= 2) { toast('참여자는 2명 이상이어야 해요.'); return; }
   if (!confirm(`${name}을(를) 참여자에서 뺄까요?`)) return;
-  try { await updateDoc(doc(db, 'settle_trips', trip.id), { members: trip.members.filter(m => m !== name), updatedAt: serverTimestamp() }); }
+  try { await updateDoc(doc(db, 'settle_trips', trip.id), { members: trip.members.filter(m => m !== name), payLinks: payLinksWithout([name]), updatedAt: serverTimestamp() }); }
   catch (err) { toast('오류: ' + err.message); }
 });
 // 이름 고치기 → 참여자 목록과 지난 지출·송금 기록을 한 번에 바꾼다
@@ -950,7 +1045,7 @@ $('memberEditList').addEventListener('change', async (e) => {
   if (err) { toast(err); input.value = old; return; }
   const batch = writeBatch(db);
   let n = 1;
-  batch.update(doc(db, 'settle_trips', trip.id), { members: trip.members.map(m => m === old ? neu : m), updatedAt: serverTimestamp() });
+  batch.update(doc(db, 'settle_trips', trip.id), { members: trip.members.map(m => m === old ? neu : m), payLinks: payLinksWithout([], [old, neu]), updatedAt: serverTimestamp() });
   data.expenses.forEach(x => {
     const p = parseMemberData(x.memberData);
     const usedInSplit = p.custom ? p.pairs.some(([m]) => m === old) : p.names.includes(old);
@@ -965,7 +1060,7 @@ $('memberEditList').addEventListener('change', async (e) => {
     n++;
   });
   if (n > 500) { toast('내역이 너무 많아 한 번에 바꿀 수 없어요.'); input.value = old; return; }
-  try { await batch.commit(); toast(`${old} → ${neu} 바꿨어요.`); }
+  try { await batch.commit(); if (getMe() === old) setMe(neu); toast(`${old} → ${neu} 바꿨어요.`); }
   catch (err) { toast('오류: ' + err.message); input.value = old; }
 });
 

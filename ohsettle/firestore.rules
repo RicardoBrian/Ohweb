@@ -38,9 +38,10 @@ service cloud.firestore {
         && nonEmpty(request.resource.data.name, 60)
         && request.resource.data.members is list
         && request.resource.data.members.size() >= 2 && request.resource.data.members.size() <= 50;
-      // 예전 문서의 code·status·memo 는 그대로 두고 이름·참여자만 바꾼다
+      // 예전 문서의 code·status·memo 는 그대로 두고 이름·참여자·카카오페이 송금 링크(payLinks: {이름: qr.kakaopay.com 주소})만 바꾼다
       allow update: if resource.data.get('status', '') != 'done'
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'members', 'updatedAt'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'members', 'payLinks', 'updatedAt'])
+        && (!('payLinks' in request.resource.data) || (request.resource.data.payLinks is map && request.resource.data.payLinks.size() <= 50))
         && nonEmpty(request.resource.data.name, 60)
         && request.resource.data.members is list && request.resource.data.members.size() <= 50;
       allow delete: if true;
