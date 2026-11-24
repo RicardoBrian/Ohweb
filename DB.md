@@ -30,7 +30,7 @@
 ### Firebase `ohsettle-10d43` — 정산(개인용)
 | 컬렉션 | 쓰는 앱 |
 |---|---|
-| `settle_trips` | ohsettle, **ohweb `settle.html`(+`settle-firebase-config.js`)** |
+| `settle_trips` (+ 하위 `expenses`, `transfers`) | ohsettle. 규칙 `ohsettle/firestore.rules`(목록 조회 막음 — 문서 ID = 초대 링크), 테스트 `npm run test:settle` |
 
 ### 그 밖
 - 견본(`ohinfo/public/vibe/`)은 진짜 DB를 쓰지 않는다. `vibe/shared/fake-firebase/` 가 브라우저 안에만 저장한다.
@@ -55,5 +55,4 @@
 
 ## 알려진 문제 (나중에 정리 — 3단계)
 - `students` 가 여러 곳(ohweb-93062, gwsattend, gwbs, gwansan-work)에 따로 있다. 업무용 3개는 `gwansan-work` 의 `years/{학년도}/students` 하나로 모으는 중(봉사·출결·방송부 모두 전환 완료, 2026-11-09). 명렬표 관리: students.kakainfo.com(레포 gwstudents).
-- 학교 관리자 화면(ohweb)이 개인용 정산 DB(ohsettle-10d43)에도 붙어 있다(`settle.html`).
 - 쓰지 않는 Cloudflare 자원: KV `LINKS`, KV `ohshrt-links`(옛 단축 URL 레포), Worker·D1 `ssoswitch`, Worker `ptvibecoding`.

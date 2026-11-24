@@ -1,0 +1,55 @@
+rules_version = '2';
+// ohsettle-10d43 (정산) 규칙 — 자동 배포되지 않는다.
+// 바꾸면 ohweb-rules-test 에서 `npm run test:settle` 통과 후 게시한다.
+//
+// 로그인 없이 "링크(=프로젝트 문서 ID)를 아는 사람"만 쓰는 구조:
+//  - 프로젝트 목록 조회(list)는 막는다 → ID를 모르면 아무것도 못 본다.
+//  - ID를 알면 그 프로젝트와 내역은 읽기·쓰기 가능.
+//  - 컬렉션 그룹 조회는 아래 match 가 {path=**} 가 아니라서 막힌다.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function str(v, max) { return v is string && v.size() <= max; }
+    function nonEmpty(v, max) { return str(v, max) && v.size() > 0; }
+    function money(v) { return v is int && v > 0 && v <= 1000000000; }
+    function tripPath(t) { return /databases/$(database)/documents/settle_trips/$(t); }
+    function tripOpen(t) { return exists(tripPath(t)) && get(tripPath(t)).data.get('status', '') != 'done'; }
+
+    function validExpense(d) {
+      return d.keys().hasOnly(['date', 'desc', 'amount', 'payer', 'memberData', 'createdAt', 'updatedAt'])
+        && str(d.date, 30) && nonEmpty(d.desc, 100) && money(d.amount)
+        && nonEmpty(d.payer, 40) && nonEmpty(d.memberData, 4000);
+    }
+    function validTransfer(d) {
+      return d.keys().hasOnly(['date', 'sender', 'receiver', 'amount', 'memo', 'createdAt', 'updatedAt'])
+        && str(d.date, 30) && nonEmpty(d.sender, 40) && nonEmpty(d.receiver, 40)
+        && d.sender != d.receiver && money(d.amount) && str(d.memo, 100);
+    }
+
+    match /settle_trips/{t} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if request.resource.data.keys().hasOnly(['name', 'members', 'createdAt', 'v'])
+        && nonEmpty(request.resource.data.name, 60)
+        && request.resource.data.members is list
+        && request.resource.data.members.size() >= 2 && request.resource.data.members.size() <= 50;
+      // 예전 문서의 code·status·memo 는 그대로 두고 이름·참여자만 바꾼다
+      allow update: if resource.data.get('status', '') != 'done'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'members', 'updatedAt'])
+        && nonEmpty(request.resource.data.name, 60)
+        && request.resource.data.members is list && request.resource.data.members.size() <= 50;
+      allow delete: if true;
+
+      match /expenses/{e} {
+        allow read: if true;
+        allow create, update: if tripOpen(t) && validExpense(request.resource.data);
+        allow delete: if true;
+      }
+      match /transfers/{x} {
+        allow read: if true;
+        allow create, update: if tripOpen(t) && validTransfer(request.resource.data);
+        allow delete: if true;
+      }
+    }
+  }
+}
