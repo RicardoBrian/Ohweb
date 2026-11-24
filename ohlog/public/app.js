@@ -9,13 +9,13 @@
 // Firebase SDK(수백 KB)는 첫 화면을 그린 뒤에 받는다 — 앱을 켜면 저장해 둔 시간표가 먼저 보이고(bootFromCache),
 // SDK 는 그동안 index.html 의 modulepreload 로 이미 받는 중이다. SDK 를 쓰는 곳은 sdkReady 뒤에서만 실행된다.
 let auth, db, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged;
-let doc, setDoc, updateDoc, deleteDoc, addDoc, collection, onSnapshot, serverTimestamp, query, orderBy, limit;
+let doc, setDoc, updateDoc, deleteDoc, addDoc, collection, onSnapshot, serverTimestamp, query, orderBy, limit, getDoc, increment;
 const GS = 'https://www.gstatic.com/firebasejs/10.12.2/';
 const sdkReady = (async () => {
   const [cfg, A, F] = await Promise.all([import('./firebase-config.js'), import(GS + 'firebase-auth.js'), import(GS + 'firebase-firestore.js')]);
   ({ auth, db } = cfg);
   ({ GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } = A);
-  ({ doc, setDoc, updateDoc, deleteDoc, addDoc, collection, onSnapshot, serverTimestamp, query, orderBy, limit } = F);
+  ({ doc, setDoc, updateDoc, deleteDoc, addDoc, collection, onSnapshot, serverTimestamp, query, orderBy, limit, getDoc, increment } = F);
 })();
 
 const ADMIN_EMAIL = 'qjatjr7575@gmail.com';
@@ -395,7 +395,7 @@ $('setChange').onclick = async () => {
 function stopApp() {
   S.unsub.forEach((u) => u()); S.unsub = [];
   S.live = false;
-  S.logs.clear(); S.plans.clear(); S.extras.clear(); S.tt.clear(); S.ttLoading.clear(); S.ttFail.clear(); S.clsTT.clear(); S.stale.clear(); S.users = []; S.feedback = [];
+  S.logs.clear(); S.plans.clear(); S.extras.clear(); S.tt.clear(); S.ttLoading.clear(); S.ttFail.clear(); S.clsTT.clear(); S.stale.clear(); S.users = []; S.feedback = []; S.usage = null;
   S.weeks = []; S.curWeek = null; S.week = null;
 }
 async function startApp() {
@@ -409,7 +409,7 @@ async function startApp() {
   buildMenu(); fillIcons(); fillCredit();
   const live = (name, map) => onSnapshot(sub(name), (snap) => {
     map.clear(); snap.forEach((d) => map.set(d.id, { id: d.id, ...d.data() }));
-    if (name === 'logs') S.live = true; // 일지가 도착한 뒤에야 쓰기 허용(덮어쓰기 방지)
+    if (name === 'logs' && !S.live) { S.live = true; track(S.view); } // 일지가 도착한 뒤에야 쓰기 허용(덮어쓰기 방지)
     renderAll();
   }, (e) => toast(`${name} 읽기 실패: ${e.code}`));
   S.unsub.push(live('logs', S.logs), live('plans', S.plans), live('extras', S.extras));
@@ -688,6 +688,7 @@ function go(view, replace) {
   markMenu();
   renderView();
   window.scrollTo(0, 0);
+  track(view);
 }
 window.addEventListener('popstate', () => { if (!$('app').classList.contains('hidden')) go(location.hash.slice(1) || defaultView(), true); });
 
@@ -1046,7 +1047,7 @@ async function saveLog() {
     updatedAt: serverTimestamp(),
   };
   $('lmSave').disabled = $('lmSaveNext').disabled = true;
-  try { await setDoc(doc(sub('logs'), logId(s)), data); toast('저장했어요'); return true; }
+  try { await setDoc(doc(sub('logs'), logId(s)), data); toast('저장했어요'); track('save'); return true; }
   catch (e) { toast('저장 실패: ' + e.code); return false; }
   finally { $('lmSave').disabled = $('lmSaveNext').disabled = false; }
 }
@@ -1429,11 +1430,78 @@ function renderSync() {
     + (s.token ? '' : '<div>Cloudflare 환경 변수 GITHUB_TOKEN 이 없어 "지금 다시 확인"을 쓸 수 없어요</div>');
 }
 
+/* ───────── 사용 기록 ───────── */
+// 선생님이 어느 날 어떤 화면을 열었고 일지를 몇 번 저장했는지 plans/_usage 한 문서에 남긴다
+//   { days: { '2026-11-24': { today: true, week: true, save: 3 } } }  → 관리자 '승인 관리'의 '사용 기록'에서 본다.
+// plans 컬렉션에 두는 건 Firestore 규칙을 바꾸지 않고 바로 쓰기 위해서다(본인 쓰기·관리자 읽기가 이미 허용됨).
+// 관리자 자신의 사용은 남기지 않는다. 같은 날 같은 화면은 한 번만 쓴다.
+const USAGE_ID = '_usage';
+const USAGE_VIEWS = { today: '오늘', week: '시간표', class: '학급·교사', progress: '진도', plan: '계획', export: '내보내기', settings: '설정' };
+const usageSent = new Set();
+function track(what) {
+  if (!S.user || S.admin || !S.live || S.profile?.status !== 'approved') return;
+  if (what !== 'save' && !USAGE_VIEWS[what]) return;
+  const day = todayISO();
+  if (what !== 'save') {
+    if (usageSent.has(day + what) || S.plans.get(USAGE_ID)?.days?.[day]?.[what]) return;
+    usageSent.add(day + what);
+  }
+  setDoc(doc(sub('plans'), USAGE_ID), { days: { [day]: { [what]: what === 'save' ? increment(1) : true } }, updatedAt: serverTimestamp() }, { merge: true })
+    .catch((e) => { usageSent.delete(day + what); console.warn('[사용 기록]', e.code || e); });
+}
+
+// 관리자: 승인된 선생님마다 _usage 를 한 번 읽어 둔다(화면을 열 때·새로고침 버튼).
+S.usage = null; S.usageDay = '';
+async function loadUsage() {
+  await sdkReady;
+  const users = S.users.filter((u) => u.status === 'approved' && u.email !== ADMIN_EMAIL);
+  const got = await Promise.all(users.map((u) => getDoc(doc(db, 'classlog_users', u.uid, 'plans', USAGE_ID))
+    .then((d) => [u.uid, d.exists() ? d.data().days || {} : {}]).catch(() => [u.uid, null])));
+  S.usage = new Map(got);
+  renderUsage();
+}
+function renderUsage() {
+  const box = $('usageBox');
+  if (!box) return;
+  if (!S.usage) { box.innerHTML = '<div class="muted small">불러오는 중…</div>'; return; }
+  const day = S.usageDay || todayISO();
+  const users = S.users.filter((u) => S.usage.has(u.uid));
+  const name = (u) => `${esc(u.teacherName)} <span class="muted small">${esc(u.schoolName)}</span>`;
+  const viewsOf = (d) => Object.keys(USAGE_VIEWS).filter((k) => d?.[k]).map((k) => USAGE_VIEWS[k]);
+  const used = users.filter((u) => { const d = S.usage.get(u.uid)?.[day]; return d && (viewsOf(d).length || d.save); });
+  const unused = users.filter((u) => !used.includes(u));
+  // 최근 30일: 선생님별 사용일수·저장 수, 화면별로 쓴 선생님 수
+  const from = todayISO(new Date(Date.now() - 29 * 864e5));
+  const perView = Object.fromEntries(Object.keys(USAGE_VIEWS).map((k) => [k, new Set()]));
+  const perUser = users.map((u) => {
+    const days = Object.entries(S.usage.get(u.uid) || {}).filter(([d]) => d >= from && d <= todayISO());
+    let save = 0;
+    for (const [, d] of days) { save += Number(d.save) || 0; for (const k of Object.keys(USAGE_VIEWS)) if (d[k]) perView[k].add(u.uid); }
+    return { u, days: days.length, save };
+  }).sort((a, b) => b.days - a.days || b.save - a.save);
+  box.innerHTML = `
+    <div class="row" style="gap:8px;align-items:center;margin-bottom:8px">
+      <input type="date" class="inp" id="usageDate" value="${day}" max="${todayISO()}" style="max-width:170px">
+      <span class="muted small">이날 쓴 선생님 ${used.length}명 / 승인 ${users.length}명</span>
+    </div>
+    ${used.length ? used.map((u) => { const d = S.usage.get(u.uid)[day]; return `<div class="user-row"><div style="min-width:0"><div class="nm">${name(u)}</div>
+      <div class="em">${viewsOf(d).join(' · ') || '-'}${d.save ? ` · 일지 저장 ${d.save}번` : ''}</div></div></div>`; }).join('') : '<div class="empty-state">이날 쓴 선생님이 없어요.</div>'}
+    ${unused.length ? `<div class="muted small" style="margin-top:6px">안 쓴 선생님: ${unused.map((u) => esc(u.teacherName)).join(', ')}</div>` : ''}
+    <h3 style="margin:14px 0 6px;font-size:0.95rem">최근 30일</h3>
+    <div class="muted small" style="margin-bottom:6px">화면별로 쓴 선생님 수: ${Object.entries(USAGE_VIEWS).map(([k, l]) => `${l} ${perView[k].size}`).join(' · ')}</div>
+    ${perUser.map(({ u, days, save }) => `<div class="user-row"><div style="min-width:0"><div class="nm">${name(u)}</div>
+      <div class="em">${days}일 사용 · 일지 저장 ${save}번</div></div></div>`).join('')}
+    <div class="muted small" style="margin-top:6px">2026-11-24 부터 기록해요. 관리자 본인 사용은 빼요.</div>`;
+  $('usageDate').onchange = (e) => { S.usageDay = e.target.value; renderUsage(); };
+}
+
 /* ───────── 승인 관리(관리자) ───────── */
 const FB_KIND = { idea: '기능 제안', ux: '불편한 점', bug: '오류 신고', etc: '기타' };
 function renderAdmin() {
   if (!S.admin || S.view !== 'admin') return;
   renderSync();
+  if (!S.usage && !S.usageLoading && S.users.length) { S.usageLoading = true; loadUsage().finally(() => { S.usageLoading = false; }); }
+  renderUsage();
   $('adminFeedback').innerHTML = S.feedback.length ? S.feedback.map((f) => `<div class="user-row"><div style="min-width:0">
     <div class="nm">${esc(FB_KIND[f.kind] || '기타')} <span class="muted small" style="font-weight:500">${esc(f.teacherName)} · ${esc(f.schoolName)}${f.createdAt?.toDate ? ` · ${md(todayISO(f.createdAt.toDate()))}` : ''}</span></div>
     <div style="white-space:pre-wrap;font-size:0.92rem;margin-top:2px">${esc(f.text)}</div></div></div>`).join('') : '<div class="empty-state">아직 받은 피드백이 없어요.</div>';
@@ -1513,6 +1581,7 @@ document.addEventListener('click', async (e) => {
   else if (act === 'add-extra') openExtra();
   else if (act === 'feedback') openFeedback();
   else if (act === 'check-update') checkUpdate(true);
+  else if (act === 'usage-reload') { S.usage = null; renderUsage(); loadUsage().catch((e) => toast('사용 기록을 못 읽음: ' + (e.code || e.message))); }
   else if (act === 'install') doInstall();
   else if (act === 'order') openOrder();
   else if (act === 'set-homeroom') saveHomeroom({ grade: S.cls.grade, cls: S.cls.cls });
