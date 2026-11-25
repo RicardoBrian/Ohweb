@@ -344,3 +344,36 @@ export function describeChange(before, after) {
   return parts.join(', ');
 }
 export const circled = i => CIRCLED[i] || `${i + 1}.`;
+
+// ── 학기 성적: 한 학기 같은 과목 평가들을 합쳐 등급(A~E) ──
+// cuts = [A, B, C, D] 하한(백분율). 만점 합이 100 이면 총점이 곧 백분율.
+export const DEFAULT_CUTS = [90, 80, 70, 60];
+const LETTERS = ['A', 'B', 'C', 'D'];
+export function gradeOf(total, maxTotal, cuts = DEFAULT_CUTS) {
+  if (total == null || !(Number(maxTotal) > 0)) return '';
+  const pct = Math.round(total / Number(maxTotal) * 10000) / 100;
+  for (let i = 0; i < LETTERS.length; i++) if (cuts[i] != null && pct >= Number(cuts[i])) return LETTERS[i];
+  return 'E';
+}
+// classKey('S중','1','2') → 'S중__g1' (학교·학년 묶음)
+export const gradeKeyOf = ck => String(ck ?? '').replace(/__c[^_]*$/, '');
+// 결과 문서 한 건의 점수(미제출이면 기본점수). 결과가 없으면 null.
+export function resultScore(r, baseScore) {
+  if (!r) return null;
+  const v = applyBase({ status: r.status || 'normal', score: r.score ?? null, items: r.items }, baseScore);
+  const s = v.score ?? (v.items?.length ? sumItems(v.items) : null);
+  return s == null || !Number.isFinite(Number(s)) ? null : Number(s);
+}
+// students: 학생 목록, assessments: 합칠 평가들, resultsByAid: {평가ID: {학생ID: 결과문서}}
+// → { maxTotal, rows: [{ student, scores: [점수|null], total, blanks, grade }] }
+// 빈 칸(결과 없음)은 0점으로 더하고 blanks 로 센다.
+export function semesterRows(students, assessments, resultsByAid, cuts = DEFAULT_CUTS) {
+  const maxTotal = Math.round(assessments.reduce((a, x) => a + (Number(x.maxScore) || 0), 0) * 100) / 100;
+  const rows = students.map(st => {
+    const scores = assessments.map(a => resultScore(resultsByAid[a.id]?.[st.id], a.baseScore));
+    const blanks = scores.filter(s => s == null).length;
+    const total = blanks === scores.length ? null : Math.round(scores.reduce((a, s) => a + (s || 0), 0) * 100) / 100;
+    return { student: st, scores, total, blanks, grade: gradeOf(total, maxTotal, cuts) };
+  });
+  return { maxTotal, rows };
+}
