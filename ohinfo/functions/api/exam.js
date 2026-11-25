@@ -288,6 +288,15 @@ const normCode = v => String(v ?? '').trim().toUpperCase();
 // 결과 문서에 문항 제목을 같이 남긴다 — 나중에 학생이 결과를 다시 볼 때는
 // 문항을 안 불러오므로, 제목이 없으면 "Q1"처럼만 보인다.
 // 제출 당시 언어로 고른다: exam.html의 getQTitle과 같은 규칙.
+// 시험 제목 번역(exams.titleZh/Ru/En) — 없으면 빈 객체, 화면은 한국어 제목을 쓴다
+function examTitles(e) {
+  const o = {};
+  if (e?.titleZh) o.zh = e.titleZh;
+  if (e?.titleRu) o.ru = e.titleRu;
+  if (e?.titleEn) o.en = e.titleEn;
+  return o;
+}
+
 function pickTitle(q, lang) {
   if (lang === 'zh' && q.titleZh) return q.titleZh;
   if (lang === 'ru' && q.titleRu) return q.titleRu;
@@ -432,6 +441,7 @@ async function actionList(db, studentDocId, student) {
   const examIds = [...new Set(rows.map(r => r.a.examId).filter(isSafeId))];
   const exams = await db.getMany(examIds.map(id => `exams/${id}`));
   const titleOf = new Map(examIds.map((id, i) => [id, exams[i]?.title || '']));
+  const titlesOf = new Map(examIds.map((id, i) => [id, examTitles(exams[i])]));
   // 최근 배정이 위로
   rows.sort((x, y) => String(y.a.createdAt || '').localeCompare(String(x.a.createdAt || '')));
   return json({
@@ -439,6 +449,7 @@ async function actionList(db, studentDocId, student) {
     exams: rows.map(({ a, p }) => ({
       asId: a.id,
       title: titleOf.get(a.examId) || a.examId || '',
+      titles: titlesOf.get(a.examId) || {},
       duration: Number(a.duration) || 0,
       open: isOpen(a),
       needsCode: !student.isMaster && !!normCode(a.code),
@@ -501,6 +512,7 @@ async function actionStart(db, studentDocId, student, asId, code) {
     ok: true,
     asId,
     title: exam?.title || '',
+    titles: examTitles(exam),
     duration: Number(assignment.duration) || 0,
     startTime: firstEntry ? now.toISOString() : progress.startTime,
     serverNow: now.getTime(),
