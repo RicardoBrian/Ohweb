@@ -13,7 +13,7 @@
 | `public/admin-ailab.js` | AI 실습실 관리 |
 | `public/exam-qcsv.js` | 시험 문항 CSV |
 | `public/forms.html` | 설문 만들기·결과 |
-| `public/score.html` + `score-core.js` + `score-config.js` | 수행평가: 감점사유 템플릿·평가 항목(①②③)·점수 입력(CSV/엑셀, 채점 시트 상세 탭 그대로·학번 가능)·비고(선생님만)·반별 공개·이의신청 확인·수정 이력·제출물 연결(드라이브 폴더 → 학번으로 학생)·시험에서 가져오기(exam 결과 → 평가, 문항 = 항목, 다시 가져오기). `score-core.js` 는 화면 없는 순수 함수(테스트 `npm run test:score`), `score-config.js` 는 Apps Script 주소 |
+| `public/score.html` + `score-core.js` + `score-config.js` | 수행평가: 감점사유 템플릿·평가 항목(①②③)·점수 입력(CSV/엑셀, 채점 시트 상세 탭 그대로·학번 가능)·비고(선생님만)·반별 공개·이의신청 확인·수정 이력·제출물 연결(드라이브 폴더 → 학번으로 학생)·시험에서 가져오기(exam 결과 → 평가, 문항 = 항목, 다시 가져오기)·학기 성적(같은 학기·과목·학교 학년 평가 합계 → A~E 등급, 기준 바꾸기, CSV). `score-core.js` 는 화면 없는 순수 함수(테스트 `npm run test:score`), `score-config.js` 는 Apps Script 주소 |
 | `public/messages.html`, `notice.html` | 메시지·공지 |
 | `public/timer.html` | 타이머 |
 | `public/temp/{번호}/` | 행사용 임시 페이지(예: `261218` = 12/18 교직원 연수 안내·참여 조사). 공개 주소 `gwansan.com/{번호}` — gwresearch 의 `functions/_middleware.js` 가 `admin.kakainfo.com/temp/{번호}/` 를 대신 보여 준다. DB 는 업무용 `gwansan-work` 의 `apps/temp/events/{번호}/responses`(누구나 제출, 관리자만 결과). 제출하면 `functions/api/temp-sheet.js` 가 관리자 공유용 구글 시트에도 한 줄 추가(행사 번호 → 시트 ID 는 그 파일의 `SHEETS`, 시트는 서비스 계정에 편집자로 공유). 견본 빌드에서 빠짐 |

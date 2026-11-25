@@ -373,6 +373,33 @@ try {
   await S.waitForSelector('#detail .crit');
   ok(/테스트 1\/2 통과/.test(await S.innerText('#detail')) && (await S.$$('#detail a[href="exam.html"]')).length === 1, '학생: 시험에서 온 평가 — 문항별 점수·사유, 시험 화면 링크');
 
+  // 학기 성적: 같은 학기·과목 평가 셋(30+30+40)을 합쳐 등급
+  await env.withSecurityRulesDisabled(async c => {
+    const db = c.firestore();
+    const mk = (id, title, maxScore, extra = {}) => setDoc(doc(db, 'score_assessments/' + id), { title, subject: '학기과목', term: '2099-1', maxScore, criteria: [], classKeys: ['S중__g1__c2', 'S중__g1__c3'], publishedClasses: [], createdAt: new Date(2099, 0, title.length), ...extra });
+    await mk('SEM1', '수행1', 30); await mk('SEM2', '수행22', 30, { baseScore: 10 }); await mk('SEM3', '수행333', 40);
+    const r = (aid, sid, v) => setDoc(doc(db, 'score_results/' + aid + '_' + sid), { assessmentId: aid, studentId: sid, classKey: sid === 'StuC' ? 'S중__g1__c3' : 'S중__g1__c2', status: 'normal', published: false, ...v });
+    await r('SEM1', 'StuA', { score: 30 }); await r('SEM2', 'StuA', { score: 28 }); await r('SEM3', 'StuA', { score: 35 });
+    await r('SEM1', 'StuB', { score: 20 }); await r('SEM2', 'StuB', { status: 'missing', score: null }); await r('SEM3', 'StuB', { score: 30 });
+    await r('SEM1', 'StuC', { score: 25 });
+  });
+  await T.goto('http://localhost:8098/score.html');
+  await T.waitForSelector('#assessList .a-card');
+  await T.click('#tabSeg [data-tab="sem"]');
+  await T.selectOption('#semTerm', '2099-1');
+  await T.waitForSelector('#semT_2 tbody tr');
+  const semTxt = await T.innerText('#semBody');
+  const rowOf = n => T.innerText(`#semT_2 tbody tr:has(td.name:text-is("${n}"))`);
+  ok(/만점 합계 100/.test(semTxt) && /A 1명/.test(semTxt) && /D 1명/.test(semTxt) && /E 1명/.test(semTxt), '교사: 학기 성적 — 세 평가 합계·등급 분포');
+  ok(/93\s+A/.test(await rowOf('김학생')) && /60\s+D/.test(await rowOf('박학생')), '교사: 학기 성적 — 학생별 총점·등급(미제출은 기본점수)');
+  ok(/빈 칸 있는 학생 1명/.test(semTxt) && /25\s+E/.test(await T.innerText('#semT_3 tbody tr')), '교사: 학기 성적 — 빠진 평가는 0점, 다른 반도 표시');
+  await T.fill('[data-sem-cut="3"]', '20'); await T.press('[data-sem-cut="3"]', 'Tab');
+  await T.waitForFunction(() => /D 2명/.test(document.getElementById('semBody').innerText));
+  ok(true, '교사: 학기 성적 — 등급 기준 바꾸면 다시 계산');
+  await T.uncheck('[data-sem-a="SEM3"]');
+  await T.waitForFunction(() => /만점 합계 60/.test(document.getElementById('semBody').innerText));
+  ok(/백분율|÷/.test(await T.innerText('#semBody')), '교사: 학기 성적 — 평가 빼면 만점 60, 백분율로 등급');
+
   ok(errors.length === 0, '페이지 오류 없음' + (errors.length ? ' — ' + errors.join(' | ') : ''));
 } catch (e) {
   fails++; console.log('❌ 중단: ' + e.message);

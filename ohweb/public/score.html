@@ -249,6 +249,7 @@
       <div class="grow"></div>
       <div class="seg" id="tabSeg">
         <button data-tab="assess" class="on">평가</button>
+        <button data-tab="sem">학기 성적</button>
         <button data-tab="tmpl">감점사유 템플릿</button>
       </div>
     </div>
@@ -260,6 +261,16 @@
         <button class="icon-btn" title="새로고침" id="btnReload"><svg><use href="#ic-refresh"/></svg></button>
       </div>
       <div id="assessList"><div class="loading">불러오는 중…</div></div>
+    </div>
+    <div id="panelSem" class="hidden">
+      <div class="toolbar">
+        <select class="f-inp" id="semTerm" style="width:auto"></select>
+        <select class="f-inp" id="semSubject" style="width:auto"></select>
+        <select class="f-inp" id="semGrade" style="width:auto"></select>
+        <div class="grow"></div>
+        <button class="btn" id="btnSemCsv"><svg><use href="#ic-download"/></svg>성적 내려받기</button>
+      </div>
+      <div id="semBody"></div>
     </div>
     <div id="panelTmpl" class="hidden">
       <div class="toolbar">
@@ -432,7 +443,99 @@ $('tabSeg').addEventListener('click', e => {
   $('tabSeg').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
   $('panelAssess').classList.toggle('hidden', tab !== 'assess');
   $('panelTmpl').classList.toggle('hidden', tab !== 'tmpl');
+  $('panelSem').classList.toggle('hidden', tab !== 'sem');
+  if (tab === 'sem') renderSem();
 });
+
+// ── 학기 성적 ──
+// 같은 학기·과목, 같은 학교·학년에 배정된 평가들을 합쳐 총점 → 등급(A~E).
+const sem = { term: '', subject: '', gk: '', off: new Set(), cuts: [...SC.DEFAULT_CUTS], cache: {} };
+try { const c = JSON.parse(localStorage.getItem('scoreSemCuts') || 'null'); if (Array.isArray(c) && c.length === 4) sem.cuts = c.map(Number); } catch {}
+const subjOf = a => a.subject || '과목 없음';
+const gradeLabelOf = gk => { const c = classes.find(x => SC.gradeKeyOf(x.key) === gk); return c ? `${c.school} ${c.grade}학년` : gk.replace(/__g/, ' ') + '학년'; };
+function semOptions() {
+  const pick = (sel, vals, label, curv) => {
+    const v = vals.includes(curv) ? curv : (vals[0] || '');
+    $(sel).innerHTML = vals.length ? vals.map(x => `<option value="${esc(x)}" ${x === v ? 'selected' : ''}>${esc(label(x))}</option>`).join('') : '<option value="">없음</option>';
+    return v;
+  };
+  const terms = [...new Set(assessments.map(a => a.term || '').filter(Boolean))].sort().reverse();
+  sem.term = pick('semTerm', terms, t => { const m = String(t).match(/^(\d+)-(\d)$/); return m ? `${m[1]}년 ${m[2]}학기` : t; }, sem.term);
+  const inTerm = assessments.filter(a => a.term === sem.term);
+  sem.subject = pick('semSubject', [...new Set(inTerm.map(subjOf))].sort(), x => x, sem.subject);
+  const inSubj = inTerm.filter(a => subjOf(a) === sem.subject);
+  const gks = [...new Set(inSubj.flatMap(a => (a.classKeys || []).map(SC.gradeKeyOf)))].sort((a, b) => gradeLabelOf(a).localeCompare(gradeLabelOf(b), 'ko', { numeric: true }));
+  sem.gk = pick('semGrade', gks, gradeLabelOf, sem.gk);
+  return inSubj.filter(a => (a.classKeys || []).some(k => SC.gradeKeyOf(k) === sem.gk))
+    .sort((a, b) => millis(a.createdAt) - millis(b.createdAt));
+}
+async function semResults(ids) {
+  const need = ids.filter(id => !sem.cache[id]);
+  for (let i = 0; i < need.length; i += 30) {
+    const chunk = need.slice(i, i + 30);
+    const snap = await getDocs(query(collection(db, 'score_results'), where('assessmentId', 'in', chunk)));
+    chunk.forEach(id => { sem.cache[id] = {}; });
+    snap.docs.forEach(d => { const r = d.data(); sem.cache[r.assessmentId][r.studentId] = r; });
+  }
+  return sem.cache;
+}
+let semData = null;
+async function renderSem() {
+  const el = $('semBody');
+  const list = semOptions();
+  if (!list.length) { semData = null; el.innerHTML = `<div class="empty">학기·과목이 있는 평가가 없습니다.<br>평가를 만들 때 <b>과목</b>과 <b>학기</b>를 넣으면 여기서 한 학기 평가를 합쳐 등급을 냅니다.</div>`; return; }
+  const use = list.filter(a => !sem.off.has(a.id));
+  el.innerHTML = '<div class="loading">불러오는 중…</div>';
+  let cache;
+  try { cache = await semResults(use.map(a => a.id)); }
+  catch (e) { el.innerHTML = `<div class="empty">점수를 불러오지 못했습니다: ${esc(e.message)}</div>`; return; }
+  const cls = classes.filter(c => SC.gradeKeyOf(c.key) === sem.gk);
+  const studs = cls.flatMap(c => c.students.map(s => ({ ...s, _cls: c.cls })));
+  const { maxTotal, rows } = SC.semesterRows(studs, use, cache, sem.cuts);
+  semData = { use, rows, maxTotal };
+  const dist = { A: 0, B: 0, C: 0, D: 0, E: 0 };
+  rows.forEach(r => { if (r.grade) dist[r.grade]++; });
+  const blanks = rows.filter(r => r.blanks).length;
+  el.innerHTML = `<div class="card" style="margin-bottom:12px">
+    <div class="group-label" style="margin-top:0">합칠 평가 (${use.length}/${list.length})</div>
+    <div class="chk-list">${list.map(a => `<label class="chk"><input type="checkbox" data-sem-a="${esc(a.id)}" ${sem.off.has(a.id) ? '' : 'checked'}>${esc(a.title)} <span class="hint" style="margin:0">/${esc(a.maxScore ?? '-')}</span></label>`).join('')}</div>
+    <div class="group-label">등급 기준 (백분율 이상)</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-size:0.86rem">${['A', 'B', 'C', 'D'].map((L, i) => `<label>${L} <input class="f-inp f-score" style="width:60px" data-sem-cut="${i}" value="${esc(sem.cuts[i])}"></label>`).join('')}<span class="hint" style="margin:0">그 밖은 E</span></div>
+    <p class="hint" style="margin:10px 0 0">만점 합계 <b>${esc(maxTotal)}</b>점${maxTotal !== 100 ? ' — 100점이 아니라서 <b>총점 ÷ 만점 × 100</b> 으로 등급을 냅니다' : ''}. 미제출은 평가의 기본점수, 점수가 없는 평가는 0점으로 더합니다.</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px">${Object.entries(dist).map(([g, n]) => `<span class="pill">${g} ${n}명</span>`).join('')}${blanks ? `<span class="pill warn">빈 칸 있는 학생 ${blanks}명</span>` : ''}</div>
+  </div>
+  ${use.length ? cls.map(c => {
+    const rs = rows.filter(r => r.student._cls === c.cls);
+    return `<div class="group-label">${esc(c.grade)}학년 ${esc(c.cls)}반 · ${rs.length}명</div>
+    <div class="tbl-wrap" style="margin-bottom:14px"><table class="sc" id="semT_${esc(c.cls)}">
+      <thead><tr><th class="no">번호</th><th class="name">이름</th>${use.map(a => `<th>${esc(a.title)} <span style="font-weight:500">/${esc(a.maxScore ?? '-')}</span></th>`).join('')}<th>총점 /${esc(maxTotal)}</th><th>등급</th></tr></thead>
+      <tbody>${rs.map(r => `<tr><td class="no">${esc(r.student.number)}</td><td class="name">${esc(r.student.name)}</td>${r.scores.map(v => `<td>${v == null ? '<span class="hint" style="margin:0">—</span>' : esc(v)}</td>`).join('')}<td><b>${r.total == null ? '—' : esc(r.total)}</b></td><td><b>${esc(r.grade || '—')}</b></td></tr>`).join('')}</tbody>
+    </table></div>`;
+  }).join('') : '<div class="empty">합칠 평가를 하나 이상 고르세요.</div>'}`;
+}
+['semTerm', 'semSubject', 'semGrade'].forEach(id => $(id).addEventListener('change', e => {
+  if (id === 'semTerm') { sem.term = e.target.value; sem.subject = ''; sem.gk = ''; }
+  if (id === 'semSubject') { sem.subject = e.target.value; sem.gk = ''; }
+  if (id === 'semGrade') sem.gk = e.target.value;
+  renderSem();
+}));
+$('semBody').addEventListener('change', e => {
+  const a = e.target.dataset.semA, c = e.target.dataset.semCut;
+  if (a) { e.target.checked ? sem.off.delete(a) : sem.off.add(a); renderSem(); }
+  if (c != null) {
+    const n = Number(e.target.value);
+    if (e.target.value.trim() === '' || !Number.isFinite(n)) { e.target.value = sem.cuts[c]; return; }
+    sem.cuts[c] = n; try { localStorage.setItem('scoreSemCuts', JSON.stringify(sem.cuts)); } catch {}
+    renderSem();
+  }
+});
+$('btnSemCsv').onclick = () => {
+  if (!semData?.use.length) { toast('내려받을 성적이 없습니다.'); return; }
+  const { use, rows, maxTotal } = semData;
+  const out = [['학교', '학년', '반', '번호', '이름', ...use.map(a => `${a.title}(${a.maxScore ?? ''})`), `총점(${maxTotal})`, '등급']];
+  rows.forEach(r => { const s = r.student; out.push([s.schoolName, SC.nv(s.grade), SC.nv(s.class), s.number, s.name, ...r.scores.map(v => v ?? ''), r.total ?? '', r.grade]); });
+  download(`학기성적_${sem.term}_${sem.subject}_${gradeLabelOf(sem.gk)}.csv`, SC.toCSV(out));
+};
 function renderAssessList() {
   const el = $('assessList');
   if (!assessments.length) { el.innerHTML = `<div class="empty">아직 평가가 없습니다. <b>새 평가</b>로 시작하세요.<br>감점사유는 <b>감점사유 템플릿</b> 탭에서 먼저 올려 두면 점수 입력 때 고를 수 있습니다.</div>`; return; }
@@ -1200,7 +1303,8 @@ window.addEventListener('beforeunload', e => { if (dirtyCheck()) { e.preventDefa
 $('btnBack').onclick = () => { location.hash = ''; };
 async function reloadAll(rerender = true) {
   await loadBase();
-  if (rerender && !cur) { renderAssessList(); renderTemplates(); }
+  sem.cache = {};
+  if (rerender && !cur) { renderAssessList(); renderTemplates(); if (tab === 'sem') renderSem(); }
 }
 $('btnReload').onclick = () => reloadAll().then(() => toast('새로 불러왔습니다.'));
 
