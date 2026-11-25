@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   decodeText, parseCSV, toCSV, parseTemplateRows, parseScoreRows, parseStatus,
   classKey, studentKey, sameResult, describeChange, parseHakbun, hakbunInName, matchFiles, scoreHeader, applyBase,
+  gradeOf, gradeKeyOf, semesterRows,
 } from '../ohweb/public/score-core.js';
 
 const students = [
@@ -155,4 +156,26 @@ test('미제출 기본점수: 미제출·점수 빈칸이면 기본점수 그대
   const it = [{ label: 'x', max: 5, score: null, reason: '' }];
   assert.equal(applyBase({ status: 'missing', score: null, items: it }, 3).score, 3, '항목 평가도 총점에 기본점수');
   assert.equal(applyBase({ status: 'missing', score: 2, items: [{ ...it[0], score: 2 }] }, 3).score, 2);
+});
+
+test('학기 성적: 등급 경계·합계·빈 칸', () => {
+  assert.equal(gradeOf(90, 100), 'A'); assert.equal(gradeOf(89.99, 100), 'B');
+  assert.equal(gradeOf(80, 100), 'B'); assert.equal(gradeOf(70, 100), 'C');
+  assert.equal(gradeOf(60, 100), 'D'); assert.equal(gradeOf(59.5, 100), 'E');
+  assert.equal(gradeOf(45, 50), 'A');            // 만점 합이 100 이 아니면 백분율로
+  assert.equal(gradeOf(null, 100), '');
+  assert.equal(gradeOf(85, 100, [95, 85, 75, 65]), 'B');
+  assert.equal(gradeKeyOf(classKey('관산중', '1', '2')), '관산중__g1');
+  const st = [{ id: 'A' }, { id: 'B' }, { id: 'C' }];
+  const as = [{ id: 'x', maxScore: 30 }, { id: 'y', maxScore: 30, baseScore: 10 }, { id: 'z', maxScore: 40 }];
+  const res = {
+    x: { A: { score: 30 }, B: { score: 20 } },
+    y: { A: { score: 28 }, B: { status: 'missing', score: null } },
+    z: { A: { items: [{ score: 20 }, { score: 15 }] }, B: { score: 30 } },
+  };
+  const { maxTotal, rows } = semesterRows(st, as, res);
+  assert.equal(maxTotal, 100);
+  assert.deepEqual(rows[0].scores, [30, 28, 35]); assert.equal(rows[0].total, 93); assert.equal(rows[0].grade, 'A');
+  assert.deepEqual(rows[1].scores, [20, 10, 30]); assert.equal(rows[1].total, 60); assert.equal(rows[1].grade, 'D');
+  assert.equal(rows[2].total, null); assert.equal(rows[2].blanks, 3); assert.equal(rows[2].grade, '');
 });
