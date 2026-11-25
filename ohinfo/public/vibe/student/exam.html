@@ -569,7 +569,7 @@ const UI = {
     pendingResultMsg:'제출이 완료되었습니다.\n서술형 문항은 선생님이 채점한 후 최종 점수를 확인할 수 있어요.',
     stdin:'표준 입력 (stdin)', stdinPlaceholder:'입력이 필요한 경우 입력 값을 넣어주세요.',
     noOutput:'(출력 없음)', runErr:'실행 오류: ',
-    gradeUnit:'학년', classUnit:'반',
+    gradeUnit:'학년', classUnit:'반', timesUnit:'회', qUnit:'문항', qnaTip:'정보 관련 질문이나 웹사이트 버그가 있으면 알려주세요.',
     sortNew:'최신순', sortLike:'인기순',
   },
   zh: {
@@ -588,7 +588,7 @@ const UI = {
     pendingResultMsg:'提交成功。\n论述题由老师批改后即可查看最终成绩。',
     stdin:'标准输入 (stdin)', stdinPlaceholder:'如需输入，请填写输入值。',
     noOutput:'(无输出)', runErr:'运行错误: ',
-    gradeUnit:'年级', classUnit:'班',
+    gradeUnit:'年级', classUnit:'班', timesUnit:'次', qUnit:'题', qnaTip:'有信息课相关的问题或网站错误，请告诉我们。',
     sortNew:'最新', sortLike:'热门',
   },
   ru: {
@@ -607,7 +607,7 @@ const UI = {
     pendingResultMsg:'Отправка завершена.\nОкончательный балл будет доступен после проверки эссе учителем.',
     stdin:'Стандартный ввод (stdin)', stdinPlaceholder:'Введите тестовые данные.',
     noOutput:'(нет вывода)', runErr:'Ошибка выполнения: ',
-    gradeUnit:'кл.', classUnit:'гр.',
+    gradeUnit:'кл.', classUnit:'гр.', timesUnit:' раз', qUnit:' вопр.', qnaTip:'Если есть вопросы по информатике или ошибки на сайте, сообщите нам.',
     sortNew:'Новые', sortLike:'Популярные',
   },
   en: {
@@ -626,7 +626,7 @@ const UI = {
     pendingResultMsg:'Submission complete.\nYour final score will be available after your teacher grades the essay question(s).',
     stdin:'Standard Input (stdin)', stdinPlaceholder:'Enter test input values if needed.',
     noOutput:'(no output)', runErr:'Run error: ',
-    gradeUnit:'', classUnit:'',
+    gradeUnit:'', classUnit:'', timesUnit:'', qUnit:' questions', qnaTip:'Let us know if you have questions about the class or find a bug on the site.',
     sortNew:'Newest', sortLike:'Popular',
   },
 };
@@ -665,13 +665,17 @@ function applyLangUI() {
   const t = UI[currentLang];
   // step0 title
   const t0 = document.getElementById('ui-title0'); if (t0) t0.innerText = t.examList;
+  const brand = document.getElementById('navBrandTitle'); if (brand) brand.innerText = t.title;
+  const qtip = document.querySelector('.qna-tip'); if (qtip) qtip.innerText = t.qnaTip;
+  const si = document.getElementById('sessionInfo'); if (si) si.innerText = `${classStr()} ${numStr(SESSION.num)} ${SESSION.name}`;
+  if (currentExam && !document.getElementById('step2').classList.contains('hidden')) updateExamHead();
   const backEl = document.getElementById('ui-back-btn'); if (backEl) backEl.innerText = t.back;
   // step2
   const sb = document.getElementById('ui-submit-btn'); if (sb) sb.innerText = t.submit;
   const ai = document.getElementById('alertInfo');
-  if (ai) ai.innerHTML = `${t.alertInfo}: <b id="alertCount">${alertCount}</b>회`;
+  if (ai) ai.innerHTML = `${t.alertInfo}: <b id="alertCount">${alertCount}</b>${t.timesUnit}`;
   const pbi = document.getElementById('pasteBlockInfo');
-  if (pbi) pbi.innerHTML = `${t.pasteBlockInfo}: <b id="pasteBlockCountEl">${pasteBlockCount}</b>회`;
+  if (pbi) pbi.innerHTML = `${t.pasteBlockInfo}: <b id="pasteBlockCountEl">${pasteBlockCount}</b>${t.timesUnit}`;
   // step3 result button
   const rb = document.querySelector('#step3 .btn.accent'); if (rb) rb.innerText = t.resultHome;
   // nav user dropdown
@@ -698,8 +702,29 @@ function applyLangUI() {
   }
 }
 
+// 학년·반·번호를 고른 언어로
+function classStr() {
+  const t = UI[currentLang];
+  if (currentLang === 'ko') return `${SESSION.grade}학년 ${SESSION.cls}반`;
+  if (currentLang === 'zh') return `${SESSION.grade}${t.gradeUnit}${SESSION.cls}${t.classUnit}`;
+  if (currentLang === 'ru') return `${SESSION.grade} ${t.gradeUnit} ${SESSION.cls} ${t.classUnit}`;
+  return `Grade ${SESSION.grade} Class ${SESSION.cls}`;
+}
+function numStr(n) { return currentLang === 'ko' ? `${n}번` : currentLang === 'zh' ? `${n}号` : `№${n}`; }
+function formStr(f) { return currentLang === 'ko' ? `${f}형` : currentLang === 'zh' ? `${f}卷` : currentLang === 'ru' ? `вариант ${f}` : `Form ${f}`; }
+// 시험 제목: 그 언어 제목이 있으면 그걸
+function examTitleOf(x) {
+  const tt = x?.titles || {};
+  return (currentLang !== 'ko' && tt[currentLang]) || x?.title || '';
+}
+function updateExamHead() {
+  document.getElementById('examTitle').innerText = examTitleOf(currentExam);
+  // 시험지 유형(A/B/C형)을 쓰는 시험이면 같이 보여준다 — 선생님이 교실에서 확인할 수 있게.
+  document.getElementById('examSubInfo').innerText = `${classStr()} · ${SESSION.name} · ${questions.length}${UI[currentLang].qUnit}${currentAssignment.form ? ` · ${formStr(currentAssignment.form)}` : ''}`;
+}
+
 // 세션 정보 표시
-document.getElementById('sessionInfo').innerText = `${SESSION.grade}학년 ${SESSION.cls}반 ${SESSION.num}번 ${SESSION.name}`;
+document.getElementById('sessionInfo').innerText = `${classStr()} ${numStr(SESSION.num)} ${SESSION.name}`;
 
 // ── 시험 서버(/api/exam) ──
 // 배정·문항·결과는 Firestore에서 직접 읽지 않고 서버를 거친다 — 서버가
@@ -765,7 +790,7 @@ async function loadMyExams() {
       const idArg = escHtml(JSON.stringify(a.asId));
       const gradeStr = currentLang === 'ko' ? `${SESSION.grade}학년 ${SESSION.cls}반 ${t.target}` : currentLang === 'zh' ? `${SESSION.grade}${t.gradeUnit}${SESSION.cls}${t.classUnit} ${t.target}` : currentLang === 'ru' ? `${SESSION.grade} ${t.gradeUnit} ${SESSION.cls} ${t.classUnit} ${t.target}` : `Grade ${SESSION.grade} Class ${SESSION.cls} ${t.target}`;
       return `<div style="border:1px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px;">
-        <div style="font-weight:700;font-size:0.97rem;margin-bottom:2px;">${escHtml(a.title)}</div>
+        <div style="font-weight:700;font-size:0.97rem;margin-bottom:2px;">${escHtml(examTitleOf(a))}</div>
         <div style="font-size:0.78rem;color:var(--sub);margin-bottom:10px;">${escHtml(gradeStr)}</div>
         ${isDone
           ? `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
@@ -939,7 +964,7 @@ window.enterExamWithCode = async (asId, code) => {
     const r = await examApi('start', { asId, code: String(code || '').trim().toUpperCase() });
     questions = (r.questions || []).map((q, i) => ({ ...q, idx: i }));
     currentAssignment = { asId: r.asId, duration: r.duration, form: r.form || '' };
-    currentExam = { title: r.title };
+    currentExam = { title: r.title, titles: r.titles || {} };
     // 새로고침/재접속 등으로 이미 진행 중이던 시험에 재입장하는 경우, 이탈
     // 횟수를 0으로 되돌리면 안 된다 — 서버가 기존 기록의 값을 돌려준다.
     alertCount = r.alertCount || 0;
@@ -975,9 +1000,7 @@ function startExamUI() {
   document.getElementById('step0').classList.add('hidden');
   document.getElementById('step3').classList.add('hidden');
   document.getElementById('step2').classList.remove('hidden');
-  document.getElementById('examTitle').innerText = currentExam.title || '';
-  // 시험지 유형(A/B/C형)을 쓰는 시험이면 같이 보여준다 — 선생님이 교실에서 확인할 수 있게.
-  document.getElementById('examSubInfo').innerText = `${SESSION.grade}학년 ${SESSION.cls}반 · ${SESSION.name} · ${questions.length}문항${currentAssignment.form ? ` · ${currentAssignment.form}형` : ''}`;
+  updateExamHead();
   const alertCountEl = document.getElementById('alertCount');
   if (alertCountEl) alertCountEl.innerText = alertCount;
   const pasteBlockCountEl = document.getElementById('pasteBlockCountEl');

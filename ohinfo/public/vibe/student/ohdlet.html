@@ -628,7 +628,7 @@
 </nav>
 
 <div id="mobileMenu" class="mobile-menu">
-  <button class="btn ghost" onclick="navLogoClick();closeMobileMenu()">← 뒤로</button>
+  <button class="btn ghost" id="ui-m-back" onclick="navLogoClick();closeMobileMenu()">← 뒤로</button>
   <div style="display:flex;gap:8px;flex-wrap:wrap;">
     <button class="btn lang-btn" id="m-btn-ko" onclick="setLanguage('ko');closeMobileMenu()">한국어</button>
     <button class="btn lang-btn" id="m-btn-zh" onclick="setLanguage('zh');closeMobileMenu()">中文</button>
@@ -636,7 +636,7 @@
     <button class="btn lang-btn" id="m-btn-en" onclick="setLanguage('en');closeMobileMenu()">English</button>
   </div>
   <div style="display:flex;align-items:center;gap:10px;">
-    <span style="font-size:0.85rem;font-weight:600;color:var(--sub);">다크모드</span>
+    <span id="ui-m-dark" style="font-size:0.85rem;font-weight:600;color:var(--sub);">다크모드</span>
     <button class="dark-toggle" onclick="toggleDark()"></button>
   </div>
 </div>
@@ -718,7 +718,7 @@
 
         <!-- 칼럼형일 때만 여기 보임 — 원래 작성 폼 자리에 선생님 안내를 대신 표시 -->
         <div id="sidebarNoticeCard" class="form-card hidden">
-          <div style="font-size:0.72rem;font-weight:700;color:var(--sub);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:8px;">선생님 안내</div>
+          <div id="ui-sidebar-notice-label" style="font-size:0.72rem;font-weight:700;color:var(--sub);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:8px;">선생님 안내</div>
           <div id="sidebarNoticeText" style="font-size:0.9rem;line-height:1.6;white-space:pre-line;"></div>
         </div>
 
@@ -1111,6 +1111,7 @@
       mypage:"마이페이지", logout:"로그아웃",
       mpTitle:"마이페이지", mpPhotoBtn:"사진 변경", mpPwLabel:"비밀번호 변경", mpCurPw:"현재 비밀번호", mpNewPw:"새 비밀번호 (4자 이상)", mpNewPw2:"새 비밀번호 확인", mpSave:"저장",
       mpErrCur:"현재 비밀번호가 맞지 않습니다.", mpErrShort:"새 비밀번호는 4자 이상이어야 합니다.", mpErrMatch:"새 비밀번호가 일치하지 않습니다.", mpOk:"저장되었습니다.",
+      brand:"정보 게시판", classDesc:"수업 설명", colAdd:"이 칼럼에 글쓰기", colAll:"전체", colOther:"기타", numPh:"번호", namePh:"이름", pwPh:"비번", subPh:"제목", msgPh:"내용", backMob:"← 뒤로", darkMode:"다크모드",
     },
     zh: {
       opt:"请选择课程", classLabel:"选择课程", enter:"进入", submit:"发布", edit_finish:"完成修改", teacher_notice:"老师须知",
@@ -1124,6 +1125,7 @@
       mypage:"我的页面", logout:"退出",
       mpTitle:"我的页面", mpPhotoBtn:"更换照片", mpPwLabel:"修改密码", mpCurPw:"当前密码", mpNewPw:"新密码 (至少4位)", mpNewPw2:"确认新密码", mpSave:"保存",
       mpErrCur:"当前密码不正确。", mpErrShort:"新密码至少需要4位。", mpErrMatch:"两次输入的新密码不一致。", mpOk:"已保存。",
+      brand:"信息公告板", classDesc:"课程说明", colAdd:"在此栏发帖", colAll:"全部", colOther:"其他", numPh:"学号", namePh:"姓名", pwPh:"密码", subPh:"标题", msgPh:"内容", backMob:"← 返回", darkMode:"深色模式",
     },
     ru: {
       opt:"Выберите урок", classLabel:"Выбор урока", enter:"Войти", submit:"Опубликовать", edit_finish:"Изм.завершено", teacher_notice:"Заметка учителя",
@@ -1137,6 +1139,7 @@
       mypage:"Профиль", logout:"Выйти",
       mpTitle:"Профиль", mpPhotoBtn:"Сменить фото", mpPwLabel:"Сменить пароль", mpCurPw:"Текущий пароль", mpNewPw:"Новый пароль (мин. 4)", mpNewPw2:"Подтвердить пароль", mpSave:"Сохранить",
       mpErrCur:"Неверный текущий пароль.", mpErrShort:"Новый пароль должен быть не менее 4 символов.", mpErrMatch:"Пароли не совпадают.", mpOk:"Сохранено.",
+      brand:"Доска объявлений", classDesc:"Описание урока", colAdd:"Написать в эту колонку", colAll:"Все", colOther:"Другое", numPh:"Номер", namePh:"Имя", pwPh:"Пароль", subPh:"Заголовок", msgPh:"Текст", backMob:"← Назад", darkMode:"Тёмная тема",
     },
     en: {
       opt:"Select class", classLabel:"Select Class", enter:"Enter", submit:"Post", edit_finish:"Save edit", teacher_notice:"Teacher's Note",
@@ -1150,6 +1153,7 @@
       mypage:"My Page", logout:"Logout",
       mpTitle:"My Page", mpPhotoBtn:"Change Photo", mpPwLabel:"Change Password", mpCurPw:"Current password", mpNewPw:"New password (min. 4)", mpNewPw2:"Confirm new password", mpSave:"Save",
       mpErrCur:"Current password is incorrect.", mpErrShort:"New password must be at least 4 characters.", mpErrMatch:"Passwords do not match.", mpOk:"Saved.",
+      brand:"Info Board", classDesc:"Class description", colAdd:"Write in this column", colAll:"All", colOther:"Other", numPh:"No.", namePh:"Name", pwPh:"Password", subPh:"Title", msgPh:"Message", backMob:"← Back", darkMode:"Dark mode",
     }
   };
 
@@ -1389,6 +1393,16 @@
     const mpN = document.getElementById('mpNewPw'); if (mpN) mpN.placeholder = t.mpNewPw;
     const mpN2 = document.getElementById('mpNewPw2'); if (mpN2) mpN2.placeholder = t.mpNewPw2;
     const mpSv = document.getElementById('mpSaveBtn'); if (mpSv) mpSv.innerText = t.mpSave;
+    // 고정 글자(제목, 설명 라벨, 작성 칸 안내, 모바일 메뉴)
+    const setTxt = (id, v) => { const el = document.getElementById(id); if (el && v) el.innerText = v; };
+    const setPh = (id, v) => { const el = document.getElementById(id); if (el && v) el.placeholder = v; };
+    setTxt('navBrandTitle', t.brand);
+    setTxt('ui-teacher-notice-label', t.classDesc);
+    setTxt('ui-sidebar-notice-label', t.teacher_notice);
+    setTxt('ui-m-back', t.backMob);
+    setTxt('ui-m-dark', t.darkMode);
+    setPh('p_num', t.numPh); setPh('p_name', t.namePh); setPh('p_pw_display', t.pwPh);
+    setPh('p_sub', t.subPh); setPh('p_msg', t.msgPh);
     // nav admin button
     const navAdminBtn = document.querySelector('.nav-admin'); if (navAdminBtn) navAdminBtn.innerText = t.adminBtn;
     if (lang !== 'ru') closeKeyboard();
@@ -1500,6 +1514,10 @@
       currentClassMeta = {
         boardLayout: cls.boardLayout === 'columns' ? 'columns' : 'grid',
         columns: Array.isArray(cls.columns) ? cls.columns : [],
+        // 칼럼 이름 번역(화면 표시용). 글은 한국어 칼럼 이름(columns)으로 나뉜다.
+        columnsZh: Array.isArray(cls.columnsZh) ? cls.columnsZh : [],
+        columnsRu: Array.isArray(cls.columnsRu) ? cls.columnsRu : [],
+        columnsEn: Array.isArray(cls.columnsEn) ? cls.columnsEn : [],
       };
       setHidden('p_column', '');
 
@@ -1748,6 +1766,10 @@
       if (p.column && buckets.has(p.column)) buckets.get(p.column).push(p);
       else others.push(p);
     });
+    const ut = uiText[currentLang] || uiText.ko;
+    // 칼럼 이름은 그 언어 번역이 있으면 그걸 보여 준다(없으면 원래 이름)
+    const colLabels = currentClassMeta['columns' + langSfx(currentLang)] || [];
+    const labelOf = (name, i) => colLabels[i] || (name === '전체' && !currentClassMeta.columns.length ? ut.colAll : name);
     // colId는 DOM id/onclick 인자용 — 칼럼명에 따옴표·특수문자가 있어도 안전하게
     const colHtml = (name, list, colId) => `
       <div class="col-board-col">
@@ -1755,7 +1777,7 @@
           <span>${escHtml(name)}</span>
           <span style="display:flex;align-items:center;gap:6px;">
             <span class="col-board-count">${list.length}</span>
-            ${colId !== null ? `<button class="col-board-add" title="이 칼럼에 글쓰기" onclick="openColumnCompose('${colId}')">+</button>` : ''}
+            ${colId !== null ? `<button class="col-board-add" title="${escHtml(ut.colAdd)}" onclick="openColumnCompose('${colId}')">+</button>` : ''}
           </span>
         </div>
         <div class="col-scroll-wrap">
@@ -1766,8 +1788,8 @@
           <div class="col-scrollbar"><div class="col-scrollbar-thumb"></div></div>
         </div>
       </div>`;
-    let html = cols.map((name, i) => colHtml(name, buckets.get(name), String(i))).join('');
-    if (others.length) html += colHtml('기타', others, null);
+    let html = cols.map((name, i) => colHtml(labelOf(name, i), buckets.get(name), String(i))).join('');
+    if (others.length) html += colHtml(ut.colOther, others, null);
     display.innerHTML = html;
     display.querySelectorAll('img').forEach(img => { if (!img.complete) img.addEventListener('load', () => {}, { once: true }); });
     requestAnimationFrame(() => requestAnimationFrame(() => {
