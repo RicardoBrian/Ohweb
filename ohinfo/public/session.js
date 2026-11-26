@@ -1,9 +1,19 @@
-// 학생 로그인 세션 — localStorage 기반, 5일 유지 (활동 시마다 연장)
+// 학생 로그인 세션 — localStorage 기반, 로그인하고 1시간 뒤 끝난다 (쓰는 중이어도 연장 안 함).
+// 예전엔 5일 유지 + 쓸 때마다 연장이라, 컴퓨터실에서 앞 시간 반 학생이 쓴 기기를
+// 다음 반 학생이 열면 앞 반 학생으로 로그인된 채라 그 반 게시판이 열렸다.
+// 한 차시는 버티고 다음 반 수업 때는 꼭 새로 로그인하도록 로그인 시각부터 1시간.
 const KEY = 'ohinfo_student';
-const TTL_MS = 5 * 24 * 60 * 60 * 1000; // 5일
+const TTL_MS = 60 * 60 * 1000; // 1시간
+
+function readRaw() {
+  try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { return null; }
+}
 
 export function saveSession(data) {
-  const withExp = { ...data, _exp: Date.now() + TTL_MS };
+  // 정보만 새로 덮어쓸 때(본인 확인·마이페이지 등)는 처음 로그인한 시각을 그대로 둔다.
+  const prev = readRaw();
+  const loginAt = prev && prev.id === data.id && prev._loginAt ? prev._loginAt : Date.now();
+  const withExp = { ...data, _loginAt: loginAt, _exp: loginAt + TTL_MS };
   localStorage.setItem(KEY, JSON.stringify(withExp));
 }
 
@@ -12,7 +22,8 @@ export function loadSession() {
   if (!raw) return null;
   let parsed;
   try { parsed = JSON.parse(raw); } catch { localStorage.removeItem(KEY); return null; }
-  if (!parsed._exp || Date.now() > parsed._exp) { localStorage.removeItem(KEY); return null; }
+  // _loginAt 없는 옛 세션(5일짜리)은 바로 끝낸다 — 지금 남아 있는 남의 로그인도 정리된다.
+  if (!parsed._loginAt || Date.now() > parsed._loginAt + TTL_MS) { localStorage.removeItem(KEY); return null; }
   return parsed;
 }
 
