@@ -1000,7 +1000,7 @@
           </span>
           <button class="btn ghost sm" onclick="addPendingAssign()">＋ 담기</button>
           <div id="as_pending" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;">
-            <span style="font-size:0.8rem;color:var(--sub);">담은 배정이 없습니다. 학교·학년·반 선택 후 [＋ 담기] (학년·반은 "전체" 가능)</span>
+            <span style="font-size:0.8rem;color:var(--sub);">담은 배정이 없습니다. 학교·학년·반 선택 후 [＋ 담기] (반을 "전체"로 담으면 반마다 따로 배정)</span>
           </div>
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
@@ -2924,7 +2924,7 @@
   function renderAsPending() {
     const el = document.getElementById('as_pending');
     if (!_pendingAs.length) {
-      el.innerHTML = '<span style="font-size:0.8rem;color:var(--sub);">담은 배정이 없습니다. 학교·학년·반 선택 후 [＋ 담기] (학년·반은 "전체" 가능)</span>';
+      el.innerHTML = '<span style="font-size:0.8rem;color:var(--sub);">담은 배정이 없습니다. 학교·학년·반 선택 후 [＋ 담기] (반을 "전체"로 담으면 반마다 따로 배정)</span>';
       return;
     }
     el.innerHTML = _pendingAs.map((p,i) => {
@@ -2933,15 +2933,27 @@
     }).join('');
   }
   window.removePendingAs = (i) => { _pendingAs.splice(i,1); renderAsPending(); };
-  window.addPendingAssign = () => {
+  // 학교·학년을 고르고 반을 "전체"로 담으면 그 학년의 반마다 배정을 하나씩 담는다 —
+  // 배정 하나가 학년 전체면 반별로 열고 닫을 수 없어서. 한꺼번에 열고 닫는 건
+  // 배정 목록 카드의 [모두 열기/닫기]로 한다. 학생 명단에 반이 없으면 예전처럼 학년 전체 하나.
+  window.addPendingAssign = async () => {
     const schoolName = document.getElementById('as_schoolName')?.value || '';
     const grade = document.getElementById('as_grade').value;
     const cls = document.getElementById('as_class').value;
-    if (_pendingAs.some(p => p.schoolName===schoolName && p.grade===grade && p.class===cls)) { toast('이미 담은 범위입니다.', 'error'); return; }
     const forms = examFormsOf(examById(document.getElementById('as_examId').value));
     const form = forms.length ? (document.getElementById('as_form').value || 'student') : '';
-    _pendingAs.push({ schoolName, grade, class: cls, form });
+    let classes = [cls];
+    if (schoolName && grade && !cls) {
+      const found = [...new Set((await studentsForForms())
+        .filter(st => st.schoolName === schoolName && normGC(st.grade) === normGC(grade) && normGC(st.class))
+        .map(st => normGC(st.class)))].sort((x, y) => (parseInt(x) || 0) - (parseInt(y) || 0) || x.localeCompare(y));
+      if (found.length) classes = found;
+    }
+    const fresh = classes.filter(c => !_pendingAs.some(p => p.schoolName===schoolName && p.grade===grade && p.class===c));
+    if (!fresh.length) { toast('이미 담은 범위입니다.', 'error'); return; }
+    fresh.forEach(c => _pendingAs.push({ schoolName, grade, class: c, form }));
     renderAsPending();
+    if (classes.length > 1) toast(`${grade}학년 ${fresh.length}개 반을 반마다 따로 담았습니다.`);
   };
   // 배정할 시험이 유형을 쓰면 "학생별 / A형 / B형…" 선택칸을 보여준다.
   window.renderAsFormSelect = () => {
