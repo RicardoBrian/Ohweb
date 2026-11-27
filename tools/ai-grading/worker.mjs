@@ -87,9 +87,10 @@ export function buildPrompt({ exam, q, key, examples, batch, context }) {
     examples.forEach(r => lines.push(`- 답: ${JSON.stringify(txt(r.value))} → ${r.score}점${txt(r.feedback) && r.feedback !== 'manual' ? ` (${txt(r.feedback)})` : ''}`));
     lines.push('');
   }
-  lines.push('## 채점할 답 (id 마다 하나씩, 모두 채점. 글자 수는 이미 세어 두었으니 그대로 쓴다)');
-  batch.forEach(({ id, r }) => {
-    lines.push(`[${id}] (${txt(r.value).length}자, 공백 포함) ${txt(r.value) ? JSON.stringify(txt(r.value)) : '(빈 답 — 무응답)'}${txt(r.valueKo) ? `\n    (한국어 번역: ${JSON.stringify(txt(r.valueKo))})` : ''}`);
+  lines.push('## 채점할 답 (id 마다 하나씩, 모두 채점. 글자 수·화면 이탈 횟수·제출 시간 초과는 시험 기록에서 가져온 사실이다. 기준에 이 조건에 따른 점수 규칙이 있으면 그대로 따른다)');
+  batch.forEach(({ id, r, p }) => {
+    const meta = [(Number(p?.alertCount) || 0) > 0 ? `화면 이탈 ${p.alertCount}회` : '', p?.late ? '제출 시간 초과' : ''].filter(Boolean).join(', ');
+    lines.push(`[${id}] (${txt(r.value).length}자, 공백 포함${meta ? ', ' + meta : ''}) ${txt(r.value) ? JSON.stringify(txt(r.value)) : '(빈 답 — 무응답)'}${txt(r.valueKo) ? `\n    (한국어 번역: ${JSON.stringify(txt(r.valueKo))})` : ''}`);
   });
   return lines.join('\n');
 }
@@ -114,8 +115,9 @@ export async function processJob(exam) {
     const qs = questions.filter(q => (q.type === 'sa' || q.type === 'essay') && (!wanted || wanted.has(q.id)))
       .sort((a, b) => (a.order || 0) - (b.order || 0));
     // 할 일: 제출했고 아직 공개 전, 선생님이 안 매긴 답. 다시 채점(redo)이 아니면 제안이 이미 있는 건 건너뜀.
+    // 다시 채점(redo)이면 선생님이 이미 매긴 답도 제안을 새로 단다(점수 score 는 그대로 — 화면에서 [적용]해야 바뀜).
     const todo = q => results.filter(r => r.questionId === q.id && progOf(r)?.status === 'submitted' && progOf(r)?.needsManual !== false
-      && !r.teacherGradedAt && (job.redo || r.aiScore == null));
+      && (job.redo || (!r.teacherGradedAt && r.aiScore == null)));
     const total = qs.reduce((n, q) => n + todo(q).length, 0);
     let done = 0, flagged = 0, model = '';
     job.progress = { done, total };
@@ -134,9 +136,10 @@ export async function processJob(exam) {
       const list = todo(q);
       if (!list.length) continue;
       const key = (await getDoc(`exam_answers/${q.id}`)) || {};
-      const examples = results.filter(r => r.questionId === q.id && r.teacherGradedAt && txt(r.value)).slice(0, 8);
+      // 예시: 선생님이 직접 판단한 답만 — AI 제안을 그대로 [적용]한 점수는 예시가 아니다(옛 기준 제안이 굳어진다)
+      const examples = results.filter(r => r.questionId === q.id && r.teacherGradedAt && txt(r.value) && (r.aiScore == null || Number(r.score) !== Number(r.aiScore))).slice(0, 8);
       const context = caseOf(q);
-      for (let i = 0; i < list.length; i += BATCH) tasks.push({ q, key, examples, context, batch: list.slice(i, i + BATCH).map((r, k) => ({ id: `A${i + k + 1}`, r })) });
+      for (let i = 0; i < list.length; i += BATCH) tasks.push({ q, key, examples, context, batch: list.slice(i, i + BATCH).map((r, k) => ({ id: `A${i + k + 1}`, r, p: progOf(r) })) });
     }
     let jobWrite = Promise.resolve();
     const runTask = async ({ q, key, examples, batch, context }) => {

@@ -4057,7 +4057,9 @@
   window.aiToggle = (on) => { qg._aiOpen = !!on; };
   const AI_REVIEW = '__ai';
   // 아직 적용 안 한 AI 제안(채점 전 답)
-  const aiPending = () => qg.results.filter(r => r.aiScore != null && !qgDone(r) && qgProgOf(r) && qg.questions.some(q => q.id === r.questionId));
+  // 다시 채점한 제안이 이미 매긴 점수와 다르면(공개 전) 그것도 검토 대상
+  const aiChanged = r => !!r.teacherGradedAt && qgProgOf(r)?.needsManual !== false && Number(r.score) !== Number(r.aiScore) && (aiTs(r.aiAt)?.getTime() || 0) > (aiTs(r.teacherGradedAt)?.getTime() || 0);
+  const aiPending = () => qg.results.filter(r => r.aiScore != null && qgProgOf(r) && (!qgDone(r) || aiChanged(r)) && qg.questions.some(q => q.id === r.questionId));
   function aiExamBar() {
     const gradable = qg.questions.filter(aiCanGrade);
     if (!gradable.length) return '';
@@ -4065,7 +4067,7 @@
     const noRubric = gradable.filter(q => !String(q.rubric || '').trim()).length;
     return `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 14px;border:1px solid var(--border-card);border-radius:12px;background:var(--glass);margin-bottom:12px;">
       <button class="btn sm" ${busy ? 'disabled' : ''} onclick="aiRequest(true)">🤖 시험 전체 AI 채점</button>
-      <label style="font-size:0.78rem;display:flex;gap:4px;align-items:center;"><input type="checkbox" id="aiRedo"> 제안 있는 답도 다시</label>
+      <label style="font-size:0.78rem;display:flex;gap:4px;align-items:center;" title="기준을 고쳤을 때: 이미 점수를 매긴 답도 새 기준으로 다시 제안합니다. 점수는 [적용]해야 바뀝니다."><input type="checkbox" id="aiRedo"> 다시 채점(이미 매긴 답 포함)</label>
       <span style="font-size:0.8rem;">${aiJobLine() || `단답·서술 ${gradable.length}문항${noRubric ? ` · 기준 없는 문항 ${noRubric}개` : ''}`}</span>
       <span style="margin-left:auto;font-size:0.75rem;">${aiWorkerLine()}</span>
     </div>`;
@@ -4079,7 +4081,7 @@
     const head = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
       <span style="font-size:0.85rem;">검토할 제안 <b>${pend.length}</b>개${flagged ? ` · <span style="color:#b45309;font-weight:700;">확인 필요 ${flagged}개</span>` : ''}</span>
       <button class="btn accent sm" ${pend.length > flagged ? '' : 'disabled'} onclick="aiApplyAll(true)">확인 필요 빼고 모두 적용 (${pend.length - flagged}개)</button>
-      <span style="font-size:0.75rem;color:var(--sub);">적용한 답은 이 목록에서 빠집니다. 점수를 바꾸려면 숫자를 누르면 됩니다.</span>
+      <span style="font-size:0.75rem;color:var(--sub);">적용한 답은 이 목록에서 빠집니다. '채점함' 표시가 있는 답은 이미 매긴 점수와 새 제안이 다른 답입니다.</span>
     </div>`;
     const groups = qg.questions.map((q, i) => ({ q, i, rs: pend.filter(r => r.questionId === q.id).sort(order) })).filter(g => g.rs.length);
     return head + groups.map(({ q, i, rs }) => `<details open style="margin-bottom:14px;">
@@ -4146,8 +4148,9 @@
     await window.qgScore(docId, r.aiScore);
   };
   window.aiApplyAll = async (wholeExam) => {
-    const list = (wholeExam ? aiPending() : qg.results.filter(r => r.questionId === qg.qId && qgProgOf(r) && !qgDone(r) && r.aiScore != null)).filter(r => !r.aiFlag);
-    if (!list.length || !confirm(`AI 제안 ${list.length}명을 그대로 점수로 저장할까요?\n('확인 필요' 표시된 답은 빼고, 학생에게는 [공개] 전까지 안 보입니다)`)) return;
+    const list = (wholeExam ? aiPending() : qg.results.filter(r => r.questionId === qg.qId && qgProgOf(r) && (!qgDone(r) || aiChanged(r)) && r.aiScore != null)).filter(r => !r.aiFlag);
+    const over = list.filter(aiChanged).length;
+    if (!list.length || !confirm(`AI 제안 ${list.length}개를 그대로 점수로 저장할까요?${over ? `\n이미 매긴 점수를 새 제안으로 바꾸는 답 ${over}개 포함.` : ''}\n('확인 필요' 표시된 답은 빼고, 학생에게는 [공개] 전까지 안 보입니다)`)) return;
     showLoading(true);
     let n = 0;
     for (const r of list) if (await qgSave(r.docId, { score: r.aiScore, feedback: r.aiReason || '' })) n++;

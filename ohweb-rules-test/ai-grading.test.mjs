@@ -29,13 +29,16 @@ await env.withSecurityRulesDisabled(async c => {
   const vals = { S1: '값을 담는 상자', S2: '모름', S3: '', S4: 'Коробка для значения', S5: '상자다' };
   for (const sid of S) {
     const as = sid === 'S5' ? 'AS2' : 'AS1';
-    await setDoc(doc(db, `exam_progress/${as}_${sid}`), { asId: as, examId: 'EX1', studentId: sid, status: 'submitted', needsManual: sid !== 'S5' ? true : false });
+    await setDoc(doc(db, `exam_progress/${as}_${sid}`), { asId: as, examId: 'EX1', studentId: sid, status: 'submitted', needsManual: sid !== 'S5' ? true : false, ...(sid === 'S1' ? { alertCount: 3, late: true } : {}) });
     await setDoc(doc(db, `exam_results/${as}_${sid}_0`), { asId: as, examId: 'EX1', studentId: sid, name: names[sid], questionId: 'Q1', qIdx: 0, type: 'mc', value: '1', score: 2, maxScore: 2, feedback: 'correct' });
     await setDoc(doc(db, `exam_results/${as}_${sid}_1`), { asId: as, examId: 'EX1', studentId: sid, name: names[sid], questionId: 'Q2', qIdx: 1, type: 'essay', value: vals[sid], score: 0, maxScore: 10, feedback: 'manual',
       ...(sid === 'S4' ? { valueKo: '값을 위한 상자' } : {}) });
   }
   // 선생님이 이미 매긴 답(예시로 쓰여야 하고, 다시 채점되면 안 됨)
   await setDoc(doc(db, 'exam_progress/AS1_S6'), { asId: 'AS1', examId: 'EX1', studentId: 'S6', status: 'submitted', needsManual: true });
+  // AI 제안을 그대로 적용한 답(예시로 쓰면 안 됨)
+  await setDoc(doc(db, 'exam_progress/AS1_S7'), { asId: 'AS1', examId: 'EX1', studentId: 'S7', status: 'submitted', needsManual: true });
+  await setDoc(doc(db, 'exam_results/AS1_S7_1'), { asId: 'AS1', examId: 'EX1', studentId: 'S7', name: '오학생', questionId: 'Q2', qIdx: 1, type: 'essay', value: '옛 기준 답', score: 0, aiScore: 0, maxScore: 10, feedback: '', teacherGradedAt: new Date() });
   await setDoc(doc(db, 'exam_results/AS1_S6_1'), { asId: 'AS1', examId: 'EX1', studentId: 'S6', name: '한학생', questionId: 'Q2', qIdx: 1, type: 'essay', value: '변수는 이름표', score: 6, maxScore: 10, feedback: '비유가 다르다', teacherGradedAt: new Date() });
 });
 const read = async p => { let v; await env.withSecurityRulesDisabled(async cx => { v = (await getDoc(doc(cx.firestore(), p))).data(); }); return v; };
@@ -57,6 +60,7 @@ ok((await read('exam_results/AS1_S1_0')).aiScore === undefined, '객관식은 �
 const prompts = readFileSync(logFile, 'utf8');
 ok(!/김학생|박학생|최학생|한학생|S1|S4/.test(prompts), '프롬프트에 이름·학번 없음');
 ok(/맞춤법은 감점하지 않는다/.test(prompts) && /상자 비유 10점/.test(prompts) && /변수는 이름표.*6점/.test(prompts) && /한국어 번역: "값을 위한 상자"/.test(prompts) && /앞 문항의 사례[\s\S]*사례: 이루다 챗봇/.test(prompts), '프롬프트에 공통 기준·문항 기준·선생님 예시·번역·앞 문항 사례');
+ok(/화면 이탈 3회, 제출 시간 초과\) "값을 담는 상자"/.test(prompts) && !/예시[\s\S]*옛 기준 답/.test(prompts.split('채점할 답')[0]), '이탈·지각 정보는 답에 붙이고, AI 제안을 그대로 적용한 답은 예시에서 뺌');
 ok(prompts.split('=====').length - 1 === 2 && /빈 답 — 무응답/.test(prompts), '2개씩 묶어 claude 2번 호출(빈 답 포함 4개)');
 
 // 다시 채점하지 않으면 제안 있는 건 건너뜀, redo 면 다시
@@ -65,7 +69,9 @@ await W.processQueued();
 ok((await read('exams/EX1')).aiJob.progress.total === 0, '다시 요청: 이미 제안 있는 답은 건너뜀');
 await env.withSecurityRulesDisabled(async c => setDoc(doc(c.firestore(), 'exams/EX1'), { title: '수행평가', aiJob: { status: 'queued', sel: 'AS1', questionIds: ['Q2'], redo: true } }));
 await W.processQueued();
-ok((await read('exams/EX1')).aiJob.progress.total === 4, '다시 채점(redo): 4개 다시');
+ok((await read('exams/EX1')).aiJob.progress.total === 6, '다시 채점(redo): 선생님이 매긴 답까지 6개 다시');
+const r6b = await r('S6');
+ok(r6b.aiScore != null && r6b.score === 6, '다시 채점해도 선생님이 매긴 점수(score)는 그대로, 제안만 새로');
 
 // claude 가 실패하면 error
 process.env.AI_GRADER_CMD = '/nonexistent/claude';
