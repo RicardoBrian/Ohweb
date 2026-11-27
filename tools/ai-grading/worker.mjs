@@ -7,7 +7,7 @@
 //
 //  - 채점 기준: exams/{시험}.aiRubric(시험 공통) + exam_answers/{문항}.rubric(문항별) + 정답(answer)
 //    + 선생님이 이미 채점한 답(teacherGradedAt)을 예시로 같이 보낸다.
-//  - 학생 이름·학번은 보내지 않는다(A1, A2 … 로만). 외국어 답은 한국어 번역(valueKo)도 함께.
+//  - 학생 이름·학번은 보내지 않는다(A1, A2 … 로만). 외국어 답은 원문만(번역은 안 보냄 — 원문 기준 채점).
 //  - 상태 표시: appSettings/aiGradingWorker.lastSeen 을 주기적으로 갱신(관리자 화면 "맥 채점기 연결됨").
 //  - DB 접속은 tools/exam-grading 과 같다(firebase CLI 로그인, 운영 DB 직접. 에뮬레이터는 FIRESTORE_EMULATOR_HOST).
 //
@@ -36,9 +36,9 @@ const SYSTEM = [
   '규칙:',
   '- 선생님이 준 채점 기준(시험 공통 기준, 문항 기준, 정답)과 선생님이 직접 채점한 예시만 따른다. 기준에 없는 감점·가산을 지어내지 않는다.',
   '- 점수는 0 이상 배점 이하의 정수.',
-  '- 기준으로 판단이 애매하거나(경계 사례, 기준에 없는 경우, 답을 읽기 어려움, 번역이 의심스러움) 선생님이 꼭 봐야 하면 flag=true 로 하고 flagReason 에 이유를 짧게.',
+  '- 기준으로 판단이 애매하거나(경계 사례, 기준에 없는 경우, 답을 읽기 어려움) 선생님이 꼭 봐야 하면 flag=true 로 하고 flagReason 에 이유를 짧게.',
   '- reason 은 학생에게 보일 수 있다. "~다" 체로 짧게(1~2문장), 기준의 어떤 요소가 맞고 빠졌는지. 정답을 통째로 적지 않는다.',
-  '- 외국어 답은 원문을 기준으로 판단하고, 한국어 번역은 참고만 한다.',
+  '- 러시아어·중국어 등 외국어 답은 원문을 직접 읽고 원문의 뜻으로 판단한다(번역은 주지 않는다). reason·flagReason 은 한국어로 쓴다.',
 ].join('\n');
 const SCHEMA = JSON.stringify({
   type: 'object', required: ['items'],
@@ -90,7 +90,8 @@ export function buildPrompt({ exam, q, key, examples, batch, context }) {
   lines.push('## 채점할 답 (id 마다 하나씩, 모두 채점. 글자 수는 이미 세어 두었으니 그대로 쓴다)');
   // 화면 이탈·제출 시간 초과는 보내지 않는다 — 점수가 아니라 선생님 참고용 경고(관리자 화면 ⚠)
   batch.forEach(({ id, r }) => {
-    lines.push(`[${id}] (${txt(r.value).length}자, 공백 포함) ${txt(r.value) ? JSON.stringify(txt(r.value)) : '(빈 답 — 무응답)'}${txt(r.valueKo) ? `\n    (한국어 번역: ${JSON.stringify(txt(r.valueKo))})` : ''}`);
+    // 외국어 답도 원문만 — 기계 번역이 틀려 점수가 흔들린 적이 있어 번역(valueKo)은 보내지 않는다
+    lines.push(`[${id}] (${txt(r.value).length}자, 공백 포함) ${txt(r.value) ? JSON.stringify(txt(r.value)) : '(빈 답 — 무응답)'}`);
   });
   return lines.join('\n');
 }
