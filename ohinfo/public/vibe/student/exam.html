@@ -292,6 +292,33 @@
     @media (max-width: 400px) {
       .btn.lang-btn { padding: 4px 8px; font-size: 0.72rem; }
     }
+    /* ── 러시아어 가상키보드 (ohdlet 과 같은 모양) ── */
+    #ruKeyboard {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 500;
+      background: var(--glass-nav); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      border-top: 1px solid var(--border);
+      box-shadow: 0 -4px 24px rgba(60,80,160,0.15), inset 0 1px 0 rgba(255,255,255,0.4);
+      padding: 14px 16px 20px; display: none;
+    }
+    #ruKeyboard.show { display: block; }
+    body.kb-open { padding-bottom: 260px; }
+    .kb-close { position: absolute; top: 10px; right: 14px; background: none; border: none; font-size: 1.1rem; cursor: pointer; color: var(--sub); line-height: 1; }
+    .kb-row { display: flex; justify-content: center; gap: 5px; margin-bottom: 5px; }
+    .kb-key {
+      font-family: 'Pretendard', sans-serif; font-size: 0.95rem; font-weight: 600;
+      min-width: 38px; height: 42px; border-radius: 9px;
+      border: 1px solid var(--border-card);
+      background: var(--glass-strong); color: var(--text);
+      backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur);
+      box-shadow: var(--highlight), 0 2px 6px rgba(60,80,160,0.08);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s, transform 0.1s;
+      user-select: none; -webkit-user-select: none;
+    }
+    .kb-key:active { transform: scale(0.93); background: var(--glass); }
+    .kb-key.wide { min-width: 72px; font-size: 0.75rem; }
+    .kb-key.space { min-width: 200px; }
+    .kb-key.shift-active { background: rgba(42,92,230,0.25); border-color: rgba(42,92,230,0.45); }
   </style>
 </head>
 <body class="ui-sky">
@@ -410,6 +437,12 @@
 </div>
 
 <a class="qna-fab" href="qna.html"><svg width="24" height="24"><use href="#ic-chat"/></svg><span class="badge" id="qnaBadge"></span><span class="qna-tip">정보 관련 질문이나 웹사이트 버그가 있으면 알려주세요.</span></a>
+
+<!-- 러시아어 가상키보드 — 러시아어로 볼 때 답 칸을 누르면 뜬다(ohdlet 과 같음) -->
+<div id="ruKeyboard">
+  <button class="kb-close" onmousedown="event.preventDefault()" onclick="closeKeyboard()"><svg width="12" height="12"><use href="#ic-close"/></svg></button>
+  <div id="kbRows"></div>
+</div>
 
 <script type="module">
   // 문항 이미지가 구글 드라이브 공유 링크(…/file/d/ID/view, open?id=ID)면 <img>로 바로
@@ -656,6 +689,7 @@ localStorage.setItem('ohinfo_lang', currentLang);
 function setLang(lang) {
   currentLang = lang;
   localStorage.setItem('ohinfo_lang', lang);
+  if (lang !== 'ru') closeKeyboard();
   updateLangCheck(lang);
   applyLangUI();
   if (questions.length) renderQuestions();
@@ -1455,6 +1489,7 @@ window.submitExam = async (isAuto = false) => {
     }
   }
   submitted = true;
+  closeKeyboard();
   clearInterval(timerInterval);
   document.getElementById('timerBadge').classList.add('hidden');
   showLoading(true);
@@ -1574,7 +1609,87 @@ function showResult(score, total, items, answersHidden = false) {
 function init() {
   setLang(currentLang);
 }
+// ── 러시아어 가상키보드 ──
+// 러시아어로 시험을 볼 때 단답형·서술형 칸을 누르면 화면 아래에 러시아어 자판이 뜬다
+// (ohdlet 과 같은 자판). 글자를 하나씩 넣고 input 이벤트를 보내므로 답 저장·글자 수
+// 세기가 직접 타이핑과 똑같이 돈다(붙여넣기가 아니라 막히지 않는다). 폰(768px 미만)은
+// 기기 자판을 쓰므로 띄우지 않는다.
+const RU_ROWS = [
+  ['й','ц','у','к','е','н','г','ш','щ','з','х','ъ'],
+  ['ф','ы','в','а','п','р','о','л','д','ж','э'],
+  ['shift','я','ч','с','м','и','т','ь','б','ю','⌫'],
+  ['space','enter'],
+];
+let kbShift = false;
+let kbTarget = null;
+function buildKeyboard() {
+  const md = 'onmousedown="event.preventDefault()"';
+  document.getElementById('kbRows').innerHTML = RU_ROWS.map(row => `<div class="kb-row">${row.map(k => {
+    if (k === 'shift') return `<button class="kb-key wide" id="kb-shift" ${md} onclick="kbToggleShift()">⇧ Shift</button>`;
+    if (k === '⌫') return `<button class="kb-key wide" ${md} onclick="kbBackspace()">⌫</button>`;
+    if (k === 'space') return `<button class="kb-key space" ${md} onclick="kbInsert(' ')">Space</button>`;
+    if (k === 'enter') return `<button class="kb-key wide" ${md} onclick="kbInsert('\\n')">↵</button>`;
+    return `<button class="kb-key" ${md} onclick="kbInsert('${k}')">${k}</button>`;
+  }).join('')}</div>`).join('');
+}
+function kbToggleShift() {
+  kbShift = !kbShift;
+  document.getElementById('kb-shift')?.classList.toggle('shift-active', kbShift);
+  document.querySelectorAll('#kbRows .kb-key:not(.wide):not(.space)').forEach(btn => {
+    const ch = btn.innerText;
+    if (ch.length === 1) btn.innerText = kbShift ? ch.toUpperCase() : ch.toLowerCase();
+  });
+}
+function kbEdit(fn) {
+  if (!kbTarget || !document.body.contains(kbTarget)) { closeKeyboard(); return; }
+  fn(kbTarget);
+  kbTarget.dispatchEvent(new Event('input', { bubbles: true }));
+}
+function kbInsert(ch) {
+  kbEdit(el => {
+    const val = kbShift && ch.length === 1 ? ch.toUpperCase() : ch;
+    const start = el.selectionStart, end = el.selectionEnd;
+    if (el.maxLength > 0 && el.value.length - (end - start) + val.length > el.maxLength) return;
+    el.value = el.value.slice(0, start) + val + el.value.slice(end);
+    el.selectionStart = el.selectionEnd = start + val.length;
+  });
+  if (kbShift && ch.length === 1) kbToggleShift();
+}
+function kbBackspace() {
+  kbEdit(el => {
+    const start = el.selectionStart, end = el.selectionEnd;
+    if (start === end && start > 0) {
+      el.value = el.value.slice(0, start - 1) + el.value.slice(start);
+      el.selectionStart = el.selectionEnd = start - 1;
+    } else if (start !== end) {
+      el.value = el.value.slice(0, start) + el.value.slice(end);
+      el.selectionStart = el.selectionEnd = start;
+    }
+  });
+}
+function openKeyboard(el) {
+  if (window.innerWidth < 768) return;
+  kbTarget = el;
+  document.getElementById('ruKeyboard').classList.add('show');
+  document.body.classList.add('kb-open');
+}
+function closeKeyboard() {
+  document.getElementById('ruKeyboard').classList.remove('show');
+  document.body.classList.remove('kb-open');
+  kbTarget = null;
+}
+buildKeyboard();
+document.addEventListener('focusin', e => {
+  const el = e.target;
+  if (currentLang === 'ru' && !submitted && el?.matches?.('textarea.sa-input')) openKeyboard(el);
+});
+window.kbInsert = kbInsert;
+window.kbBackspace = kbBackspace;
+window.kbToggleShift = kbToggleShift;
+window.closeKeyboard = closeKeyboard;
+
 init();
+
 
 // window 노출
 window.setLang = setLang;
