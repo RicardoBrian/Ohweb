@@ -22,8 +22,8 @@ await env.withSecurityRulesDisabled(async c => {
   const db = c.firestore();
   await setDoc(doc(db, 'exams/EX1'), { title: '수행평가', aiRubric: '맞춤법은 감점하지 않는다.', aiJob: { status: 'queued', sel: 'exam:EX1', questionIds: [] } });
   await setDoc(doc(db, 'exams/EX2'), { title: '다른 시험' });
-  await setDoc(doc(db, 'exam_questions/Q1'), { examId: 'EX1', order: 1, type: 'mc', title: '고르기', points: 2 });
-  await setDoc(doc(db, 'exam_questions/Q2'), { examId: 'EX1', order: 2, type: 'essay', title: '변수란?', points: 10 });
+  await setDoc(doc(db, 'exam_questions/Q1'), { examId: 'EX1', order: 1, type: 'mc', title: '고르기', content: '사례: 이루다 챗봇', points: 2 });
+  await setDoc(doc(db, 'exam_questions/Q2'), { examId: 'EX1', order: 2, type: 'essay', title: '위 사례의 해결 방안은?', points: 10 });
   await setDoc(doc(db, 'exam_answers/Q2'), { examId: 'EX1', answer: '값을 담는 상자', rubric: '상자 비유 10점, 없으면 3점' });
   const names = { S1: '김학생', S2: '박학생', S3: '이학생', S4: '최학생', S5: '정학생' };
   const vals = { S1: '값을 담는 상자', S2: '모름', S3: '', S4: 'Коробка для значения', S5: '상자다' };
@@ -56,7 +56,7 @@ ok((await read('exam_results/AS2_S5_1')).aiScore === undefined, '이미 공개�
 ok((await read('exam_results/AS1_S1_0')).aiScore === undefined, '객관식은 건너뜀');
 const prompts = readFileSync(logFile, 'utf8');
 ok(!/김학생|박학생|최학생|한학생|S1|S4/.test(prompts), '프롬프트에 이름·학번 없음');
-ok(/맞춤법은 감점하지 않는다/.test(prompts) && /상자 비유 10점/.test(prompts) && /변수는 이름표.*6점/.test(prompts) && /한국어 번역: "값을 위한 상자"/.test(prompts), '프롬프트에 공통 기준·문항 기준·선생님 예시·번역');
+ok(/맞춤법은 감점하지 않는다/.test(prompts) && /상자 비유 10점/.test(prompts) && /변수는 이름표.*6점/.test(prompts) && /한국어 번역: "값을 위한 상자"/.test(prompts) && /앞 문항의 사례[\s\S]*사례: 이루다 챗봇/.test(prompts), '프롬프트에 공통 기준·문항 기준·선생님 예시·번역·앞 문항 사례');
 ok(prompts.split('=====').length - 1 === 2, '2개씩 묶어 claude 2번 호출(빈 답 제외 3개)');
 
 // 다시 채점하지 않으면 제안 있는 건 건너뜀, redo 면 다시
