@@ -38,7 +38,7 @@ await env.withSecurityRulesDisabled(async c => {
   await setDoc(doc(db, 'exam_progress/AS1_S6'), { asId: 'AS1', examId: 'EX1', studentId: 'S6', status: 'submitted', needsManual: true });
   // AI 제안을 그대로 적용한 답(예시로 쓰면 안 됨)
   await setDoc(doc(db, 'exam_progress/AS1_S7'), { asId: 'AS1', examId: 'EX1', studentId: 'S7', status: 'submitted', needsManual: true });
-  await setDoc(doc(db, 'exam_results/AS1_S7_1'), { asId: 'AS1', examId: 'EX1', studentId: 'S7', name: '오학생', questionId: 'Q2', qIdx: 1, type: 'essay', value: '옛 기준 답', score: 0, aiScore: 0, maxScore: 10, feedback: '', teacherGradedAt: new Date() });
+  await setDoc(doc(db, 'exam_results/AS1_S7_1'), { asId: 'AS1', examId: 'EX1', studentId: 'S7', name: '오학생', questionId: 'Q2', qIdx: 1, type: 'essay', value: '옛 기준 답', score: 0, aiScore: 1, aiApplied: true, maxScore: 10, feedback: '', teacherGradedAt: new Date() });
   await setDoc(doc(db, 'exam_results/AS1_S6_1'), { asId: 'AS1', examId: 'EX1', studentId: 'S6', name: '한학생', questionId: 'Q2', qIdx: 1, type: 'essay', value: '변수는 이름표', score: 6, maxScore: 10, feedback: '비유가 다르다', teacherGradedAt: new Date() });
 });
 const read = async p => { let v; await env.withSecurityRulesDisabled(async cx => { v = (await getDoc(doc(cx.firestore(), p))).data(); }); return v; };

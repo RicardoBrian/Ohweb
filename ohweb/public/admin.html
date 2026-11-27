@@ -3943,7 +3943,9 @@
     // 사유 칸에 쓰다 만 글이 있으면 같이 저장
     const reasonInp = document.querySelector(`#qg_${CSS.escape(docId)} .qg-reason`);
     const reason = reasonInp ? reasonInp.value.trim() : undefined;
-    const data = { score };
+    // aiApplied: AI 제안을 그대로 [적용]했는지 — 워커는 선생님이 직접 매긴 답(false)만 채점 예시로 쓴다
+    const data = { score, aiApplied: !!r._applyAi };
+    delete r._applyAi;
     if (reason !== undefined) data.feedback = reason || (qgAuto(r.feedback) ? r.feedback : '');
     if (!(await qgSave(docId, data))) return;
     // 다음 채점 전 학생으로
@@ -4145,6 +4147,7 @@
     if (!r || r.aiScore == null) return;
     const inp = document.querySelector(`#qg_${CSS.escape(docId)} .qg-reason`);
     if (inp) inp.value = r.aiReason || '';
+    r._applyAi = true;
     await window.qgScore(docId, r.aiScore);
   };
   window.aiApplyAll = async (wholeExam) => {
@@ -4153,7 +4156,7 @@
     if (!list.length || !confirm(`AI 제안 ${list.length}개를 그대로 점수로 저장할까요?${over ? `\n이미 매긴 점수를 새 제안으로 바꾸는 답 ${over}개 포함.` : ''}\n('확인 필요' 표시된 답은 빼고, 학생에게는 [공개] 전까지 안 보입니다)`)) return;
     showLoading(true);
     let n = 0;
-    for (const r of list) if (await qgSave(r.docId, { score: r.aiScore, feedback: r.aiReason || '' })) n++;
+    for (const r of list) if (await qgSave(r.docId, { score: r.aiScore, feedback: r.aiReason || '', aiApplied: true })) n++;
     showLoading(false);
     toast(`${n}명 적용`, 'success');
     renderQGrade();
