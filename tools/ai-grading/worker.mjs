@@ -137,7 +137,9 @@ export async function processJob(exam) {
       if (!list.length) continue;
       const key = (await getDoc(`exam_answers/${q.id}`)) || {};
       // 예시: 선생님이 직접 판단한 답만 — AI 제안을 그대로 [적용]한 점수는 예시가 아니다(옛 기준 제안이 굳어진다)
-      const examples = results.filter(r => r.questionId === q.id && r.teacherGradedAt && txt(r.value) && (r.aiScore == null || Number(r.score) !== Number(r.aiScore))).slice(0, 8);
+      // aiApplied 가 true 면 [적용]한 것, false 면 직접 매긴 것. 표시가 없는 예전 답은 점수가 제안과 같으면 적용한 것으로 본다.
+      const byTeacher = r => r.aiApplied === false || (r.aiApplied !== true && (r.aiScore == null || Number(r.score) !== Number(r.aiScore)));
+      const examples = results.filter(r => r.questionId === q.id && r.teacherGradedAt && txt(r.value) && byTeacher(r)).slice(0, 8);
       const context = caseOf(q);
       for (let i = 0; i < list.length; i += BATCH) tasks.push({ q, key, examples, context, batch: list.slice(i, i + BATCH).map((r, k) => ({ id: `A${i + k + 1}`, r })) });
     }
