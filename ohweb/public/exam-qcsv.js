@@ -21,7 +21,7 @@ export function parseType(v) {
 }
 
 const BASE_COLS = ['문항ID', '유형', '배점', '시험지유형', '제목', '내용', '이미지URL'];
-const MID_COLS = ['정답', '최소글자', '최대글자', '입력설명', '출력설명', '예시입력', '예시출력', '기본코드'];
+const MID_COLS = ['정답', '채점기준', '최소글자', '최대글자', '입력설명', '출력설명', '예시입력', '예시출력', '기본코드'];
 
 // 문항 → 비교·내보내기용 표준형. 저장된 문항과 CSV에서 읽은 문항을 같은 모양으로 맞춘다.
 export function canon(q) {
@@ -46,6 +46,7 @@ export function canon(q) {
     for (const k of ['inDesc', 'outDesc', 'inEx', 'outEx', 'boilerplate']) c[k] = String(q[k] ?? '');
     c.testCases = (q.testCases || []).map(t => ({ input: String(t.input ?? ''), expected: String(t.expected ?? '') }));
   }
+  if (type === 'sa' || type === 'essay') c.rubric = String(q.rubric ?? '');
   return c;
 }
 
@@ -80,6 +81,7 @@ export function buildCsv(questions) {
     for (let i = 0; i < nOpt; i++) r.push((c.options || [])[i] ?? '');
     r.push(
       c.type === 'mc' ? (parseInt(c.answer, 10) || 0) + 1 : c.type === 'sa' ? c.answer : '',
+      c.rubric ?? '',
       c.minLen || '', c.maxLen || '',
       c.inDesc ?? '', c.outDesc ?? '', c.inEx ?? '', c.outEx ?? '', c.boilerplate ?? '',
     );
@@ -151,7 +153,8 @@ function rowToQuestion(get, opts, tcs, forms) {
       else if (n > 0) q[key] = n;
     }
     if (q.minLen && q.maxLen && q.minLen > q.maxLen) errors.push('최소글자가 최대글자보다 큼');
-  } else if (type === 'code') {
+  }
+  if (type === 'sa' || type === 'essay') q.rubric = get('채점기준').trim(); else if (type === 'code') {
     q.inDesc = get('입력설명').trim(); q.outDesc = get('출력설명').trim();
     q.inEx = get('예시입력').trim(); q.outEx = get('예시출력').trim();
     q.boilerplate = get('기본코드');
@@ -207,6 +210,8 @@ export function planImport(text, existing, forms = []) {
     else if (!id) { item.status = 'add'; item.textChanged = true; item.fromOtherId = rawId || ''; }
     else {
       const old = byId.get(id);
+      // 채점기준 칸이 없는 예전 CSV 면 있던 기준을 그대로 둔다
+      if (col('채점기준') < 0 && 'rubric' in q) q.rubric = String(old.q.rubric ?? '');
       const a = canon(old.q), b = canon(q);
       item.textChanged = textSig(a) !== textSig(b);
       item.orderChanged = Number(old.q.order) !== order;

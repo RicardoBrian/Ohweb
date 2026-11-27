@@ -11,7 +11,7 @@
 | `public/admin-nav.js` | 왼쪽 메뉴·섹션 전환 |
 | `public/admin-rows.js`, `admin-groups.js` | 표 행·반 묶음 그리기 |
 | `public/admin-ailab.js` | AI 실습실 관리 |
-| `public/exam-qcsv.js` | 시험 문항 CSV |
+| `public/exam-qcsv.js` | 시험 문항 CSV(단답·서술은 `채점기준` 열 = exam_answers.rubric) |
 | `public/forms.html` | 설문 만들기·결과 |
 | `public/score.html` + `score-core.js` + `score-config.js` | 수행평가: 감점사유 템플릿·평가 항목(①②③)·점수 입력(CSV/엑셀, 채점 시트 상세 탭 그대로·학번 가능)·비고(선생님만)·반별 공개·이의신청 확인·수정 이력·제출물 연결(드라이브 폴더 → 학번으로 학생)·시험에서 가져오기(exam 결과 → 평가, 문항 = 항목, 다시 가져오기)·학기 성적(같은 학기·과목·학교 학년 평가 합계 → A~E 등급, 기준 바꾸기, CSV). `score-core.js` 는 화면 없는 순수 함수(테스트 `npm run test:score`), `score-config.js` 는 Apps Script 주소 |
 | `public/messages.html`, `notice.html` | 메시지·공지 |
