@@ -598,7 +598,7 @@ const UI = {
     sessionExpired:'로그인이 만료되었습니다. 다시 로그인한 뒤 제출해 주세요.',
     draftKept:'작성한 답안은 이 기기에 저장되어 있습니다. 잠시 후 다시 제출하기를 눌러 주세요.',
     pendingKept:'답안은 선생님께 전달되어 보관되었습니다. 이 화면을 선생님께 보여 주세요.',
-    gradingPending:'채점 중',
+    gradingPending:'채점 중', scoreLinkedShort:'점수는 시험 점수 확인에서', scoreLinkedMsg:'채점이 끝났어요.\n점수와 문항별 사유는 [시험 점수 확인]에서 볼 수 있어요. (선생님이 반별로 공개한 뒤에 보여요)', scoreLinkedBtn:'시험 점수 확인 열기', myAnswers:'내가 쓴 답',
     pendingResultMsg:'제출이 완료되었습니다.\n서술형 문항은 선생님이 채점한 후 최종 점수를 확인할 수 있어요.',
     stdin:'표준 입력 (stdin)', stdinPlaceholder:'입력이 필요한 경우 입력 값을 넣어주세요.',
     noOutput:'(출력 없음)', runErr:'실행 오류: ',
@@ -617,7 +617,7 @@ const UI = {
     sessionExpired:'登录已过期，请重新登录后提交。',
     draftKept:'已作答的内容已保存在本设备上。请稍后再次点击提交。',
     pendingKept:'答案已保存并传给老师。请把此画面给老师看。',
-    gradingPending:'评分中',
+    gradingPending:'评分中', scoreLinkedShort:'成绩请在“考试成绩查询”查看', scoreLinkedMsg:'批改已完成。\n成绩和各题评语请在【考试成绩查询】查看。（老师按班公开后可见）', scoreLinkedBtn:'打开考试成绩查询', myAnswers:'我的答案',
     pendingResultMsg:'提交成功。\n论述题由老师批改后即可查看最终成绩。',
     stdin:'标准输入 (stdin)', stdinPlaceholder:'如需输入，请填写输入值。',
     noOutput:'(无输出)', runErr:'运行错误: ',
@@ -636,7 +636,7 @@ const UI = {
     sessionExpired:'Сессия истекла. Войдите снова и отправьте работу.',
     draftKept:'Ваши ответы сохранены на этом устройстве. Попробуйте отправить ещё раз чуть позже.',
     pendingKept:'Ответы сохранены и переданы учителю. Покажите этот экран учителю.',
-    gradingPending:'Проверяется',
+    gradingPending:'Проверяется', scoreLinkedShort:'Баллы — в «Проверке баллов»', scoreLinkedMsg:'Проверка завершена.\nБаллы и комментарии смотрите в разделе «Проверка баллов». (Они появятся после того, как учитель откроет их для класса)', scoreLinkedBtn:'Открыть «Проверку баллов»', myAnswers:'Мои ответы',
     pendingResultMsg:'Отправка завершена.\nОкончательный балл будет доступен после проверки эссе учителем.',
     stdin:'Стандартный ввод (stdin)', stdinPlaceholder:'Введите тестовые данные.',
     noOutput:'(нет вывода)', runErr:'Ошибка выполнения: ',
@@ -655,7 +655,7 @@ const UI = {
     sessionExpired:'Your login has expired. Please sign in again and submit.',
     draftKept:'Your answers are saved on this device. Please press Submit again in a moment.',
     pendingKept:'Your answers have been saved for your teacher. Please show this screen to your teacher.',
-    gradingPending:'Grading in progress',
+    gradingPending:'Grading in progress', scoreLinkedShort:'See your score in Score Check', scoreLinkedMsg:'Grading is done.\nSee your score and feedback in [Score Check]. (Visible after your teacher publishes it for your class)', scoreLinkedBtn:'Open Score Check', myAnswers:'My answers',
     pendingResultMsg:'Submission complete.\nYour final score will be available after your teacher grades the essay question(s).',
     stdin:'Standard Input (stdin)', stdinPlaceholder:'Enter test input values if needed.',
     noOutput:'(no output)', runErr:'Run error: ',
@@ -829,7 +829,7 @@ async function loadMyExams() {
         ${isDone
           ? `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                <span style="color:#22c55e;font-weight:800;font-size:0.9rem;display:inline-flex;align-items:center;gap:4px;"><svg width="13" height="13"><use href="#ic-check"/></svg>${t.submitted}</span>
-               <span style="color:var(--sub);font-size:0.85rem;">${pendingGrade ? (t.gradingPending || '채점 중') : `${prog.totalScore??'?'} / ${prog.totalPoints??'?'}${t.pts}`}</span>
+               <span style="color:var(--sub);font-size:0.85rem;">${pendingGrade ? (t.gradingPending || '채점 중') : prog.scoreLinked ? `<a href="score.html" style="color:var(--accent);font-weight:700;">${escHtml(t.scoreLinkedShort)}</a>` : `${prog.totalScore??'?'} / ${prog.totalPoints??'?'}${t.pts}`}</span>
                <button class="btn ghost sm" onclick="showMyResult(${idArg})" style="margin-left:auto;">${t.viewResult}</button>
              </div>`
           : !a.needsCode
@@ -858,6 +858,7 @@ window.showMyResult = async (asId) => {
     const r = await examApi('result', { asId });
     showLoading(false);
     if (r.pending) { showPendingResult(); return; }
+    if (r.scoreLinked) { showLinkedResult(r.items || []); return; }
     const resultItems = (r.items || []).map(it => ({
       qIdx: it.qIdx||0, type: it.type, title: it.title||`Q${(it.qIdx||0)+1}`,
       value: it.value||'', score: it.score||0, maxScore: it.maxScore||0,
@@ -1578,6 +1579,18 @@ function showPendingResult() {
   document.getElementById('resultEmoji').innerHTML = '<svg width="46" height="46"><use href="#ic-check"/></svg>';
   document.getElementById('resultDetails').innerHTML = `<div style="text-align:center;padding:20px 10px;color:var(--sub);font-size:0.95rem;line-height:1.7;white-space:pre-line;">${t.pendingResultMsg}</div>`;
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// 점수가 시험 점수 확인으로 넘어간 시험 — 점수 대신 안내·링크와 내가 쓴 답만
+function showLinkedResult(items) {
+  showPendingResult();
+  const t = UI[currentLang];
+  const ans = items.filter(it => String(it.value || '').trim()).map(it => `<div style="text-align:left;margin-top:10px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;">
+      <div style="font-size:0.8rem;color:var(--sub);margin-bottom:4px;">${escHtml(it.title || `Q${(it.qIdx||0)+1}`)}</div>
+      <div style="white-space:pre-wrap;word-break:break-word;font-size:0.92rem;">${escHtml(it.value)}</div></div>`).join('');
+  document.getElementById('resultDetails').innerHTML = `<div style="text-align:center;padding:16px 10px;color:var(--sub);font-size:0.95rem;line-height:1.7;white-space:pre-line;">${escHtml(t.scoreLinkedMsg)}</div>
+    <div style="text-align:center;"><a class="btn accent" href="score.html" style="display:inline-block;text-decoration:none;">${escHtml(t.scoreLinkedBtn)}</a></div>
+    ${ans ? `<div style="margin-top:18px;font-weight:800;font-size:0.9rem;">${escHtml(t.myAnswers)}</div>${ans}` : ''}`;
 }
 
 function showResult(score, total, items, answersHidden = false) {
