@@ -739,7 +739,14 @@
       <button class="btn ghost sm" id="examSubTab-questions" onclick="showExamTab('questions')" style="white-space:nowrap;flex-shrink:0;">문제 관리</button>
       <button class="btn ghost sm" id="examSubTab-assign" onclick="showExamTab('assign')" style="white-space:nowrap;flex-shrink:0;">배정 관리</button>
       <button class="btn ghost sm" id="examSubTab-results" onclick="showExamTab('results')" style="white-space:nowrap;flex-shrink:0;">결과 조회</button>
-      <button class="btn ghost sm" id="examSubTab-legacy" onclick="showExamTab('legacy')" style="white-space:nowrap;flex-shrink:0;">레거시 가져오기</button>
+      <button class="btn ghost sm" id="examSubTab-legacy" onclick="showExamTab('legacy')" style="white-space:nowrap;flex-shrink:0;">도구</button>
+    </div>
+
+    <!-- 지금 다루는 시험 — 문제·배정·결과 탭이 함께 쓴다 -->
+    <div id="examCtxBar" class="hidden" style="display:flex;align-items:center;gap:10px;margin:0 0 14px;flex-wrap:wrap;">
+      <label for="exam_ctx" style="font-size:0.8rem;font-weight:800;color:var(--sub);">시험</label>
+      <select class="inp" id="exam_ctx" style="width:auto;min-width:280px;max-width:100%;" onchange="setExamCtx(this.value)"></select>
+      <span id="examCtxInfo" style="display:flex;gap:6px;flex-wrap:wrap;font-size:0.8rem;color:var(--sub);"></span>
     </div>
 
     <!-- 시험 목록 탭 -->
@@ -925,11 +932,9 @@
             <button class="btn ghost sm" title="이 시험의 문항을 CSV(엑셀)로 받습니다. 문항이 없으면 예시가 든 양식을 받습니다." onclick="downloadQCsv()">CSV 받기</button>
             <button class="btn ghost sm" title="고친 CSV를 올려 이 시험의 문항을 한 번에 바꿉니다. 반영 전에 미리보기를 보여줍니다." onclick="pickQCsv()">CSV 올리기</button>
             <input type="file" id="qcsvFile" accept=".csv,.tsv,.txt,text/csv" class="hidden" onchange="onQCsvFile(this)">
-            <button class="btn ghost sm" title="예전 문항의 정답을 학생이 못 읽는 곳(exam_answers)으로 옮깁니다" onclick="migrateAnswers()">정답 분리</button>
-            <button class="icon-action" title="번역 보완" onclick="fixMissingTranslations()"><svg width="17" height="17"><use href="#ic-globe"/></svg></button>
           </div>
         </div>
-        <div style="margin-bottom:12px;">
+        <div class="hidden" style="margin-bottom:12px;">
           <select class="inp" id="qlist_examId" style="width:100%;" onchange="loadQList(this.value)">
             <option value="">시험을 선택하세요</option>
           </select>
@@ -944,8 +949,8 @@
       <div class="card pane-form">
         <h2><span class="icon"><svg width="18" height="18"><use href="#ic-target"/></svg></span> 배정 추가</h2>
         <input type="hidden" id="as_docId">
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px;">
-          <div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+          <div class="hidden">
             <label style="font-size:0.78rem;font-weight:700;color:var(--sub);display:block;margin-bottom:4px;">시험</label>
             <select class="inp" id="as_examId" onchange="renderAsFormSelect()">
               <option value="">시험 선택</option>
@@ -1040,6 +1045,15 @@
 
     <!-- 레거시 가져오기 탭 -->
     <div id="examTab-legacy" class="hidden">
+      <div class="card" style="margin-bottom:16px;">
+        <h2><span class="icon"><svg width="18" height="18"><use href="#ic-doc"/></svg></span> 문항 정리 도구</h2>
+        <p style="font-size:0.85rem;color:var(--sub);margin:0 0 12px;">가끔 한 번씩 쓰는 정리 도구입니다. 번역 보완은 아래에서 고른 시험의 문항에 빠진 번역을 채웁니다.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <select class="inp" id="tool_examId" style="width:auto;min-width:240px;" onchange="setExamCtx(this.value)"></select>
+          <button class="btn ghost sm" title="고른 시험 문항의 빠진 번역(영·중·러)을 채웁니다" onclick="fixMissingTranslations()"><svg width="13" height="13"><use href="#ic-globe"/></svg> 번역 보완</button>
+          <button class="btn ghost sm" title="예전 문항의 정답을 학생이 못 읽는 곳(exam_answers)으로 옮깁니다" onclick="migrateAnswers()">정답 분리</button>
+        </div>
+      </div>
       <div class="card">
         <h2><span class="icon"><svg width="18" height="18"><use href="#ic-archive"/></svg></span> 레거시 시스템 데이터 가져오기</h2>
         <p style="font-size:0.82rem;color:var(--sub);margin-bottom:14px;">이전 구글시트 시스템의 Exams·Questions·Results 탭 내용을 각각 복사해서 붙여넣으세요 (헤더 행 포함해도 됩니다). 탭 또는 콤마 구분 모두 인식합니다.</p>
@@ -2172,9 +2186,56 @@
       const btn = document.getElementById('examSubTab-'+t);
       if (btn) { btn.classList.toggle('accent', t === tab); btn.classList.toggle('ghost', t !== tab); }
     });
-    if (tab === 'questions') populateExamSelects();
-    if (tab === 'assign') { populateExamSelects(); loadAssignList(); onAsGradeChange(); }
-    if (tab === 'results') { loadAssignSelect(); }
+    // 문제·배정·결과·도구는 위쪽 "시험" 한 곳에서 고른 시험으로 움직인다(탭마다 다시 고르지 않게).
+    document.getElementById('examCtxBar').classList.toggle('hidden', tab === 'list' || tab === 'legacy');
+    renderExamCtx();
+    if (tab === 'questions') populateExamSelects().then(applyExamCtx);
+    if (tab === 'assign') { populateExamSelects().then(applyExamCtx); loadAssignList(); onAsGradeChange(); }
+    if (tab === 'results') { loadAssignSelect().then(() => window.loadResults()); }
+  };
+
+  // ── 지금 다루는 시험 ──
+  // 시험 목록에서 [문제]·[배정]·[결과]를 누르거나 위쪽 칸에서 고르면 정해지고,
+  // 문제 목록·새 문항의 대상 시험·배정 추가·결과 조회가 모두 이 시험을 쓴다.
+  // 편집 중인 문항의 대상 시험은 바꾸지 않는다(저장하면 문항이 옮겨가므로).
+  let examCtx = '';
+  try { examCtx = sessionStorage.getItem('_examCtx') || ''; } catch (e) {}
+  let _pendingByExam = {};
+  function renderExamCtx() {
+    if (examCtx && !exams.some(e => e.id === examCtx)) examCtx = '';
+    const opts = '<option value="">시험을 고르세요</option>' + exams.map(e => `<option value="${escHtml(e.id)}" ${e.id === examCtx ? 'selected' : ''}>${escHtml(e.title)}</option>`).join('');
+    ['exam_ctx', 'tool_examId'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = opts; });
+    const info = document.getElementById('examCtxInfo');
+    if (!info) return;
+    if (!examCtx) { info.innerHTML = ''; return; }
+    const e = examById(examCtx), l = _assignList.filter(a => a.examId === examCtx), on = l.filter(a => a.status === 'ON').length;
+    const forms = examFormsOf(e), wait = _pendingByExam[examCtx] || 0;
+    const pill = (t, c) => `<span style="padding:2px 9px;border-radius:50px;font-weight:700;background:${c || 'var(--glass-strong)'};">${t}</span>`;
+    info.innerHTML = [forms.length ? pill(forms.join('·') + '형') : '', pill(`배정 ${l.length}개`), on ? pill(`열림 ${on}`, 'rgba(34,197,94,0.18)') : '',
+      wait ? pill(`채점 대기 ${wait}명`, 'rgba(245,158,11,0.2)') : ''].join('');
+  }
+  function applyExamCtx() {
+    const ql = document.getElementById('qlist_examId'); if (ql) ql.value = examCtx;
+    if (!document.getElementById('q_docId')?.value) { const q = document.getElementById('q_examId'); if (q) q.value = examCtx; renderQFormSelect(); }
+    const as = document.getElementById('as_examId'); if (as && as.value !== examCtx) { as.value = examCtx; renderAsFormSelect(); }
+    if (activeExamSubTab === 'questions') {
+      if (examCtx) window.loadQList(examCtx);
+      else document.getElementById('qList').innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-help"/></svg></div>위에서 시험을 고르세요.</div>';
+    }
+    if (activeExamSubTab === 'assign') renderAssignList();
+  }
+  window.setExamCtx = (id) => {
+    examCtx = id || '';
+    try { sessionStorage.setItem('_examCtx', examCtx); } catch (e) {}
+    renderExamCtx();
+    applyExamCtx();
+    if (activeExamSubTab === 'results') loadAssignSelect().then(() => window.loadResults());
+  };
+  // 시험 목록의 [문제]·[배정]·[결과]
+  window.openExam = (id, tab) => {
+    examCtx = id; try { sessionStorage.setItem('_examCtx', id); } catch (e) {}
+    window.showExamTab(tab);
+    if (tab === 'assign') window.prefillAssign(id, '');
   };
 
   async function initExamSection() {
@@ -2190,7 +2251,14 @@
       const as = await getDocs(query(collection(db,'exam_assignments'), orderBy('createdAt','desc')));
       _assignList = as.docs.map(d=>({id:d.id,...d.data()}));
     } catch (e) { /* 배정을 못 읽어도 시험 목록은 보인다 */ }
+    // 시험마다 채점 대기(제출했는데 아직 채점 안 한) 인원
+    try {
+      const pend = await getDocs(query(collection(db,'exam_progress'), where('needsManual','==',true)));
+      _pendingByExam = {};
+      pend.docs.forEach(d => { const x = d.data(); if (x.status === 'submitted' && x.examId) _pendingByExam[x.examId] = (_pendingByExam[x.examId] || 0) + 1; });
+    } catch (e) { /* 못 읽으면 표시만 빠진다 */ }
     renderExamList();
+    renderExamCtx();
   }
 
   AG.on('exam', () => renderExamList());
@@ -2208,10 +2276,11 @@
       return `<div class="ag-g single${st.on ? ' live' : ''}">
         <div class="ag-r row-open" data-open="editExam" data-arg="${escHtml(e.id)}" title="눌러서 수정">
           <div class="ag-rl"><div class="ag-name">${escHtml(e.title)}</div>
-            <div class="ag-meta">${meta}${st.on ? `<span class="ag-pill on">열림 ${st.on}</span>` : ''}</div></div>
+            <div class="ag-meta">${meta}${st.on ? `<span class="ag-pill on">열림 ${st.on}</span>` : ''}${_pendingByExam[e.id] ? `<span class="ag-pill" style="background:rgba(245,158,11,0.2);color:#b45309;">채점 대기 ${_pendingByExam[e.id]}</span>` : ''}</div></div>
           <div class="ag-ra">
-            <button class="btn ghost sm" onclick="showExamTab('questions');document.getElementById('qlist_examId').value=${jsArg(e.id)};document.getElementById('q_examId').value=${jsArg(e.id)};onQFormExamChange(${jsArg(e.id)})">문제</button>
-            <button class="btn ghost sm" onclick="showExamTab('assign');prefillAssign(${jsArg(e.id)}, '')">배정</button>
+            <button class="btn ghost sm" onclick="openExam(${jsArg(e.id)},'questions')">문제</button>
+            <button class="btn ghost sm" onclick="openExam(${jsArg(e.id)},'assign')">배정</button>
+            <button class="btn ghost sm" onclick="openExam(${jsArg(e.id)},'results')">결과</button>
             <button class="icon-action danger" title="삭제" onclick="deleteExam(${jsArg(e.id)},${jsArg(e.title)})"><svg width="16" height="16"><use href="#ic-trash"/></svg></button>
           </div>
         </div></div>`;
@@ -3061,7 +3130,7 @@
       schools: [...new Set(list.map(a => a.schoolName || '').filter(Boolean))].sort((x,y)=>x.localeCompare(y,'ko')),
       grades: AG.gradesOf(list.map(a => a.grade)), status: ['열림', '닫힘'], search: '시험 이름·코드 검색…',
     });
-    const shown = list.filter(a => AG.pass('asg', { school: a.schoolName || '', grade: a.grade, on: a.status === 'ON', text: titleOf(a) + ' ' + (a.code || '') }));
+    const shown = list.filter(a => (!examCtx || a.examId === examCtx) && AG.pass('asg', { school: a.schoolName || '', grade: a.grade, on: a.status === 'ON', text: titleOf(a) + ' ' + (a.code || '') }));
     if (!shown.length) { el.innerHTML = bar + AG.empty('asg'); return; }
     const groups = AG.groupBy(shown, asGroupId).map(g => ({ ...g, live: g.items.some(a => a.status === 'ON'), last: Math.max(...g.items.map(a => tsOf(a.createdAt))) }));
     groups.sort((x, y) => (y.live - x.live) || (y.last - x.last));
@@ -3129,6 +3198,7 @@
     showLoading(false);
   };
   window.prefillAssign = (examId, school) => {
+    if (examId !== examCtx) { examCtx = examId; try { sessionStorage.setItem('_examCtx', examId); } catch (e) {} renderExamCtx(); }
     window.resetAsForm();
     document.getElementById('as_examId').value = examId;
     const sch = document.getElementById('as_schoolName');
@@ -3138,6 +3208,8 @@
     toast('반을 고르고 [＋ 담기] 후 저장하세요.');
   };
   window.openAssignResults = async (id) => {
+    const ex = _assignCache[id]?.examId;
+    if (ex && ex !== examCtx) { examCtx = ex; try { sessionStorage.setItem('_examCtx', ex); } catch (e) {} }
     window.showExamTab('results');
     await loadAssignSelect();
     document.getElementById('res_asId').value = id;
@@ -3252,7 +3324,7 @@
 
   window.resetAsForm = () => {
     document.getElementById('as_docId').value='';
-    document.getElementById('as_examId').value='';
+    document.getElementById('as_examId').value=examCtx;
     document.getElementById('as_code').value='';
     document.getElementById('as_duration').value='45';
     document.getElementById('as_entryMinutes').value='0';
@@ -3272,15 +3344,18 @@
     } catch(e) {
       snap = await getDocs(collection(db,'exam_assignments'));
     }
-    const list = snap.docs.map(d=>({id:d.id,...d.data()}));
+    const list = snap.docs.map(d=>({id:d.id,...d.data()})).filter(a => !examCtx || a.examId === examCtx);
     const sel = document.getElementById('res_asId');
-    const cur = sel.value;
-    // 시험별로 묶고(optgroup), 반 순서로
+    let cur = sel.value;
+    // 시험이 정해져 있으면 처음엔 그 시험 전체("exam:<시험ID>")를 보여준다.
+    if (examCtx && !(cur === 'exam:' + examCtx || list.some(a => a.id === cur))) cur = 'exam:' + examCtx;
+    // 시험별로 묶고(optgroup), 맨 위에 시험 전체, 그 아래 반 순서로
     const byExam = AG.groupBy(list, a => a.examId);
-    sel.innerHTML = '<option value="">배정을 선택하세요</option>' + byExam.map(g => {
+    sel.innerHTML = '<option value="">' + (examCtx && !list.length ? '이 시험에 배정이 없습니다' : '배정을 선택하세요') + '</option>' + byExam.map(g => {
       const exam = exams.find(e=>e.id===g.key);
       const items = g.items.slice().sort((x, y) => (x.schoolName||'').localeCompare(y.schoolName||'','ko') || AG.byClass({ grade: x.grade, cls: x.class }, { grade: y.grade, cls: y.class }));
-      return `<optgroup label="${escHtml(exam?.title || g.key)}">${items.map(a =>
+      const all = `exam:${g.key}`;
+      return `<optgroup label="${escHtml(exam?.title || g.key)}"><option value="${escHtml(all)}" ${all===cur?'selected':''}>시험 전체 (배정 ${items.length}개)</option>${items.map(a =>
         `<option value="${escHtml(a.id)}" ${a.id===cur?'selected':''}>${escHtml(a.schoolName ? a.schoolName+' ' : '')}${escHtml(AG.classLabel(a.grade, a.class))}${a.code ? ' · '+escHtml(a.code) : ''}${a.status==='ON' ? ' (열림)' : ''}</option>`).join('')}</optgroup>`;
     }).join('');
   }
@@ -3339,6 +3414,7 @@
     stopLive();
     const el = document.getElementById('liveBoard');
     if (!asId) { el.innerHTML = '<div class="empty-state">배정을 선택하세요.</div>'; return; }
+    if (asId.startsWith('exam:')) { el.innerHTML = '<div class="empty-state">실시간 현황은 반(배정)을 하나 고르면 보입니다.</div>'; return; }
     live.asId = asId;
     el.innerHTML = '<div class="empty-state">불러오는 중…</div>';
     try {
@@ -3492,10 +3568,12 @@
     if (!asId) { el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-chart"/></svg></div>배정을 선택하세요.</div>'; return; }
     showLoading(true);
     try {
-      let progSnap = await getDocs(query(collection(db,'exam_progress'), where('asId','==',asId)));
+      // "exam:<시험ID>" = 그 시험의 모든 배정(반) 결과를 한 표로
+      const examAll = asId.startsWith('exam:');
+      let progSnap = await getDocs(query(collection(db,'exam_progress'), examAll ? where('examId','==',asId.slice(5)) : where('asId','==',asId)));
       let progs = progSnap.docs.map(d=>({id:d.id,...d.data()}));
       // fallback: doc ID prefix (migrated/old docs that lack asId field)
-      if (!progs.length) {
+      if (!progs.length && !examAll) {
         const allSnap = await getDocs(collection(db,'exam_progress'));
         progs = allSnap.docs.filter(d=>d.id.startsWith(asId+'_')).map(d=>({id:d.id,...d.data()}));
       }
@@ -3538,7 +3616,7 @@
           <td style="padding:8px 12px;text-align:right;color:${(p.pasteBlockCount||0)>0?'#ef4444':'var(--sub)'};">${escHtml(p.pasteBlockCount||0)}</td>
           <td style="padding:8px 12px;text-align:right;color:${(p.enterCount||0)>2?'#ef4444':'var(--sub)'};">${escHtml(p.enterCount||0)}</td>
           <td style="padding:8px 12px;"${p.enterError&&!p.startTime?` title="${escHtml(fmtTs(p.enterErrorAt)+' '+p.enterError)}"`:''}><span style="padding:3px 10px;border-radius:50px;font-size:0.75rem;font-weight:700;background:${p.status==='submitted'?'rgba(34,197,94,0.15)':p.enterError&&!p.startTime?'rgba(239,68,68,0.15)':'rgba(245,158,11,0.15)'};color:${p.status==='submitted'?'#22c55e':p.enterError&&!p.startTime?'#ef4444':'#f59e0b'}">${p.status==='submitted'?'제출':(p.pendingAnswers?'답안 보관됨':(p.enterError&&!p.startTime?'입장 오류':'진행중'))}</span></td>
-          <td style="padding:8px 12px;text-align:center;white-space:nowrap;">${p.status!=='submitted'&&p.pendingAnswers?`<button class="btn sm" title="${escHtml(p.submitError||'')}" onclick="adoptPendingAnswers(${jsArg(p.id)})">보관 답안 반영</button> `:''}<button class="btn ghost sm" onclick="gradeStudent(${jsArg(asId)},${jsArg(p._studentId)},${jsArg(p.id)})">채점</button></td>
+          <td style="padding:8px 12px;text-align:center;white-space:nowrap;">${p.status!=='submitted'&&p.pendingAnswers?`<button class="btn sm" title="${escHtml(p.submitError||'')}" onclick="adoptPendingAnswers(${jsArg(p.id)})">보관 답안 반영</button> `:''}<button class="btn ghost sm" onclick="gradeStudent(${jsArg(p.asId || asId)},${jsArg(p._studentId)},${jsArg(p.id)})">채점</button></td>
         </tr>`).join('')}</tbody>
       </table></div>`;
       el.innerHTML = html;
@@ -3550,9 +3628,10 @@
     const asId = document.getElementById('res_asId').value;
     if (!asId) { toast('배정을 선택하세요.', 'error'); return; }
     showLoading(true);
-    const progSnap = await getDocs(query(collection(db,'exam_progress'), where('asId','==',asId)));
+    const examAll = asId.startsWith('exam:');
+    const progSnap = await getDocs(query(collection(db,'exam_progress'), examAll ? where('examId','==',asId.slice(5)) : where('asId','==',asId)));
     const progs = progSnap.docs.map(d=>d.data());
-    progs.sort((a,b) => parseInt(a.num||0)-parseInt(b.num||0));
+    progs.sort((a,b) => String(a.grade).localeCompare(String(b.grade)) || String(a.class).localeCompare(String(b.class)) || parseInt(a.num||0)-parseInt(b.num||0));
     const rows = [['학년','반','번호','이름','유형','점수','만점','시작','제출','소요','시간초과','이탈횟수','붙여넣기차단횟수','입장횟수','상태']];
     progs.forEach(p => rows.push([p.grade,p.class,p.num,p.name,p.form||'',p.totalScore??'',p.totalPoints??'',fmtTs(p.startTime),fmtTs(p.submitTime),fmtElapsed(elapsedOf(p)),p.late?'O':'',p.alertCount||0,p.pasteBlockCount||0,p.enterCount||0,p.status]));
     // 0점이 빈칸이 되지 않게 ?? 사용. =,+,-,@로 시작하는 값은 엑셀이 수식으로
@@ -3562,7 +3641,7 @@
     const blob = new Blob(['﻿'+csv], { type: 'text/csv;charset=utf-8;' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `exam_results_${asId}.csv`;
+    a.download = `exam_results_${asId.replace(':', '_')}.csv`;
     a.click();
     showLoading(false);
   };
@@ -3591,7 +3670,7 @@
 
       const pages = [];
       for (const p of selected) {
-        const resSnap = await getDocs(query(collection(db,'exam_results'), where('asId','==',asId), where('studentId','==',p._studentId)));
+        const resSnap = await getDocs(query(collection(db,'exam_results'), where('asId','==',p.asId || asId), where('studentId','==',p._studentId)));
         const items = resSnap.docs.map(d=>d.data()).sort((a,b)=>(a.qIdx||0)-(b.qIdx||0));
         const rows = items.map((r,ri) => {
           // questionId가 있으면 그걸로 찾는다 — 제출 뒤에 문항 순서를 바꿨으면 번호(qIdx)는 어긋난다.
