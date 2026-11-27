@@ -197,6 +197,17 @@ ok((await page.textContent('#pasteBlockCountEl')) === '3' && (await readProg('AS
 await page.evaluate(() => selectMC(0, 0));
 await page.fill('#essay_1', '자동저장 확인용 서술 답안');
 await page.dispatchEvent('#essay_1', 'input');
+// 러시아어 화상 키보드: 러시아어일 때 답 칸을 누르면 뜨고, 누른 글자가 커서 자리에 들어가 저장된다
+await page.evaluate(() => setLang('ru'));
+await page.click('#essay_1');
+await page.evaluate(() => { const el = document.getElementById('essay_1'); el.selectionStart = el.selectionEnd = el.value.length; });
+ok(await page.isVisible('#ruKeyboard'), '러시아어: 답 칸을 누르면 화상 키보드가 뜬다');
+await page.click('#kbRows .kb-key:text-is("п")'); await page.click('#kb-shift'); await page.click('#kbRows .kb-key:text-is("Р")');
+ok((await page.inputValue('#essay_1')).endsWith('пР') && await page.evaluate(() => document.activeElement?.id === 'essay_1'), '화상 키보드 글자 입력(Shift 대문자) + 답 칸 포커스 유지');
+await page.click('#kbRows .kb-key:text-is("⌫")'); await page.click('#kbRows .kb-key:text-is("⌫")');
+ok((await page.inputValue('#essay_1')) === '자동저장 확인용 서술 답안', '화상 키보드 ⌫ 로 지우기');
+await page.evaluate(() => setLang('ko'));
+ok(!(await page.isVisible('#ruKeyboard')), '러시아어가 아니면 화상 키보드가 닫힌다');
 await page.waitForSelector('#qcard_2 .CodeMirror', { timeout: 15000 });
 await page.click('#qcard_2 .CodeMirror');
 await page.keyboard.press('Control+End'); await page.keyboard.press('Enter');
