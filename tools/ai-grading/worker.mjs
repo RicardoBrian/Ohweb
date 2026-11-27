@@ -73,8 +73,9 @@ export function runGrader(prompt) {
 }
 
 const txt = v => String(v ?? '').trim();
-export function buildPrompt({ exam, q, key, examples, batch }) {
+export function buildPrompt({ exam, q, key, examples, batch, context }) {
   const lines = [];
+  if (txt(context)) lines.push('## 앞 문항의 사례 (이 문항이 말하는 "위 사례")', txt(context), '');
   if (txt(exam.aiRubric)) lines.push('## 시험 공통 채점 기준', txt(exam.aiRubric), '');
   lines.push(`## 문항 (${q.type === 'sa' ? '단답형' : '서술형'}, 배점 ${Number(q.points) || 0}점)`, `제목: ${txt(q.title)}`);
   if (txt(q.content)) lines.push(`내용:\n${txt(q.content)}`);
@@ -86,9 +87,9 @@ export function buildPrompt({ exam, q, key, examples, batch }) {
     examples.forEach(r => lines.push(`- 답: ${JSON.stringify(txt(r.value))} → ${r.score}점${txt(r.feedback) && r.feedback !== 'manual' ? ` (${txt(r.feedback)})` : ''}`));
     lines.push('');
   }
-  lines.push('## 채점할 답 (id 마다 하나씩, 모두 채점)');
+  lines.push('## 채점할 답 (id 마다 하나씩, 모두 채점. 글자 수는 이미 세어 두었으니 그대로 쓴다)');
   batch.forEach(({ id, r }) => {
-    lines.push(`[${id}] ${JSON.stringify(txt(r.value))}${txt(r.valueKo) ? `\n    (한국어 번역: ${JSON.stringify(txt(r.valueKo))})` : ''}`);
+    lines.push(`[${id}] (${txt(r.value).length}자, 공백 포함) ${JSON.stringify(txt(r.value))}${txt(r.valueKo) ? `\n    (한국어 번역: ${JSON.stringify(txt(r.valueKo))})` : ''}`);
   });
   return lines.join('\n');
 }
@@ -120,20 +121,29 @@ export async function processJob(exam) {
     job.progress = { done, total };
     await setJob(examId, job);
     // 문항별로 묶음(BATCH 개씩)을 만들어 두고 PARALLEL 개씩 동시에 claude 로 보낸다
+    // "위 사례"처럼 앞 문항을 가리키는 문항이면, 같은 시험지 유형의 바로 앞 문항 내용을 같이 보낸다
+    const byOrder = questions.slice().sort((a, b) => (a.order || 0) - (b.order || 0));
+    const caseOf = q => {
+      if (!/위\s|위의/.test(txt(q.title) + ' ' + txt(q.content))) return '';
+      const i = byOrder.findIndex(x => x.id === q.id);
+      const prev = byOrder.slice(0, i).reverse().find(x => (x.form || '') === (q.form || '') && txt(x.content));
+      return prev ? `${txt(prev.title)}\n${txt(prev.content)}` : '';
+    };
     const tasks = [];
     for (const q of qs) {
       const list = todo(q);
       if (!list.length) continue;
       const key = (await getDoc(`exam_answers/${q.id}`)) || {};
       const examples = results.filter(r => r.questionId === q.id && r.teacherGradedAt && txt(r.value)).slice(0, 8);
-      for (let i = 0; i < list.length; i += BATCH) tasks.push({ q, key, examples, batch: list.slice(i, i + BATCH).map((r, k) => ({ id: `A${i + k + 1}`, r })) });
+      const context = caseOf(q);
+      for (let i = 0; i < list.length; i += BATCH) tasks.push({ q, key, examples, context, batch: list.slice(i, i + BATCH).map((r, k) => ({ id: `A${i + k + 1}`, r })) });
     }
     let jobWrite = Promise.resolve();
-    const runTask = async ({ q, key, examples, batch }) => {
+    const runTask = async ({ q, key, examples, batch, context }) => {
       const max = Number(q.points) || 0;
       // 빈 답은 claude 에 보내지 않고 0점
       const empty = batch.filter(b => !txt(b.r.value)), real = batch.filter(b => txt(b.r.value));
-      const got = real.length ? await runGrader(buildPrompt({ exam, q, key, examples, batch: real })) : { items: [], model: '' };
+      const got = real.length ? await runGrader(buildPrompt({ exam, q, key, examples, batch: real, context })) : { items: [], model: '' };
       model = got.model || model;
       const ups = [];
       for (const b of empty) ups.push({ path: b.r.path, data: { aiScore: 0, aiReason: '답을 쓰지 않았다.', aiFlag: false, aiFlagReason: '', aiModel: 'rule' }, serverTime: ['aiAt'] });
