@@ -20,5 +20,6 @@
 - 보내는 것: 기준·문항·정답, 선생님이 이미 매긴 답(예시), 학생 답(+한국어 번역). **이름·학번은 안 보냄**(A1, A2…).
 - 건너뛰는 것: 객관식·코딩, 미제출, 이미 공개한 학생, 선생님이 매긴 답, 이미 제안 있는 답(“제안 있는 답도 다시” 체크 시 다시).
 - 빈 답은 claude 없이 0점. 애매하면 `aiFlag`(“확인 필요”) — [AI 제안 모두 적용]에서 빠진다.
-- 환경변수: `AI_GRADER_MODEL`(기본 claude 기본 모델), `AI_GRADER_BATCH`(한 번에 보낼 답 수, 12), `AI_GRADER_POLL_MS`(15000).
+- 관리자 화면: 위쪽 [🤖 시험 전체 AI 채점] → 끝나면 [AI 제안 검토]에 시험 전체 제안이 문항별로 모임(확인 필요 먼저, 한 번에 적용).
+- 환경변수: `AI_GRADER_MODEL`(기본 claude 기본 모델), `AI_GRADER_BATCH`(한 번에 보낼 답 수, 12), `AI_GRADER_PARALLEL`(동시에 보낼 묶음 수, 3), `AI_GRADER_POLL_MS`(15000).
 - 테스트: `ohweb-rules-test` 에서 `npm run test:ai-grading`(에뮬레이터 + 가짜 claude).
