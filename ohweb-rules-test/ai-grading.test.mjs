@@ -24,9 +24,9 @@ await env.withSecurityRulesDisabled(async c => {
   await setDoc(doc(db, 'exams/EX2'), { title: '다른 시험' });
   await setDoc(doc(db, 'exam_questions/Q1'), { examId: 'EX1', order: 1, type: 'mc', title: '고르기', content: '사례: 이루다 챗봇', points: 2 });
   await setDoc(doc(db, 'exam_questions/Q2'), { examId: 'EX1', order: 2, type: 'essay', title: '위 사례의 해결 방안은?', points: 10 });
-  await setDoc(doc(db, 'exam_answers/Q2'), { examId: 'EX1', answer: '값을 담는 상자', rubric: '상자 비유 10점, 없으면 3점' });
+  await setDoc(doc(db, 'exam_answers/Q2'), { examId: 'EX1', answer: '값을 담는 상자', rubric: '상자 비유 10점, 없으면 3점', minScore: 2 });
   const names = { S1: '김학생', S2: '박학생', S3: '이학생', S4: '최학생', S5: '정학생' };
-  const vals = { S1: '값을 담는 상자', S2: '모름', S3: '', S4: 'Коробка для значения', S5: '상자다' };
+  const vals = { S1: '값을 담는 상자', S2: '변수는 잘 모름 같은 느낌의 칸', S3: '', S4: 'Коробка для значения', S5: '상자다' };
   for (const sid of S) {
     const as = sid === 'S5' ? 'AS2' : 'AS1';
     await setDoc(doc(db, `exam_progress/${as}_${sid}`), { asId: as, examId: 'EX1', studentId: sid, status: 'submitted', needsManual: sid !== 'S5' ? true : false, ...(sid === 'S1' ? { alertCount: 3, late: true } : {}) });
@@ -52,7 +52,7 @@ const r = sid => read(`exam_results/AS1_${sid}_1`);
 const [r1, r2, r3, r4, r6] = await Promise.all(['S1', 'S2', 'S3', 'S4', 'S6'].map(r));
 ok(r1.aiScore === 10 && r1.score === 0 && r1.aiReason && r1.aiModel === 'stub-model' && r1.aiAt, '제안 점수는 배점으로 잘리고(15→10) score 는 그대로');
 ok(r2.aiFlag === true && r2.aiFlagReason === '판단 어려움', '애매한 답은 확인 필요 표시');
-ok(r3.aiScore === 3 && r3.aiModel === 'stub-model', '빈 답도 기준대로 채점(가짜 claude 는 3점)');
+ok(r3.aiScore === 2 && r3.aiModel === 'rule' && r3.aiFlag === false, '빈 답은 AI 없이 문항의 빈 답 점수(2점), 확인 필요 없이');
 ok(r4.aiScore === 3, '러시아어 답도 채점');
 ok(r6.aiScore === undefined, '선생님이 매긴 답은 건드리지 않음');
 ok((await read('exam_results/AS2_S5_1')).aiScore === undefined, '이미 공개한 학생(needsManual=false)은 건너뜀');
@@ -61,7 +61,7 @@ const prompts = readFileSync(logFile, 'utf8');
 ok(!/김학생|박학생|최학생|한학생|S1|S4/.test(prompts), '프롬프트에 이름·학번 없음');
 ok(/맞춤법은 감점하지 않는다/.test(prompts) && /상자 비유 10점/.test(prompts) && /변수는 이름표.*6점/.test(prompts) && !/값을 위한 상자|번역/.test(prompts.split("채점할 답")[1]) && /Коробка для значения/.test(prompts) && /앞 문항의 사례[\s\S]*사례: 이루다 챗봇/.test(prompts), '프롬프트에 공통 기준·문항 기준·선생님 예시·앞 문항 사례, 외국어 답은 원문만(번역 없음)');
 ok(!/화면 이탈|시간 초과/.test(prompts) && !/옛 기준 답/.test(prompts.split('채점할 답')[0]), '이탈·지각 정보는 AI 에 안 보냄(경고용), AI 제안을 그대로 적용한 답은 예시에서 뺌');
-ok(prompts.split('=====').length - 1 === 2 && /빈 답 — 무응답/.test(prompts), '2개씩 묶어 claude 2번 호출(빈 답 포함 4개)');
+ok(prompts.split('=====').length - 1 === 2 && !/빈 답 — 무응답/.test(prompts), '2개씩 묶어 claude 2번 호출(빈 답은 안 보냄)');
 
 // 다시 채점하지 않으면 제안 있는 건 건너뜀, redo 면 다시
 await env.withSecurityRulesDisabled(async c => setDoc(doc(c.firestore(), 'exams/EX1'), { title: '수행평가', aiJob: { status: 'queued', sel: 'AS1', questionIds: ['Q2'] } }, { merge: false }));

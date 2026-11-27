@@ -73,6 +73,12 @@ export function runGrader(prompt) {
 }
 
 const txt = v => String(v ?? '').trim();
+// 빈 답·의미 없는 답: 번호("1." "2)")·기호만 있거나, "모름" 같은 말뿐인 답. AI 에 안 보내고 문항의 minScore 로 바로 제안.
+const NOTHING = /(잘\s*)?(모르\S*|모름\S*|몰라\S*|없음\S*|없어요|없습니다|不知道|不会|не\s*знаю|без понятия|i don'?t know|idk|no idea)/gi;
+export function isBlankAnswer(v) {
+  const rest = txt(v).toLowerCase().replace(NOTHING, ' ').replace(/(^|\s)\d+\s*[.)\]:-]?/g, ' ').replace(/[\s\p{P}\p{S}]+/gu, '');
+  return [...rest].length < 2;
+}
 export function buildPrompt({ exam, q, key, examples, batch, context }) {
   const lines = [];
   if (txt(context)) lines.push('## 앞 문항의 사례 (이 문항이 말하는 "위 사례")', txt(context), '');
@@ -147,11 +153,13 @@ export async function processJob(exam) {
     let jobWrite = Promise.resolve();
     const runTask = async ({ q, key, examples, batch, context }) => {
       const max = Number(q.points) || 0;
-      // 빈 답도 보낸다 — 최저점이 0이 아닌 기준(예: 무응답 1점·3점)이 있어서
-      const real = batch;
-      const got = await runGrader(buildPrompt({ exam, q, key, examples, batch: real, context }));
+      // 빈 답·의미 없는 답은 AI 없이 문항의 minScore(없으면 0)로 — 확인 필요 없이
+      const min = Math.max(0, Math.min(max, Number(key.minScore) || 0));
+      const blank = batch.filter(b => isBlankAnswer(b.r.value)), real = batch.filter(b => !isBlankAnswer(b.r.value));
+      const got = real.length ? await runGrader(buildPrompt({ exam, q, key, examples, batch: real, context })) : { items: [], model: '' };
       model = got.model || model;
       const ups = [];
+      for (const b of blank) ups.push({ path: b.r.path, data: { aiScore: min, aiReason: txt(b.r.value) ? '의미 있는 답을 쓰지 않았다.' : '답을 쓰지 않았다.', aiFlag: false, aiFlagReason: '', aiModel: 'rule' }, serverTime: ['aiAt'] });
       for (const b of real) {
         const it = got.items.find(x => x.id === b.id);
         if (!it) { ups.push({ path: b.r.path, data: { aiScore: null, aiReason: '', aiFlag: true, aiFlagReason: 'AI 가 이 답을 채점하지 않았다', aiModel: got.model }, serverTime: ['aiAt'] }); flagged++; continue; }
