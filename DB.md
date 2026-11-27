@@ -13,12 +13,12 @@
 | `schools`, `classes` | ohweb(관리), ohinfo | 학교·반 |
 | `students` | ohweb(관리), ohinfo(로그인) | 학생 계정. 로그인은 Firebase Auth `${id}@ohinfo.local` |
 | `student_directory` | ohweb, ohinfo | 공개용 학생 명단(이름만) |
-| `appSettings` | ohweb, ohinfo, ohnotion | 반 × 앱 공개 설정 · `ohnotion_site` = 노션 페이지 숨기기(closedSlugs)·다국어 링크(langs) · `ohnotion_follow_{주소}` = 발표 따라가기 · `ohnotion_ink_{주소}` = 발표 필기·스크롤 |
+| `appSettings` | ohweb, ohinfo, ohnotion | 반 × 앱 공개 설정 · `ohnotion_site` = 노션 페이지 숨기기(closedSlugs)·다국어 링크(langs) · `ohnotion_follow_{주소}` = 발표 따라가기 · `ohnotion_ink_{주소}` = 발표 필기·스크롤 · `aiGradingWorker` = 맥 AI 채점 워커 연결 표시(lastSeen) |
 | `posts` | ohinfo `ohdlet.html`(게시판), ohweb | 게시판 글 |
 | `qna_threads` | ohinfo `qna.html`, ohweb | 질문 게시판 |
 | `score_templates`, `score_assessments`, `score_results`(+하위 `history`), `score_notes` | ohweb `score.html`(입력·공개), ohinfo `score.html`(학생 확인·이의신청), Apps Script `score-drive.gs`(제출물) | 수행평가 점수·항목별 점수·감점사유·제출물 목록(`files`, 파일은 선생님 드라이브). 시험에서 가져온 평가는 `source {type:'exam', examId, asIds}`, 결과에 `fromExam`. 학생은 본인 결과 중 공개된 것만 읽는다. `score_notes` = 선생님만 보는 비고 |
 | `student_forms`, `student_form_responses` | ohweb `forms.html`, ohinfo `formfill.html` | 설문·제출 |
-| `exams`, `exam_questions`, `exam_assignments`, `exam_progress`, `exam_answers`, `exam_results` | ohweb `admin.html`(시험 관리), ohinfo `exam.html`, `ohinfo/functions/api/exam.js`, 채점 도구 `tools/exam-grading`(서비스 밖, 선생님 CLI 로그인), ohweb `score.html`(시험에서 가져오기, 읽기만) | 시험 |
+| `exams`, `exam_questions`, `exam_assignments`, `exam_progress`, `exam_answers`, `exam_results` | ohweb `admin.html`(시험 관리), ohinfo `exam.html`, `ohinfo/functions/api/exam.js`, 채점 도구 `tools/exam-grading`(서비스 밖, 선생님 CLI 로그인), ohweb `score.html`(시험에서 가져오기, 읽기만), 맥 AI 채점 워커 `tools/ai-grading` | 시험. AI 채점: `exams.aiRubric`·`aiJob`, `exam_answers.rubric`, `exam_results.aiScore·aiReason·aiFlag…`(제안만) |
 | `ai_projects`(+하위 `images`, `feedback`), `ai_apps`, `ai_pairs`, `ai_assignments` | ohinfo `ailab*`, `aiapp.html`, ohweb `admin-ailab.js` | AI 실습실 |
 | `seat_rooms`, `seat_plans` | ohweb `seats.html`(자리 배치) | 교실 모양(`cells` 글자열: `s`=자리 `.`=통로, 번호 순서 `order`)·저장한 자리 배치(그때의 교실 모양·`seats [{no, sid, number, name}]`·결석). 관리자만 |
 | `classlog_users`, `classlog_feedback` | ohlog(수업일지) | 수업일지 사용자·의견 |

@@ -13,6 +13,7 @@
 | `ohsettle/` | 정산 견본용 사본 — 배포 원본은 레포 `ohsettle`(`ohsettle/CLAUDE.md`) | settle.kakainfo.com |
 | `ohweb-rules-test/` | Firestore 규칙·화면 테스트 (`npm run test`) | – |
 | `tools/exam-grading/` | 시험 채점 도구(내보내기·반영, 운영 DB 직접). 세션 절차는 스킬 `/exam-grading` | – |
+| `tools/ai-grading/` | 맥 AI 채점 워커(launchd, `claude -p`). 관리자 문항별 채점의 [AI 채점] 요청을 처리해 점수 제안만 단다(README) | – |
 | `tools/trial-account/` | kakainfo 체험 계정(체험학교) 만들기·되돌리기(운영 DB 직접) | – |
 
 - **DB: `DB.md`** — 어느 앱이 어느 컬렉션을 쓰는지. 컬렉션을 새로 만들면 거기도 고친다.
