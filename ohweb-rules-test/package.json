@@ -13,6 +13,7 @@
     "test:seats": "node build-fbcdn.mjs && firebase emulators:exec --only firestore,auth --project ohweb-93062 \"node seats.e2e.mjs\"",
     "test:seats-public": "node seats-public.e2e.mjs",
     "test:grading": "firebase emulators:exec --only firestore --project ohweb-93062 \"node exam-grading.test.mjs\"",
+    "test:ai-grading": "firebase emulators:exec --only firestore --project ohweb-93062 \"node ai-grading.test.mjs\"",
     "test:settle": "firebase emulators:exec --only firestore --project ohsettle-10d43 \"node settle-rules.test.mjs\""
   },
   "devDependencies": {

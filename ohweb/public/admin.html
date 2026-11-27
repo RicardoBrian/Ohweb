@@ -2406,10 +2406,14 @@
     }
     // merge를 쓰지 않는다 — 문항 유형을 바꿨을 때(예: 코딩→객관식) 이전
     // 유형의 testCases가 남아 채점에 끼어드는 걸 막으려면 매번 통째로 덮어써야 한다.
+    // AI 채점 기준(rubric)은 문항별 채점 화면에서 따로 쓰므로 덮어쓸 때도 남긴다.
+    let rubric = '';
+    try { const old = await getDoc(doc(db, 'exam_answers', id)); rubric = old.exists() ? (old.data().rubric || '') : ''; } catch (e) { /* 새 문항 */ }
     await setDoc(doc(db, 'exam_answers', id), {
       examId: data.examId || '',
       answer: key.answer ?? '',
       testCases: key.testCases ?? [],
+      ...(rubric ? { rubric } : {}),
     });
     return id;
   }
@@ -3762,7 +3766,7 @@
   // (학생 결과는 needsManual 이 풀려야 나온다 — ohinfo /api/exam). 반마다 [공개]를
   // 누르면 그 반에서 채점이 다 끝난 학생만 총점을 계산해 needsManual 을 푼다.
   // 객관식은 서버가 남긴 맞음/틀림(check)으로 공개할 때 점수를 채운다.
-  const qg = { sel: '', examId: '', questions: [], results: [], progs: [], qId: '', onlyTodo: false };
+  const qg = { sel: '', examId: '', exam: {}, worker: null, questions: [], results: [], progs: [], qId: '', onlyTodo: false };
   const QG_TYPE = { mc: '객관식', sa: '단답형', essay: '서술형', code: '코딩' };
   const qgAuto = fb => typeof fb === 'string' && (fb === 'correct' || fb.startsWith('wrong:') || fb.startsWith('cases:'));
   // 선생님이 점수를 매겨야 하는 결과인가(객관식은 공개할 때 자동으로 채운다)
@@ -3780,12 +3784,16 @@
       let examId = examAll ? sel.slice(5) : (_assignCache[sel]?.examId || '');
       if (!examId) { const a = await getDoc(doc(db, 'exam_assignments', sel)); examId = a.exists() ? a.data().examId : ''; }
       const by = examAll ? where('examId', '==', examId) : where('asId', '==', sel);
-      const [pSnap, rSnap, qSnap] = await Promise.all([
+      const [pSnap, rSnap, qSnap, eSnap, wSnap] = await Promise.all([
         getDocs(query(collection(db, 'exam_progress'), by)),
         getDocs(query(collection(db, 'exam_results'), by)),
         getDocs(query(collection(db, 'exam_questions'), where('examId', '==', examId))),
+        getDoc(doc(db, 'exams', examId)),
+        getDoc(doc(db, 'appSettings', 'aiGradingWorker')).catch(() => null),
       ]);
       qg.sel = sel; qg.examId = examId;
+      qg.exam = eSnap.exists() ? eSnap.data() : {};
+      qg.worker = wSnap?.exists() ? wSnap.data() : null;
       qg.progs = pSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status === 'submitted')
         .map(p => ({ ...p, _studentId: p.studentId || p.id.split('_').slice(1).join('_') }));
       qg.results = rSnap.docs.map(d => ({ docId: d.id, ...d.data() }));
@@ -3795,6 +3803,7 @@
         qg.qId = (qg.questions.find(q => qg.results.some(r => r.questionId === q.id && !qgDone(r))) || qg.questions[0] || {}).id || '';
       }
       renderQGrade();
+      aiWatchJob();
       if (qg.results.some(r => ansNeedsKo(r) && !r.valueKo)) { await ensureAnswerKo(qg.results); if (qg.sel === sel) renderQGrade(); }
     } catch (e) { el.innerHTML = '<div style="color:#ef4444;padding:20px;">오류: ' + escHtml(e.message) + '</div>'; }
   }
@@ -3848,6 +3857,7 @@
           <div style="white-space:pre-wrap;word-break:break-word;font-size:0.92rem;line-height:1.55;padding:10px 12px;border-radius:10px;background:var(--glass-strong);">${val.trim() ? escHtml(val) : '<span style="color:var(--sub);">(빈 답)</span>'}</div>${koBox(r)}
           ${q.type === 'essay' || q.type === 'sa' ? `<div style="font-size:0.75rem;color:var(--sub);margin-top:4px;">${val.replace(/\s/g, '').length}자 (공백 빼고) · ${val.length}자</div>` : ''}
           ${r.feedback && qgAuto(r.feedback) ? `<div style="font-size:0.75rem;color:var(--sub);margin-top:4px;">자동 판정: ${escHtml(r.feedback)}</div>` : ''}
+          ${aiBox(r, done)}
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;">
             <div style="display:flex;gap:4px;flex-wrap:wrap;">${btns}</div>
             <input class="inp qg-score" type="number" min="0" max="${max}" value="${escHtml(cur)}" style="width:72px;padding:6px 8px;" data-docid="${escHtml(r.docId)}" onchange="qgScore(${jsArg(r.docId)},this.value)" title="점수 (0~${max})">
@@ -3861,6 +3871,7 @@
           ${content ? `<details style="margin-top:4px;"><summary style="cursor:pointer;font-size:0.8rem;color:var(--sub);">문항 내용 보기</summary>${content}</details>` : ''}
           ${key ? `<div style="font-size:0.82rem;margin-top:6px;"><b>정답·기준:</b> ${escHtml(key)}</div>` : ''}
         </div>
+        ${aiPanel(q, rs)}
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
           <span style="font-size:0.85rem;"><b>${total - todo}</b> / ${total}명 채점${todo ? ` · 남은 ${todo}명` : ' · 다 했습니다'}</span>
           <label style="font-size:0.82rem;display:flex;gap:6px;align-items:center;cursor:pointer;"><input type="checkbox" ${qg.onlyTodo ? 'checked' : ''} onchange="qgOnlyTodo(this.checked)"> 채점 전만 보기</label>
@@ -3945,6 +3956,128 @@
       toast(`${classKey} ${targets.length}명 공개`, 'success');
     } catch (e) { toast('공개 오류: ' + e.message, 'error'); }
     showLoading(false);
+    renderQGrade();
+  };
+
+  // ── AI 채점 제안 ──
+  // 맥에서 도는 워커(tools/ai-grading/worker.mjs, launchd)가 exams/{시험}.aiJob 을 보고
+  // 단답형·서술형 답에 aiScore·aiReason·aiFlag 를 단다. 여기선 기준을 쓰고 요청하고, 제안을 [적용]한다.
+  // 적용해야 점수(임시 저장)가 된다 — 제안만으로는 아무것도 바뀌지 않는다.
+  // 기준: 시험 공통 exams.aiRubric, 문항별 exam_answers.rubric (둘 다 관리자만 읽기).
+  const aiTs = v => v?.toDate ? v.toDate() : (v ? new Date(v) : null);
+  const aiCanGrade = q => q && (q.type === 'sa' || q.type === 'essay');
+  function aiWorkerLine() {
+    const t = aiTs(qg.worker?.lastSeen);
+    if (!t) return '<span style="color:#b45309;">맥 채점기가 아직 한 번도 연결되지 않았습니다</span>';
+    const min = Math.round((Date.now() - t.getTime()) / 60000);
+    return min <= 2 ? `<span style="color:#16a34a;">● 맥 채점기 연결됨</span>`
+      : `<span style="color:#b45309;">● 맥 채점기 ${min < 60 ? min + '분' : Math.round(min / 60) + '시간'} 전 마지막 연결 — 맥이 꺼져 있으면 요청은 켜질 때 처리됩니다</span>`;
+  }
+  function aiJobLine() {
+    const j = qg.exam.aiJob;
+    if (!j) return '';
+    const p = j.progress ? ` ${j.progress.done}/${j.progress.total}` : '';
+    if (j.status === 'queued') return '⏳ 요청함 — 맥 채점기를 기다리는 중';
+    if (j.status === 'running') return `⏳ AI 채점 중${p}`;
+    if (j.status === 'error') return `<span style="color:#ef4444;">AI 채점 실패: ${escHtml(j.message || '')}</span>`;
+    if (j.status === 'done') { const t = aiTs(j.finishedAt); return `✓ AI 채점 끝 (${escHtml(j.message || '')}${t ? ' · ' + t.toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''})`; }
+    return '';
+  }
+  function aiPanel(q, rs) {
+    if (!aiCanGrade(q)) return '';
+    const busy = ['queued', 'running'].includes(qg.exam.aiJob?.status);
+    const sugg = rs.filter(r => !qgDone(r) && r.aiScore != null);
+    const safe = sugg.filter(r => !r.aiFlag);
+    return `<details id="aiPanel" ${qg._aiOpen ? 'open' : ''} ontoggle="aiToggle(this.open)" style="padding:10px 14px;border:1px solid var(--border-card);border-radius:12px;background:var(--glass);margin-bottom:12px;">
+      <summary style="cursor:pointer;font-weight:800;font-size:0.9rem;">🤖 AI 채점 제안 <span style="font-weight:600;font-size:0.78rem;margin-left:6px;">${aiWorkerLine()}</span></summary>
+      <div style="display:grid;gap:8px;margin-top:10px;">
+        <label style="font-size:0.8rem;font-weight:700;">이 문항 채점 기준 <span style="font-weight:500;color:var(--sub);">(점수 구간별로 — 예: 사례를 들고 해결 방안 2가지 5점, 1가지 3점 …)</span>
+          <textarea class="inp" rows="4" style="width:100%;margin-top:4px;font-size:0.85rem;" placeholder="비우면 정답과 공통 기준으로만 판단하고, 애매한 답은 '확인 필요'로 표시합니다." onchange="aiSaveRubric(${jsArg(q.id)},this.value)">${escHtml(q.rubric || '')}</textarea></label>
+        <label style="font-size:0.8rem;font-weight:700;">시험 공통 기준 <span style="font-weight:500;color:var(--sub);">(모든 문항에 — 예: 맞춤법은 감점하지 않는다)</span>
+          <textarea class="inp" rows="2" style="width:100%;margin-top:4px;font-size:0.85rem;" onchange="aiSaveExamRubric(this.value)">${escHtml(qg.exam.aiRubric || '')}</textarea></label>
+        <div style="font-size:0.75rem;color:var(--sub);">학생 이름·학번은 보내지 않습니다. 이미 직접 매긴 답은 점수 감각을 맞추는 예시로 같이 보냅니다.</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+          <button class="btn sm" ${busy ? 'disabled' : ''} onclick="aiRequest(false)">이 문항 AI 채점</button>
+          <button class="btn ghost sm" ${busy ? 'disabled' : ''} onclick="aiRequest(true)">단답·서술 문항 전체</button>
+          <label style="font-size:0.78rem;display:flex;gap:4px;align-items:center;"><input type="checkbox" id="aiRedo"> 제안 있는 답도 다시</label>
+          <span style="font-size:0.8rem;">${aiJobLine()}</span>
+        </div>
+        ${sugg.length ? `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+          <button class="btn accent sm" ${safe.length ? '' : 'disabled'} onclick="aiApplyAll()">AI 제안 모두 적용 (${safe.length}명)</button>
+          <span style="font-size:0.78rem;color:var(--sub);">'확인 필요' ${sugg.length - safe.length}명은 빼고 적용합니다. 적용해도 [공개] 전까지 학생에게 안 보입니다.</span></div>` : ''}
+      </div>
+    </details>`;
+  }
+  function aiBox(r, done) {
+    if (r.aiScore == null && !r.aiFlag) return '';
+    const flag = r.aiFlag ? `<div style="color:#b45309;font-weight:700;margin-top:2px;">⚠ 확인 필요${r.aiFlagReason ? ': ' + escHtml(r.aiFlagReason) : ''}</div>` : '';
+    const same = done && Number(r.score) === Number(r.aiScore);
+    return `<div style="display:flex;gap:8px;align-items:flex-start;margin-top:8px;padding:8px 10px;border-radius:10px;font-size:0.82rem;background:${r.aiFlag ? 'rgba(245,158,11,0.12)' : 'rgba(42,92,230,0.08)'};">
+      <div style="flex:1;"><b>AI 제안 ${r.aiScore ?? '-'}점</b>${r.aiReason ? ' · ' + escHtml(r.aiReason) : ''}${flag}</div>
+      ${r.aiScore != null && !same ? `<button class="btn ${done ? 'ghost' : 'accent'} sm" onclick="aiApply(${jsArg(r.docId)})">적용</button>` : same ? '<span style="color:var(--sub);">적용됨</span>' : ''}
+    </div>`;
+  }
+  window.aiToggle = (on) => { qg._aiOpen = !!on; };
+  window.aiSaveRubric = async (qId, v) => {
+    try {
+      await setDoc(doc(db, 'exam_answers', qId), { rubric: String(v || '').trim() }, { merge: true });
+      const q = qg.questions.find(x => x.id === qId); if (q) q.rubric = String(v || '').trim();
+      toast('채점 기준 저장', 'success');
+    } catch (e) { toast('저장 오류: ' + e.message, 'error'); }
+  };
+  window.aiSaveExamRubric = async (v) => {
+    try {
+      await updateDoc(doc(db, 'exams', qg.examId), { aiRubric: String(v || '').trim() });
+      qg.exam.aiRubric = String(v || '').trim();
+      toast('공통 기준 저장', 'success');
+    } catch (e) { toast('저장 오류: ' + e.message, 'error'); }
+  };
+  window.aiRequest = async (all) => {
+    const q = qg.questions.find(x => x.id === qg.qId);
+    const questionIds = all ? qg.questions.filter(aiCanGrade).map(x => x.id) : [q?.id].filter(Boolean);
+    if (!questionIds.length) return;
+    const noRubric = qg.questions.filter(x => questionIds.includes(x.id) && !String(x.rubric || '').trim());
+    if (noRubric.length && !confirm(`채점 기준이 없는 문항이 ${noRubric.length}개 있습니다. 정답만 보고 채점할까요?`)) return;
+    const job = { status: 'queued', sel: qg.sel, questionIds, redo: !!document.getElementById('aiRedo')?.checked, requestedAt: new Date().toISOString(), progress: { done: 0, total: 0 }, message: '' };
+    try {
+      await updateDoc(doc(db, 'exams', qg.examId), { aiJob: job });
+      qg.exam.aiJob = job; renderQGrade(); aiWatchJob();
+    } catch (e) { toast('요청 오류: ' + e.message, 'error'); }
+  };
+  // 작업이 도는 동안 몇 초마다 확인, 끝나면 결과를 다시 읽는다
+  let _aiTimer = null;
+  function aiWatchJob() {
+    clearTimeout(_aiTimer);
+    if (!['queued', 'running'].includes(qg.exam.aiJob?.status)) return;
+    const sel = qg.sel;
+    _aiTimer = setTimeout(async () => {
+      if (qg.sel !== sel || _resultMode !== 'grade') return;
+      try {
+        const [e, w] = await Promise.all([getDoc(doc(db, 'exams', qg.examId)), getDoc(doc(db, 'appSettings', 'aiGradingWorker')).catch(() => null)]);
+        const before = JSON.stringify(qg.exam.aiJob || {});
+        qg.exam = e.exists() ? e.data() : {}; qg.worker = w?.exists() ? w.data() : qg.worker;
+        const st = qg.exam.aiJob?.status;
+        if (st === 'done' || st === 'error') { await loadQGrade(sel); if (st === 'done') toast('AI 채점 제안이 도착했습니다', 'success'); return; }
+        if (JSON.stringify(qg.exam.aiJob || {}) !== before) renderQGrade();
+      } catch (err) { /* 다음 번에 다시 */ }
+      aiWatchJob();
+    }, 4000);
+  }
+  window.aiApply = async (docId) => {
+    const r = qg.results.find(x => x.docId === docId);
+    if (!r || r.aiScore == null) return;
+    const inp = document.querySelector(`#qg_${CSS.escape(docId)} .qg-reason`);
+    if (inp) inp.value = r.aiReason || '';
+    await window.qgScore(docId, r.aiScore);
+  };
+  window.aiApplyAll = async () => {
+    const list = qg.results.filter(r => r.questionId === qg.qId && qgProgOf(r) && !qgDone(r) && r.aiScore != null && !r.aiFlag);
+    if (!list.length || !confirm(`AI 제안 ${list.length}명을 그대로 점수로 저장할까요?\n('확인 필요' 표시된 답은 빼고, 학생에게는 [공개] 전까지 안 보입니다)`)) return;
+    showLoading(true);
+    let n = 0;
+    for (const r of list) if (await qgSave(r.docId, { score: r.aiScore, feedback: r.aiReason || '' })) n++;
+    showLoading(false);
+    toast(`${n}명 적용`, 'success');
     renderQGrade();
   };
 
