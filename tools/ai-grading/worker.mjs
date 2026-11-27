@@ -14,7 +14,7 @@
 //  실행: node tools/ai-grading/worker.mjs          (계속 돈다, launchd 로 띄움 — README)
 //        node tools/ai-grading/worker.mjs --once   (대기 중인 작업만 처리하고 끝)
 //  환경변수: AI_GRADER_CMD(기본 claude), AI_GRADER_MODEL(비우면 claude 기본 모델), AI_GRADER_BATCH(기본 12),
-//            AI_GRADER_POLL_MS(기본 15000)
+//            AI_GRADER_PARALLEL(동시에 보낼 묶음 수, 기본 3), AI_GRADER_POLL_MS(기본 15000)
 import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import os from 'node:os';
@@ -24,6 +24,7 @@ import { getDoc, queryEq, commitUpdates, commitRaw, toValue, DOCS_ROOT } from '.
 const cmd = () => process.env.AI_GRADER_CMD || 'claude';
 const MODEL = process.env.AI_GRADER_MODEL || '';
 const BATCH = Math.max(1, parseInt(process.env.AI_GRADER_BATCH || '12', 10));
+const PARALLEL = Math.max(1, parseInt(process.env.AI_GRADER_PARALLEL || '3', 10));
 const POLL_MS = Math.max(3000, parseInt(process.env.AI_GRADER_POLL_MS || '15000', 10));
 const VERSION = '1';
 // claude 를 레포 밖 빈 폴더에서 돌린다 — 프로젝트 CLAUDE.md·설정이 채점에 섞이지 않게.
@@ -118,33 +119,43 @@ export async function processJob(exam) {
     let done = 0, flagged = 0, model = '';
     job.progress = { done, total };
     await setJob(examId, job);
+    // 문항별로 묶음(BATCH 개씩)을 만들어 두고 PARALLEL 개씩 동시에 claude 로 보낸다
+    const tasks = [];
     for (const q of qs) {
+      const list = todo(q);
+      if (!list.length) continue;
       const key = (await getDoc(`exam_answers/${q.id}`)) || {};
       const examples = results.filter(r => r.questionId === q.id && r.teacherGradedAt && txt(r.value)).slice(0, 8);
-      const list = todo(q);
-      const max = Number(q.points) || 0;
-      for (let i = 0; i < list.length; i += BATCH) {
-        const batch = list.slice(i, i + BATCH).map((r, k) => ({ id: `A${i + k + 1}`, r }));
-        // 빈 답은 claude 에 보내지 않고 0점
-        const empty = batch.filter(b => !txt(b.r.value)), real = batch.filter(b => txt(b.r.value));
-        const got = real.length ? await runGrader(buildPrompt({ exam, q, key, examples, batch: real })) : { items: [], model: '' };
-        model = got.model || model;
-        const ups = [];
-        for (const b of empty) ups.push({ path: b.r.path, data: { aiScore: 0, aiReason: '답을 쓰지 않았다.', aiFlag: false, aiFlagReason: '', aiModel: 'rule' }, serverTime: ['aiAt'] });
-        for (const b of real) {
-          const it = got.items.find(x => x.id === b.id);
-          if (!it) { ups.push({ path: b.r.path, data: { aiScore: null, aiReason: '', aiFlag: true, aiFlagReason: 'AI 가 이 답을 채점하지 않았다', aiModel: got.model }, serverTime: ['aiAt'] }); flagged++; continue; }
-          const score = Math.max(0, Math.min(max, Math.round(Number(it.score) || 0)));
-          if (it.flag) flagged++;
-          ups.push({ path: b.r.path, data: { aiScore: score, aiReason: txt(it.reason), aiFlag: !!it.flag, aiFlagReason: txt(it.flagReason), aiModel: got.model }, serverTime: ['aiAt'] });
-        }
-        await commitUpdates(ups);
-        done += batch.length;
-        job.progress = { done, total };
-        await setJob(examId, job);
-        log(`${exam.title}: ${done}/${total}`);
-      }
+      for (let i = 0; i < list.length; i += BATCH) tasks.push({ q, key, examples, batch: list.slice(i, i + BATCH).map((r, k) => ({ id: `A${i + k + 1}`, r })) });
     }
+    let jobWrite = Promise.resolve();
+    const runTask = async ({ q, key, examples, batch }) => {
+      const max = Number(q.points) || 0;
+      // 빈 답은 claude 에 보내지 않고 0점
+      const empty = batch.filter(b => !txt(b.r.value)), real = batch.filter(b => txt(b.r.value));
+      const got = real.length ? await runGrader(buildPrompt({ exam, q, key, examples, batch: real })) : { items: [], model: '' };
+      model = got.model || model;
+      const ups = [];
+      for (const b of empty) ups.push({ path: b.r.path, data: { aiScore: 0, aiReason: '답을 쓰지 않았다.', aiFlag: false, aiFlagReason: '', aiModel: 'rule' }, serverTime: ['aiAt'] });
+      for (const b of real) {
+        const it = got.items.find(x => x.id === b.id);
+        if (!it) { ups.push({ path: b.r.path, data: { aiScore: null, aiReason: '', aiFlag: true, aiFlagReason: 'AI 가 이 답을 채점하지 않았다', aiModel: got.model }, serverTime: ['aiAt'] }); flagged++; continue; }
+        const score = Math.max(0, Math.min(max, Math.round(Number(it.score) || 0)));
+        if (it.flag) flagged++;
+        ups.push({ path: b.r.path, data: { aiScore: score, aiReason: txt(it.reason), aiFlag: !!it.flag, aiFlagReason: txt(it.flagReason), aiModel: got.model }, serverTime: ['aiAt'] });
+      }
+      await commitUpdates(ups);
+      done += batch.length;
+      const snap = { ...job, progress: { done, total } };
+      jobWrite = jobWrite.then(() => setJob(examId, snap)); // 진행 표시는 순서대로
+      log(`${exam.title}: ${done}/${total}`);
+    };
+    let next = 0;
+    await Promise.all(Array.from({ length: Math.min(PARALLEL, tasks.length) }, async () => {
+      while (next < tasks.length) await runTask(tasks[next++]);
+    }));
+    await jobWrite;
+    job.progress = { done, total };
     Object.assign(job, { status: 'done', finishedAt: new Date().toISOString(), model, message: `${done}개 제안${flagged ? `, 확인 필요 ${flagged}개` : ''}` });
     await setJob(examId, job);
     return job;
