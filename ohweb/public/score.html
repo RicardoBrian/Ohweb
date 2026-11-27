@@ -331,6 +331,7 @@ import {
   writeBatch, serverTimestamp, arrayUnion, arrayRemove,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import * as SC from './score-core.js';
+import { examCriteria, rowFromExam } from './exam-score-sync.js?v=20261127a';
 
 // ── 유틸 ──
 const $ = id => document.getElementById(id);
@@ -1099,24 +1100,17 @@ $('btnFiles').onclick = () => {
 };
 // ── 시험에서 가져오기 (exam.html 의 시험 결과 → 이 평가) ──
 // 채점이 끝난(needsManual=false) 학생만 가져온다. 문항이 평가 항목(Q1…)이 되고, 사유는 학생에게
-// 보여도 되는 말로 바꾼다(객관식 정답 번호는 넣지 않는다). 시험지 유형(A/B형)이 있는 시험은 총점만.
+// 보여도 되는 말로 바꾼다(객관식 정답 번호는 넣지 않는다). 시험지 유형(A/B형)이 있는 시험은 유형마다
+// 문항 구성이 같으면 "몇 번째 문항"끼리 묶고, 다르면 총점만(exam-score-sync.js — 관리자 [공개]와 같은 규칙).
 const normGC = v => String(v ?? '').replace(/학년|반/g, '').trim();
 const examTargets = a => (s => (!a.grade || normGC(a.grade) === normGC(s.grade)) && (!a.class || normGC(a.class) === normGC(s.class)) && (!a.schoolName || a.schoolName === (s.schoolName || '')));
 const hasTarget = a => !!(a.grade || a.class || a.schoolName);
-function examReason(r) {
-  const fb = String(r.feedback ?? '');
-  if (fb.startsWith('cases:')) return `테스트 ${fb.slice(6)} 통과`;
-  if (fb === 'manual' || fb === 'correct' || fb.startsWith('wrong')) return (r.score ?? 0) < (r.maxScore ?? 0) && r.type === 'mc' ? '오답' : '';
-  if (!fb && r.type === 'mc' && (r.score ?? 0) < (r.maxScore ?? 0)) return '오답';
-  return fb.slice(0, 500);
-}
 async function buildFromExam(examId, asIds) {
   const [exSnap, qSnap] = await Promise.all([getDoc(doc(db, 'exams', examId)), getDocs(query(collection(db, 'exam_questions'), where('examId', '==', examId)))]);
   const exam = exSnap.exists() ? exSnap.data() : { title: examId };
   const qs = qSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order ?? 1e9) - (b.order ?? 1e9));
-  const itemsMode = !(Array.isArray(exam.forms) && exam.forms.length);
-  const criteria = itemsMode ? qs.map((q, i) => ({ label: `Q${i + 1}. ${String(q.title || '').replace(/\s+/g, ' ').slice(0, 30)}`.trim(), max: Number(q.points) || 0 })) : [];
-  const qIndex = Object.fromEntries(qs.map((q, i) => [q.id, i]));
+  const spec = examCriteria(exam, qs);
+  const { itemsMode, criteria } = spec;
   const rows = new Map(); // 학생ID → 행
   let waiting = 0;
   const waitingIds = new Set();
@@ -1138,13 +1132,9 @@ async function buildFromExam(examId, asIds) {
       const p = progBy[sid];
       if (p?.status === 'submitted' && p.needsManual) { if (!rows.has(sid)) { waiting++; waitingIds.add(sid); } continue; }
       if (p?.status === 'submitted') {
-        let items;
-        if (itemsMode) {
-          items = criteria.map(c => ({ label: c.label, max: c.max, score: null, reason: '' }));
-          (resBy[sid] || []).forEach(r => { const i = qIndex[r.questionId]; if (i != null) items[i] = { ...items[i], score: Number(r.score) || 0, reason: examReason(r) }; });
-        }
+        const v = rowFromExam(spec, resBy[sid] || [], p);
         if (waitingIds.delete(sid)) waiting--;
-        rows.set(sid, { studentId: sid, score: itemsMode ? SC.sumItems(items) : Number(p.totalScore) || 0, status: 'normal', deductions: [], memo: '', ...(items ? { items } : {}), totalPoints: p.totalPoints });
+        rows.set(sid, { studentId: sid, score: v.score, status: 'normal', deductions: [], memo: '', ...(v.items ? { items: v.items } : {}), totalPoints: p.totalPoints });
       } else if (!rows.has(sid) && !waitingIds.has(sid)) {
         rows.set(sid, { studentId: sid, score: null, status: 'missing', deductions: [], memo: '', ...(itemsMode ? { items: criteria.map(c => ({ label: c.label, max: c.max, score: null, reason: '' })) } : {}) });
       }
@@ -1157,7 +1147,7 @@ const sidClass = sid => { const s = studentById[sid]; return SC.classKey(s.schoo
 function fromExamSummary(b, extra = '') {
   const sub = b.rows.filter(r => r.status === 'normal').length, miss = b.rows.filter(r => r.status === 'missing').length;
   return `<div class="stat-row"><span class="pill ok">채점 끝난 응시 ${sub}명</span><span class="pill">미제출 ${miss}명</span>${b.waiting ? `<span class="pill warn">아직 채점 중 ${b.waiting}명 — 빼고 가져옴</span>` : ''}</div>
-    <p class="hint">${b.itemsMode ? `문항 ${b.criteria.length}개가 평가 항목이 됩니다(만점 ${b.maxScore}). 사유: 객관식 "오답", 코드 "테스트 3/5 통과", 직접 채점한 문항은 선생님 피드백.` : '시험지 유형(A/B형)이 있는 시험이라 총점만 가져옵니다.'}</p>${extra}`;
+    <p class="hint">${b.itemsMode ? `문항 ${b.criteria.length}개가 평가 항목이 됩니다(만점 ${b.maxScore}${b.exam.forms?.length ? ', 시험지 유형끼리 같은 번째 문항을 묶음' : ''}). 사유: 객관식 "오답", 코드 "테스트 3/5 통과", 직접 채점한 문항은 선생님 피드백.` : '시험지 유형마다 문항 구성이 달라 총점만 가져옵니다.'}</p>${extra}`;
 }
 $('btnFromExam').onclick = async () => {
   openModal('시험에서 가져오기', '<div class="loading">시험 목록 불러오는 중…</div>', '<button class="btn" data-close>닫기</button>');

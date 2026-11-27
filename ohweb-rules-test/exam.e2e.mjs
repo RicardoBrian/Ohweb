@@ -302,6 +302,17 @@ await env.withSecurityRulesDisabled(async c => { await updateDoc(doc(c.firestore
 await page.evaluate(() => showMyResult('AS4'));
 await page.waitForFunction(() => /정답:/.test(document.getElementById('resultDetails').innerText), null, { timeout: 15000 });
 ok(/내 답: ② · 정답: ①/.test(await page.textContent('#resultDetails')), '선생님이 "정답 공개"를 켜면 내 답과 정답 표시');
+// 점수가 시험 점수 확인으로 넘어가면(scoreLinked) 시험 화면엔 점수 대신 안내·링크·내 답만
+await env.withSecurityRulesDisabled(async c => { await updateDoc(doc(c.firestore(), 'exam_progress/AS4_StuA'), { scoreLinked: true }); });
+await page.goto('http://localhost:8099/exam.html');
+await page.waitForSelector('#examListArea button', { timeout: 15000 });
+const listTxt = await page.textContent('#examListArea');
+await page.evaluate(() => showMyResult('AS4'));
+await page.waitForFunction(() => /시험 점수 확인/.test(document.getElementById('resultDetails').innerText), null, { timeout: 15000 });
+const linkedRes = lastCall('result')?.res;
+ok(/점수는 시험 점수 확인에서/.test(listTxt) && !/10 \/ 30/.test(listTxt) && linkedRes?.scoreLinked === true && linkedRes.items.every(i => i.score === undefined && i.feedback === undefined)
+  && !!(await page.$('#resultDetails a[href="score.html"]')) && (await page.textContent('#resultScore')) === '', '점수 확인으로 넘어간 시험: 목록·결과에 점수 대신 점수 확인 링크, 서버도 점수·사유 안 보냄');
+await env.withSecurityRulesDisabled(async c => { await updateDoc(doc(c.firestore(), 'exam_progress/AS4_StuA'), { scoreLinked: false }); });
 
 // 11) 시험지 유형 — 반 전체 B형(섞기): 공통 + B형 문항만, 새로고침해도 같은 순서, 섞인 보기도 맞게 채점
 const optTexts = () => page.evaluate(() => [...document.querySelectorAll('.q-card')].map(c => c.querySelector('.q-title').innerText + ':' + [...c.querySelectorAll('.mc-opt span')].map(x => x.innerText).join('')));

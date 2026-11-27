@@ -11,6 +11,7 @@
 | `public/admin-nav.js` | 왼쪽 메뉴·섹션 전환 |
 | `public/admin-rows.js`, `admin-groups.js` | 표 행·반 묶음 그리기 |
 | `public/admin-ailab.js` | AI 실습실 관리 |
+| `public/exam-score-sync.js` | 시험 → 시험 점수 확인 연결: 문항별 채점 [공개]·채점 모달·공개 후 수정이 `score_assessments`(source.examId)·`score_results` 를 만들고 맞춤. 시험지 유형(A/B/C)은 같은 번째 문항끼리 항목. 점수 확인에서 직접 고친 점수(examSync 와 다름)는 안 덮음, 이탈 2회↑·시간 초과는 비고에 ⚠. score.html 가져오기도 같은 규칙 |
 | `public/exam-qcsv.js` | 시험 문항 CSV(단답·서술은 `채점기준` 열 = exam_answers.rubric) |
 | `public/forms.html` | 설문 만들기·결과 |
 | `public/score.html` + `score-core.js` + `score-config.js` | 수행평가: 감점사유 템플릿·평가 항목(①②③)·점수 입력(CSV/엑셀, 채점 시트 상세 탭 그대로·학번 가능)·비고(선생님만)·반별 공개·이의신청 확인·수정 이력·제출물 연결(드라이브 폴더 → 학번으로 학생)·시험에서 가져오기(exam 결과 → 평가, 문항 = 항목, 다시 가져오기)·학기 성적(같은 학기·과목·학교 학년 평가 합계 → A~E 등급, 기준 바꾸기, CSV). `score-core.js` 는 화면 없는 순수 함수(테스트 `npm run test:score`), `score-config.js` 는 Apps Script 주소 |

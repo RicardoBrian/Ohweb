@@ -458,6 +458,7 @@ async function actionList(db, studentDocId, student) {
         totalScore: p.totalScore ?? null,
         totalPoints: p.totalPoints ?? null,
         needsManual: p.needsManual === true,
+        scoreLinked: p.scoreLinked === true,
       } : null,
     })),
   });
@@ -532,6 +533,11 @@ async function actionResult(db, studentDocId, asId) {
   const reveal = revealOf(assignment);
   const rows = (await db.queryEq('exam_results', { asId, studentId: studentDocId }))
     .sort((a, b) => (a.qIdx || 0) - (b.qIdx || 0));
+  // 점수가 시험 점수 확인(score_results)으로 넘어간 시험: 점수·사유는 거기서만(선생님이 거기서
+  // 기본점수·감점을 바꿀 수 있어 여기 값과 달라질 수 있다). 여기선 내가 쓴 답만 보여 준다.
+  if (progress.scoreLinked === true) {
+    return json({ ok: true, scoreLinked: true, items: rows.map(r => ({ qIdx: r.qIdx || 0, type: r.type || '', title: r.title || '', value: r.type === 'mc' ? '' : (r.value || '') })) });
+  }
   // 정답 공개가 켜져 있으면 객관식 정답을 같이 보낸다. 정답 문서가 없는 예전
   // 시험은 문항 문서에, 그것도 없으면 예전 피드백("wrong:2")에 남은 값을 쓴다.
   const correctOf = new Map();
