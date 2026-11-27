@@ -59,7 +59,7 @@ ok((await read('exam_results/AS2_S5_1')).aiScore === undefined, '이미 공개�
 ok((await read('exam_results/AS1_S1_0')).aiScore === undefined, '객관식은 건너뜀');
 const prompts = readFileSync(logFile, 'utf8');
 ok(!/김학생|박학생|최학생|한학생|S1|S4/.test(prompts), '프롬프트에 이름·학번 없음');
-ok(/맞춤법은 감점하지 않는다/.test(prompts) && /상자 비유 10점/.test(prompts) && /변수는 이름표.*6점/.test(prompts) && /한국어 번역: "값을 위한 상자"/.test(prompts) && /앞 문항의 사례[\s\S]*사례: 이루다 챗봇/.test(prompts), '프롬프트에 공통 기준·문항 기준·선생님 예시·번역·앞 문항 사례');
+ok(/맞춤법은 감점하지 않는다/.test(prompts) && /상자 비유 10점/.test(prompts) && /변수는 이름표.*6점/.test(prompts) && !/값을 위한 상자|번역/.test(prompts.split("채점할 답")[1]) && /Коробка для значения/.test(prompts) && /앞 문항의 사례[\s\S]*사례: 이루다 챗봇/.test(prompts), '프롬프트에 공통 기준·문항 기준·선생님 예시·앞 문항 사례, 외국어 답은 원문만(번역 없음)');
 ok(!/화면 이탈|시간 초과/.test(prompts) && !/옛 기준 답/.test(prompts.split('채점할 답')[0]), '이탈·지각 정보는 AI 에 안 보냄(경고용), AI 제안을 그대로 적용한 답은 예시에서 뺌');
 ok(prompts.split('=====').length - 1 === 2 && /빈 답 — 무응답/.test(prompts), '2개씩 묶어 claude 2번 호출(빈 답 포함 4개)');
 
