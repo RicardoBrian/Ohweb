@@ -1038,8 +1038,10 @@
         <div style="display:flex;gap:6px;margin-bottom:12px;">
           <button class="btn sm" id="resModeTable" onclick="setResultMode('table')">결과 표</button>
           <button class="btn ghost sm" id="resModeLive" onclick="setResultMode('live')">실시간</button>
+          <button class="btn ghost sm" id="resModeGrade" onclick="setResultMode('grade')">문항별 채점</button>
         </div>
         <div id="liveBoard" class="hidden"></div>
+        <div id="qGradeBoard" class="hidden"></div>
         <div id="resultTable"><div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-chart"/></svg></div>배정을 선택하세요.</div></div>
       </div>
     </div>
@@ -3404,11 +3406,13 @@
     live.peekId = '';
   }
   window.setResultMode = (mode) => {
-    _resultMode = mode === 'live' ? 'live' : 'table';
+    _resultMode = mode === 'live' || mode === 'grade' ? mode : 'table';
     document.getElementById('resModeTable').className = 'btn sm' + (_resultMode === 'table' ? '' : ' ghost');
     document.getElementById('resModeLive').className = 'btn sm' + (_resultMode === 'live' ? '' : ' ghost');
-    document.getElementById('resultTable').classList.toggle('hidden', _resultMode === 'live');
+    document.getElementById('resModeGrade').className = 'btn sm' + (_resultMode === 'grade' ? '' : ' ghost');
+    document.getElementById('resultTable').classList.toggle('hidden', _resultMode !== 'table');
     document.getElementById('liveBoard').classList.toggle('hidden', _resultMode !== 'live');
+    document.getElementById('qGradeBoard').classList.toggle('hidden', _resultMode !== 'grade');
     window.loadResults();
   };
   async function startLive(asId) {
@@ -3565,6 +3569,7 @@
     const asId = document.getElementById('res_asId').value;
     if (_resultMode === 'live') { if (asId !== live.asId || !live.unsub) startLive(asId); return; }
     stopLive();
+    if (_resultMode === 'grade') { loadQGrade(asId); return; }
     const el = document.getElementById('resultTable');
     if (!asId) { el.innerHTML = '<div class="empty-state"><div class="empty-icon"><svg width="38" height="38"><use href="#ic-chart"/></svg></div>배정을 선택하세요.</div>'; return; }
     showLoading(true);
@@ -3725,6 +3730,198 @@
       win.onload = () => win.print();
     } catch(e) { toast('PDF 생성 오류: '+e.message, 'error'); }
     showLoading(false);
+  };
+
+  // ── 문항별 채점 ──
+  // 결과 조회의 [문항별 채점]. 문항 하나를 고르면 그 문항을 받은 학생 답이 차례로
+  // 나오고, 점수·사유를 넣으면 바로 exam_results 에 "임시"로 저장한다(teacherGradedAt).
+  // 진행 기록의 needsManual 은 그대로 두므로 학생에게는 아직 "채점 대기"로 보인다
+  // (학생 결과는 needsManual 이 풀려야 나온다 — ohinfo /api/exam). 반마다 [공개]를
+  // 누르면 그 반에서 채점이 다 끝난 학생만 총점을 계산해 needsManual 을 푼다.
+  // 객관식은 서버가 남긴 맞음/틀림(check)으로 공개할 때 점수를 채운다.
+  const qg = { sel: '', examId: '', questions: [], results: [], progs: [], qId: '', onlyTodo: false };
+  const QG_TYPE = { mc: '객관식', sa: '단답형', essay: '서술형', code: '코딩' };
+  const qgAuto = fb => typeof fb === 'string' && (fb === 'correct' || fb.startsWith('wrong:') || fb.startsWith('cases:'));
+  // 선생님이 점수를 매겨야 하는 결과인가(객관식은 공개할 때 자동으로 채운다)
+  const qgNeeds = r => r.type !== 'mc' && r.feedback === 'manual';
+  const qgProgOf = r => qg.progs.find(p => p.asId === r.asId && p._studentId === r.studentId);
+  const qgDone = r => !!r.teacherGradedAt || !qgNeeds(r) || qgProgOf(r)?.needsManual === false;
+  const qgClassKey = p => `${p.grade || '-'}학년 ${p.class || '-'}반`;
+
+  async function loadQGrade(sel) {
+    const el = document.getElementById('qGradeBoard');
+    if (!sel) { el.innerHTML = '<div class="empty-state">배정을 선택하세요.</div>'; return; }
+    el.innerHTML = '<div class="empty-state">불러오는 중…</div>';
+    try {
+      const examAll = sel.startsWith('exam:');
+      let examId = examAll ? sel.slice(5) : (_assignCache[sel]?.examId || '');
+      if (!examId) { const a = await getDoc(doc(db, 'exam_assignments', sel)); examId = a.exists() ? a.data().examId : ''; }
+      const by = examAll ? where('examId', '==', examId) : where('asId', '==', sel);
+      const [pSnap, rSnap, qSnap] = await Promise.all([
+        getDocs(query(collection(db, 'exam_progress'), by)),
+        getDocs(query(collection(db, 'exam_results'), by)),
+        getDocs(query(collection(db, 'exam_questions'), where('examId', '==', examId))),
+      ]);
+      qg.sel = sel; qg.examId = examId;
+      qg.progs = pSnap.docs.map(d => ({ id: d.id, ...d.data() })).filter(p => p.status === 'submitted')
+        .map(p => ({ ...p, _studentId: p.studentId || p.id.split('_').slice(1).join('_') }));
+      qg.results = rSnap.docs.map(d => ({ docId: d.id, ...d.data() }));
+      qg.questions = await attachAnswers(qSnap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (a.order || 0) - (b.order || 0)));
+      if (!qg.questions.some(q => q.id === qg.qId)) {
+        // 처음엔 채점할 게 남은 첫 문항
+        qg.qId = (qg.questions.find(q => qg.results.some(r => r.questionId === q.id && !qgDone(r))) || qg.questions[0] || {}).id || '';
+      }
+      renderQGrade();
+    } catch (e) { el.innerHTML = '<div style="color:#ef4444;padding:20px;">오류: ' + escHtml(e.message) + '</div>'; }
+  }
+
+  function renderQGrade(focusDocId) {
+    const el = document.getElementById('qGradeBoard');
+    if (!qg.progs.length) { el.innerHTML = '<div class="empty-state">제출한 학생이 없습니다.</div>'; return; }
+    const pill = (t, bg, fg) => `<span style="padding:2px 9px;border-radius:50px;font-size:0.75rem;font-weight:800;background:${bg};color:${fg || 'inherit'};">${t}</span>`;
+    // 반별 공개
+    const classes = AG.groupBy(qg.progs.slice().sort((a, b) => String(a.grade).localeCompare(String(b.grade)) || String(a.class).localeCompare(String(b.class), 'ko', { numeric: true })), qgClassKey);
+    const classRow = classes.map(g => {
+      const pub = g.items.filter(p => p.needsManual === false).length;
+      const ready = g.items.filter(p => p.needsManual !== false && qg.results.filter(r => r.asId === p.asId && r.studentId === p._studentId).every(qgDone)).length;
+      const left = g.items.length - pub - ready;
+      return `<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid var(--border-card);border-radius:12px;background:var(--glass);">
+        <b>${escHtml(g.key)}</b>
+        <span style="font-size:0.78rem;color:var(--sub);">공개 ${pub} · 공개 가능 ${ready}${left ? ` · 채점 중 ${left}` : ''} / ${g.items.length}명</span>
+        <button class="btn ${ready ? 'accent' : 'ghost'} sm" ${ready ? '' : 'disabled'} onclick="qgPublish(${jsArg(g.key)})">공개</button>
+      </div>`;
+    }).join('');
+    // 문항 고르기
+    const chips = qg.questions.map((q, i) => {
+      const rs = qg.results.filter(r => r.questionId === q.id);
+      const done = rs.filter(qgDone).length;
+      const on = q.id === qg.qId;
+      return `<button class="btn sm ${on ? '' : 'ghost'}" style="white-space:nowrap;" onclick="qgPick(${jsArg(q.id)})">${q.form ? escHtml(q.form) + '형 ' : ''}Q${i + 1} ${escHtml(QG_TYPE[q.type] || q.type)} ${Number(q.points) || 0}점
+        <span style="opacity:0.75;font-weight:600;">${done}/${rs.length}</span></button>`;
+    }).join('');
+    const q = qg.questions.find(x => x.id === qg.qId);
+    let body = '<div class="empty-state">문항을 고르세요.</div>';
+    if (q) {
+      const max = Number(q.points) || 0;
+      const order = (a, b) => String(a.grade).localeCompare(String(b.grade)) || String(a.class).localeCompare(String(b.class), 'ko', { numeric: true }) || (parseInt(a.num) || 0) - (parseInt(b.num) || 0);
+      let rs = qg.results.filter(r => r.questionId === q.id && qgProgOf(r)).sort(order);
+      const total = rs.length, todo = rs.filter(r => !qgDone(r)).length;
+      if (qg.onlyTodo) rs = rs.filter(r => !qgDone(r));
+      const content = q.content ? `<div style="white-space:pre-wrap;font-size:0.85rem;color:var(--sub);margin-top:6px;">${escHtml(q.content)}</div>` : '';
+      const key = q.type === 'mc' ? (Array.isArray(q.options) && q.answer !== undefined ? `${parseInt(q.answer) + 1}번. ${q.options[parseInt(q.answer)] ?? ''}` : '') : (q.answer || '');
+      const quick = max <= 10;
+      const card = r => {
+        const p = qgProgOf(r), done = qgDone(r), published = p?.needsManual === false;
+        const val = q.type === 'mc' ? (r.value === '' || r.value == null ? '(미답)' : `${parseInt(r.value) + 1}번. ${q.options?.[parseInt(r.value)] ?? ''}`) : String(r.value ?? '');
+        const cur = r.teacherGradedAt || published || !qgNeeds(r) ? (r.type === 'mc' && r.feedback === 'manual' && !r.teacherGradedAt ? (r.check === 'correct' ? max : 0) : (r.score ?? 0)) : '';
+        const reason = qgAuto(r.feedback) || r.feedback === 'manual' ? '' : (r.feedback || '');
+        const btns = quick ? Array.from({ length: max + 1 }, (_, s) => `<button type="button" class="btn sm ${String(cur) === String(s) ? 'accent' : 'ghost'}" style="min-width:34px;padding:4px 0;" onclick="qgScore(${jsArg(r.docId)},${s})">${s}</button>`).join('') : '';
+        return `<div class="qg-card" id="qg_${escHtml(r.docId)}" style="border:1px solid ${done ? 'var(--border-card)' : 'rgba(245,158,11,0.55)'};border-radius:14px;padding:12px 14px;margin-bottom:10px;background:var(--glass);">
+          <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:0.82rem;margin-bottom:6px;">
+            <span><b>${escHtml(r.grade || '-')}-${escHtml(r.class || '-')} ${escHtml(r.num || '')}번 ${escHtml(r.name || '')}</b>${p?.form ? ` · ${escHtml(p.form)}형` : ''}</span>
+            <span>${published ? pill('공개됨', 'rgba(34,197,94,0.15)', '#16a34a') : done ? pill('채점함', 'rgba(42,92,230,0.12)', 'var(--accent)') : pill('채점 전', 'rgba(245,158,11,0.18)', '#b45309')}</span>
+          </div>
+          <div style="white-space:pre-wrap;word-break:break-word;font-size:0.92rem;line-height:1.55;padding:10px 12px;border-radius:10px;background:var(--glass-strong);">${val.trim() ? escHtml(val) : '<span style="color:var(--sub);">(빈 답)</span>'}</div>
+          ${q.type === 'essay' || q.type === 'sa' ? `<div style="font-size:0.75rem;color:var(--sub);margin-top:4px;">${val.replace(/\s/g, '').length}자 (공백 빼고) · ${val.length}자</div>` : ''}
+          ${r.feedback && qgAuto(r.feedback) ? `<div style="font-size:0.75rem;color:var(--sub);margin-top:4px;">자동 판정: ${escHtml(r.feedback)}</div>` : ''}
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;">
+            <div style="display:flex;gap:4px;flex-wrap:wrap;">${btns}</div>
+            <input class="inp qg-score" type="number" min="0" max="${max}" value="${escHtml(cur)}" style="width:72px;padding:6px 8px;" data-docid="${escHtml(r.docId)}" onchange="qgScore(${jsArg(r.docId)},this.value)" title="점수 (0~${max})">
+            <span style="font-size:0.8rem;color:var(--sub);">/ ${max}</span>
+            <input class="inp qg-reason" value="${escHtml(reason)}" placeholder="사유 (학생에게 보임, 비워도 됨)" style="flex:1;min-width:200px;padding:6px 10px;" onchange="qgReason(${jsArg(r.docId)},this.value)">
+          </div>
+        </div>`;
+      };
+      body = `<div style="padding:12px 14px;border-radius:12px;background:var(--glass-strong);margin-bottom:12px;">
+          <div style="font-weight:800;">${q.form ? escHtml(q.form) + '형 · ' : ''}${escHtml(q.title || '')}</div>
+          ${content ? `<details style="margin-top:4px;"><summary style="cursor:pointer;font-size:0.8rem;color:var(--sub);">문항 내용 보기</summary>${content}</details>` : ''}
+          ${key ? `<div style="font-size:0.82rem;margin-top:6px;"><b>정답·기준:</b> ${escHtml(key)}</div>` : ''}
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+          <span style="font-size:0.85rem;"><b>${total - todo}</b> / ${total}명 채점${todo ? ` · 남은 ${todo}명` : ' · 다 했습니다'}</span>
+          <label style="font-size:0.82rem;display:flex;gap:6px;align-items:center;cursor:pointer;"><input type="checkbox" ${qg.onlyTodo ? 'checked' : ''} onchange="qgOnlyTodo(this.checked)"> 채점 전만 보기</label>
+        </div>
+        ${rs.length ? rs.map(card).join('') : '<div class="empty-state">보일 답이 없습니다.</div>'}`;
+    }
+    el.innerHTML = `<div style="font-size:0.8rem;color:var(--sub);margin-bottom:8px;">점수·사유는 바로 저장되지만 학생에게는 [공개]를 누른 반만 보입니다. 공개하면 그 반에서 채점이 다 끝난 학생의 총점이 학생 시험 화면에 나옵니다.</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">${classRow}</div>
+      <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:12px;">${chips}</div>
+      ${body}`;
+    if (focusDocId) {
+      const next = document.getElementById('qg_' + focusDocId);
+      next?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }
+
+  window.qgPick = (id) => { qg.qId = id; renderQGrade(); window.scrollTo({ top: document.getElementById('qGradeBoard').offsetTop - 80, behavior: 'smooth' }); };
+  window.qgOnlyTodo = (on) => { qg.onlyTodo = !!on; renderQGrade(); };
+  async function qgSave(docId, data) {
+    const r = qg.results.find(x => x.docId === docId);
+    if (!r) return false;
+    try {
+      await updateDoc(doc(db, 'exam_results', docId), { ...data, teacherGradedAt: serverTimestamp() });
+      Object.assign(r, data, { teacherGradedAt: new Date() });
+      return true;
+    } catch (e) { toast('저장 오류: ' + e.message, 'error'); return false; }
+  }
+  window.qgScore = async (docId, v) => {
+    const r = qg.results.find(x => x.docId === docId);
+    const q = qg.questions.find(x => x.id === r?.questionId);
+    const max = Number(q?.points) || Number(r?.maxScore) || 0;
+    const score = Math.max(0, Math.min(max, parseInt(v, 10) || 0));
+    // 사유 칸에 쓰다 만 글이 있으면 같이 저장
+    const reasonInp = document.querySelector(`#qg_${CSS.escape(docId)} .qg-reason`);
+    const reason = reasonInp ? reasonInp.value.trim() : undefined;
+    const data = { score };
+    if (reason !== undefined) data.feedback = reason || (qgAuto(r.feedback) ? r.feedback : '');
+    if (!(await qgSave(docId, data))) return;
+    // 다음 채점 전 학생으로
+    const q2 = qg.results.filter(x => x.questionId === r.questionId && qgProgOf(x))
+      .sort((a, b) => String(a.grade).localeCompare(String(b.grade)) || String(a.class).localeCompare(String(b.class), 'ko', { numeric: true }) || (parseInt(a.num) || 0) - (parseInt(b.num) || 0));
+    const i = q2.findIndex(x => x.docId === docId);
+    const next = q2.slice(i + 1).find(x => !qgDone(x));
+    renderQGrade(next?.docId);
+  };
+  window.qgReason = async (docId, v) => {
+    const r = qg.results.find(x => x.docId === docId);
+    if (!r) return;
+    const reason = String(v || '').trim();
+    // 점수를 아직 안 매겼으면 사유만 남기고 채점함으로 치지 않는다
+    if (!qgDone(r)) { r._pendingReason = reason; return; }
+    await qgSave(docId, { feedback: reason || (qgAuto(r.feedback) ? r.feedback : '') });
+  };
+  // 반 하나 공개: 채점이 다 끝난 학생만 총점 계산 → needsManual 해제
+  window.qgPublish = async (classKey) => {
+    const targets = qg.progs.filter(p => qgClassKey(p) === classKey && p.needsManual !== false)
+      .filter(p => qg.results.filter(r => r.asId === p.asId && r.studentId === p._studentId).every(qgDone));
+    if (!targets.length) return;
+    if (!confirm(`${classKey} 학생 ${targets.length}명의 점수를 공개할까요?\n학생 시험 화면에 총점과 사유가 바로 보입니다.`)) return;
+    showLoading(true);
+    try {
+      let batch = writeBatch(db), n = 0;
+      const flush = async () => { if (n) { await batch.commit(); batch = writeBatch(db); n = 0; } };
+      for (const p of targets) {
+        const rs = qg.results.filter(r => r.asId === p.asId && r.studentId === p._studentId);
+        let total = 0, totalPoints = 0;
+        for (const r of rs) {
+          let score = Number(r.score) || 0;
+          // 객관식은 선생님이 손대지 않았으면 맞음/틀림으로 점수를 채운다
+          if (r.type === 'mc' && r.feedback === 'manual' && !r.teacherGradedAt) {
+            score = r.check === 'correct' ? (Number(r.maxScore) || 0) : 0;
+            batch.update(doc(db, 'exam_results', r.docId), { score }); n++;
+            r.score = score;
+          }
+          total += score; totalPoints += Number(r.maxScore) || 0;
+        }
+        batch.update(doc(db, 'exam_progress', p.id), { totalScore: total, totalPoints, needsManual: false, gradedAt: serverTimestamp() }); n++;
+        p.needsManual = false; p.totalScore = total; p.totalPoints = totalPoints;
+        if (n > 400) await flush();
+      }
+      await flush();
+      toast(`${classKey} ${targets.length}명 공개`, 'success');
+    } catch (e) { toast('공개 오류: ' + e.message, 'error'); }
+    showLoading(false);
+    renderQGrade();
   };
 
   // ── 채점 모달 ──
