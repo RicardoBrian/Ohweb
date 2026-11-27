@@ -49,7 +49,7 @@ const r = sid => read(`exam_results/AS1_${sid}_1`);
 const [r1, r2, r3, r4, r6] = await Promise.all(['S1', 'S2', 'S3', 'S4', 'S6'].map(r));
 ok(r1.aiScore === 10 && r1.score === 0 && r1.aiReason && r1.aiModel === 'stub-model' && r1.aiAt, '제안 점수는 배점으로 잘리고(15→10) score 는 그대로');
 ok(r2.aiFlag === true && r2.aiFlagReason === '판단 어려움', '애매한 답은 확인 필요 표시');
-ok(r3.aiScore === 0 && r3.aiModel === 'rule', '빈 답은 claude 없이 0점');
+ok(r3.aiScore === 3 && r3.aiModel === 'stub-model', '빈 답도 기준대로 채점(가짜 claude 는 3점)');
 ok(r4.aiScore === 3, '러시아어 답도 채점');
 ok(r6.aiScore === undefined, '선생님이 매긴 답은 건드리지 않음');
 ok((await read('exam_results/AS2_S5_1')).aiScore === undefined, '이미 공개한 학생(needsManual=false)은 건너뜀');
@@ -57,7 +57,7 @@ ok((await read('exam_results/AS1_S1_0')).aiScore === undefined, '객관식은 �
 const prompts = readFileSync(logFile, 'utf8');
 ok(!/김학생|박학생|최학생|한학생|S1|S4/.test(prompts), '프롬프트에 이름·학번 없음');
 ok(/맞춤법은 감점하지 않는다/.test(prompts) && /상자 비유 10점/.test(prompts) && /변수는 이름표.*6점/.test(prompts) && /한국어 번역: "값을 위한 상자"/.test(prompts) && /앞 문항의 사례[\s\S]*사례: 이루다 챗봇/.test(prompts), '프롬프트에 공통 기준·문항 기준·선생님 예시·번역·앞 문항 사례');
-ok(prompts.split('=====').length - 1 === 2, '2개씩 묶어 claude 2번 호출(빈 답 제외 3개)');
+ok(prompts.split('=====').length - 1 === 2 && /빈 답 — 무응답/.test(prompts), '2개씩 묶어 claude 2번 호출(빈 답 포함 4개)');
 
 // 다시 채점하지 않으면 제안 있는 건 건너뜀, redo 면 다시
 await env.withSecurityRulesDisabled(async c => setDoc(doc(c.firestore(), 'exams/EX1'), { title: '수행평가', aiJob: { status: 'queued', sel: 'AS1', questionIds: ['Q2'] } }, { merge: false }));
