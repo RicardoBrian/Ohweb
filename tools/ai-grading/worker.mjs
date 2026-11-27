@@ -89,7 +89,7 @@ export function buildPrompt({ exam, q, key, examples, batch, context }) {
   }
   lines.push('## 채점할 답 (id 마다 하나씩, 모두 채점. 글자 수는 이미 세어 두었으니 그대로 쓴다)');
   batch.forEach(({ id, r }) => {
-    lines.push(`[${id}] (${txt(r.value).length}자, 공백 포함) ${JSON.stringify(txt(r.value))}${txt(r.valueKo) ? `\n    (한국어 번역: ${JSON.stringify(txt(r.valueKo))})` : ''}`);
+    lines.push(`[${id}] (${txt(r.value).length}자, 공백 포함) ${txt(r.value) ? JSON.stringify(txt(r.value)) : '(빈 답 — 무응답)'}${txt(r.valueKo) ? `\n    (한국어 번역: ${JSON.stringify(txt(r.valueKo))})` : ''}`);
   });
   return lines.join('\n');
 }
@@ -141,12 +141,11 @@ export async function processJob(exam) {
     let jobWrite = Promise.resolve();
     const runTask = async ({ q, key, examples, batch, context }) => {
       const max = Number(q.points) || 0;
-      // 빈 답은 claude 에 보내지 않고 0점
-      const empty = batch.filter(b => !txt(b.r.value)), real = batch.filter(b => txt(b.r.value));
-      const got = real.length ? await runGrader(buildPrompt({ exam, q, key, examples, batch: real, context })) : { items: [], model: '' };
+      // 빈 답도 보낸다 — 최저점이 0이 아닌 기준(예: 무응답 1점·3점)이 있어서
+      const real = batch;
+      const got = await runGrader(buildPrompt({ exam, q, key, examples, batch: real, context }));
       model = got.model || model;
       const ups = [];
-      for (const b of empty) ups.push({ path: b.r.path, data: { aiScore: 0, aiReason: '답을 쓰지 않았다.', aiFlag: false, aiFlagReason: '', aiModel: 'rule' }, serverTime: ['aiAt'] });
       for (const b of real) {
         const it = got.items.find(x => x.id === b.id);
         if (!it) { ups.push({ path: b.r.path, data: { aiScore: null, aiReason: '', aiFlag: true, aiFlagReason: 'AI 가 이 답을 채점하지 않았다', aiModel: got.model }, serverTime: ['aiAt'] }); flagged++; continue; }
