@@ -10,7 +10,7 @@
 // 정상 결과(stderr)다.
 
 export class RunnerError extends Error {
-  constructor(message, { status = 0, detail = '' } = {}) { super(message); this.status = status; this.detail = detail; }
+  constructor(message, { status = 0, detail = '', busy = false } = {}) { super(message); this.status = status; this.detail = detail; this.busy = busy; }
 }
 
 function withTimeout(promise, ms) {
@@ -100,6 +100,17 @@ async function runPiston(env, code, stdin, timeoutMs = 15000) {
 export const runnerName = env => (env?.PISTON_URL || env?.PISTON_TOKEN ? 'piston' : 'wandbox');
 
 // opts.timeoutMs: 실행 서버 응답을 기다리는 최대 시간(제출 채점은 남은 시간만큼만 준다).
+// 실행 서버가 붐빌 때 나는 일시 오류(학생 코드 잘못이 아님). 예: Wandbox "OCI runtime error: crun: clone: Resource temporarily unavailable"
+export const BUSY = /OCI runtime|Resource temporarily unavailable|crun:|EAGAIN/i;
+// 일시 오류면 두 번까지 다시 돌린다. 그래도 나면 오답처럼 보이지 않게 RunnerError(busy)로 던진다
+// → /api/run-python 은 error 로 알려 주고, 제출 채점(exam.js gradeCode)은 수동 채점(null)으로 넘긴다.
 export async function runPython(env, code, stdin, opts = {}) {
-  return runnerName(env) === 'piston' ? runPiston(env, code, stdin, opts.timeoutMs) : runWandbox(code, stdin, opts.timeoutMs);
+  const once = () => runnerName(env) === 'piston' ? runPiston(env, code, stdin, opts.timeoutMs) : runWandbox(code, stdin, opts.timeoutMs);
+  const waits = opts.retryWaits || [400, 1200];
+  for (let i = 0; ; i++) {
+    const r = await once();
+    if (r.stdout || !BUSY.test(r.stderr || '')) return r;
+    if (i >= waits.length) throw new RunnerError('실행 서버가 잠시 바쁩니다. 다시 실행해 주세요.', { status: 503, detail: String(r.stderr).slice(0, 200), busy: true });
+    await new Promise(z => setTimeout(z, waits[i] + Math.floor(Math.random() * 300)));
+  }
 }
