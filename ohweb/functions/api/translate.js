@@ -78,7 +78,8 @@ async function handle(request, env) {
     return json({ error: 'invalid JSON body' }, 400);
   }
 
-  const { texts, targetLang, sourceLang = 'KO' } = body || {};
+  // format: 'html'이면 <b>·<a> 같은 태그를 지키고 글만 번역한다(차시 문서 편집기). 기본은 지금처럼 'text'.
+  const { texts, targetLang, sourceLang = 'KO', format } = body || {};
   if (!Array.isArray(texts) || !targetLang) return json({ error: 'missing params' }, 400);
 
   // 빈 문자열은 보내지 않는다 — 원래 자리에는 빈 결과를 그대로 채워 넣어서
@@ -96,7 +97,7 @@ async function handle(request, env) {
         // sourceLang: 'auto'면 원문 언어를 Google이 알아낸다(AI 실험실 레이블처럼
         // 학생이 어느 언어로 쓸지 모르는 경우). 기존 호출부는 그대로 KO 등을 보낸다.
         ...(String(sourceLang).toLowerCase() === 'auto' ? {} : { source: toGoogleLang(sourceLang) }),
-        format: 'text',
+        format: format === 'html' ? 'html' : 'text',
       }),
     });
     const raw = await r.text();

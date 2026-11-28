@@ -417,5 +417,9 @@ await T('과목: 학생이 차시 목록', getDocs(collection(A, 'course_lessons
 await T('과목: 비로그인이 과목 목록', getDocs(collection(anon, 'courses')), false);
 await T('과목: 학생이 차시 공개 바꾸기', updateDoc(doc(A, 'course_lessons/L1'), { openTo: ['1', '2'] }), false);
 await T('과목: 이메일 미인증 관리자가 과목 쓰기', setDoc(doc(fakeAdmin, 'courses/C2'), { name: 'x' }), false);
+await T('문서: 관리자가 차시 문서 쓰기·읽기', (async () => { await setDoc(doc(admin, 'docs/D1'), { kind: 'lesson', lessonId: 'L1', blocks: [{ id: 'b1', type: 'paragraph', data: { text: '안녕' } }], tr: { en: { b1: { src: 'x', data: { text: 'hi' } } } } }); await getDoc(doc(admin, 'docs/D1')); })(), true);
+await T('문서: 학생이 차시 문서 읽기', getDoc(doc(A, 'docs/D1')), false);
+await T('문서: 비로그인이 문서 목록', getDocs(collection(anon, 'docs')), false);
+await T('문서: 학생이 문서 고치기', updateDoc(doc(B, 'docs/D1'), { blocks: [] }), false);
 console.log(fails ? `\n실패 ${fails}건` : '\n전부 통과'); process.exitCode = fails ? 1 : 0;
 await env.cleanup();
