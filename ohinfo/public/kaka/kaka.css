@@ -332,3 +332,20 @@ body { margin: 0; background: var(--bg); color: var(--ink); font: 400 15px/24px 
 .sk-item { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: var(--space-3); }
 
 @media (prefers-reduced-motion: reduce) { .k-cursor, .sk { animation: none; } }
+
+/* 아이콘 버튼: 글보다 아이콘이 잘 읽히는 버튼. 말풍선(data-tip)과 aria-label 을 꼭 단다. */
+.k-ibtn { position: relative; display: inline-grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: var(--radius-md);
+  background: none; color: var(--ink-2); cursor: pointer; transition: background-color .12s ease-out; }
+.k-ibtn:hover, .k-ibtn:focus-visible { background: var(--surface-2); color: var(--ink); }
+.k-ibtn:focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+.k-ibtn:disabled { opacity: .5; cursor: default; }
+.k-ibtn--primary, .k-ibtn--primary:hover, .k-ibtn--primary:focus-visible { background: var(--accent); color: var(--on-accent); }
+.k-ibtn--primary:hover { background: var(--accent-hover); }
+.k-ibtn[data-tip]::after { content: attr(data-tip); position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); white-space: nowrap; padding: 4px 8px;
+  border-radius: var(--radius-sm); background: var(--ink); color: var(--bg); font: 500 12px/16px var(--font-sans); opacity: 0; pointer-events: none; transition: opacity .12s ease-out; z-index: 20; }
+.k-ibtn[data-tip]:hover::after, .k-ibtn[data-tip]:focus-visible::after { opacity: 1; }
+.k-ibtn--end[data-tip]::after { left: auto; right: 0; transform: none; }
+.k-code .k-ibtn { color: var(--code-ink); }
+.k-code .k-ibtn:hover, .k-code .k-ibtn:focus-visible { background: rgba(255,255,255,.08); }
+.k-code .k-ibtn--primary, .k-code .k-ibtn--primary:hover { background: var(--accent); color: var(--on-accent); }
+@media (prefers-reduced-motion: reduce) { .k-ibtn, .k-ibtn[data-tip]::after { transition: none; } }

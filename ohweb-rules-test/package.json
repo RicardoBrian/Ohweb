@@ -18,7 +18,8 @@
     "test:ai-grading": "firebase emulators:exec --only firestore --project ohweb-93062 \"node ai-grading.test.mjs\"",
     "test:settle": "firebase emulators:exec --only firestore --project ohsettle-10d43 \"node settle-rules.test.mjs\"",
     "test:kaka-student": "node build-fbcdn.mjs && firebase emulators:exec --only firestore,auth --project ohweb-93062 \"node kaka-student.e2e.mjs\"",
-    "test:kaka-python": "node build-fbcdn.mjs && firebase emulators:exec --only firestore,auth --project ohweb-93062 \"node kaka-python.e2e.mjs\""
+    "test:kaka-python": "node build-fbcdn.mjs && firebase emulators:exec --only firestore,auth --project ohweb-93062 \"node kaka-python.e2e.mjs\"",
+    "smoke:kaka": "node build-fbcdn.mjs && firebase emulators:exec --only firestore,auth --project ohweb-93062 \"node kaka-live-smoke.mjs\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^4.0.1",

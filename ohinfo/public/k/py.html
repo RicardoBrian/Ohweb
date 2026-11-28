@@ -22,7 +22,6 @@
   .hist .n { color: var(--ink-3); margin-left: auto; }
   .work { display: grid; gap: var(--space-3); align-content: start; min-width: 0; }
   #cm .cm-editor { min-height: 320px; }
-  .k-code .k-btn--primary { background: var(--accent); border-color: var(--accent); color: #fff; }
   .viewing { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; padding: 8px 14px; background: rgba(255,255,255,.06); font: 400 13px/20px var(--font-sans); color: var(--code-ink); }
   .out { margin: 0; min-height: 72px; max-height: 360px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
   .out .err { color: #f2a7a0; }
@@ -39,6 +38,7 @@
 <script type="module">
 import { LOGO_SVG } from '/kaka/logo.js?v=1128';
 import { clean } from '/kaka/render.js?v=1128';
+import { icon } from '/kaka/icons.js?v=1128';
 import { pyEditor } from '/kaka/vendor/cm-python.js?v=1128';
 import { session, api, getLang, esc, nameIn, stuNo } from '/k/stu.js?v=1128';
 
@@ -71,7 +71,7 @@ document.body.innerHTML = `<header class="k-header"><a class="k-logo" href="/k/"
     ${bd.desc ? `<div class="k-tool__desc">${clean(bd.desc)}</div>` : ''}
     <span class="k-label">${esc(t.hist)}</span><ul class="hist" id="hist"></ul></section>
   <section class="work">
-    <div class="k-code"><div class="k-code__bar"><span class="k-code__file">main.py</span><button class="k-btn" id="save-btn">${esc(t.save)}</button><button class="k-btn k-btn--primary" id="run">${esc(t.run)}</button></div>
+    <div class="k-code"><div class="k-code__bar"><span class="k-code__file">main.py</span><button class="k-ibtn" id="save-btn" aria-label="${esc(t.save)}" data-tip="${esc(t.save)} · Ctrl+S">${icon('save')}</button><button class="k-ibtn k-ibtn--primary k-ibtn--end" id="run" aria-label="${esc(t.run)}" data-tip="${esc(t.run)} · Ctrl+Enter">${icon('play')}</button></div>
       <div id="viewing" class="viewing" hidden></div>
       <div id="cm"></div>
       <div class="k-code__out"><pre class="out" id="out"><span class="dim">${esc(t.outHint)}</span></pre></div></div>
