@@ -19,8 +19,13 @@
   .k-tabs { max-width: 720px; }
   .bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-5); }
   .bar .k-tabs { border-bottom: 0; }
-  .palette { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 2px; max-width: 720px; padding: 6px 0; background: var(--bg); border-bottom: 1px solid var(--line); }
-  .palette__label { font: 500 13px/1 var(--font-sans); color: var(--ink-3); margin-right: 6px; }
+  .palette { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 2px; max-width: 720px; padding: 4px 0; background: var(--bg); border-bottom: 1px solid var(--line); }
+  .pal { position: relative; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 0; border-radius: var(--radius-md); background: none; color: var(--ink-2); cursor: pointer; }
+  .pal:hover, .pal:focus-visible { background: var(--surface-2); color: var(--ink); }
+  .pal[data-ins="10"] { margin-left: 8px; }
+  .pal::after { content: attr(data-tip); position: absolute; top: calc(100% + 4px); left: 50%; transform: translateX(-50%); white-space: nowrap; padding: 4px 8px; border-radius: var(--radius-sm);
+    background: var(--ink); color: var(--bg); font: 500 12px/16px var(--font-sans); opacity: 0; pointer-events: none; transition: opacity .12s ease-out; z-index: 6; }
+  .pal:hover::after, .pal:focus-visible::after { opacity: 1; }
   .palette__hint { margin: 6px 0 var(--space-4); max-width: 720px; }
   .save { font: 400 13px/20px var(--font-sans); color: var(--ink-2); margin-left: var(--space-3); }
   .save.is-dirty { color: var(--warn); }
@@ -43,6 +48,7 @@
 import { $, esc, chip, header, toast, requireAdmin, loadLessons, orderLessons, courseLabel, db, doc, getDoc, addDoc, updateDoc, collection, serverTimestamp } from './k.js';
 import { LANGS, fsEncode, fsDecode, textsOf, withTexts, needsTr, srcKey, localized, renderBlocks, blockHtml, DOC_CSS } from './render.js';
 import { Slide, Callout, Image, Tool, Timer, Note, EDITOR_CSS } from './blocks.js';
+import { icon } from './icons.js';
 
 await requireAdmin();
 document.head.insertAdjacentHTML('beforeend', `<style>${DOC_CSS}${EDITOR_CSS}</style>`);
@@ -72,7 +78,7 @@ document.body.innerHTML = header('course') + `<main class="k-page">
     <h1 class="t-display">${no}차시 ${esc(lesson.name)}</h1></div>
   <div class="bar"><div class="k-tabs" role="tablist">${[['edit', '편집'], ['tr', '번역'], ['view', '미리 보기']].map(([k, n]) => `<button class="k-tab" role="tab" data-mode="${k}" aria-selected="${k === mode}">${n}</button>`).join('')}</div>
     <button class="k-btn k-btn--sm" id="tr-all">세 언어 번역</button><button class="k-btn k-btn--sm" id="present">발표</button><span class="save" id="save" aria-live="polite"></span></div>
-  <div class="palette" id="palette" role="toolbar" aria-label="블록 넣기"><span class="palette__label">넣기</span>${PALETTE.map(([t, n], i) => `<button class="k-btn k-btn--sm k-btn--ghost" data-ins="${i}">${n}</button>`).join('')}</div>
+  <div class="palette" id="palette" role="toolbar" aria-label="블록 넣기">${PALETTE.map(([t, n], i) => `<button class="pal" data-ins="${i}" aria-label="${n} 넣기" data-tip="${n}">${icon(t)}</button>`).join('')}</div>
   <p class="k-hint palette__hint" id="palette-hint">글자를 드래그해서 고르면 굵게·기울임·링크·형광을 고를 수 있습니다. 빈 줄에서 / 를 쳐도 넣을 블록 목록이 열립니다.</p>
   <div id="editor"></div><div id="pane" hidden></div></main>`;
 
