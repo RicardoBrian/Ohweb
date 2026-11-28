@@ -133,7 +133,7 @@ export const EDITOR_CSS = `
 .kb-image { display: grid; gap: 8px; margin: 8px 0; max-width: 560px; }
 .kb-image img { max-width: 100%; border-radius: var(--radius-md); }
 .kb-image__cap { color: var(--ink-2); font-size: 14px; outline: none; }
-.kb-tool { margin: 8px 0; max-width: none; }
+.kb-tool { margin: 8px 0; }
 .kb-tool__sel { width: auto; height: 30px; font-size: 14px; }
 .kb-tool__desc { outline: none; min-height: 22px; }
 .kb-timer { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 0; }

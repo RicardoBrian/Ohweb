@@ -3,8 +3,6 @@
 
 @media (max-width: 600px) { .k-header .k-btn--ghost { display: none; } }
 
-/* 선생님 화면은 넓게 쓴다(학생 읽기 화면만 좁게) */
+
+/* 선생님 화면은 넓은 화면에서 단을 나눠 쓴다(§7.2: 상자 없이) */
 .k-page { max-width: 1600px; }
-.k-section--wide { max-width: none; }
-.k-cards--sm { grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
-.k-cards--sm .k-card { gap: 2px; padding: var(--space-3) var(--space-4); }
