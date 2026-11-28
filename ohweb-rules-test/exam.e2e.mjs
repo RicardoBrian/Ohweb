@@ -5,6 +5,7 @@ import path from 'node:path';
 import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import { doc, setDoc, getDoc, getDocs, collection, query, where, updateDoc } from 'firebase/firestore';
 import { onRequest as examApiHandler } from '../ohinfo/functions/api/exam.js';
+import { onRequest as runPyHandler } from '../ohinfo/functions/api/run-python.js';
 
 // 실제 배포되는 ohinfo/public을 그대로 띄우고, Firebase CDN만 npm 패키지 묶음(.fbcdn)으로,
 // firebase-config.js만 에뮬레이터 연결용으로 바꿔치기한다. 시험 서버(/api/exam)는 실제
@@ -62,6 +63,8 @@ import { getAuth, connectAuthEmulator } from "https://www.gstatic.com/firebasejs
 const app = initializeApp({ apiKey: 'fake', projectId: 'ohweb-93062', authDomain: 'localhost' });
 export const db = getFirestore(app); connectFirestoreEmulator(db, '127.0.0.1', 8181);
 export const auth = getAuth(app); connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });`;
+// 실행 서버 일시 오류 흉내: 남은 횟수만큼 모의 Piston 이 OCI 오류를 낸다.
+let pistonBusy = 0;
 const server = http.createServer((req, res) => {
   let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
   // 모의 Piston: print('hi')가 들어 있으면 hi를 출력한 걸로 친다.
@@ -69,6 +72,7 @@ const server = http.createServer((req, res) => {
     let b = ''; req.on('data', d => b += d); req.on('end', () => {
       const code = JSON.parse(b).files?.[0]?.content || '';
       res.writeHead(200, { 'content-type': 'application/json' });
+      if (pistonBusy > 0) { pistonBusy--; return res.end(JSON.stringify({ run: { stdout: '', stderr: 'Error: OCI runtime error: crun: clone: Resource temporarily unavailable' } })); }
       res.end(JSON.stringify({ run: { stdout: code.includes("print('hi')") ? 'hi\n' : '', stderr: '' } }));
     });
     return;
@@ -105,6 +109,8 @@ await ctx.route('**/*', async route => {
   if (c && cmFile[c[1]]) return route.fulfill({ status: 200, contentType: c[2] === 'css' ? 'text/css' : 'text/javascript', body: readFileSync(path.join(CM, cmFile[c[1]])) });
   if (u.includes('/api/exam') && failExamApi > 0) { failExamApi--; return route.fulfill({ status: 503, contentType: 'text/html', body: '<html>503</html>' }); }
   if (u.includes('/api/exam')) return serveExamApi(route);
+  if (u.includes('/api/run-python')) { const res = await runPyHandler({ request: new Request('http://localhost:8099/api/run-python', { method: 'POST', headers: { 'content-type': 'application/json', origin: 'http://localhost:8099' }, body: route.request().postData() }), env: apiEnv });
+    return route.fulfill({ status: res.status, contentType: 'application/json', body: await res.text() }); }
   if (u.includes('accounts:signInWithPassword') && failLogin > 0 && route.request().method() === 'POST') {
     failLogin--;
     return route.fulfill({ status: 400, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ error: { code: 400, message: 'TOO_MANY_ATTEMPTS_TRY_LATER' } }) });
@@ -187,10 +193,14 @@ const pasteInto = (sel, n) => page.evaluate(([sel, n]) => {
   document.querySelector(sel).dispatchEvent(ev); return ev.defaultPrevented;
 }, [sel, n]);
 ok(await pasteInto('#essay_1', 150) === true && await pasteInto('#essay_1', 5) === true, '서술형: 150자·5자 붙여넣기 모두 차단');
-await page.waitForSelector('#qcard_2 .CodeMirror', { timeout: 15000 });
-const cmBefore = await page.evaluate(() => document.querySelector('#qcard_2 .CodeMirror').CodeMirror.getValue());
-await page.evaluate(() => { const cm = document.querySelector('#qcard_2 .CodeMirror').CodeMirror; cm.replaceRange('y', { line: 0, ch: 0 }, null, 'paste'); });
-ok(await page.evaluate(b => document.querySelector('#qcard_2 .CodeMirror').CodeMirror.getValue() === b, cmBefore), '코딩 에디터: 1자 붙여넣기도 차단');
+await page.waitForSelector('#qcard_2 .cm-content', { timeout: 15000 });
+const cmVal = () => page.evaluate(() => document.querySelector('#qcard_2 .cm-content').innerText.replace(/\u00a0/g, ' '));
+const cmBefore = await cmVal();
+ok(await pasteInto('#qcard_2 .cm-content', 1) === true && await cmVal() === cmBefore, '코딩 에디터(CM6): 1자 붙여넣기도 차단');
+// 복사: 시험 중에는 코드 칸에서도 클립보드에 안 담긴다
+ok(await page.evaluate(() => { const dt = new DataTransfer(); const el = document.querySelector('#qcard_2 .cm-content');
+  getSelection().selectAllChildren(el); const ev = new ClipboardEvent('copy', { clipboardData: dt, bubbles: true, cancelable: true }); el.dispatchEvent(ev);
+  getSelection().removeAllRanges(); return ev.defaultPrevented && dt.getData('text/plain') === ''; }), '코딩 에디터: 복사도 막힘');
 await page.waitForTimeout(800);
 ok((await page.textContent('#pasteBlockCountEl')) === '3' && (await readProg('AS1_StuA'))?.pasteBlockCount === 3, '붙여넣기 차단 3회 → 화면 표시 + 진행 기록 저장');
 // 답 입력
@@ -208,19 +218,31 @@ await page.click('#kbRows .kb-key:text-is("⌫")'); await page.click('#kbRows .k
 ok((await page.inputValue('#essay_1')) === '자동저장 확인용 서술 답안', '화상 키보드 ⌫ 로 지우기');
 await page.evaluate(() => setLang('ko'));
 ok(!(await page.isVisible('#ruKeyboard')), '러시아어가 아니면 화상 키보드가 닫힌다');
-await page.waitForSelector('#qcard_2 .CodeMirror', { timeout: 15000 });
-await page.click('#qcard_2 .CodeMirror');
-await page.keyboard.press('Control+End'); await page.keyboard.press('Enter');
+await page.waitForSelector('#qcard_2 .cm-content', { timeout: 15000 });
+await page.click('#qcard_2 .cm-content');
+await page.keyboard.press('ControlOrMeta+End'); await page.keyboard.press('Enter');
 await page.keyboard.type('x = 1');
+// 한글 입력기 조합(ㅎ→호→홍): 자모가 풀려 들어가면 안 된다(CodeMirror 5는 맥에서 ㅎㅗㅇ)
+{ const cdp = await ctx.newCDPSession(page); await page.keyboard.type('  # ');
+  for (const w of [['ㅎ', '호', '홍'], ['ㄱ', '기', '길'], ['ㄷ', '도', '동']]) { for (const x of w) { await cdp.send('Input.imeSetComposition', { text: x, selectionStart: x.length, selectionEnd: x.length }); await page.waitForTimeout(40); } await cdp.send('Input.insertText', { text: w[2] }); await page.waitForTimeout(60); }
+  ok((await page.inputValue('#code_2')).includes('x = 1  # 홍길동'), '코딩 에디터: 한글 조합 입력 → 홍길동(값이 답 칸에도 들어감)', JSON.stringify(await page.inputValue('#code_2'))); }
 // 시험 중 언어 전환 → 에디터가 다시 붙고, 이어서 친 코드가 저장·제출돼야 한다
 await page.evaluate(() => setLang('en'));
-await page.waitForSelector('#qcard_2 .CodeMirror', { timeout: 15000 });
-ok(await page.evaluate(() => document.querySelectorAll('#qcard_2 .CodeMirror').length === 1), '언어 전환 후에도 코딩 에디터 그대로(일반 입력칸으로 안 바뀜)');
-await page.click('#qcard_2 .CodeMirror');
-await page.keyboard.press('Control+End'); await page.keyboard.press('Enter');
+await page.waitForSelector('#qcard_2 .cm-content', { timeout: 15000 });
+ok(await page.evaluate(() => document.querySelectorAll('#qcard_2 .cm-editor').length === 1 && document.querySelector('#code_2').hidden), '언어 전환 후에도 코딩 에디터 그대로(일반 입력칸으로 안 바뀜)');
+await page.click('#qcard_2 .cm-content');
+await page.keyboard.press('ControlOrMeta+End'); await page.keyboard.press('Enter');
 await page.keyboard.type('y = 2');
 await page.evaluate(() => setLang('ko'));
 await page.waitForTimeout(3500);
+// 실행 서버 일시 오류: 한 번이면 서버가 다시 돌려 정상 결과, 계속이면 "잠시 바쁨" 안내(오류처럼 안 보이게)
+pistonBusy = 1; await page.evaluate(() => runCode(2));
+await page.waitForFunction(() => /hi/.test(document.querySelector('#runResult_2')?.innerText || ''), null, { timeout: 15000 }).catch(() => {});
+ok((await page.innerText('#runResult_2')).trim() === 'hi' && pistonBusy === 0, '실행 서버 일시 오류 한 번 → 저절로 다시 실행해 결과', await page.innerText('#runResult_2'));
+pistonBusy = 3; await page.evaluate(() => runCode(2));
+await page.waitForFunction(() => /바쁩니다/.test(document.querySelector('#runResult_2')?.innerText || ''), null, { timeout: 15000 }).catch(() => {});
+ok((await page.innerText('#runResult_2')).includes('잠시 바쁩니다') && !(await page.innerText('#runResult_2')).includes('OCI'), '계속 붐비면 "잠시 바쁩니다" 안내(OCI 오류 글 안 보임)', await page.innerText('#runResult_2'));
+pistonBusy = 0;
 
 // 6) 새로고침 → 재입장 → 타이머 이어짐 + 답안 복원
 await page.reload();
@@ -243,7 +265,7 @@ await page.evaluate(() => submitExam());
 await page.waitForSelector('#step3:not(.hidden)', { timeout: 20000 });
 const sub = lastCall('submit');
 ok(sub?.req?.answers?.[0]?.value === 0 && sub.req.answers[0].qId === 'Q1' && /자동저장/.test(sub.req.answers[1]?.value), '답안을 문항 ID와 함께 전송');
-ok(sub?.req?.answers?.[2]?.value === "print('hi')\nx = 1\ny = 2", `언어 전환 전후로 친 코드가 합쳐져 제출 (${JSON.stringify(sub?.req?.answers?.[2]?.value)})`);
+ok(sub?.req?.answers?.[2]?.value === "print('hi')\nx = 1  # 홍길동\ny = 2", `언어 전환 전후로 친 코드가 합쳐져 제출 (${JSON.stringify(sub?.req?.answers?.[2]?.value)})`);
 ok(sub?.res?.ok && sub.res.totalScore === 10 && sub.res.needsManual === true, `자동 채점은 코딩만(10점) — 객관식·서술형은 선생님 채점 대기 (${sub?.res?.totalScore}점)`);
 ok(/선생님/.test(await page.textContent('#resultDetails')), '서술형 포함 → "채점 대기" 화면');
 let results; await env.withSecurityRulesDisabled(async c => { results = (await getDocs(query(collection(c.firestore(), 'exam_results'), where('asId', '==', 'AS1')))).docs.map(d => d.data()); });

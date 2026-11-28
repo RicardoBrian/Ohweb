@@ -72,7 +72,7 @@ async function handle(request, env) {
   } catch (e) {
     if (!(e instanceof RunnerError)) throw e;
     console.error(`run-python(${runnerName(env)}):`, e.message, e.detail);
-    return json({ error: e.message, ...(e.detail ? { detail: `${runnerName(env)} · ${e.detail}` } : {}) }, e.status === 429 ? 429 : 200);
+    return json({ error: e.message, ...(e.busy ? { busy: true } : {}), ...(e.detail ? { detail: `${runnerName(env)} · ${e.detail}` } : {}) }, e.status === 429 ? 429 : 200);
   }
 }
 
