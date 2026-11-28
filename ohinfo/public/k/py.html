@@ -6,10 +6,6 @@
 <title>파이썬 · kaká</title>
 <link rel="icon" href="/kaka/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="/kaka/kaka.css">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
-<script defer src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
 <style>
   .k-header { position: sticky; top: 0; z-index: 10; }
   .back { font: 500 15px/20px var(--font-sans); color: var(--ink-2); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -25,14 +21,7 @@
   .hist button:focus-visible { outline: 2px solid var(--focus); }
   .hist .n { color: var(--ink-3); margin-left: auto; }
   .work { display: grid; gap: var(--space-3); align-content: start; min-width: 0; }
-  .k-code .CodeMirror { height: auto; min-height: 320px; background: var(--code-bg); color: var(--code-ink); font: 400 15px/24px var(--font-mono); }
-  .k-code .CodeMirror-scroll { min-height: 320px; }
-  .k-code .CodeMirror-gutters { background: var(--code-bg); border-right: 0; }
-  .k-code .CodeMirror-linenumber { color: var(--code-muted); }
-  .k-code .CodeMirror-cursor { border-left: 2px solid var(--code-ink); }
-  .k-code .CodeMirror-selected, .k-code .CodeMirror-focused .CodeMirror-selected { background: rgba(255,255,255,.14); }
-  .k-code .cm-keyword { color: var(--code-key); } .k-code .cm-string { color: var(--code-str); } .k-code .cm-comment { color: var(--code-muted); }
-  .k-code .cm-number, .k-code .cm-builtin { color: var(--code-str); } .k-code .cm-def, .k-code .cm-variable, .k-code .cm-variable-2, .k-code .cm-property, .k-code .cm-operator { color: var(--code-ink); }
+  #cm .cm-editor { min-height: 320px; }
   .k-code .k-btn--primary { background: var(--accent); border-color: var(--accent); color: #fff; }
   .viewing { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; padding: 8px 14px; background: rgba(255,255,255,.06); font: 400 13px/20px var(--font-sans); color: var(--code-ink); }
   .out { margin: 0; min-height: 72px; max-height: 360px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
@@ -50,6 +39,7 @@
 <script type="module">
 import { LOGO_SVG } from '/kaka/logo.js';
 import { clean } from '/kaka/render.js';
+import { pyEditor } from '/kaka/vendor/cm-python.js';
 import { session, api, getLang, esc, nameIn, stuNo } from '/k/stu.js';
 
 const T = {
@@ -88,14 +78,12 @@ document.body.innerHTML = `<header class="k-header"><a class="k-logo" href="/k/"
     <details class="stdin"><summary>${esc(t.stdin)}</summary><textarea class="k-textarea" id="stdin" placeholder="${esc(t.stdinPh)}" spellcheck="false"></textarea></details>
   </section></main>`;
 
-// ── 편집기 ──
-while (!window.CodeMirror?.modes?.python) await new Promise(r => setTimeout(r, 50));
+// ── 편집기(CodeMirror 6: 한글 입력기 조합을 브라우저에 맡겨서 ㅎㅗㅇ 처럼 풀리지 않는다) ──
 let current = d.work ? d.work.code : (d.block.data.starter || '');
-const cm = CodeMirror($('#cm'), { value: current, mode: 'python', lineNumbers: true, indentUnit: 4, tabSize: 4, autoCloseBrackets: true, viewportMargin: Infinity,
-  extraKeys: { Tab: c => c.somethingSelected() ? c.indentSelection('add') : c.replaceSelection('    '), 'Shift-Tab': c => c.indentSelection('subtract'),
-    'Ctrl-S': () => save('save'), 'Cmd-S': () => save('save'), 'Ctrl-Enter': () => run(), 'Cmd-Enter': () => run() } });
-window.kCm = cm;
-cm.focus(); cm.setCursor(cm.lineCount(), 0);
+const cm = pyEditor($('#cm'), { doc: current, onChange: () => changed(), keys: { 'Mod-s': () => save('save'), 'Ctrl-s': () => save('save'), 'Mod-Enter': () => run(), 'Ctrl-Enter': () => run() } });
+// 테스트용 손잡이: setValue 는 사람이 친 것처럼 바뀜으로 친다
+window.kCm = { getValue: cm.getValue, setValue: c => cm.view.dispatch({ changes: { from: 0, to: cm.view.state.doc.length, insert: c } }), getOption: k => k === 'readOnly' && cm.isReadOnly() };
+cm.focus(); cm.cursorEnd();
 
 // ── 저장: 고치고 2초 쉬면 자동, [저장]·Ctrl+S, 실행할 때 ──
 let history = d.history || [], lastSaved = d.work ? current : null, saveT = null, inflight = Promise.resolve(), viewing = null;
@@ -114,19 +102,28 @@ function save(reason = 'auto') {
   }).catch(e => { if (!/logout|relogin/.test(e.message)) status(t.saveFail, true); });
   return inflight;
 }
-cm.on('change', () => { if (viewing) return; status(t.unsaved); clearTimeout(saveT); saveT = setTimeout(() => save('auto'), 2000); });
+function changed() { if (viewing) return; status(t.unsaved); clearTimeout(saveT); saveT = setTimeout(() => save('auto'), 2000); }
 addEventListener('beforeunload', e => { if (!viewing && cm.getValue() !== (lastSaved ?? current)) { save('auto'); e.preventDefault(); } });
 addEventListener('pagehide', () => { if (!viewing && cm.getValue() !== lastSaved) save('auto'); });
 
 // ── 실행 ──
+// 실행 서버(Wandbox)가 붐비면 "OCI runtime error … Resource temporarily unavailable" 같은 일시 오류가 난다 → 두 번까지 다시.
+const BUSY = /OCI runtime|Resource temporarily unavailable|crun:|EAGAIN|429|Too Many/i;
+async function runOnce(code, stdin) {
+  for (let i = 0; ; i++) {
+    const res = await fetch('/api/run-python', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, stdin }) });
+    const r = await res.json().catch(() => ({ error: 'HTTP ' + res.status }));
+    if (i < 2 && BUSY.test(`${r.error || ''} ${r.detail || ''} ${r.stderr || ''}`) && !r.stdout) { await new Promise(z => setTimeout(z, 700 * (i + 1))); continue; }
+    return r;
+  }
+}
 async function run() {
   const btn = $('#run'); if (btn.disabled) return;
   btn.disabled = true; $('#out').innerHTML = `<span class="dim">${esc(t.running)}</span>`;
   const code = cm.getValue();
   if (!viewing) save('run');
   try {
-    const res = await fetch('/api/run-python', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, stdin: $('#stdin').value }) });
-    const r = await res.json().catch(() => ({ error: 'HTTP ' + res.status }));
+    const r = await runOnce(code, $('#stdin').value);
     if (r.error) $('#out').innerHTML = `<span class="err">${esc(r.error)}</span>`;
     else $('#out').innerHTML = (r.stdout ? esc(r.stdout) : '') + (r.stderr ? `<span class="err">${esc(r.stderr)}</span>` : '') + (r.timedOut ? `<span class="err">${esc(t.timeout)}</span>` : '') || `<span class="dim">${esc(t.noOut)}</span>`;
   } catch (e) { $('#out').innerHTML = `<span class="err">${esc(t.fail)}</span>`; }
@@ -145,13 +142,13 @@ async function view(id) {
   const v = await api('work-version', { lessonId, blockId, versionId: id });
   if (v.error) return;
   viewing = { id, code: v.code };
-  cm.setValue(v.code); cm.setOption('readOnly', true);
+  cm.setValue(v.code); cm.setReadOnly(true);
   $('#viewing').hidden = false;
   $('#viewing').innerHTML = `<span>${esc(t.viewing)} · ${esc(when(v.at))}</span><button class="k-btn" id="restore">${esc(t.restore)}</button><button class="k-btn" id="back-now">${esc(t.backNow)}</button>`;
   paintHist();
 }
 function leaveView(code) {
-  viewing = null; cm.setOption('readOnly', false); $('#viewing').hidden = true;
+  viewing = null; cm.setReadOnly(false); $('#viewing').hidden = true;
   cm.setValue(code); paintHist();
 }
 document.addEventListener('click', e => {

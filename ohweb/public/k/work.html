@@ -135,7 +135,12 @@ document.addEventListener('click', async e => {
     const code = selVer ? selVer.code : works[sel]?.code;
     $('#out-wrap').hidden = false; $('#out').textContent = '실행 중…'; t.disabled = true;
     try {
-      const r = await (await fetch('https://kakainfo.com/api/run-python', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, stdin: '' }) })).json();
+      let r;
+      for (let i = 0; i < 3; i++) { // 실행 서버 일시 오류(OCI runtime … Resource temporarily unavailable)면 다시
+        r = await (await fetch('https://kakainfo.com/api/run-python', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, stdin: '' }) })).json();
+        if (r.stdout || !/OCI runtime|Resource temporarily unavailable|crun:|EAGAIN/i.test(`${r.error || ''} ${r.detail || ''} ${r.stderr || ''}`)) break;
+        await new Promise(z => setTimeout(z, 700 * (i + 1)));
+      }
       $('#out').innerHTML = r.error ? `<span class="err">${esc(r.error)}</span>` : (esc(r.stdout) + (r.stderr ? `<span class="err">${esc(r.stderr)}</span>` : '')) || '(출력 없음)';
     } catch { $('#out').innerHTML = '<span class="err">실행 서버에 닿지 못했습니다.</span>'; }
     t.disabled = false;

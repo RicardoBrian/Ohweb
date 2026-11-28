@@ -107,6 +107,7 @@ await ctx.route('**/*', async route => {
   const k = u.match(/^https:\/\/kakainfo\.com\/kaka\/([a-z-]+\.(css|svg|js))$/);
   if (k) return route.fulfill({ status: 200, contentType: type(k[1]), body: readFileSync(path.join(KAKA, k[1])) });
   if (u.endsWith('/api/run-python')) { const b = JSON.parse(route.request().postData()); runs.push(b);
+    if (runs.length === 1) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ stdout: '', stderr: 'Error: OCI runtime error: crun: clone: Resource temporarily unavailable' }) });
     return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(b.code.includes('boom') ? { stdout: '', stderr: 'NameError: boom' } : { stdout: `출력:${b.code.length}\n`, stderr: '' }) }); }
   if (u.endsWith('/api/lesson')) {
     const res = await lessonApi({ request: new Request(u, { method: 'POST', headers: { 'content-type': 'application/json' }, body: route.request().postData() }), env: apiEnv });
@@ -134,7 +135,7 @@ try {
   ok('IDE: 활동 제목·설명', (await page.textContent('.task h1')) === '인사하기' && (await page.textContent('.task')).includes('이름을 넣어'));
   await page.click('#run');
   await page.waitForFunction(() => /출력:/.test(document.querySelector('#out').textContent));
-  ok('실행 → 결과', runs.length === 1);
+  ok('실행 서버 일시 오류는 저절로 다시 실행', runs.length === 2 && !(await page.textContent('#out')).includes('OCI'));
   await savedText();
   let w = await until(() => read('work/StuA_L1_py1'));
   ok('실행하면 저장도 된다', w?.code?.includes("print('안녕'") && w.runs === 1);
@@ -145,7 +146,7 @@ try {
   await page.click('#run');
   await page.waitForFunction(() => document.querySelector('#out .err'));
   ok('오류는 빨간 글씨로', (await page.textContent('#out')).includes('NameError'));
-  await page.click('.CodeMirror'); await page.keyboard.press('Control+s');
+  await page.click('.cm-content'); await page.keyboard.press('Control+s');
   await page.waitForFunction(() => document.querySelectorAll('#hist [data-v]').length >= 2, null, { timeout: 10000 });
   ok('저장 기록이 보인다', (await page.$$('#hist [data-v]')).length >= 2);
   // 가장 오래된 기록 → 되돌리기
@@ -159,6 +160,12 @@ try {
   ok('되돌리기 → 그 코드로 저장', !!w && !(await page.evaluate(() => kCm.getOption('readOnly'))));
   await page.reload(); await page.waitForFunction(() => window.kCm);
   ok('다시 열면 마지막 코드', (await page.evaluate(() => kCm.getValue())).includes("print('안녕'"));
+  // 한글 입력기 조합(ㅎ→호→홍): 자모가 풀려 들어가면 안 된다
+  await page.click('.cm-content'); await page.keyboard.press('Control+End'); await page.keyboard.press('Enter'); await page.keyboard.type('# ');
+  const cdp = await ctx.newCDPSession(page);
+  for (const w of [['ㅎ', '호', '홍'], ['ㄱ', '기', '길'], ['ㄷ', '도', '동']]) { for (const x of w) { await cdp.send('Input.imeSetComposition', { text: x, selectionStart: x.length, selectionEnd: x.length }); await page.waitForTimeout(40); } await cdp.send('Input.insertText', { text: w[2] }); await page.waitForTimeout(60); }
+  ok('한글 조합 입력 → 홍길동', (await page.evaluate(() => kCm.getValue())).includes('# 홍길동'), JSON.stringify(await page.evaluate(() => kCm.getValue())));
+  await savedText();
   await page.evaluate(() => localStorage.setItem('ohinfo_lang', 'en')); await page.reload(); await page.waitForFunction(() => window.kCm);
   ok('영어: 버튼·제목', (await page.textContent('#run')) === 'Run' && (await page.textContent('.task h1')) === 'Say hello');
   await page.evaluate(() => localStorage.setItem('ohinfo_lang', 'ko'));
