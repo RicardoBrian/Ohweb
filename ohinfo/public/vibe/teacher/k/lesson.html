@@ -6,8 +6,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>차시 문서 · kaká</title>
 <link rel="icon" href="https://kakainfo.com/kaka/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="https://kakainfo.com/kaka/kaka.css">
-<link rel="stylesheet" href="k.css">
+<link rel="stylesheet" href="https://kakainfo.com/kaka/kaka.css?v=1128">
+<link rel="stylesheet" href="k.css?v=1128">
 <script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@2.31.7/dist/editorjs.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@editorjs/header@2.8.9/dist/header.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@editorjs/list@2.0.9/dist/editorjs-list.umd.js"></script>
@@ -45,10 +45,10 @@
 <body>
 <div class="sk-head" aria-hidden="true"><span class="sk" style="width:92px;height:22px"></span><span class="sk" style="width:96px;height:16px"></span></div><main class="k-page" aria-busy="true" aria-label="불러오는 중"><div class="k-page__head"><span class="sk" style="width:150px;height:14px"></span><span class="sk" style="width:240px;height:30px;margin-top:6px"></span></div><div class="row" style="margin-bottom:28px;gap:20px"><span class="sk" style="width:44px;height:16px"></span><span class="sk" style="width:44px;height:16px"></span><span class="sk" style="width:44px;height:16px"></span></div><div style="max-width:720px"><span class="sk sk-line" style="width:70%;max-width:720px"></span><span class="sk sk-line" style="width:92%;max-width:720px"></span><span class="sk sk-line" style="width:85%;max-width:720px"></span><span class="sk sk-line" style="width:40%;max-width:720px"></span><span class="sk sk-line" style="width:0%;height:0;max-width:720px"></span><span class="sk sk-line" style="width:60%;max-width:720px"></span><span class="sk sk-line" style="width:88%;max-width:720px"></span><span class="sk sk-line" style="width:76%;max-width:720px"></span></div></main>
 <script type="module">
-import { $, esc, chip, header, toast, requireAdmin, loadLessons, orderLessons, courseLabel, db, doc, getDoc, addDoc, updateDoc, collection, serverTimestamp } from './k.js';
-import { LANGS, fsEncode, fsDecode, textsOf, withTexts, needsTr, srcKey, localized, renderBlocks, blockHtml, DOC_CSS } from 'https://kakainfo.com/kaka/render.js';
-import { Slide, Callout, Image, Tool, Timer, Note, EDITOR_CSS } from './blocks.js';
-import { icon } from './icons.js';
+import { $, esc, chip, header, toast, requireAdmin, loadLessons, orderLessons, courseLabel, db, doc, getDoc, addDoc, updateDoc, collection, serverTimestamp } from './k.js?v=1128';
+import { LANGS, fsEncode, fsDecode, textsOf, withTexts, needsTr, srcKey, localized, renderBlocks, blockHtml, DOC_CSS } from 'https://kakainfo.com/kaka/render.js?v=1128';
+import { Slide, Callout, Image, Tool, Timer, Note, EDITOR_CSS } from './blocks.js?v=1128';
+import { icon } from './icons.js?v=1128';
 
 await requireAdmin();
 document.head.insertAdjacentHTML('beforeend', `<style>${DOC_CSS}${EDITOR_CSS}</style>`);

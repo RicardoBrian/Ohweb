@@ -6,8 +6,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>과목 · kaká</title>
 <link rel="icon" href="https://kakainfo.com/kaka/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="https://kakainfo.com/kaka/kaka.css">
-<link rel="stylesheet" href="k.css">
+<link rel="stylesheet" href="https://kakainfo.com/kaka/kaka.css?v=1128">
+<link rel="stylesheet" href="k.css?v=1128">
 <style>
   .k-tabs { max-width: 640px; }
   .unit { margin-bottom: var(--space-6); max-width: 640px; }
@@ -29,7 +29,7 @@
 import {
   $, esc, chip, skel, header, toast, dialog, requireAdmin, translateName, loadLessons, orderLessons, newId, nv,
   courseLabel, termLabel, classLabel, db, collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, where, serverTimestamp, writeBatch,
-} from './k.js';
+} from './k.js?v=1128';
 
 await requireAdmin();
 const id = new URLSearchParams(location.search).get('id');

@@ -6,8 +6,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>학생 작업 · kaká</title>
 <link rel="icon" href="https://kakainfo.com/kaka/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="https://kakainfo.com/kaka/kaka.css">
-<link rel="stylesheet" href="k.css">
+<link rel="stylesheet" href="https://kakainfo.com/kaka/kaka.css?v=1128">
+<link rel="stylesheet" href="k.css?v=1128">
 <style>
   .k-page { max-width: 1240px; }
   .bar { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin-bottom: var(--space-5); }
@@ -35,9 +35,9 @@
 <div class="sk-head" aria-hidden="true"><span class="sk" style="width:92px;height:22px"></span><span class="sk" style="width:96px;height:16px"></span></div>
 <main class="k-page" aria-busy="true"><div class="k-page__head"><span class="sk" style="width:150px;height:14px"></span><span class="sk" style="width:240px;height:30px;margin-top:6px"></span></div><div class="sk-list"><div class="sk-item"><span class="sk" style="height:16px"></span></div><div class="sk-item"><span class="sk" style="height:16px"></span></div><div class="sk-item"><span class="sk" style="height:16px"></span></div><div class="sk-item"><span class="sk" style="height:16px"></span></div></div></main>
 <script type="module">
-import { $, esc, nv, header, toast, requireAdmin, loadLessons, orderLessons, courseLabel, classLabel, db, doc, getDoc, getDocs, collection, query, where } from './k.js';
+import { $, esc, nv, header, toast, requireAdmin, loadLessons, orderLessons, courseLabel, classLabel, db, doc, getDoc, getDocs, collection, query, where } from './k.js?v=1128';
 import { onSnapshot } from '/vibe/shared/fake-firebase/firebase-firestore.js';
-import { fsDecode } from 'https://kakainfo.com/kaka/render.js';
+import { fsDecode } from 'https://kakainfo.com/kaka/render.js?v=1128';
 
 await requireAdmin();
 const lessonId = new URLSearchParams(location.search).get('lesson');
