@@ -365,7 +365,8 @@ setuk/{과목ID}_{학생ID}   (선생님만)
 
 ### 8.9 첫 도구: 파이썬 (만들기 5단계, 2026-11-28)
 - 편집기: 도구 블록에서 '파이썬'을 고르면 **처음 코드** 칸이 생긴다(학생이 처음 열 때 들어 있는 코드). 편집기 위쪽 [학생 작업]으로 선생님 화면.
-- 학생: 차시 화면의 파이썬 블록 [열기] → `kakainfo.com/k/py.html?lesson=&block=`. CodeMirror, 실행은 시험과 같은 `/api/run-python`, 입력값(input()) 칸, 4개 언어.
+- 학생: 차시 화면의 파이썬 블록 [열기] → `kakainfo.com/k/py.html?lesson=&block=`. CodeMirror 6(`kaka/vendor/cm-python.js`, 원본 `design/vendor/cm-python.entry.js`), 실행은 시험과 같은 `/api/run-python`, 입력값(input()) 칸, 4개 언어.
+  - CodeMirror 5는 맥에서 한글이 ㅎㅗㅇ처럼 풀려 들어가서 6으로 바꿨다(2026-11-28). 실행 서버 일시 오류(`OCI runtime … Resource temporarily unavailable`)는 화면에서 두 번까지 저절로 다시 실행.
   - 저장: 고치고 2초 쉬면 자동, [저장]·Ctrl+S, 실행할 때. **학생 노트북이 아니라 학생 계정(서버)에 저장** — 어느 컴퓨터에서 로그인해도 이어서 한다.
   - 저장 기록: [저장]·실행·자동(3분에 한 번)마다 남는다(같은 코드면 안 남김). 눌러서 예전 코드 보기 → [이 코드로 되돌리기].
 - 서버: `/api/lesson`의 `work-open`·`work-save`·`work-version`. 열 수 있는 차시의 파이썬 블록만, 코드 2만 자까지, 남의 기록은 못 받음.
