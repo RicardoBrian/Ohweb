@@ -102,7 +102,7 @@ const editor = new EditorJS({
     header: { class: Header, inlineToolbar: true, config: { levels: [1, 2, 3], defaultLevel: 2 } },
     list: { class: EditorjsList, inlineToolbar: true, config: { defaultStyle: 'unordered' } },
     callout: { class: Callout, inlineToolbar: true }, image: { class: Image, inlineToolbar: true },
-    tool: Tool, slide: Slide, timer: Timer, note: { class: Note, inlineToolbar: true },
+    tool: { class: Tool, config: { course } }, slide: Slide, timer: Timer, note: { class: Note, inlineToolbar: true },
     code: CodeTool, table: { class: Table, inlineToolbar: true }, marker: Marker, inlineCode: InlineCode,
   },
   onChange: () => { dirty(); clearTimeout(saveT); saveT = setTimeout(save, 1500); },

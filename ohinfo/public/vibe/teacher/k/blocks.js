@@ -63,7 +63,7 @@ export class Tool {
   static get toolbox() { return { title: '도구', icon: icon('tool') }; }
   static get isReadOnlySupported() { return true; }
   static get enableLineBreaks() { return true; }
-  constructor({ data, block }) { this.block = block; this.data = { tool: data.tool || 'scratch', title: data.title || '', desc: data.desc || '', starter: data.starter || '', starterId: data.starterId || '', starterName: data.starterName || '' }; }
+  constructor({ data, block, config }) { this.block = block; this.course = config?.course || null; this.data = { tool: data.tool || 'scratch', title: data.title || '', desc: data.desc || '', starter: data.starter || '', starterId: data.starterId || '', starterName: data.starterName || '', boards: data.boards || {} }; }
   render() {
     const w = el('div', 'kb-tool k-tool');
     const head = el('div', 'k-tool__head');
@@ -97,22 +97,54 @@ export class Tool {
       } catch (e) { paintSb('올리지 못했습니다: ' + e.message); }
     });
     paintSb();
+    // 게시판: 반마다 ohdlet 게시판(classes)을 고르거나 비운다. 비운 반 학생에게는 이 블록이 안 보인다.
+    const bd = el('div', 'kb-tool__boards');
+    bd.style.cssText = 'display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 12px;align-items:center';
+    let boardList = null;
+    const nv = v => String(v ?? '').replace(/학년|반/g, '').trim();
+    const paintBoards = async () => {
+      const c = this.course, classes = (c?.classes || []).map(nv);
+      if (!classes.length) { bd.innerHTML = '<span class="k-hint" style="grid-column:1/-1;margin:0">과목에 반이 없습니다. 과목 설정에서 반을 넣으세요.</span>'; return; }
+      if (!boardList) {
+        bd.innerHTML = '<span class="k-hint" style="grid-column:1/-1;margin:0">게시판 목록을 불러오는 중…</span>';
+        const { db, collection, getDocs } = await import('./k.js?v=1128');
+        boardList = (await getDocs(collection(db, 'classes'))).docs.map(d => d.data())
+          .filter(x => x.status === 'ON' && (x.schoolName || '관산중학교') === (c.schoolName || '관산중학교') && (!x.grade || nv(x.grade) === nv(c.grade)))
+          .map(x => ({ name: x.name || '', school: x.schoolName || '', grade: x.grade || '', group: x.group || '' }))
+          .sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+      }
+      const key = x => JSON.stringify([x.name, x.school, x.grade, x.group]);
+      bd.replaceChildren();
+      for (const cls of classes) {
+        const fit = boardList.filter(x => !x.group || nv(x.group) === cls);
+        const cur = this.data.boards[cls];
+        const lab = el('label', 'k-label', `${cls}반`); lab.style.margin = '0';
+        const s2 = el('select', 'k-input'); s2.dataset.cls = cls; lab.htmlFor = s2.id = `kb-board-${this.block?.id || ''}-${cls}`;
+        s2.innerHTML = '<option value="">비움(이 반에는 안 보임)</option>' + fit.map(x => `<option value="${encodeURIComponent(key(x))}" ${cur && key(cur) === key(x) ? 'selected' : ''}>${x.name.replace(/[<&]/g, '')}${x.group ? '' : x.grade ? ' · 학년 전체' : ' · 학교 전체'}</option>`).join('');
+        s2.addEventListener('change', () => { const x = fit.find(y => encodeURIComponent(key(y)) === s2.value); if (x) this.data.boards[cls] = x; else delete this.data.boards[cls]; });
+        bd.append(lab, s2);
+      }
+    };
     const hint = el('p', 'k-hint'); hint.style.margin = '0';
     const sync = () => {
-      const py = sel.value === 'python', sc = sel.value === 'scratch';
-      starter.hidden = !py; sb.hidden = !sc;
+      const py = sel.value === 'python', sc = sel.value === 'scratch', bo = sel.value === 'board';
+      // .row·grid 의 display 가 hidden 속성을 이기므로 style 로 숨긴다
+      starter.hidden = !py; sb.style.display = sc ? '' : 'none'; bd.style.display = bo ? 'grid' : 'none';
+      if (bo) paintBoards().catch(e => { bd.textContent = '게시판 목록을 불러오지 못했습니다: ' + e.message; });
       hint.innerHTML = py ? '학생은 차시 화면에서 [열기] → 코드를 쓰고 실행합니다. 학생 계정에 자동 저장됩니다.'
         : sc ? '학생은 [열기] → 사이트 안 스크래치에서 만들고, 학생 계정에 자동 저장됩니다.'
+        : bo ? '학생은 [열기] → 우리 반 게시판(ohdlet)으로 바로 갑니다.'
         : '이 도구 연결은 다음 단계에서 붙입니다.';
     };
     sel.addEventListener('change', sync); sync();
-    w.append(head, title, this.desc, starter, sb, file, hint);
+    w.append(head, title, this.desc, starter, sb, file, bd, hint);
     Object.assign(this, { sel, title, starter });
     return watch(this, w);
   }
   save() {
-    const py = this.sel.value === 'python', sc = this.sel.value === 'scratch';
+    const py = this.sel.value === 'python', sc = this.sel.value === 'scratch', bo = this.sel.value === 'board';
     return { tool: this.sel.value, title: this.title.value.trim(), desc: this.desc.innerHTML, ...(py ? { starter: this.starter.value } : {}),
+      ...(bo ? { boards: { ...this.data.boards } } : {}),
       ...(sc && this.data.starterId ? { starterId: this.data.starterId, starterName: this.data.starterName } : {}) };
   }
 }
