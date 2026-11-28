@@ -35,5 +35,20 @@
   테스트가 실패하면 합치지 않고 실패 내용을 보고한다.
 - 새 플랫폼 kaká(`ohweb/public/k/`, `ohinfo/public/k/`, `ohinfo/public/kaka/`)를 고치면 배포가 끝난 뒤 `ohweb-rules-test` 에서 `npm run smoke:kaka` 로 **실제 배포된 파일**을 열어 본다(로그인·DB만 에뮬레이터). 로컬 e2e 통과만으로 끝났다고 하지 않는다.
 - ohlog 를 고치면 `ohweb-rules-test` 에서 `npm run test:classlog` 를 통과시킨 뒤 위 순서대로 main 에 합친다.
-- Firestore 규칙(`ohweb-firestore.rules`)은 자동 배포되지 않는다. 고치면 `npm run test:rules` 통과 후, Firebase 콘솔에 붙여넣어 게시해야 한다고 사용자에게 알린다.
+- Firestore 규칙(`ohweb-firestore.rules`)은 자동 배포되지 않는다. 고치면 `npm run test:rules` 통과 후 `tools/dev/deploy-rules.sh` 로 직접 배포한다(운영이 main 과 다르면 멈춘다).
 - 사용자에게는 한국어로, 짧게, 무엇을 바꿨고 무엇을 확인했는지(확인 못 한 것도) 말한다.
+
+## 빠르게 일하기 (토큰 아끼기)
+같은 긴 명령을 매번 새로 쓰지 말고 아래 스크립트를 쓴다. 출력은 결과 한두 줄만 나오게 되어 있다.
+| 할 일 | 명령 |
+|---|---|
+| 작업 폴더 만들기(사용자 작업과 분리) | `d=$(tools/dev/wt.sh 브랜치이름)` → 끝나면 `tools/dev/wt.sh --rm 브랜치이름` |
+| kaká 테스트 전부 | `cd ohweb-rules-test && npm run -s test:kaka-all` (실패한 줄만 자세히) |
+| 커밋·PR·합치기 | 내 파일만 `git add` → `tools/dev/ship.sh "제목" "본문"` |
+| 배포 확인 | `tools/dev/wait-deploy.sh 주소 찾을글자 [초]` (기본 150초, .html 주소도 됨) |
+| 배포 후 실제 사이트 점검(kaká) | `npm run smoke:kaka` |
+| 규칙 배포 | `tools/dev/deploy-rules.sh` (`--check` 는 비교만) |
+
+- **화면 확인 스크린샷은 비싸다.** 바뀐 부분만 잘라서(clip), deviceScaleFactor 1 로 찍는다. 전체 화면·2배 해상도는 사용자에게 보여 줄 때만.
+- 테스트·빌드 출력은 `grep`/`tail` 로 결과 줄만 본다. 큰 파일은 필요한 줄만 읽는다(`grep -n` → `sed -n`).
+- 확인을 위해 같은 파일을 다시 읽지 않는다(고친 직후 Read 금지).
