@@ -62,7 +62,8 @@ export class Image {
 export class Tool {
   static get toolbox() { return { title: '도구', icon: icon('tool') }; }
   static get isReadOnlySupported() { return true; }
-  constructor({ data, block }) { this.block = block; this.data = { tool: data.tool || 'scratch', title: data.title || '', desc: data.desc || '' }; }
+  static get enableLineBreaks() { return true; }
+  constructor({ data, block }) { this.block = block; this.data = { tool: data.tool || 'scratch', title: data.title || '', desc: data.desc || '', starter: data.starter || '' }; }
   render() {
     const w = el('div', 'kb-tool k-tool');
     const head = el('div', 'k-tool__head');
@@ -71,12 +72,18 @@ export class Tool {
     const title = el('input', 'k-input'); title.placeholder = '할 일 이름(예: 별 그리기)'; title.value = this.data.title;
     head.append(sel);
     this.desc = editable('k-tool__desc kb-tool__desc', this.data.desc, '학생에게 보일 설명');
-    const hint = el('p', 'k-hint', '도구 연결(열기·저장·제출)은 다음 단계에서 붙입니다.'); hint.style.margin = '0';
-    w.append(head, title, this.desc, hint);
-    Object.assign(this, { sel, title });
+    // 파이썬: 학생이 처음 열 때 들어 있을 코드. 학생 작업은 학생 계정에 저장되고 '학생 작업'에서 본다.
+    const starter = el('textarea', 'k-textarea kb-tool__starter'); starter.placeholder = '처음 코드(비워도 됨)'; starter.value = this.data.starter; starter.spellcheck = false;
+    starter.style.cssText = 'font:400 14px/22px var(--font-mono);min-height:88px';
+    starter.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Tab') { e.preventDefault(); starter.setRangeText('    ', starter.selectionStart, starter.selectionEnd, 'end'); this.block?.dispatchChange(); } });
+    const hint = el('p', 'k-hint'); hint.style.margin = '0';
+    const sync = () => { const py = sel.value === 'python'; starter.hidden = !py; hint.textContent = py ? '학생은 차시 화면에서 [열기] → 코드를 쓰고 실행합니다. 학생 계정에 자동 저장됩니다.' : '이 도구 연결은 다음 단계에서 붙입니다.'; };
+    sel.addEventListener('change', sync); sync();
+    w.append(head, title, this.desc, starter, hint);
+    Object.assign(this, { sel, title, starter });
     return watch(this, w);
   }
-  save() { return { tool: this.sel.value, title: this.title.value.trim(), desc: this.desc.innerHTML }; }
+  save() { const py = this.sel.value === 'python'; return { tool: this.sel.value, title: this.title.value.trim(), desc: this.desc.innerHTML, ...(py ? { starter: this.starter.value } : {}) }; }
 }
 
 export class Timer {
