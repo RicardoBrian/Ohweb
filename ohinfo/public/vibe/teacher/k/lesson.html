@@ -30,7 +30,16 @@
   .save { font: 400 13px/20px var(--font-sans); color: var(--ink-2); margin-left: var(--space-3); }
   .save.is-dirty { color: var(--warn); }
   #editor { padding-left: 60px; margin-left: -60px; }
-  .tr-row { max-width: 760px; display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 380px); gap: var(--space-5); padding: var(--space-4) 0; border-bottom: 1px solid var(--line); }
+  /* 넓은 화면: 편집기 오른쪽에 학생 화면 미리 보기(저장할 때마다 바뀜) */
+  .ed-wrap { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .live { display: none; }
+  @media (min-width: 1280px) {
+    .ed-wrap { grid-template-columns: minmax(0, 780px) minmax(0, 1fr); column-gap: var(--space-7); }
+    .live { display: block; position: sticky; top: 0; align-self: start; max-height: 100vh; overflow: auto; padding: var(--space-2) 0 var(--space-6) var(--space-6); border-left: 1px solid var(--line); box-sizing: border-box; }
+    .live[hidden] { display: none; }
+  }
+  .live__label { font: 500 13px/18px var(--font-sans); color: var(--ink-3); margin: 0 0 var(--space-4); }
+  .tr-row { max-width: 1280px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-5); padding: var(--space-4) 0; border-bottom: 1px solid var(--line); }
   .tr-src { font-size: 15px; line-height: 24px; color: var(--ink-2); }
   .tr-src .kd { font-size: 15px; line-height: 24px; color: var(--ink-2); }
   .tr-src .kd > * { margin: 0 0 6px; }
@@ -78,9 +87,9 @@ document.body.innerHTML = header('course') + `<main class="k-page">
     <h1 class="t-display">${no}차시 ${esc(lesson.name)}</h1></div>
   <div class="bar"><div class="k-tabs" role="tablist">${[['edit', '편집'], ['tr', '번역'], ['view', '미리 보기']].map(([k, n]) => `<button class="k-tab" role="tab" data-mode="${k}" aria-selected="${k === mode}">${n}</button>`).join('')}</div>
     <button class="k-btn k-btn--sm" id="tr-all">세 언어 번역</button><button class="k-ibtn" id="present" aria-label="발표" data-tip="발표">${icon('present')}</button><a class="k-ibtn" href="work.html?lesson=${lessonId}" aria-label="학생 작업" data-tip="학생 작업">${icon('users')}</a><span class="save" id="save" aria-live="polite"></span></div>
-  <div class="palette" id="palette" role="toolbar" aria-label="블록 넣기">${PALETTE.map(([t, n], i) => `<button class="pal" data-ins="${i}" aria-label="${n} 넣기" data-tip="${n}">${icon(t)}</button>`).join('')}</div>
+  <div class="ed-wrap"><div><div class="palette" id="palette" role="toolbar" aria-label="블록 넣기">${PALETTE.map(([t, n], i) => `<button class="pal" data-ins="${i}" aria-label="${n} 넣기" data-tip="${n}">${icon(t)}</button>`).join('')}</div>
   <p class="k-hint palette__hint" id="palette-hint">글자를 드래그해서 고르면 굵게·기울임·링크·형광을 고를 수 있습니다. 빈 줄에서 / 를 쳐도 넣을 블록 목록이 열립니다.</p>
-  <div id="editor"></div><div id="pane" hidden></div></main>`;
+  <div id="editor"></div></div><aside class="live" id="live" aria-label="학생 화면 미리 보기"></aside></div><div id="pane" hidden></div></main>`;
 
 // ── 편집기 ──
 const editor = new EditorJS({
@@ -98,7 +107,7 @@ const editor = new EditorJS({
   },
   onChange: () => { dirty(); clearTimeout(saveT); saveT = setTimeout(save, 1500); },
 });
-window.kEditor = editor;
+window.kEditor = editor; paintLive();
 await editor.isReady;
 
 let saveT, saving = null, isDirty = false;
@@ -118,7 +127,7 @@ async function save() {
         lesson.docId = r.id;
         await updateDoc(doc(db, 'course_lessons', lessonId), { docId: r.id, updatedAt: serverTimestamp() });
       } else await updateDoc(doc(db, 'docs', lesson.docId), { blocks: fsEncode(blocks), updatedAt: serverTimestamp() });
-      cur.blocks = blocks; paintTrBtn();
+      cur.blocks = blocks; paintTrBtn(); paintLive();
       status('저장됨 ' + new Date().toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' }));
     } catch (err) { isDirty = true; status('저장하지 못했습니다: ' + (err.code || err.message), true); }
   })();
@@ -165,6 +174,13 @@ async function saveTr(id) {
   eds[0]?.closest('.tr-out')?.querySelector('.k-chip')?.parentElement.remove();
 }
 
+function paintLive() {
+  if (!matchMedia('(min-width: 1280px)').matches) return;
+  $('#live').innerHTML = `<p class="live__label">학생 화면 미리 보기 · 저장할 때마다 바뀝니다</p>
+    <div class="kd" lang="ko">${renderBlocks(localized(cur, 'ko'), { mode: 'read' }) || '<p class="k-muted">아직 내용이 없습니다.</p>'}</div>`;
+}
+matchMedia('(min-width: 1280px)').addEventListener('change', paintLive);
+
 function renderPane(focusId) {
   const pane = $('#pane');
   if (mode === 'tr') {
@@ -204,7 +220,7 @@ async function setMode(m) {
   if (m !== 'edit' && !lesson.docId) return toast('먼저 글을 쓰세요.');
   mode = m;
   document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-selected', b.dataset.mode === m));
-  $('#editor').hidden = $('#palette').hidden = $('#palette-hint').hidden = m !== 'edit'; $('#pane').hidden = m === 'edit';
+  $('#editor').hidden = $('#palette').hidden = $('#palette-hint').hidden = $('#live').hidden = m !== 'edit'; $('#pane').hidden = m === 'edit';
   renderPane();
 }
 

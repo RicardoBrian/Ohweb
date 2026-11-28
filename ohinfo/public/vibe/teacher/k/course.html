@@ -10,7 +10,17 @@
 <link rel="stylesheet" href="k.css?v=1128">
 <style>
   .k-tabs { max-width: 640px; }
-  .unit { margin-bottom: var(--space-6); max-width: 640px; }
+  .unit { margin-bottom: var(--space-6); max-width: 1280px; }
+  /* 차시 줄: 좁으면 공개 단추가 아래로, 넓으면 한 줄(반 단추가 열처럼 줄 맞춤) */
+  .unit .k-lessons { max-width: none; gap: 0; }
+  .lrow { display: grid; grid-template-columns: 56px minmax(0, 1fr); column-gap: var(--space-3); align-items: start; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .lrow .opens, .lrow .lmove { grid-column: 2; }
+  .lmove { display: flex; }
+  @media (min-width: 900px) {
+    .lrow { grid-template-columns: 56px minmax(0, 1fr) auto auto; align-items: center; }
+    .lrow .opens, .lrow .lmove { grid-column: auto; margin-top: 0; }
+    .lrow .opens .k-btn { min-width: 76px; justify-content: center; }
+  }
   .unit__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); margin-bottom: var(--space-2); }
   .unit__head h2 { margin: 0 var(--space-2) 0 0; }
   .k-lesson { align-items: start; }
@@ -62,15 +72,14 @@ function render() {
 
 // ── 수업 탭: 단원 → 차시, 차시마다 반별 공개 ──
 function vLessons() {
-  const lessonRow = l => `<li><div class="k-lesson"><span class="k-lesson__no">${l.no}차시</span><span>
+  const lessonRow = l => `<li class="lrow"><span class="k-lesson__no">${l.no}차시</span><span>
     <span class="k-lesson__head"><a class="k-lesson__title" href="lesson.html?id=${l.id}">${esc(l.name)}</a>${l.docId ? '' : chip('', '문서 없음')}<button class="k-btn k-btn--sm k-btn--ghost" data-edit="${l.id}">이름·성취기준</button></span>
-    ${l.standards?.length ? `<span class="k-lesson__meta">${l.standards.map(esc).join(', ')}</span>` : ''}
+    ${l.standards?.length ? `<span class="k-lesson__meta" style="display:block">${l.standards.map(esc).join(', ')}</span>` : ''}</span>
     <span class="opens" role="group" aria-label="${l.no}차시 공개할 반">${course.classes.map(c => {
       const on = (l.openTo || []).includes(c);
       return `<button class="k-btn k-btn--sm" aria-pressed="${on}" data-toggle="${l.id}" data-cls="${esc(c)}">${classLabel(c)} ${on ? '공개' : '닫힘'}</button>`;
-    }).join('')}
-    <button class="k-btn k-btn--sm k-btn--ghost move" data-lmove="${l.id}" data-d="-1" aria-label="위로">↑</button><button class="k-btn k-btn--sm k-btn--ghost move" data-lmove="${l.id}" data-d="1" aria-label="아래로">↓</button></span>
-  </span></div></li>`;
+    }).join('')}</span>
+    <span class="lmove"><button class="k-btn k-btn--sm k-btn--ghost move" data-lmove="${l.id}" data-d="-1" aria-label="위로">↑</button><button class="k-btn k-btn--sm k-btn--ghost move" data-lmove="${l.id}" data-d="1" aria-label="아래로">↓</button></span></li>`;
   const units = course.units.map((u, i) => {
     const ls = lessons.filter(l => l.unitId === u.id);
     return `<section class="unit"><div class="unit__head"><h2 class="t-heading">${i + 1}. ${esc(u.name)}</h2>

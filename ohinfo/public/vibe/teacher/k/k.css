@@ -2,3 +2,9 @@
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 
 @media (max-width: 600px) { .k-header .k-btn--ghost { display: none; } }
+
+/* 선생님 화면은 넓게 쓴다(학생 읽기 화면만 좁게) */
+.k-page { max-width: 1600px; }
+.k-section--wide { max-width: none; }
+.k-cards--sm { grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
+.k-cards--sm .k-card { gap: 2px; padding: var(--space-3) var(--space-4); }
