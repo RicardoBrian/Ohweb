@@ -1,17 +1,4 @@
 /* kaká 선생님 화면 공통 덧붙임 — kaka.css 위에. */
 .row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 
-/* 로고 커서: 터미널처럼 계속 깜빡인다. 움직임 줄이기 설정이면 멈춘다. */
-.k-cursor { animation: k-blink 1.1s steps(1) infinite; }
-@keyframes k-blink { 50% { opacity: 0; } }
-
-/* 스켈레톤: 불러오는 동안 화면 모양을 미리 보여 준다 */
-.sk { display: block; background: var(--line); border-radius: var(--radius-sm); animation: k-pulse 1.4s ease-in-out infinite; }
-@keyframes k-pulse { 50% { opacity: .55; } }
-.sk-line { height: 14px; margin: 10px 0; }
-.sk-head { height: var(--header-h); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: var(--space-5); padding: 0 var(--space-5); background: var(--surface); }
-.sk-list { display: grid; gap: var(--space-4); max-width: 640px; }
-.sk-item { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: var(--space-3); }
-
-@media (prefers-reduced-motion: reduce) { .k-cursor, .sk { animation: none; } }
 @media (max-width: 600px) { .k-header .k-btn--ghost { display: none; } }

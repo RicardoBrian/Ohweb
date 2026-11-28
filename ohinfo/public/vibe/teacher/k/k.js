@@ -15,7 +15,7 @@ export const nv = v => String(v ?? '').replace(/학년|반/g, '').trim();
 // 화면 안에서 불러올 때 쓰는 스켈레톤 줄
 export const skel = (n = 4) => `<div class="sk-list" aria-busy="true">${'<div class="sk-item"><span class="sk" style="height:14px;margin-top:4px"></span><div><span class="sk" style="width:55%;height:18px"></span><span class="sk" style="width:35%;height:12px;margin-top:8px"></span></div></div>'.repeat(n)}</div>`;
 export const chip = (cls, text) => `<span class="k-chip ${cls ? 'k-chip--' + cls : ''}">${esc(text)}</span>`;
-import { LOGO_SVG } from './logo.js';
+import { LOGO_SVG } from 'https://kakainfo.com/kaka/logo.js';
 
 // 로그인: 선생님 계정이 아니면 로그인 버튼만 보여 주고 멈춘다.
 export function requireAdmin() {
