@@ -104,6 +104,7 @@ try {
   await page.keyboard.press('Backspace');
   d = await until(async () => { const x = (await docsAll())[0]; return x.blocks.length === 9 && x; }, 10000);
   ok('블록 8개(표 포함)가 저장된다', !!d, d ? '' : JSON.stringify((await docsAll())[0].blocks.map(b => b.type)));
+  await page.hover('#palette [data-ins="3"]'); await page.waitForTimeout(200);
   if (SHOT) await page.screenshot({ path: SHOT + '/doc-edit.png', fullPage: true });
 
   ok('세 언어 번역 단추에 남은 블록 수', (await page.textContent('#tr-all')) === '세 언어 번역 (7개)', await page.textContent('#tr-all'));
@@ -140,7 +141,7 @@ try {
 
   await page.click('[data-mode="edit"]');
   await page.click('.ce-paragraph >> nth=0');
-  await page.click('#palette button:has-text("안내 상자")');
+  await page.click('#palette [aria-label="안내 상자 넣기"]');
   await page.keyboard.type('막대로 넣은 안내');
   const inserted = await until(async () => { const x = (await docsAll())[0]; const i = x.blocks.findIndex(b => b.type === 'callout' && b.data.text.includes('막대로')); return i === 1 ? x : null; }, 10000);
   ok('막대로 블록 넣기: 지금 줄 바로 다음에 들어가고 저장된다', !!inserted, JSON.stringify((await docsAll())[0].blocks.map(b => b.type)));
