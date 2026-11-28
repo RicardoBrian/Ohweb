@@ -167,7 +167,7 @@ try {
   ok('한글 조합 입력 → 홍길동', (await page.evaluate(() => kCm.getValue())).includes('# 홍길동'), JSON.stringify(await page.evaluate(() => kCm.getValue())));
   await savedText();
   await page.evaluate(() => localStorage.setItem('ohinfo_lang', 'en')); await page.reload(); await page.waitForFunction(() => window.kCm);
-  ok('영어: 버튼·제목', (await page.textContent('#run')) === 'Run' && (await page.textContent('.task h1')) === 'Say hello');
+  ok('영어: 버튼·제목', (await page.getAttribute('#run', 'aria-label')) === 'Run' && (await page.textContent('.task h1')) === 'Say hello');
   await page.evaluate(() => localStorage.setItem('ohinfo_lang', 'ko'));
   await page.goto('http://localhost:8099/k/py.html?lesson=L2&block=py2');
   await page.waitForSelector('.k-callout');
@@ -177,7 +177,7 @@ try {
   const tp = await ctx.newPage(); watchErr(tp, '선생님: ');
   await tp.goto('http://localhost:8098/k/work.html?lesson=L1');
   await tp.waitForFunction(() => document.querySelectorAll('.who button').length === 2, null, { timeout: 15000 });
-  ok('선생님: 반 학생 둘, 저장한 사람 수', (await tp.textContent('.sum')).includes('2명 중 2명'));
+  ok('선생님: 반 학생 둘, 저장한 사람 수', await tp.waitForFunction(() => document.querySelector('.sum')?.textContent.includes('2명 중 2명'), null, { timeout: 8000 }).then(() => true, () => false));
   await tp.click('[data-stu="StuA"]');
   await tp.waitForFunction(() => document.querySelectorAll('#hist [data-ver]').length >= 3);
   ok('선생님: 학생 코드와 저장 기록', (await tp.textContent('#view pre')).includes("print('안녕', name)"));

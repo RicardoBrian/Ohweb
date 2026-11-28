@@ -1,7 +1,7 @@
 // 차시 문서 편집기(Editor.js)에 얹는 우리 블록: 슬라이드 나눔, 안내 상자, 그림, 도구, 타이머, 발표자 메모.
 // 저장 형식은 Editor.js 블록 {id, type, data}. 그리는 쪽은 render.js.
 import { TOOLS, driveImg } from 'https://kakainfo.com/kaka/render.js?v=1128';
-import { icon } from './icons.js?v=1128';
+import { icon } from 'https://kakainfo.com/kaka/icons.js?v=1128';
 
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
 // 입력칸 값 변경은 DOM이 안 바뀌어 편집기가 모른다 → 직접 알려야 자동 저장된다.

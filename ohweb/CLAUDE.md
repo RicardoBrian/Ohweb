@@ -7,6 +7,7 @@
 | 파일 | 무엇 |
 |---|---|
 | `public/admin.html` | 메인 관리자 화면 (**4300줄 — 통째로 읽지 말 것**, 아래 구역 지도) |
+| `public/k/` | 새 플랫폼 kaká 선생님 화면(오늘·과목·차시 문서 편집기·발표·학생 작업). 공통 파일(kaka.css·render.js·icons.js·logo.js)은 `ohinfo/public/kaka/` 에서 `https://kakainfo.com/kaka/…` 로 가져온다. 설계 `PLATFORM-DESIGN.md` §8 |
 | `public/admin-auth.js` | 관리자 로그인 확인 |
 | `public/admin-nav.js` | 왼쪽 메뉴·섹션 전환 |
 | `public/admin-rows.js`, `admin-groups.js` | 표 행·반 묶음 그리기 |

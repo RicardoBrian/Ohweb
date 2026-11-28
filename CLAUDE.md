@@ -33,6 +33,7 @@
 - **개발이 끝나면 묻지 말고 바로 main 에 합쳐 배포한다.** 사용자는 개발 과정을 따로 검토하지 않고 늘 바로 배포한다(2026-11-24 사용자 지시).
   순서: 관련 테스트 통과 → 브랜치에 커밋(내가 바꾼 파일만 add, 사용자의 커밋 안 한 작업은 건드리지 않음) → push → PR 생성 → `gh pr merge --squash --delete-branch` → 로컬 main 으로 돌아와 pull.
   테스트가 실패하면 합치지 않고 실패 내용을 보고한다.
+- 새 플랫폼 kaká(`ohweb/public/k/`, `ohinfo/public/k/`, `ohinfo/public/kaka/`)를 고치면 배포가 끝난 뒤 `ohweb-rules-test` 에서 `npm run smoke:kaka` 로 **실제 배포된 파일**을 열어 본다(로그인·DB만 에뮬레이터). 로컬 e2e 통과만으로 끝났다고 하지 않는다.
 - ohlog 를 고치면 `ohweb-rules-test` 에서 `npm run test:classlog` 를 통과시킨 뒤 위 순서대로 main 에 합친다.
 - Firestore 규칙(`ohweb-firestore.rules`)은 자동 배포되지 않는다. 고치면 `npm run test:rules` 통과 후, Firebase 콘솔에 붙여넣어 게시해야 한다고 사용자에게 알린다.
 - 사용자에게는 한국어로, 짧게, 무엇을 바꿨고 무엇을 확인했는지(확인 못 한 것도) 말한다.
