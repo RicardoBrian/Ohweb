@@ -59,7 +59,7 @@ await ctx.route('**/*', route => {
   const u = route.request().url();
   const m = u.match(/^https:\/\/www\.gstatic\.com\/firebasejs\/10\.12\.2\/([A-Za-z0-9_-]+\.js)$/);
   if (m) return route.fulfill({ status: 200, contentType: 'text/javascript', body: readFileSync(path.join(FB, m[1])) });
-  const k = u.match(/^https:\/\/kakainfo\.com\/kaka\/([a-z-]+\.(css|svg|js))$/);
+  const k = u.match(/^https:\/\/kakainfo\.com\/kaka\/([a-z-]+\.(css|svg|js))(?:\?v=\w+)?$/);
   if (k) return route.fulfill({ status: 200, contentType: type(k[1]), body: readFileSync(path.join(KAKA, k[1])) });
   if (u.endsWith('/api/translate')) {
     const { texts, targetLang } = JSON.parse(route.request().postData());
