@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <script src="/vibe/shared/demo.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>발표 · kaká</title>
+<link rel="icon" href="https://kakainfo.com/kaka/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://kakainfo.com/kaka/kaka.css">
+<style>
+  html, body { height: 100%; }
+  body { overflow: hidden; }
+  .stage { height: 100vh; box-sizing: border-box; padding: 6vh 8vw 72px; overflow-y: auto; }
+  .stage .kd { max-width: 1100px; font-size: clamp(20px, 2.1vw, 30px); line-height: 1.6; }
+  .stage .kd-h1 { font-size: 1.9em; line-height: 1.25; } .stage .kd-h2 { font-size: 1.45em; line-height: 1.3; } .stage .kd-h3 { font-size: 1.2em; }
+  .stage .k-callout, .stage .k-tool { max-width: 900px; font-size: inherit; }
+  .stage .k-tool__name, .stage .k-tool__desc { font-size: .9em; line-height: 1.5; }
+  .stage .kd-code pre { font-size: .8em; line-height: 1.5; }
+  .stage .kd-fig img { max-height: 62vh; width: auto; }
+  .foot { position: fixed; left: 0; right: 0; bottom: 0; height: 52px; display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-5);
+    color: var(--ink-3); font: 400 13px/1 var(--font-sans); opacity: .25; transition: opacity .12s ease-out; }
+  .foot:hover, .foot:focus-within { opacity: 1; }
+  .foot .count { font-variant-numeric: tabular-nums; margin-right: var(--space-3); }
+  .foot .k-btn[aria-pressed="true"] { background: var(--surface-2); }
+  .kd-timer { display: flex; align-items: center; gap: 16px; }
+  .kd-timer__btn.is-run { font: 600 1.6em/1 var(--font-sans); height: auto; padding: 10px 18px; font-variant-numeric: tabular-nums; }
+  .kd-timer__btn.is-end { background: var(--warn-soft); color: var(--warn); border-color: var(--warn-soft); }
+  .kd-timer__label { color: var(--ink-2); }
+</style>
+</head>
+<body>
+<p class="k-page k-muted">불러오는 중입니다.</p>
+<script type="module">
+import { $, esc, requireAdmin, db, doc, getDoc } from './k.js';
+import { LANGS, fsDecode, localized, renderBlocks, splitSlides, DOC_CSS } from './render.js';
+
+await requireAdmin();
+document.head.insertAdjacentHTML('beforeend', `<style>${DOC_CSS}</style>`);
+const q = new URLSearchParams(location.search);
+const snap = await getDoc(doc(db, 'docs', q.get('doc') || '-'));
+if (!snap.exists()) { document.body.innerHTML = '<main class="k-page"><p>문서를 찾지 못했습니다.</p></main>'; throw new Error('no doc'); }
+const data = fsDecode(snap.data());
+let lang = LANGS.some(l => l[0] === q.get('lang')) ? q.get('lang') : 'ko';
+let slides = [], i = Math.max(0, Number(location.hash.slice(1)) - 1 || 0), timer = null;
+
+function build() { slides = splitSlides(localized(data, lang)); if (!slides.length) slides = [[]]; i = Math.min(i, slides.length - 1); }
+function show() {
+  clearInterval(timer);
+  document.body.innerHTML = `<main class="stage"><article class="kd" lang="${lang}">${renderBlocks(slides[i], { mode: 'slide' }) || '<p class="k-muted">빈 장입니다.</p>'}</article></main>
+    <div class="foot"><span class="count">${i + 1} / ${slides.length}</span>
+      <button class="k-btn k-btn--sm k-btn--ghost" data-go="-1" aria-label="이전 장">이전</button><button class="k-btn k-btn--sm k-btn--ghost" data-go="1" aria-label="다음 장">다음</button>
+      <span style="width:16px"></span>${LANGS.map(([k, n]) => `<button class="k-btn k-btn--sm k-btn--ghost" data-lang="${k}" aria-pressed="${k === lang}">${n}</button>`).join('')}
+      <span style="width:16px"></span><button class="k-btn k-btn--sm k-btn--ghost" id="fs">전체 화면</button></div>`;
+  history.replaceState(null, '', `?doc=${q.get('doc')}&lang=${lang}#${i + 1}`);
+}
+const go = d => { const n = Math.min(slides.length - 1, Math.max(0, i + d)); if (n !== i) { i = n; show(); } };
+
+addEventListener('keydown', e => {
+  if (['ArrowRight', 'ArrowDown', 'PageDown', ' ', 'Enter'].includes(e.key)) { e.preventDefault(); go(1); }
+  else if (['ArrowLeft', 'ArrowUp', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); go(-1); }
+  else if (e.key === 'Home') { i = 0; show(); } else if (e.key === 'End') { i = slides.length - 1; show(); }
+  else if (e.key === 'f') document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+});
+addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.go) return go(Number(b.dataset.go));
+  if (b.dataset.lang) { lang = b.dataset.lang; build(); return show(); }
+  if (b.id === 'fs') return document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+  if (b.classList.contains('kd-timer__btn')) {
+    clearInterval(timer);
+    let left = Number(b.closest('.kd-timer').dataset.min) * 60;
+    const tick = () => { b.textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`; if (left-- <= 0) { clearInterval(timer); b.textContent = '끝'; b.classList.add('is-end'); } };
+    b.classList.add('is-run'); b.classList.remove('is-end'); tick(); timer = setInterval(tick, 1000);
+  }
+});
+build(); show();
+</script>
+</body>
+</html>

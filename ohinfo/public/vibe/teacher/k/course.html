@@ -14,7 +14,7 @@
   .unit__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); margin-bottom: var(--space-2); }
   .unit__head h2 { margin: 0 var(--space-2) 0 0; }
   .k-lesson { align-items: start; }
-  .k-lesson__title { appearance: none; border: 0; background: none; padding: 0; color: inherit; cursor: pointer; text-align: start; }
+  .k-lesson__title { color: inherit; text-decoration: none; }
   .k-lesson__title:hover { text-decoration: underline; text-underline-offset: 3px; }
   .opens { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); margin-top: 6px; }
   .opens .k-btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent-soft); color: var(--accent-ink); }
@@ -64,7 +64,7 @@ function render() {
 // ── 수업 탭: 단원 → 차시, 차시마다 반별 공개 ──
 function vLessons() {
   const lessonRow = l => `<li><div class="k-lesson"><span class="k-lesson__no">${l.no}차시</span><span>
-    <span class="k-lesson__head"><button class="k-lesson__title" data-edit="${l.id}">${esc(l.name)}</button>${l.docId ? '' : chip('', '문서 없음')}</span>
+    <span class="k-lesson__head"><a class="k-lesson__title" href="lesson.html?id=${l.id}">${esc(l.name)}</a>${l.docId ? '' : chip('', '문서 없음')}<button class="k-btn k-btn--sm k-btn--ghost" data-edit="${l.id}">이름·성취기준</button></span>
     ${l.standards?.length ? `<span class="k-lesson__meta">${l.standards.map(esc).join(', ')}</span>` : ''}
     <span class="opens" role="group" aria-label="${l.no}차시 공개할 반">${course.classes.map(c => {
       const on = (l.openTo || []).includes(c);
