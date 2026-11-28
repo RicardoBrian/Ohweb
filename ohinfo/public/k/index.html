@@ -9,6 +9,7 @@
 <style>
   .k-header { position: sticky; top: 0; z-index: 10; }
   .lang { position: relative; }
+  .k-nav a, .lang > button { white-space: nowrap; }
   .lang .k-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; }
   .page { padding: var(--space-6) var(--space-5) var(--space-7); max-width: var(--reading-w); box-sizing: border-box; }
   .page__head { display: grid; gap: 4px; margin-bottom: var(--space-6); }
@@ -18,6 +19,23 @@
   .k-lesson__title { font-size: 17px; }
   .k-avatar { width: auto; min-width: 32px; padding: 0 10px; border-radius: 999px; box-sizing: border-box; }
   a.k-btn { text-decoration: none; }
+  /* 넓은 화면: 왼쪽에 내 차시 목록, 가운데 본문(읽기 폭 그대로) */
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .side { display: none; }
+  .page--wide { max-width: var(--content-w); }
+  .page--wide .k-lessons { max-width: none; }
+  @media (min-width: 1100px) {
+    .layout { grid-template-columns: 240px minmax(0, var(--reading-w)); column-gap: var(--space-7); justify-content: center; padding: 0 var(--space-5); }
+    .layout > .page { padding-left: 0; padding-right: 0; }
+    .side { display: block; position: sticky; top: var(--header-h); align-self: start; max-height: calc(100vh - var(--header-h)); overflow: auto; padding: var(--space-6) 0; box-sizing: border-box; }
+  }
+  .side__course { font: 600 15px/22px var(--font-sans); margin: 0 0 var(--space-1); }
+  .side__unit { font: 500 13px/18px var(--font-sans); color: var(--ink-3); margin: var(--space-3) 0 2px; }
+  .side ol { list-style: none; margin: 0; padding: 0; }
+  .side a { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 6px; padding: 5px 8px; margin: 0 -8px; border-radius: var(--radius-sm); color: var(--ink-2); text-decoration: none; font: 400 14px/20px var(--font-sans); }
+  .side a:hover { background: var(--surface-2); color: var(--ink); }
+  .side a[aria-current="page"] { background: var(--accent-soft); color: var(--accent-ink); font-weight: 600; }
+  .side .no { color: var(--ink-3); font-variant-numeric: tabular-nums; }
   @media (max-width: 600px) { .k-header { gap: var(--space-3); padding: 0 var(--space-4); } .page { padding: var(--space-5) var(--space-4) var(--space-7); } .k-nav a { padding: 8px 6px; } }
 </style>
 </head>
@@ -58,6 +76,9 @@ const paint = main => { document.body.innerHTML = header() + main; document.docu
 const msg = (title, sub = '') => `<main class="page"><div class="k-callout"><span class="k-callout__label">${esc(title)}</span>${sub ? `<span>${esc(sub)}</span>` : ''}</div></main>`;
 
 // 공개된 차시를 과목 순서대로 한 줄로
+// 넓은 화면 왼쪽 목록(좁은 화면에서는 숨김 — [내 과목]이 같은 일을 한다)
+const side = cur => `<aside class="side" aria-label="${esc(t().list)}">${(today?.courses || []).filter(c => c.lessons.length).map(c => `<p class="side__course">${esc(nm(c))}</p>
+  ${c.units.filter(u => c.lessons.some(l => l.unitId === u.id)).map(u => `<p class="side__unit">${esc(nm(u))}</p><ol>${c.lessons.filter(l => l.unitId === u.id).map(l => `<li><a href="#lesson=${l.id}"${l.id === cur ? ' aria-current="page"' : ''}><span class="no">${l.no}</span><span>${esc(nm(l))}</span></a></li>`).join('')}</ol>`).join('')}`).join('<div style="height:var(--space-5)"></div>')}</aside>`;
 const flat = () => (today?.courses || []).flatMap(c => c.lessons.map(l => ({ ...l, course: c })));
 
 async function showLesson(id) {
@@ -71,10 +92,10 @@ async function showLesson(id) {
   const unit = course.units.find(u => u.id === lesson.unitId);
   const list = flat(), i = list.findIndex(l => l.id === id), prev = list[i - 1], next = list[i + 1];
   const body = renderBlocks(localized(doc, lang), { mode: 'read' });
-  paint(`<main class="page"><div class="page__head"><span class="k-page__eyebrow">${esc(nm(course))}${unit ? ' · ' + esc(nm(unit)) : ''}</span>
+  paint(`<div class="layout">${side(id)}<main class="page"><div class="page__head"><span class="k-page__eyebrow">${esc(nm(course))}${unit ? ' · ' + esc(nm(unit)) : ''}</span>
     <h1 class="t-display" style="margin:0">${esc(t().no(lesson.no))} ${esc(nm(lesson))}</h1></div>
     <article class="kd" lang="${lang}">${body || `<div class="k-callout"><span>${esc(t().empty)}</span></div>`}</article>
-    ${prev || next ? `<nav class="pn">${prev ? `<a class="k-btn k-btn--lg" href="#lesson=${prev.id}">${esc(t().prev)}</a>` : ''}${next ? `<a class="k-btn k-btn--lg" href="#lesson=${next.id}">${esc(t().next)}</a>` : ''}</nav>` : ''}</main>`);
+    ${prev || next ? `<nav class="pn">${prev ? `<a class="k-btn k-btn--lg" href="#lesson=${prev.id}">${esc(t().prev)}</a>` : ''}${next ? `<a class="k-btn k-btn--lg" href="#lesson=${next.id}">${esc(t().next)}</a>` : ''}</nav>` : ''}</main></div>`);
   // 파이썬 도구 블록: [열기] → 코드 쓰는 화면
   document.querySelectorAll('.kd-tool__slot').forEach(s => { s.innerHTML = `<a class="k-btn k-btn--primary" href="/k/py.html?lesson=${encodeURIComponent(id)}&block=${encodeURIComponent(s.dataset.block)}">${esc(t().open)}</a>`; });
 }
@@ -82,11 +103,11 @@ async function showLesson(id) {
 function showList() {
   const cs = today?.courses || [];
   if (!cs.some(c => c.lessons.length)) return paint(msg(t().none, t().noneSub));
-  paint(`<main class="page"><div class="page__head"><h1 class="t-display" style="margin:0">${esc(t().list)}</h1></div>
-    ${cs.filter(c => c.lessons.length).map(c => `<section class="course"><h2 class="t-title" style="margin:0">${esc(nm(c))}</h2>
+  paint(`<main class="page page--wide"><div class="page__head"><h1 class="t-display" style="margin:0">${esc(t().list)}</h1></div>
+    <div class="k-cards">${cs.filter(c => c.lessons.length).map(c => `<section class="k-card"><h2 class="k-card__title">${esc(nm(c))}</h2>
       ${c.units.filter(u => c.lessons.some(l => l.unitId === u.id)).map(u => `<p class="unit-name">${esc(nm(u))}</p>
         <ol class="k-lessons">${c.lessons.filter(l => l.unitId === u.id).map(l => `<li><a class="k-lesson ${l.id === today.current ? 'k-lesson--today' : ''}" href="#lesson=${l.id}"><span class="k-lesson__no">${esc(t().no(l.no))}</span><span><span class="k-lesson__head"><span class="k-lesson__title">${esc(nm(l))}</span>${l.id === today.current ? `<span class="k-chip k-chip--live">${esc(t().now)}</span>` : ''}</span></span></a></li>`).join('')}</ol>`).join('')}
-    </section>`).join('')}</main>`);
+    </section>`).join('')}</div></main>`);
 }
 
 async function route() {

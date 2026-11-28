@@ -42,25 +42,23 @@ function render() {
       const next = nextFor(ls, cls), opened = ls.filter(l => (l.openTo || []).includes(cls));
       const meta = !opened.length ? '아직 공개한 차시가 없습니다'
         : opened.length <= 5 ? `공개함: ${opened.map(l => l.no + '차시').join(', ')}` : `${opened.length}개 공개함, 마지막 ${opened.at(-1).no}차시`;
-      return `<li><div class="k-lesson"><span class="k-lesson__no">${classLabel(cls)}</span><span>
-        <span class="k-lesson__head">${next
-          ? `<span class="k-lesson__title">다음: ${next.no}차시 ${esc(next.name)}</span>`
-          : `<span class="k-lesson__title">${ls.length ? '모든 차시를 공개했습니다' : '차시가 없습니다'}</span>${ls.length ? chip('done', '모두 공개') : ''}`}</span>
+      return `<li class="k-tile"><span class="k-tile__label">${classLabel(cls)}</span>
+        ${next ? `<span class="k-tile__title">다음: ${next.no}차시 ${esc(next.name)}</span>`
+          : `<span class="k-lesson__head"><span class="k-tile__title">${ls.length ? '모든 차시를 공개했습니다' : '차시가 없습니다'}</span>${ls.length ? chip('done', '모두 공개') : ''}</span>`}
         <span class="k-lesson__meta">${meta}</span>
-        ${next ? `<button class="k-btn k-btn--sm" data-open="${c.id}" data-lesson="${next.id}" data-cls="${esc(cls)}">${next.no}차시 공개</button>` : ''}
-      </span></div></li>`;
+        ${next ? `<button class="k-btn k-btn--sm" data-open="${c.id}" data-lesson="${next.id}" data-cls="${esc(cls)}">${next.no}차시 공개</button>` : ''}</li>`;
     }).join('');
-    return `<section class="k-section"><h2 class="k-section__title"><a href="course.html?id=${c.id}" style="color:inherit">${esc(courseLabel(c))}</a></h2>
-      <p class="k-muted t-small" style="margin:0">${esc(termLabel(c))} · ${esc(c.schoolName)} · 차시 ${ls.length}개</p>
-      ${rows ? `<ol class="k-lessons">${rows}</ol>` : '<p class="k-muted" style="margin:0">듣는 반이 없습니다. 과목 설정에서 반을 넣으세요.</p>'}</section>`;
+    return `<section class="k-card"><div><h2 class="k-card__title"><a href="course.html?id=${c.id}">${esc(courseLabel(c))}</a></h2>
+      <p class="k-muted t-small" style="margin:2px 0 0">${esc(termLabel(c))} · ${esc(c.schoolName)} · 차시 ${ls.length}개</p></div>
+      ${rows ? `<ol class="k-tiles">${rows}</ol>` : '<p class="k-muted" style="margin:0">듣는 반이 없습니다. 과목 설정에서 반을 넣으세요.</p>'}</section>`;
   };
   document.body.innerHTML = header('today') + `<main class="k-page">
     <div class="k-page__head"><span class="k-page__eyebrow">${esc(today)}</span><h1 class="t-display">오늘</h1></div>
-    ${active.length ? active.map(courseBlock).join('') : `<div class="k-callout" style="margin-bottom:var(--space-6)"><span class="k-callout__label">아직 과목이 없습니다</span><span>새 과목을 만들고 단원과 차시를 넣으세요.</span></div>`}
-    <section class="k-section" id="courses"><h2 class="k-section__title">과목</h2>
-      ${active.length ? `<ol class="k-lessons">${active.map(c => `<li><a class="k-lesson" href="course.html?id=${c.id}"><span class="k-lesson__no">${c.year}-${c.semester}</span><span>
-        <span class="k-lesson__head"><span class="k-lesson__title">${esc(courseLabel(c))}</span></span>
-        <span class="k-lesson__meta">${esc(c.schoolName)} · ${(c.classes || []).map(classLabel).join(' ') || '반 없음'}</span></span></a></li>`).join('')}</ol>` : ''}
+    ${active.length ? `<div class="k-cards" style="margin-bottom:var(--space-7)">${active.map(courseBlock).join('')}</div>` : `<div class="k-callout" style="margin-bottom:var(--space-6)"><span class="k-callout__label">아직 과목이 없습니다</span><span>새 과목을 만들고 단원과 차시를 넣으세요.</span></div>`}
+    <section class="k-section k-section--wide" id="courses"><h2 class="k-section__title">과목</h2>
+      ${active.length ? `<div class="k-cards k-cards--sm">${active.map(c => `<a class="k-card" href="course.html?id=${c.id}"><span class="k-lesson__no">${c.year}학년도 ${c.semester}학기</span>
+        <span class="k-lesson__title">${esc(courseLabel(c))}</span>
+        <span class="k-lesson__meta">${esc(c.schoolName)} · ${(c.classes || []).map(classLabel).join(' ') || '반 없음'}</span></a>`).join('')}</div>` : ''}
       <div class="row"><button class="k-btn" id="new-course">새 과목</button></div>
       ${old.length ? `<details><summary>지난 과목 ${old.length}개</summary><ol class="k-lessons">${old.map(c => `<li><a class="k-lesson k-lesson--done" href="course.html?id=${c.id}"><span class="k-lesson__no">${c.year}-${c.semester}</span><span><span class="k-lesson__head"><span class="k-lesson__title">${esc(courseLabel(c))}</span></span><span class="k-lesson__meta">${esc(c.schoolName)}</span></span></a></li>`).join('')}</ol></details>` : ''}
     </section></main>`;
