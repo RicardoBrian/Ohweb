@@ -23,7 +23,6 @@
   .layout { display: grid; grid-template-columns: minmax(0, 1fr); }
   .side { display: none; }
   .page--wide { max-width: var(--content-w); }
-  .page--wide .k-lessons { max-width: none; }
   @media (min-width: 1100px) {
     .layout { grid-template-columns: 240px minmax(0, var(--reading-w)); column-gap: var(--space-7); justify-content: center; padding: 0 var(--space-5); }
     .layout > .page { padding-left: 0; padding-right: 0; }
@@ -104,7 +103,7 @@ function showList() {
   const cs = today?.courses || [];
   if (!cs.some(c => c.lessons.length)) return paint(msg(t().none, t().noneSub));
   paint(`<main class="page page--wide"><div class="page__head"><h1 class="t-display" style="margin:0">${esc(t().list)}</h1></div>
-    <div class="k-cards">${cs.filter(c => c.lessons.length).map(c => `<section class="k-card"><h2 class="k-card__title">${esc(nm(c))}</h2>
+    <div class="k-columns">${cs.filter(c => c.lessons.length).map(c => `<section class="course"><h2 class="t-title" style="margin:0">${esc(nm(c))}</h2>
       ${c.units.filter(u => c.lessons.some(l => l.unitId === u.id)).map(u => `<p class="unit-name">${esc(nm(u))}</p>
         <ol class="k-lessons">${c.lessons.filter(l => l.unitId === u.id).map(l => `<li><a class="k-lesson ${l.id === today.current ? 'k-lesson--today' : ''}" href="#lesson=${l.id}"><span class="k-lesson__no">${esc(t().no(l.no))}</span><span><span class="k-lesson__head"><span class="k-lesson__title">${esc(nm(l))}</span>${l.id === today.current ? `<span class="k-chip k-chip--live">${esc(t().now)}</span>` : ''}</span></span></a></li>`).join('')}</ol>`).join('')}
     </section>`).join('')}</div></main>`);
