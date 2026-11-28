@@ -12,8 +12,10 @@ const ADMIN_EMAIL = 'qjatjr7575@gmail.com';
 export const $ = (s, el = document) => el.querySelector(s);
 export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export const nv = v => String(v ?? '').replace(/학년|반/g, '').trim();
+// 화면 안에서 불러올 때 쓰는 스켈레톤 줄
+export const skel = (n = 4) => `<div class="sk-list" aria-busy="true">${'<div class="sk-item"><span class="sk" style="height:14px;margin-top:4px"></span><div><span class="sk" style="width:55%;height:18px"></span><span class="sk" style="width:35%;height:12px;margin-top:8px"></span></div></div>'.repeat(n)}</div>`;
 export const chip = (cls, text) => `<span class="k-chip ${cls ? 'k-chip--' + cls : ''}">${esc(text)}</span>`;
-const LOGO = 'https://kakainfo.com/kaka/';
+import { LOGO_SVG } from './logo.js';
 
 // 로그인: 선생님 계정이 아니면 로그인 버튼만 보여 주고 멈춘다.
 export function requireAdmin() {
@@ -31,7 +33,7 @@ export function requireAdmin() {
 export function header(current) {
   const nav = [['index.html', 'today', '오늘'], ['index.html#courses', 'course', '과목']]
     .map(([h, k, n]) => `<a href="${h}" ${current === k ? 'aria-current="page"' : ''}>${n}</a>`).join('');
-  return `<header class="k-header"><a class="k-logo" href="index.html" aria-label="kaká"><img class="is-light" src="${LOGO}logo-light.svg" alt="kaká"><img class="is-dark" src="${LOGO}logo-dark.svg" alt="kaká"></a>
+  return `<header class="k-header"><a class="k-logo" href="index.html" aria-label="kaká 오늘">${LOGO_SVG}</a>
   <nav class="k-nav">${nav}</nav><div class="k-header__end"><a class="k-btn k-btn--ghost k-btn--sm" href="../admin.html">지금 관리자 화면</a><span class="k-avatar" aria-label="오범석">오</span></div></header>`;
 }
 

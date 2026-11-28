@@ -6,9 +6,9 @@
 <title>과목 · kaká</title>
 <link rel="icon" href="https://kakainfo.com/kaka/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://kakainfo.com/kaka/kaka.css">
+<link rel="stylesheet" href="k.css">
 <style>
   .k-tabs { max-width: 640px; }
-  .row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
   .unit { margin-bottom: var(--space-6); max-width: 640px; }
   .unit__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); margin-bottom: var(--space-2); }
   .unit__head h2 { margin: 0 var(--space-2) 0 0; }
@@ -20,14 +20,13 @@
   .move { color: var(--ink-3); min-width: 28px; padding: 0 6px; }
   .form { display: grid; gap: var(--space-4); max-width: 480px; margin-bottom: var(--space-6); }
   .k-dialog .chk { display: flex; gap: var(--space-2); align-items: center; color: var(--danger); font: 500 14px/20px var(--font-sans); }
-  @media (max-width: 600px) { .k-header .k-btn--ghost { display: none; } }
 </style>
 </head>
 <body>
-<p class="k-page k-muted">불러오는 중입니다.</p>
+<div class="sk-head" aria-hidden="true"><span class="sk" style="width:92px;height:22px"></span><span class="sk" style="width:96px;height:16px"></span></div><main class="k-page" aria-busy="true" aria-label="불러오는 중"><div class="k-page__head"><span class="sk" style="width:150px;height:14px"></span><span class="sk" style="width:240px;height:30px;margin-top:6px"></span></div><div class="row" style="margin-bottom:28px;gap:20px"><span class="sk" style="width:44px;height:16px"></span><span class="sk" style="width:44px;height:16px"></span><span class="sk" style="width:44px;height:16px"></span></div><div class="sk-list"><div class="sk-item"><span class="sk" style="height:14px;margin-top:4px"></span><div><span class="sk" style="width:55%;height:18px"></span><span class="sk" style="width:35%;height:12px;margin-top:8px"></span></div></div><div class="sk-item"><span class="sk" style="height:14px;margin-top:4px"></span><div><span class="sk" style="width:55%;height:18px"></span><span class="sk" style="width:35%;height:12px;margin-top:8px"></span></div></div><div class="sk-item"><span class="sk" style="height:14px;margin-top:4px"></span><div><span class="sk" style="width:55%;height:18px"></span><span class="sk" style="width:35%;height:12px;margin-top:8px"></span></div></div><div class="sk-item"><span class="sk" style="height:14px;margin-top:4px"></span><div><span class="sk" style="width:55%;height:18px"></span><span class="sk" style="width:35%;height:12px;margin-top:8px"></span></div></div></div></main>
 <script type="module">
 import {
-  $, esc, chip, header, toast, dialog, requireAdmin, translateName, loadLessons, orderLessons, newId, nv,
+  $, esc, chip, skel, header, toast, dialog, requireAdmin, translateName, loadLessons, orderLessons, newId, nv,
   courseLabel, termLabel, classLabel, db, collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, where, serverTimestamp, writeBatch,
 } from './k.js';
 
@@ -97,7 +96,7 @@ async function loadStudents() {
   render();
 }
 function vStudents() {
-  if (!students) return '<p class="k-muted">학생을 불러오는 중입니다.</p>';
+  if (!students) return skel(6);
   if (!students.length) return `<div class="k-callout"><span class="k-callout__label">학생이 없습니다</span><span>학생 계정의 학교·학년·반이 이 과목과 같은지 설정 탭에서 확인하세요(${esc(course.schoolName)} ${esc(course.grade)}학년 ${course.classes.map(classLabel).join(' ')}).</span></div>`;
   const by = course.classes.map(c => [c, students.filter(s => nv(s.class) === c)]);
   return `<p class="k-muted" style="margin:0 0 12px">${by.map(([c, l]) => `${classLabel(c)} ${l.length}명`).join(' · ')}</p>
