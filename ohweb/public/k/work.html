@@ -51,11 +51,13 @@ const d = lesson.docId ? fsDecode((await getDoc(doc(db, 'docs', lesson.docId))).
 const tools = (d.blocks || []).filter(b => b.type === 'tool' && b.data?.tool === 'python');
 
 // 듣는 반 학생(번호순)
+// 이 차시를 공개한 반만(아직 아무 반에도 안 열었으면 과목의 모든 반)
+const opened = (lesson.openTo || []).map(nv);
+const classes = (course.classes || []).map(nv).filter(c => !opened.length || opened.includes(c));
 const stu = (await getDocs(query(collection(db, 'students'), where('schoolName', '==', course.schoolName || ''))))
   .docs.map(s => ({ id: s.id, ...s.data() }))
-  .filter(s => !s.isMaster && nv(s.grade) === nv(course.grade) && (course.classes || []).includes(nv(s.class)))
+  .filter(s => !s.isMaster && nv(s.grade) === nv(course.grade) && classes.includes(nv(s.class)))
   .sort((a, b) => (Number(nv(a.class)) - Number(nv(b.class))) || (Number(a.number) - Number(b.number)));
-const classes = (course.classes || []).map(nv);
 
 let blockId = tools[0]?.id, cls = 'all', works = {}, sel = null, selVer = null, unsub = null;
 const when = iso => { if (!iso) return ''; const d = new Date(iso), m = Math.round((Date.now() - d) / 60000);
