@@ -462,6 +462,8 @@ service cloud.firestore {
     // 선생님만 읽고 쓴다. 학생은 ohinfo 서버 함수(토큰 확인 → 본인 반)로만 받는다.
     match /courses/{id}        { allow read, write: if isAdmin(); }
     match /course_lessons/{id} { allow read, write: if isAdmin(); }
+    // 차시 문서(편집기 블록 + 언어별 번역). 학생은 서버 함수로만.
+    match /docs/{id}           { allow read, write: if isAdmin(); }
 
     // ── 수업일지(ohlog) ──
     // 교사는 Google 로그인으로 프로필을 만들고(status 'pending'), 관리자가 승인('approved')해야

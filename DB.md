@@ -22,6 +22,7 @@
 | `ai_projects`(+하위 `images`, `feedback`), `ai_apps`, `ai_pairs`, `ai_assignments` | ohinfo `ailab*`, `aiapp.html`, ohweb `admin-ailab.js` | AI 실습실 |
 | `seat_rooms`, `seat_plans` | ohweb `seats.html`(자리 배치) | 교실 모양(`cells` 글자열: `s`=자리 `.`=통로, 번호 순서 `order`)·저장한 자리 배치(그때의 교실 모양·`seats [{no, sid, number, name}]`·결석). 관리자만 |
 | `courses`, `course_lessons` | ohweb `k/`(새 선생님 화면: 오늘·과목) | 과목(학년도·학기·학교·학년·듣는 반·단원 `units`)과 차시(과목·단원·순서·문서 `docId`·공개한 반 `openTo`·성취기준). 관리자만. 학생은 ohinfo 서버 함수로 본인 반 것만. 구조: `PLATFORM-DESIGN.md` §8 |
+| `docs` | ohweb `k/lesson.html`(편집)·`k/present.html`(발표) | 차시 문서: Editor.js 블록(`blocks`)과 블록별 번역(`tr.{zh,ru,en}.{블록id}`). 관리자만. 표 칸은 `{_a:[...]}`로 감싸 저장. 구조: `PLATFORM-DESIGN.md` §8.5 |
 | `classlog_users`, `classlog_feedback` | ohlog(수업일지) | 수업일지 사용자·의견 |
 | `notion_pages`, `notion_stats`, `notion_secrets` | ohnotion | 노션 공개 페이지 |
 | `short_links` | ohshrt | 단축 URL |
