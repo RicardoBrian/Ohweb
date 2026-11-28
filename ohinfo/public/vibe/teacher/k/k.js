@@ -31,7 +31,7 @@ export function requireAdmin() {
 }
 
 export function header(current) {
-  const nav = [['index.html', 'today', '오늘'], ['index.html#courses', 'course', '과목']]
+  const nav = [['index.html', 'today', '오늘']] // 과목 목록은 오늘 화면 아래에 있다(따로 화면 없음)
     .map(([h, k, n]) => `<a href="${h}" ${current === k ? 'aria-current="page"' : ''}>${n}</a>`).join('');
   return `<header class="k-header"><a class="k-logo" href="index.html" aria-label="kaká 오늘">${LOGO_SVG}</a>
   <nav class="k-nav">${nav}</nav><div class="k-header__end"><a class="k-btn k-btn--ghost k-btn--sm" href="../admin.html">지금 관리자 화면</a><span class="k-avatar" aria-label="견본 선생님">오</span></div></header>`;

@@ -38,6 +38,7 @@
 import { $, esc, nv, header, toast, requireAdmin, loadLessons, orderLessons, courseLabel, classLabel, db, doc, getDoc, getDocs, collection, query, where } from './k.js?v=1128';
 import { onSnapshot } from '/vibe/shared/fake-firebase/firebase-firestore.js';
 import { fsDecode } from 'https://kakainfo.com/kaka/render.js?v=1128';
+import { icon } from 'https://kakainfo.com/kaka/icons.js?v=1128';
 
 await requireAdmin();
 const lessonId = new URLSearchParams(location.search).get('lesson');
@@ -100,7 +101,7 @@ function viewHtml() {
   const code = selVer ? selVer.code : w.code;
   return `<h2 class="t-title">${esc(title)}</h2>
     <p class="sum" style="margin:0">마지막 저장 ${esc(when(w.updatedAt))} · 저장 ${w.saves || 0}번 · 실행 ${w.runs || 0}번</p>
-    <div class="k-code"><div class="k-code__bar"><span class="k-code__file">${selVer ? '저장 기록 ' + esc(when(selVer.at)) : 'main.py'}</span><button class="k-btn" id="run">실행</button></div>
+    <div class="k-code"><div class="k-code__bar"><span class="k-code__file">${selVer ? '저장 기록 ' + esc(when(selVer.at)) : 'main.py'}</span><button class="k-ibtn k-ibtn--primary k-ibtn--end" id="run" aria-label="실행" data-tip="실행">${icon('play')}</button></div>
       ${codeHtml(code)}<div class="k-code__out" id="out-wrap" hidden><pre class="out" id="out"></pre></div></div>
     <div><span class="k-label">저장 기록</span><div class="hist" id="hist"><span class="k-hint">불러오는 중…</span></div></div>`;
 }
