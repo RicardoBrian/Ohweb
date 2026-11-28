@@ -410,5 +410,12 @@ await T('자리 배치: 관리자 교실·배치 쓰기·읽기', (async () => {
 await T('자리 배치: 학생이 배치 읽기', getDoc(doc(A, 'seat_plans/P1')), false);
 await T('자리 배치: 비로그인이 교실 목록', getDocs(collection(anon, 'seat_rooms')), false);
 await T('자리 배치: 학생이 배치 쓰기', setDoc(doc(B, 'seat_plans/P2'), { classKey: 'k' }), false);
+console.log('── 과목 뼈대 ──');
+await T('과목: 관리자가 과목·차시 쓰기·읽기', (async () => { await setDoc(doc(admin, 'courses/C1'), { name: '정보', year: 2027, semester: 1, schoolName: 'S', grade: '1', classes: ['1', '2'], units: [{ id: 'u1', name: '알고리즘' }], status: 'active' }); await setDoc(doc(admin, 'course_lessons/L1'), { courseId: 'C1', unitId: 'u1', order: 1, name: '순차', openTo: ['2'] }); await getDocs(collection(admin, 'courses')); await getDoc(doc(admin, 'course_lessons/L1')); })(), true);
+await T('과목: 학생이 과목 읽기', getDoc(doc(A, 'courses/C1')), false);
+await T('과목: 학생이 차시 목록', getDocs(collection(A, 'course_lessons')), false);
+await T('과목: 비로그인이 과목 목록', getDocs(collection(anon, 'courses')), false);
+await T('과목: 학생이 차시 공개 바꾸기', updateDoc(doc(A, 'course_lessons/L1'), { openTo: ['1', '2'] }), false);
+await T('과목: 이메일 미인증 관리자가 과목 쓰기', setDoc(doc(fakeAdmin, 'courses/C2'), { name: 'x' }), false);
 console.log(fails ? `\n실패 ${fails}건` : '\n전부 통과'); process.exitCode = fails ? 1 : 0;
 await env.cleanup();
