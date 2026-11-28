@@ -128,6 +128,7 @@ try {
   let d = await until(async () => { const x = (await all('docs'))[0]; const t = x?.blocks?.find(b => b.type === 'tool'); return t?.data.starter === STARTER && t.data.desc.includes('출력') && x; }, 10000);
   ok('2. 문서 저장: 글·파이썬 도구(제목·설명·처음 코드), 차시에 이어짐', !!d && (await read(`course_lessons/${lesson0.id}`)).docId === d.id, JSON.stringify((await all('docs'))[0]?.blocks));
   const toolId = d?.blocks.find(b => b.type === 'tool')?.id;
+  ok('2. 넓은 화면: 편집기 오른쪽에 학생 화면 미리 보기', await tp.waitForFunction(() => { const l = document.querySelector('#live'); return l && l.offsetWidth > 300 && l.textContent.includes('이름 받아 인사하기'); }, null, { timeout: 8000 }).then(() => true, () => false));
 
   // ── 3. 번역 ──
   await tp.waitForFunction(() => /\(\d+개\)/.test(document.querySelector('#tr-all')?.textContent || ''));
@@ -153,6 +154,7 @@ try {
   await sp.waitForSelector('.kd-tool__slot a', { timeout: 15000 });
   const art = await sp.textContent('main');
   ok('5. 학생 오늘 화면 = 방금 공개한 차시(글·도구)', art.includes('입력과 출력') && art.includes('이름을 받아 인사합니다') && art.includes('이름 받아 인사하기'), art.slice(0, 200));
+  ok('5. 넓은 화면: 왼쪽에 내 차시 목록(지금 차시 표시)', await sp.isVisible('.side a[aria-current="page"]') && (await sp.textContent('.side a[aria-current="page"]')).includes('입력과 출력'));
   await sp.evaluate(() => localStorage.setItem('ohinfo_lang', 'en')); await sp.reload();
   await sp.waitForSelector('.kd-tool__slot a');
   ok('5. 영어로 바꾸면 번역된 차시', (await sp.textContent('main')).includes('[en] input() 으로 이름을'));
@@ -174,6 +176,8 @@ try {
   const w = await until(async () => { const x = await read(`work/StuA_${lesson0.id}_${toolId}`); return x?.code === code && x; });
   ok('5. 학생 계정에 저장(과목·반·번호·실행 1번)', !!w && w.courseId === courseId && w.class === '2' && w.number === 3 && w.runs === 1, JSON.stringify(w));
   if (SHOT) await sp.screenshot({ path: SHOT + '/flow-student.png' });
+  await sp.setViewportSize({ width: 390, height: 800 }); await sp.goto('http://localhost:8099/k/'); await sp.waitForSelector('.kd-tool__slot a');
+  ok('5. 폰 너비: 가로 스크롤 없음·목록 숨김·머리글 한 줄', await sp.evaluate(() => document.documentElement.scrollWidth <= innerWidth && !document.querySelector('.side').offsetWidth && document.querySelector('.k-nav a').offsetHeight < 40));
 
   // ── 6. 선생님: 학생 작업 ──
   await tp.goto(`http://localhost:8098/k/lesson.html?id=${lesson0.id}`);

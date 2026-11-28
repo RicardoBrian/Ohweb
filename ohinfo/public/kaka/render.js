@@ -125,7 +125,8 @@ export const DOC_CSS = `
 .kd > * { margin: 0 0 16px; }
 .kd-h { font-weight: 600; margin: 32px 0 12px; } .kd-h1 { font-size: 28px; line-height: 36px; } .kd-h2 { font-size: 22px; line-height: 30px; } .kd-h3 { font-size: 19px; line-height: 28px; }
 .kd > .kd-h:first-child { margin-top: 0; }
-.kd a { color: var(--accent-ink); }
+.kd a:not(.k-btn) { color: var(--accent-ink); }
+.kd .k-tool { max-width: none; }
 .kd mark { background: var(--warn-soft); color: inherit; }
 .kd code { font: 400 .88em var(--font-mono); background: var(--surface-2); padding: 1px 5px; border-radius: var(--radius-sm); }
 .kd-list { padding-left: 1.4em; } .kd-list li { margin: 4px 0; }
