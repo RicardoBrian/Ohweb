@@ -95,8 +95,8 @@ async function showLesson(id) {
     <h1 class="t-display" style="margin:0">${esc(t().no(lesson.no))} ${esc(nm(lesson))}</h1></div>
     <article class="kd" lang="${lang}">${body || `<div class="k-callout"><span>${esc(t().empty)}</span></div>`}</article>
     ${prev || next ? `<nav class="pn">${prev ? `<a class="k-btn k-btn--lg" href="#lesson=${prev.id}">${esc(t().prev)}</a>` : ''}${next ? `<a class="k-btn k-btn--lg" href="#lesson=${next.id}">${esc(t().next)}</a>` : ''}</nav>` : ''}</main></div>`);
-  // 파이썬·스크래치 도구 블록: [열기] → 그 도구 화면
-  document.querySelectorAll('.kd-tool__slot').forEach(s => { s.innerHTML = `<a class="k-btn k-btn--primary" href="/k/${s.dataset.tool === 'scratch' ? 'scratch' : 'py'}.html?lesson=${encodeURIComponent(id)}&block=${encodeURIComponent(s.dataset.block)}">${esc(t().open)}</a>`; });
+  // 도구 블록: [열기] → 그 도구 화면(게시판은 우리 반 게시판 주소를 블록이 갖고 온다)
+  document.querySelectorAll('.kd-tool__slot').forEach(s => { s.innerHTML = `<a class="k-btn k-btn--primary" href="${esc(s.dataset.href || `/k/${s.dataset.tool === 'scratch' ? 'scratch' : 'py'}.html?lesson=${encodeURIComponent(id)}&block=${encodeURIComponent(s.dataset.block)}`)}">${esc(t().open)}</a>`; });
 }
 
 function showList() {

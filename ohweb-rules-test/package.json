@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "npm run test:rules && npm run test:runner && npm run test:login && npm run test:exam && npm run test:classlog && npm run test:score && npm run test:grading && npm run test:form && npm run test:seats && npm run test:kaka && npm run test:kaka-doc && npm run test:kaka-student && npm run test:kaka-python && npm run test:kaka-flow && npm run test:kaka-scratch && npm run test:seats-public && npm run test:settle",
+    "test": "npm run test:rules && npm run test:runner && npm run test:login && npm run test:exam && npm run test:classlog && npm run test:score && npm run test:grading && npm run test:form && npm run test:seats && npm run test:kaka && npm run test:kaka-doc && npm run test:kaka-student && npm run test:kaka-python && npm run test:kaka-flow && npm run test:kaka-scratch && npm run test:kaka-tools && npm run test:seats-public && npm run test:settle",
     "test:rules": "firebase emulators:exec --only firestore --project ohweb-93062 \"node rules.test.mjs && PHASE=2 node rules.test.mjs\"",
     "test:login": "firebase emulators:exec --only firestore,auth --project ohweb-93062 \"node login.e2e.mjs && PHASE=2 node login.e2e.mjs\"",
     "test:runner": "node python-runner.test.mjs",
@@ -22,6 +22,7 @@
     "test:kaka-python": "node build-fbcdn.mjs && firebase emulators:exec --only firestore,auth --project ohweb-93062 \"node kaka-python.e2e.mjs\"",
     "test:kaka-flow": "node build-fbcdn.mjs && firebase emulators:exec --only firestore,auth --project ohweb-93062 \"node kaka-flow.e2e.mjs\"",
     "test:kaka-scratch": "node build-fbcdn.mjs && firebase emulators:exec --only firestore,auth --project ohweb-93062 \"node kaka-scratch.e2e.mjs\"",
+    "test:kaka-tools": "node build-fbcdn.mjs && firebase emulators:exec --only firestore,auth --project ohweb-93062 \"node kaka-tools.e2e.mjs\"",
     "smoke:kaka": "node build-fbcdn.mjs && firebase emulators:exec --only firestore,auth --project ohweb-93062 \"node kaka-live-smoke.mjs\"",
     "test:kaka-all": "bash ./kaka-all.sh"
   },

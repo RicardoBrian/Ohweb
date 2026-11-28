@@ -78,6 +78,8 @@ export function srcKey(b) {
   return (h >>> 0).toString(36);
 }
 // 언어에 맞는 블록: 번역이 있으면 번역, 없으면 한국어
+// 게시판(ohdlet) 바로 열기 주소 — ohdlet.html 의 openBoardFromUrl
+export const boardHref = x => `/ohdlet.html?${new URLSearchParams({ board: x.name, school: x.school || '', grade: x.grade || '', group: x.group || '' })}`;
 export function localized(doc, lang) {
   const tr = (lang !== 'ko' && doc.tr?.[lang]) || {};
   return (doc.blocks || []).map(b => tr[b.id] ? { ...b, data: { ...b.data, ...tr[b.id].data }, stale: tr[b.id].src !== srcKey(b) } : { ...b, missing: lang !== 'ko' && needsTr(b) });
@@ -98,7 +100,7 @@ export function blockHtml(b, { mode = 'read' } = {}) {
     case 'image': return d.url ? `<figure class="kd-fig"><img src="${esc(driveImg(d.url))}" alt="${esc(String(d.caption || '').replace(/<[^>]+>/g, ''))}" loading="lazy">${d.caption ? `<figcaption>${clean(d.caption)}</figcaption>` : ''}</figure>` : '';
     case 'code': return `<div class="k-code kd-code"><pre>${esc(d.code)}</pre></div>`;
     case 'table': return `<div class="kd-table"><table class="k-table">${(d.content || []).map((r, i) => `<tr>${r.map(c => (i === 0 && d.withHeadings) ? `<th>${clean(c)}</th>` : `<td>${clean(c)}</td>`).join('')}</tr>`).join('')}</table></div>`;
-    case 'tool': return `<div class="k-tool kd-tool"><div class="k-tool__head"><span class="k-tag">${esc(TOOLS[d.tool] || d.tool)}</span><span class="k-tool__name">${esc(d.title)}</span></div>${d.desc ? `<p class="k-tool__desc">${clean(d.desc)}</p>` : ''}${mode === 'read' && (d.tool === 'python' || d.tool === 'scratch') ? `<div class="k-tool__foot kd-tool__slot" data-block="${esc(b.id)}" data-tool="${d.tool}"></div>` : ''}</div>`;
+    case 'tool': return `<div class="k-tool kd-tool"><div class="k-tool__head"><span class="k-tag">${esc(TOOLS[d.tool] || d.tool)}</span><span class="k-tool__name">${esc(d.title)}</span></div>${d.desc ? `<p class="k-tool__desc">${clean(d.desc)}</p>` : ''}${mode === 'read' && (d.tool === 'python' || d.tool === 'scratch') ? `<div class="k-tool__foot kd-tool__slot" data-block="${esc(b.id)}" data-tool="${d.tool}"></div>` : ''}${mode === 'read' && d.tool === 'board' && d.board?.name ? `<div class="k-tool__foot kd-tool__slot" data-block="${esc(b.id)}" data-tool="board" data-href="${esc(boardHref(d.board))}"></div>` : ''}</div>`;
     case 'timer': return mode === 'slide' ? `<div class="kd-timer" data-min="${Number(d.minutes) || 5}"><button class="k-btn kd-timer__btn">${Number(d.minutes) || 5}분 타이머 시작</button><span class="kd-timer__label">${esc(d.label)}</span></div>` : '';
     case 'note': case 'slide': return '';
     default: return '';
