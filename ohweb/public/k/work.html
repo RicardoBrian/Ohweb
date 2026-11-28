@@ -26,7 +26,13 @@
   .out { margin: 0; white-space: pre-wrap; word-break: break-word; max-height: 220px; overflow: auto; }
   .out .err { color: #f2a7a0; }
   .hist { display: flex; flex-wrap: wrap; gap: 6px; }
+  .sbox { position: relative; height: min(78vh, 760px); min-height: 520px; border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden; }
+  .sbox iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
   .hist .k-btn[aria-pressed="true"] { background: var(--surface-2); border-color: var(--line-strong); }
+  /* 스크래치 편집기는 폭 1024px 이상이어야 무대가 안 잘린다 — 학생 목록을 좁히고, 그래도 모자라면 목록 아래로 */
+  .k-page:has(.is-scratch) { max-width: 1600px; }
+  .split.is-scratch { grid-template-columns: minmax(0, 280px) minmax(1024px, 1fr); }
+  @media (max-width: 1400px) { .split.is-scratch { grid-template-columns: 1fr; } .split.is-scratch .view { position: static; } }
   @media (max-width: 900px) { .split { grid-template-columns: 1fr; } .view { position: static; } }
 </style>
 </head>
@@ -48,7 +54,9 @@ const lesson = { id: lessonId, ...lSnap.data() };
 const course = { id: lesson.courseId, ...(await getDoc(doc(db, 'courses', lesson.courseId))).data() };
 const no = orderLessons(course, await loadLessons(course.id)).find(l => l.id === lessonId)?.no;
 const d = lesson.docId ? fsDecode((await getDoc(doc(db, 'docs', lesson.docId))).data() || {}) : {};
-const tools = (d.blocks || []).filter(b => b.type === 'tool' && b.data?.tool === 'python');
+const tools = (d.blocks || []).filter(b => b.type === 'tool' && ['python', 'scratch'].includes(b.data?.tool));
+const TOOL_KO = { python: '파이썬', scratch: '스크래치' };
+const kind = () => tools.find(t => t.id === blockId)?.data.tool;
 
 // 듣는 반 학생(번호순)
 // 이 차시를 공개한 반만(아직 아무 반에도 안 열었으면 과목의 모든 반)
@@ -71,34 +79,41 @@ document.body.innerHTML = header('course') + `<main class="k-page">
     <h1 class="t-display">학생 작업</h1></div>
   <div id="body"></div></main>`;
 if (!tools.length) {
-  $('#body').innerHTML = `<div class="k-callout" style="max-width:560px"><span class="k-callout__label">이 차시에는 파이썬 도구 블록이 없습니다</span><span><a href="lesson.html?id=${lessonId}">차시 문서</a>에서 도구 블록을 넣고 '파이썬'을 고르세요.</span></div>`;
+  $('#body').innerHTML = `<div class="k-callout" style="max-width:560px"><span class="k-callout__label">이 차시에는 파이썬·스크래치 도구 블록이 없습니다</span><span><a href="lesson.html?id=${lessonId}">차시 문서</a>에서 도구 블록을 넣고 '파이썬'이나 '스크래치'를 고르세요.</span></div>`;
   await new Promise(() => {});
 }
 
 function paint() {
+  const keep = kind() === 'scratch' && sel && $('#view')?.dataset.key === viewKey() ? $('#view') : null;
   const shown = stu.filter(s => cls === 'all' || nv(s.class) === cls);
   const extra = Object.values(works).filter(w => !stu.some(s => s.id === w.studentId)); // 마스터 계정 등
   const done = shown.filter(s => works[s.id]).length;
   $('#body').innerHTML = `<div class="bar">
-      ${tools.length > 1 ? `<div class="k-tabs" role="tablist">${tools.map(t => `<button class="k-tab" role="tab" data-tool="${t.id}" aria-selected="${t.id === blockId}">${esc(t.data.title || '파이썬')}</button>`).join('')}</div>` : `<span class="k-tag">파이썬</span> <strong>${esc(tools[0].data.title || '')}</strong>`}
+      ${tools.length > 1 ? `<div class="k-tabs" role="tablist">${tools.map(t => `<button class="k-tab" role="tab" data-tool="${t.id}" aria-selected="${t.id === blockId}">${esc(t.data.title || TOOL_KO[t.data.tool])}</button>`).join('')}</div>` : `<span class="k-tag">${TOOL_KO[kind()]}</span> <strong>${esc(tools[0].data.title || '')}</strong>`}
     </div>
     <div class="bar">${['all', ...classes].map(c => `<button class="k-btn k-btn--sm" data-cls="${c}" aria-pressed="${c === cls}" ${c === cls ? 'style="background:var(--surface-2);border-color:var(--line-strong)"' : ''}>${c === 'all' ? '모든 반' : classLabel(c)}</button>`).join('')}</div>
-    <div class="split"><div>
+    <div class="split${kind() === 'scratch' ? ' is-scratch' : ''}"><div>
       <p class="sum">${shown.length}명 중 ${done}명 저장함</p>
       <ul class="who">${shown.map(s => row(s.id, stuNo(s), s.name)).join('')}${extra.map(w => row(w.studentId, w.grade ? `${w.class}${String(w.number || '').padStart(2, '0')}` : 'T', '확인용 계정')).join('')}</ul>
       ${!shown.length ? '<p class="k-hint">이 반 학생이 없습니다.</p>' : ''}
-    </div><div class="view" id="view">${viewHtml()}</div></div>`;
+    </div><div class="view" id="view" data-key="${esc(viewKey())}">${keep ? '' : viewHtml()}</div></div>`;
+  if (keep) { $('#view').replaceWith(keep); paintScratchSum(); } else if (kind() === 'scratch' && sel && works[sel]) showScratch();
 }
+const viewKey = () => `${blockId}|${sel}`;
 function row(id, no, name) {
   const w = works[id], fresh = w && Date.now() - Date.parse(w.updatedAt) < 5 * 60000;
   return `<li><button data-stu="${esc(id)}" aria-current="${sel === id}"><span class="no">${esc(no)}</span><span>${esc(name || '')}</span>
-    <span class="meta ${w ? (fresh ? 'fresh' : '') : 'none'}">${w ? `${lines(w.code)}줄 · ${when(w.updatedAt)}` : '아직 없음'}</span></button></li>`;
+    <span class="meta ${w ? (fresh ? 'fresh' : '') : 'none'}">${w ? `${w.tool === 'scratch' ? `블록 ${w.blocks || 0}개` : `${lines(w.code)}줄`} · ${when(w.updatedAt)}` : '아직 없음'}</span></button></li>`;
 }
 function viewHtml() {
   if (!sel) return `<p class="k-hint">왼쪽에서 학생을 고르면 코드가 보입니다. 학생이 저장하면 바로 바뀝니다.</p>`;
   const w = works[sel], s = stu.find(x => x.id === sel);
   const title = s ? `${stuNo(s)} ${s.name || ''}` : '확인용 계정';
-  if (!w) return `<h2 class="t-title">${esc(title)}</h2><p class="k-hint">아직 저장한 코드가 없습니다.</p>`;
+  if (!w) return `<h2 class="t-title">${esc(title)}</h2><p class="k-hint">아직 저장한 ${kind() === 'scratch' ? '작품이' : '코드가'} 없습니다.</p>`;
+  if (w.tool === 'scratch') return `<h2 class="t-title">${esc(title)}</h2><p class="sum" style="margin:0" id="vsum"></p>
+    <div><span class="k-label">저장 기록</span><div class="hist" id="hist"><span class="k-hint">불러오는 중…</span></div></div>
+    <p class="k-hint" id="sstate" style="margin:0">드라이브에서 불러오는 중…</p>
+    <div class="sbox"><iframe id="sed" title="학생 스크래치" src="https://kakainfo.com/scratch/editor.html?locale=ko"></iframe></div>`;
   const code = selVer ? selVer.code : w.code;
   return `<h2 class="t-title">${esc(title)}</h2>
     <p class="sum" style="margin:0">마지막 저장 ${esc(when(w.updatedAt))} · 저장 ${w.saves || 0}번 · 실행 ${w.runs || 0}번</p>
@@ -113,10 +128,35 @@ async function loadHist() {
   hist = snap.docs.map(x => ({ id: x.id, ...x.data() })).sort((a, b) => String(b.at).localeCompare(String(a.at)));
   paintHist();
 }
-const REASON = { auto: '자동', save: '저장', run: '실행' };
+const REASON = { auto: '자동', save: '저장', run: '실행', leave: '나갈 때' };
+
+// ── 스크래치: 선생님 드라이브에서 파일을 받아 iframe 편집기(kakainfo.com/scratch/editor.html)에 postMessage 로 띄운다 ──
+let sedReady = null;
+function paintScratchSum() {
+  const w = works[sel]; if (!w || !$('#vsum')) return;
+  $('#vsum').textContent = `마지막 저장 ${when(w.updatedAt)} · 저장 ${w.saves || 0}번 · 블록 ${w.blocks || 0}개 · 스프라이트 ${w.sprites || 0}개`;
+}
+function showScratch() {
+  paintScratchSum();
+  sedReady = new Promise(ok => { const f = e => { if (e.data?.type === 'kaka-scratch-ready' && e.source === $('#sed')?.contentWindow) { removeEventListener('message', f); ok(); } }; addEventListener('message', f); });
+  loadScratch();
+}
+async function loadScratch() {
+  const w = works[sel], fileId = selVer ? selVer.fileId : w?.fileId;
+  if (!fileId || !$('#sstate')) return;
+  $('#sstate').textContent = '드라이브에서 불러오는 중…';
+  try {
+    const { gas } = await import('./scratch-drive.js?v=1128');
+    const [{ b64 }] = await Promise.all([gas('load', { fileId }), sedReady]);
+    const done = new Promise((ok, no) => { const f = e => { if (e.data?.type === 'kaka-scratch-loaded') { removeEventListener('message', f); e.data.ok ? ok() : no(new Error(e.data.error)); } }; addEventListener('message', f); });
+    $('#sed').contentWindow.postMessage({ type: 'kaka-scratch-load', b64 }, 'https://kakainfo.com');
+    await done;
+    $('#sstate').textContent = selVer ? `저장 기록 ${when(selVer.at)} · 블록 ${selVer.blocks || 0}개를 보는 중 (여기서 고친 것은 저장되지 않습니다)` : '지금 작품 (여기서 고친 것은 저장되지 않습니다)';
+  } catch (e) { $('#sstate').textContent = '불러오지 못했습니다: ' + e.message; }
+}
 function paintHist() {
   if (!$('#hist')) return;
-  $('#hist').innerHTML = `<button class="k-btn k-btn--sm" data-ver="" aria-pressed="${!selVer}">지금 코드</button>` + hist.map(h => `<button class="k-btn k-btn--sm" data-ver="${h.id}" aria-pressed="${selVer?.id === h.id}">${esc(when(h.at))} · ${REASON[h.reason] || ''}</button>`).join('');
+  $('#hist').innerHTML = `<button class="k-btn k-btn--sm" data-ver="" aria-pressed="${!selVer}">${kind() === 'scratch' ? '지금 작품' : '지금 코드'}</button>` + hist.map(h => `<button class="k-btn k-btn--sm" data-ver="${h.id}" aria-pressed="${selVer?.id === h.id}">${esc(when(h.at))} · ${REASON[h.reason] || ''}${kind() === 'scratch' ? ` · 블록 ${h.blocks || 0}` : ''}</button>`).join('');
 }
 function subscribe() {
   unsub?.();
@@ -133,7 +173,11 @@ document.addEventListener('click', async e => {
   if (t.dataset.tool) { blockId = t.dataset.tool; sel = null; selVer = null; return subscribe(); }
   if (t.dataset.cls) { cls = t.dataset.cls; return paint(); }
   if (t.dataset.stu) { sel = t.dataset.stu; selVer = null; paint(); return loadHist(); }
-  if ('ver' in t.dataset) { selVer = t.dataset.ver ? hist.find(h => h.id === t.dataset.ver) : null; $('#view').innerHTML = viewHtml(); return paintHist(); }
+  if ('ver' in t.dataset) {
+    selVer = t.dataset.ver ? hist.find(h => h.id === t.dataset.ver) : null;
+    if (kind() === 'scratch') { paintHist(); return loadScratch(); }
+    $('#view').innerHTML = viewHtml(); return paintHist();
+  }
   if (t.id === 'run') {
     const code = selVer ? selVer.code : works[sel]?.code;
     $('#out-wrap').hidden = false; $('#out').textContent = '실행 중…'; t.disabled = true;

@@ -127,9 +127,10 @@ const savedText = () => page.waitForFunction(() => /^저장됨/.test(document.qu
 try {
   await page.goto('http://localhost:8099/k/#lesson=L1');
   await page.waitForSelector('.kd-tool__slot a');
-  const href = await page.getAttribute('.kd-tool__slot a', 'href');
-  ok('차시 화면: 파이썬 블록에만 [열기]', (await page.$$('.kd-tool__slot a')).length === 1 && href.includes('block=py1'));
-  await page.click('.kd-tool__slot a');
+  const hrefs = await page.$$eval('.kd-tool__slot a', as => as.map(a => a.getAttribute('href')));
+  const pyLinks = hrefs.filter(h => h.startsWith('/k/py.html'));
+  ok('차시 화면: 도구마다 [열기] — 파이썬은 py.html, 스크래치는 scratch.html', pyLinks.length === 1 && pyLinks[0].includes('block=py1') && hrefs.every(h => h.startsWith('/k/py.html') || h.startsWith('/k/scratch.html')), JSON.stringify(hrefs));
+  await page.click('.kd-tool__slot a[href^="/k/py.html"]');
   await page.waitForFunction(() => window.kCm);
   ok('IDE: 처음 코드가 들어 있다', (await page.evaluate(() => kCm.getValue())).includes("print('안녕', name)"));
   ok('IDE: 활동 제목·설명', (await page.textContent('.task h1')) === '인사하기' && (await page.textContent('.task')).includes('이름을 넣어'));

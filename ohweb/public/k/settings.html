@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>설정 · kaká</title>
+<link rel="icon" href="https://kakainfo.com/kaka/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://kakainfo.com/kaka/kaka.css?v=1128">
+<link rel="stylesheet" href="k.css?v=1128">
+<style>
+  .steps { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; font: 400 15px/24px var(--font-sans); max-width: 640px; }
+  .steps code { font: 400 13px var(--font-mono); background: var(--surface-2); padding: 1px 5px; border-radius: var(--radius-sm); }
+  .form { display: grid; gap: var(--space-3); max-width: 640px; }
+</style>
+</head>
+<body>
+<div class="sk-head" aria-hidden="true"><span class="sk" style="width:92px;height:22px"></span><span class="sk" style="width:96px;height:16px"></span></div>
+<script type="module">
+// kaká 설정 — 지금은 스크래치 저장소(선생님 구글 드라이브) 연결 하나. 설계: PLATFORM-DESIGN.md §8.10
+import { $, esc, header, toast, requireAdmin } from './k.js?v=1128';
+import { scratchCfg, connect, gas } from './scratch-drive.js?v=1128';
+
+await requireAdmin();
+const GS = 'https://github.com/RicardoBrian/Ohweb/blob/main/ohinfo/apps-script/scratch-drive.gs';
+async function paint() {
+  const c = await scratchCfg(true);
+  document.body.innerHTML = header('') + `<main class="k-page">
+    <div class="k-page__head"><h1 class="t-display">설정</h1></div>
+    <section class="k-section"><h2 class="k-section__title">스크래치 저장(구글 드라이브)</h2>
+      <p class="k-muted" style="margin:0">학생 스크래치 파일은 선생님 드라이브 <b>kaká 스크래치</b> 폴더에 쌓입니다. 사이트에는 파일 ID와 저장 기록만 남습니다.</p>
+      <p style="margin:0" id="state">${c ? `연결됨 · ${esc(c.url.replace(/^(.{48}).+(.{10})$/, '$1…$2'))}${c.connectedAt ? ` · ${esc(new Date(c.connectedAt).toLocaleString('ko'))}` : ''} <button class="k-btn k-btn--sm" id="check">연결 확인</button>` : '<span class="k-chip k-chip--warn">연결 안 됨</span> — 연결 전에는 학생 작업이 저장되지 않습니다.'}</p>
+      <ol class="steps">
+        <li><a href="https://script.google.com" target="_blank" rel="noopener">script.google.com</a> → 새 프로젝트(이름 예: kaká 스크래치 저장).</li>
+        <li><code>Code.gs</code> 내용을 지우고 <a href="${GS}" target="_blank" rel="noopener">scratch-drive.gs</a> 를 통째로 붙여넣고 저장.</li>
+        <li>배포 → 새 배포 → 유형 <b>웹 앱</b> · 실행: <b>나</b> · 액세스: <b>모든 사용자</b> → 배포, 권한 승인(드라이브).</li>
+        <li>나온 웹 앱 URL(<code>https://script.google.com/macros/s/…/exec</code>)을 아래에 붙여넣고 [연결].</li>
+      </ol>
+      <div class="form"><label class="k-label" for="url">웹 앱 URL</label>
+        <input class="k-input" id="url" placeholder="https://script.google.com/macros/s/…/exec" value="">
+        <div class="row"><button class="k-btn k-btn--primary" id="go">${c ? '다시 연결' : '연결'}</button><span class="k-hint" id="msg"></span></div></div>
+    </section></main>`;
+}
+await paint();
+document.addEventListener('click', async e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.id === 'go') {
+    b.disabled = true; $('#msg').textContent = '연결하고 드라이브에 시험 저장하는 중…';
+    try { await connect($('#url').value); toast('연결했습니다'); await paint(); }
+    catch (err) { $('#msg').textContent = err.message; b.disabled = false; }
+  }
+  if (b.id === 'check') {
+    b.disabled = true;
+    try { const t = await gas('save', { folders: ['연결 확인'], name: '연결 확인', b64: btoa('kaka') }); await gas('trash', { fileId: t.fileId }); toast('저장·삭제 모두 됩니다'); }
+    catch (err) { toast('연결 확인 실패: ' + err.message); }
+    b.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
