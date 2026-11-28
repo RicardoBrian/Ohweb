@@ -467,7 +467,8 @@ service cloud.firestore {
     // 학생 작업(차시 안 도구 블록) — 학생은 ohinfo /api/lesson 으로만 쓴다(본인 확인 후 서비스 계정).
     match /work/{id}           { allow read, write: if isAdmin(); }
     match /work_history/{id}   { allow read, write: if isAdmin(); }
-    match /kaka_config/{id}    { allow read, write: if isAdmin(); }   // kaká 설정(스크래치 저장소 주소·비밀값) — 선생님만
+    match /scratch_projects/{id} { allow read, write: if isAdmin(); } // 스크래치 작품(project.json) — 학생은 서버 함수로만
+    match /scratch_assets/{id}   { allow read, write: if isAdmin(); } // 스크래치 그림·소리(MD5 이름, 같이 씀)
 
     // ── 수업일지(ohlog) ──
     // 교사는 Google 로그인으로 프로필을 만들고(status 'pending'), 관리자가 승인('approved')해야

@@ -1,5 +1,5 @@
-// 스크래치 도구 e2e — 선생님 설정(드라이브 연결) → 시작 파일 올리기 → 학생이 열기·블록 넣기·저장·자동 저장·저장 기록 → 선생님 학생 작업.
-// 구글 드라이브(Apps Script)는 흉내 서버(8097)가 대신한다. 편집기는 실제 scratch-gui(ohinfo/public/scratch).
+// 스크래치 도구 e2e — 선생님 시작 파일 올리기 → 학생이 열기·블록 넣기·그림 그리기·저장·자동 저장·저장 기록 → 선생님 학생 작업.
+// 저장은 Firestore(scratch_projects + scratch_assets). 편집기는 실제 scratch-gui(ohinfo/public/scratch).
 import { chromium } from 'playwright-core';
 import { readFileSync } from 'node:fs';
 import http from 'node:http';
@@ -7,14 +7,13 @@ import path from 'node:path';
 import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import { doc, setDoc, getDoc, getDocs, collection } from 'firebase/firestore';
 import { onRequest as lessonApi } from '../ohinfo/functions/api/lesson.js';
-import { resetScratchStore } from '../ohinfo/lib/scratch-store.js';
+import { createHash } from 'node:crypto';
 
 const STU_ROOT = new URL('../ohinfo/public', import.meta.url).pathname;
 const ADMIN_ROOT = new URL('../ohweb/public', import.meta.url).pathname;
 const FB = new URL('./.fbcdn', import.meta.url).pathname;
 const ADMIN_EMAIL = 'qjatjr7575@gmail.com';
 const SHOT = process.env.SHOT_DIR;
-const GAS = 'http://localhost:8097/exec';
 const rules = readFileSync(new URL('../ohweb-firestore.rules', import.meta.url), 'utf8');
 const env = await initializeTestEnvironment({ projectId: 'ohweb-93062', firestore: { rules, host: '127.0.0.1', port: 8181 } });
 await env.clearFirestore();
@@ -46,25 +45,6 @@ const all = async name => { let v = []; await env.withSecurityRulesDisabled(asyn
 let fails = 0;
 const ok = (label, cond, extra = '') => { if (cond) console.log('✅ ' + label); else { fails++; console.log('❌ ' + label + (extra ? ' — ' + extra : '')); } };
 const until = async (fn, ms = 10000) => { const t = Date.now(); while (Date.now() - t < ms) { const v = await fn(); if (v) return v; await new Promise(r => setTimeout(r, 200)); } return null; };
-
-// ── 구글 드라이브(Apps Script) 흉내 ──
-const drive = { secret: '', files: new Map(), trashed: new Set(), n: 0 };
-const gasSrv = http.createServer((req, res) => {
-  const send = o => { res.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': '*' }); res.end(JSON.stringify(o)); };
-  if (req.method === 'OPTIONS') { res.writeHead(204, { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*' }); return res.end(); }
-  let b = ''; req.on('data', d => b += d); req.on('end', () => {
-    const q = JSON.parse(b || '{}');
-    if (q.action === 'ping') return send({ ok: true, ready: !!drive.secret });
-    if (q.action === 'register') { if (drive.secret) return send({ error: '이미 연결되어 있습니다', code: 'already' }); drive.secret = q.secret; return send({ ok: true }); }
-    if (!drive.secret || q.secret !== drive.secret) return send({ error: '비밀값이 맞지 않습니다', code: 'auth' });
-    if (q.action === 'save') { const id = 'F' + String(++drive.n).padStart(10, '0'); drive.files.set(id, { b64: q.b64, name: q.name, folders: q.folders }); return send({ fileId: id, bytes: Buffer.from(q.b64, 'base64').length }); }
-    const f = drive.files.get(q.fileId);
-    if (!f || drive.trashed.has(q.fileId)) return send({ error: '파일 없음' });
-    if (q.action === 'load') return send({ b64: f.b64, name: f.name });
-    if (q.action === 'trash') { drive.trashed.add(q.fileId); return send({ ok: true }); }
-    send({ error: 'unknown' });
-  });
-}).listen(8097);
 
 // ── 화면: 학생(8099) · 선생님(8098) ──
 const conf = sign => `import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
@@ -109,37 +89,39 @@ const watchErr = (p, tag) => { p.on('pageerror', e => errors.push(tag + e.messag
 const W = { lessonId: 'L1', blockId: 'sc1' };
 
 try {
-  // ── 0. 연결 전: 열 수는 있지만 저장은 안 됨 ──
+  // ── 0. 서버 확인 ──
   const o0 = await call({ action: 'scratch-open', ...W });
-  ok('연결 전: 열면 ready=false', !o0.error && o0.ready === false && o0.block?.data?.title === '고양이 걷기', JSON.stringify(o0).slice(0, 200));
-  ok('연결 전: 저장은 안내와 함께 거절', (await call({ action: 'scratch-save', ...W, b64: 'AAAA' })).setup === true);
+  ok('열기: 활동·작업 없음', !o0.error && o0.block?.data?.title === '고양이 걷기' && o0.work === null, JSON.stringify(o0).slice(0, 200));
   ok('닫힌 차시·남의 블록은 못 엶', (await call({ action: 'scratch-open', lessonId: 'L2', blockId: 'sc2' })).closed === true && (await call({ action: 'scratch-open', lessonId: 'L1', blockId: 'p1' })).closed === true);
+  const fake = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>');
+  const realId = createHash('md5').update(fake).digest('hex') + '.svg';
+  ok('그림 올리기: 이름(MD5)과 내용이 다르면 거절(남의 그림 덮어쓰기 막기)', /이름과 다릅니다/.test((await call({ action: 'scratch-asset', ...W, id: '0123456789abcdef0123456789abcdef.svg', b64: fake.toString('base64') })).error || ''));
+  ok('그림 올리기: 맞으면 저장', (await call({ action: 'scratch-asset', ...W, id: realId, b64: fake.toString('base64') })).ok === true && !!(await read('scratch_assets/' + realId)));
+  ok('닫힌 차시에는 그림도 못 올림', (await call({ action: 'scratch-asset', lessonId: 'L2', blockId: 'sc2', id: realId, b64: fake.toString('base64') })).closed === true);
+  const big = Buffer.alloc(1400 * 1024, 7), bigId = createHash('md5').update(big).digest('hex') + '.wav';
+  await call({ action: 'scratch-asset', ...W, id: bigId, b64: big.toString('base64') });
+  ok('큰 소리(1.4MB)는 조각 3개로', (await read('scratch_assets/' + bigId))?.parts === 3 && !!(await read(`scratch_assets/${bigId}_2`)));
+  const sv0 = await call({ action: 'scratch-save', ...W, json: JSON.stringify({ targets: [{ isStage: true, blocks: {}, costumes: [{ md5ext: 'ffffffffffffffffffffffffffffffff.svg' }], sounds: [] }] }) });
+  ok('저장: 서버에 없는 그림이 있으면 저장하지 않고 missing 으로 알려 줌', JSON.stringify(sv0.missing) === '["ffffffffffffffffffffffffffffffff.svg"]' && !(await read('work/StuA_L1_sc1')));
 
   // 시작 파일로 쓸 sb3: 실제 편집기에서 스프라이트 이름을 바꿔 저장한 것
   const gen = await ctx.newPage();
   await gen.goto('https://kakainfo.com/scratch/editor.html?locale=ko');
-  const starterB64 = await gen.evaluate(async () => { await kScratch.ready; const vm = kScratch.vm; vm.renameSprite(vm.editingTarget.id, '시작고양이'); const b = await kScratch.save(); const u = new Uint8Array(await b.arrayBuffer()); let s = ''; for (const x of u) s += String.fromCharCode(x); return btoa(s); });
+  const starterB64 = await gen.evaluate(async () => { await kScratch.ready; const vm = kScratch.vm; vm.renameSprite(vm.editingTarget.id, '시작고양이'); const b = await vm.saveProjectSb3(); const u = new Uint8Array(await b.arrayBuffer()); let s = ''; for (const x of u) s += String.fromCharCode(x); return btoa(s); });
   await gen.close();
 
-  // ── 1. 선생님: 설정 → 드라이브 연결 ──
   const tp = await ctx.newPage(); watchErr(tp, '선생님: ');
-  await tp.goto('http://localhost:8098/k/settings.html');
-  await tp.waitForSelector('#url', { timeout: 15000 });
-  ok('설정: 연결 안 됨 표시', (await tp.textContent('#state')).includes('연결 안 됨'));
-  await tp.fill('#url', GAS); await tp.click('#go');
-  await tp.waitForSelector('#check', { timeout: 15000 });
-  const cfg = await read('kaka_config/scratch');
-  ok('설정: 연결 → 비밀값을 드라이브와 Firestore 에 같이, 시험 파일은 휴지통', cfg?.url === GAS && cfg.secret === drive.secret && cfg.secret.length === 64 && drive.trashed.size === 1);
-  resetScratchStore();
 
   // ── 2. 선생님: 차시 문서의 스크래치 블록에 시작 파일 올리기 ──
   await tp.goto('http://localhost:8098/k/lesson.html?id=L1');
   await tp.waitForSelector('.kb-tool__sb3 button', { timeout: 20000 });
   ok('편집기: 스크래치 블록에 시작 파일 올리기 단추, 파이썬 처음 코드 칸은 숨김', await tp.isVisible('.kb-tool__sb3') && !(await tp.isVisible('.kb-tool__starter')));
   await tp.setInputFiles('.kb-tool input[type=file]', { name: '고양이 시작.sb3', mimeType: 'application/octet-stream', buffer: Buffer.from(starterB64, 'base64') });
-  const d1 = await until(async () => { const x = await read('docs/D1'); const t = x?.blocks?.find(b => b.id === 'sc1'); return t?.data?.starterFileId && x; }, 15000);
-  const starterId = d1?.blocks.find(b => b.id === 'sc1').data.starterFileId;
-  ok('시작 파일: 드라이브 "시작 파일" 폴더에 올라가고 블록에 ID·이름 저장', !!starterId && drive.files.get(starterId)?.folders?.[0] === '시작 파일' && d1.blocks.find(b => b.id === 'sc1').data.starterName === '고양이 시작.sb3');
+  const d1 = await until(async () => { const x = await read('docs/D1'); const t = x?.blocks?.find(b => b.id === 'sc1'); return t?.data?.starterId && x; }, 30000);
+  const starterId = d1?.blocks.find(b => b.id === 'sc1').data.starterId;
+  const sp0 = starterId && await read('scratch_projects/' + starterId);
+  ok('시작 파일: 숨긴 편집기로 풀어 scratch_projects + 그림·소리(고양이 2·소리 2·배경 1)로, 블록에 ID·이름', !!sp0 && JSON.parse(sp0.json).targets.some(t => t.name === '시작고양이') && sp0.assets.split(',').length === 5 && d1.blocks.find(b => b.id === 'sc1').data.starterName === '고양이 시작.sb3', JSON.stringify(sp0 && sp0.assets));
+  const assetsAfterStarter = (await all('scratch_assets')).length;
   if (SHOT) await tp.screenshot({ path: SHOT + '/scratch-block.png' });
 
   // ── 3. 학생: 차시 → [열기] → 시작 파일로 시작 ──
@@ -166,20 +148,34 @@ try {
   await sp.keyboard.press('ControlOrMeta+s');
   await sp.waitForFunction(() => /^저장됨/.test(document.querySelector('#save').textContent), null, { timeout: 15000 });
   let w = await read('work/StuA_L1_sc1');
-  ok('Ctrl+S → 드라이브 파일 + 작업 문서(블록 수·반·번호) + 저장 기록 1', w?.fileId && drive.files.has(w.fileId) && w.blocks >= 1 && w.sprites === 1 && w.class === '2' && w.number === 3 && w.fileInHistory === true && (await all('work_history')).length === 1, JSON.stringify(w));
-  ok('드라이브 폴더: 과목/차시/반 번호 이름', JSON.stringify(drive.files.get(w.fileId).folders) === JSON.stringify(['1학년 정보', '1차시 고양이 걷기', '2반 03 김학생']), JSON.stringify(drive.files.get(w.fileId).folders));
-  const firstFile = w.fileId, firstBlocks = w.blocks;
+  ok('Ctrl+S → 작품(project.json) + 작업 문서(블록 수·반·번호) + 저장 기록 1', w?.projectId && !!(await read('scratch_projects/' + w.projectId)) && w.blocks >= 1 && w.sprites === 1 && w.class === '2' && w.number === 3 && w.projectInHistory === true && (await all('work_history')).length === 1, JSON.stringify(w));
+  ok('같은 그림·소리는 다시 안 올림(고양이는 시작 파일 것을 같이 씀)', (await all('scratch_assets')).length === assetsAfterStarter);
+  ok('저장 하나 크기 = project.json 뿐(수 KB)', w.bytes < 20000, String(w.bytes));
+  const firstFile = w.projectId, firstBlocks = w.blocks;
+
+  // 학생이 새 모양을 그리면(서버에 없는 그림) → 그 그림만 올리고 저장
+  const before = (await all('scratch_assets')).length;
+  await sp.evaluate(async () => {
+    const fw = document.querySelector('#ed').contentWindow, vm = kStu.S.vm, st = vm.runtime.storage;
+    const svg = new fw.TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="20" height="20" fill="#e33"/></svg>');
+    const a = st.createAsset(st.AssetType.ImageVector, 'svg', svg, null, true);
+    await vm.addCostume(a.assetId + '.svg', { name: '빨간네모', asset: a, assetId: a.assetId, dataFormat: 'svg', md5: a.assetId + '.svg', rotationCenterX: 10, rotationCenterY: 10 });
+  });
+  await sp.evaluate(() => kStu.save('save'));
+  w = await read('work/StuA_L1_sc1');
+  ok('새로 그린 모양: 그 그림 하나만 올라가고 저장됨', (await all('scratch_assets')).length === before + 1 && JSON.parse((await read('scratch_projects/' + w.projectId)).json).targets.some(t => (t.costumes || []).some(c => c.name === '빨간네모')) && (await sp.textContent('#save')).startsWith('저장됨'));
+  const histN = (await all('work_history')).length;
 
   // 자동 저장 두 번: 저장 기록은 안 늘고(10분 안), 기록에 없는 지난 자동 저장 파일은 휴지통
   await sp.evaluate(() => { const vm = kStu.S.vm; vm.renameSprite(vm.editingTarget.id, '걷는고양이'); });
   await sp.evaluate(() => kStu.save('auto'));
   w = await read('work/StuA_L1_sc1');
-  const autoFile = w.fileId;
-  ok('자동 저장: 작업은 바뀌고 저장 기록은 그대로, 기록에 있는 파일은 안 지움', autoFile !== firstFile && w.fileInHistory === false && (await all('work_history')).length === 1 && !drive.trashed.has(firstFile));
+  const autoFile = w.projectId;
+  ok('자동 저장: 작업은 바뀌고 저장 기록은 그대로, 기록에 있는 작품은 안 지움', autoFile !== firstFile && w.projectInHistory === false && (await all('work_history')).length === histN && !!(await read('scratch_projects/' + firstFile)));
   await sp.evaluate(() => { const vm = kStu.S.vm; vm.renameSprite(vm.editingTarget.id, '뛰는고양이'); });
   await sp.evaluate(() => kStu.save('auto'));
-  ok('다음 자동 저장 → 지난 자동 저장 파일은 휴지통', drive.trashed.has(autoFile));
-  ok('바뀐 게 없으면 자동 저장 안 함', await sp.evaluate(async () => { const n = kStu.dirty; await kStu.save('auto'); return n === false; }) && (await read('work/StuA_L1_sc1')).saves === 3);
+  ok('다음 자동 저장 → 기록에 없는 지난 자동 저장본은 지움', !(await read('scratch_projects/' + autoFile)));
+  ok('바뀐 게 없으면 자동 저장 안 함', await sp.evaluate(async () => { const n = kStu.dirty; await kStu.save('auto'); return n === false; }) && (await read('work/StuA_L1_sc1')).saves === 4);
 
   // 다시 열면 마지막 작업
   await sp.reload();
@@ -189,9 +185,9 @@ try {
 
   // 저장 기록 → 예전 기록 열기
   await sp.click('#hist-btn');
-  ok('저장 기록 메뉴: 1개, 블록 수', (await sp.locator('#hist [data-v]').count()) === 1 && (await sp.textContent('#hist')).includes(`블록 ${firstBlocks}개`));
+  ok('저장 기록 메뉴: 2개, 블록 수', (await sp.locator('#hist [data-v]').count()) === 2 && (await sp.textContent('#hist')).includes(`블록 ${firstBlocks}개`));
   if (SHOT) await sp.screenshot({ path: SHOT + '/scratch-student.png' });
-  await sp.click('#hist [data-v]');
+  await sp.click('#hist [data-v]:last-child');
   await sp.waitForFunction(() => /예전 기록/.test(document.querySelector('#save').textContent), null, { timeout: 15000 });
   ok('예전 기록 열기 → 그때 이름(시작고양이)', (await names()).includes('시작고양이'));
 
@@ -204,11 +200,12 @@ try {
   // ── 4. 선생님: 학생 작업 ──
   await tp.goto('http://localhost:8098/k/work.html?lesson=L1');
   await tp.waitForSelector('[data-stu="StuA"]', { timeout: 15000 });
+  await tp.waitForFunction(() => /블록/.test(document.querySelector('[data-stu="StuA"]')?.textContent || ''), null, { timeout: 15000 }).catch(() => {});
   ok('학생 작업: 블록 수로 보임', (await tp.textContent('[data-stu="StuA"]')).includes('블록'), await tp.textContent('[data-stu="StuA"]'));
   await tp.click('[data-stu="StuA"]');
   await tp.waitForFunction(() => /지금 작품/.test(document.querySelector('#sstate')?.textContent || ''), null, { timeout: 60000 });
   const tf = tp.frames().find(f => f.url().includes('/scratch/editor.html'));
-  ok('학생 작업: 드라이브에서 받아 편집기에 띄움(뛰는고양이)', (await tf.evaluate(() => kScratch.vm.runtime.targets.filter(t => !t.isStage).map(t => t.sprite.name))).includes('뛰는고양이'));
+  ok('학생 작업: Firestore 에서 읽어 편집기에 띄움(뛰는고양이)', (await tf.evaluate(() => kScratch.vm.runtime.targets.filter(t => !t.isStage).map(t => t.sprite.name))).includes('뛰는고양이'));
   await tp.click('#hist [data-ver]:last-child');
   await tp.waitForFunction(() => /저장 기록/.test(document.querySelector('#sstate')?.textContent || ''), null, { timeout: 30000 });
   ok('학생 작업: 저장 기록 보기(시작고양이)', (await tf.evaluate(() => kScratch.vm.runtime.targets.filter(t => !t.isStage).map(t => t.sprite.name))).includes('시작고양이'));
@@ -218,5 +215,5 @@ try {
   ok('화면 오류 없음', errors.length === 0, errors.join(' | '));
 } catch (e) { fails++; console.log('❌ 진행 중 오류 — ' + e.message.split('\n')[0]); }
 
-await browser.close(); sv1.close(); sv2.close(); gasSrv.close(); await env.cleanup();
+await browser.close(); sv1.close(); sv2.close(); await env.cleanup();
 console.log(fails ? `\n실패 ${fails}건` : '\n전부 통과'); process.exit(fails ? 1 : 0);

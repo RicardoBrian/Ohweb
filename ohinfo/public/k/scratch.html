@@ -22,7 +22,6 @@
   .stage { position: relative; flex: 1; min-height: 0; }
   .stage iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
   .cover { position: absolute; inset: 0; display: grid; place-items: center; background: var(--bg); font: 500 15px/22px var(--font-sans); color: var(--ink-2); z-index: 2; }
-  .note { flex: none; padding: 8px var(--space-5); background: var(--warn-soft); color: var(--warn); font: 500 14px/20px var(--font-sans); }
 </style>
 </head>
 <body>
@@ -30,17 +29,17 @@
 <script type="module">
 // kaká 스크래치 — 차시 문서의 스크래치 도구 블록 [열기] → kakainfo.com/k/scratch.html?lesson=&block=
 // 편집기는 같은 사이트 /scratch/editor.html(공식 scratch-gui)을 iframe 으로 열고 window.kScratch 로 불러오기·저장한다.
-// 파일은 선생님 구글 드라이브(서버 /api/lesson scratch-* → Apps Script), 저장 기록은 Firestore(work_history).
+// 작품은 서버(/api/lesson scratch-*) → Firestore: project.json 은 scratch_projects, 그림·소리는 scratch_assets(같은 파일은 한 벌), 저장 기록은 work_history.
 // 설계: PLATFORM-DESIGN.md §8.10
 import { LOGO_SVG } from '/kaka/logo.js?v=1128';
 import { icon } from '/kaka/icons.js?v=1128';
 import { session, api, getLang, esc, nameIn, stuNo } from '/k/stu.js?v=1128';
 
 const T = {
-  ko: { save: '저장', saved: '저장됨', saving: '저장 중…', unsaved: '저장 안 됨', saveFail: '저장 실패 — 인터넷을 확인하세요', loading: '스크래치를 여는 중…', hist: '저장 기록', histNone: '아직 저장 기록이 없습니다.', closed: '열 수 없는 활동입니다.', fail: '불러오지 못했습니다. 새로고침하세요.', notReady: '선생님이 아직 저장 공간을 연결하지 않아 저장되지 않습니다. 파일 메뉴의 "컴퓨터에 저장하기"로 내려받아 두세요.', opened: '예전 기록을 열었습니다. 고치면 이것이 지금 작업으로 저장됩니다.', tooBig: '프로젝트가 너무 큽니다(15MB까지). 큰 소리·그림을 줄여 주세요.', reason: { auto: '자동', save: '저장', leave: '나갈 때' }, blocks: n => `블록 ${n}개` },
-  zh: { save: '保存', saved: '已保存', saving: '保存中…', unsaved: '未保存', saveFail: '保存失败 — 请检查网络', loading: '正在打开 Scratch…', hist: '保存记录', histNone: '还没有保存记录。', closed: '无法打开这个活动。', fail: '加载失败。请刷新页面。', notReady: '老师还没有连接保存空间，作品不会被保存。请用“文件”菜单中的“保存到你的电脑”下载。', opened: '已打开以前的记录。修改后会保存为当前作品。', tooBig: '作品太大（最多 15MB）。请减小声音或图片。', reason: { auto: '自动', save: '保存', leave: '离开时' }, blocks: n => `${n} 个积木` },
-  ru: { save: 'Сохранить', saved: 'Сохранено', saving: 'Сохранение…', unsaved: 'Не сохранено', saveFail: 'Ошибка сохранения — проверьте интернет', loading: 'Открываем Scratch…', hist: 'История', histNone: 'Сохранений пока нет.', closed: 'Это задание нельзя открыть.', fail: 'Не удалось загрузить. Обновите страницу.', notReady: 'Учитель ещё не подключил хранилище — работа не сохраняется. Скачайте её через меню «Файл» → «Сохранить на компьютер».', opened: 'Открыта старая версия. Если её изменить, она сохранится как текущая работа.', tooBig: 'Проект слишком большой (до 15 МБ). Уменьшите звуки или картинки.', reason: { auto: 'авто', save: 'сохр.', leave: 'при выходе' }, blocks: n => `блоков: ${n}` },
-  en: { save: 'Save', saved: 'Saved', saving: 'Saving…', unsaved: 'Not saved', saveFail: 'Could not save — check the internet', loading: 'Opening Scratch…', hist: 'Saved versions', histNone: 'No saved versions yet.', closed: 'This activity cannot be opened.', fail: 'Could not load. Please refresh.', notReady: 'Your teacher has not connected storage yet, so your work is not saved. Use File → "Save to your computer" to download it.', opened: 'Opened an older version. If you change it, it is saved as your current work.', tooBig: 'The project is too big (15 MB max). Make sounds or pictures smaller.', reason: { auto: 'auto', save: 'save', leave: 'on leave' }, blocks: n => `${n} blocks` },
+  ko: { save: '저장', saved: '저장됨', saving: '저장 중…', unsaved: '저장 안 됨', saveFail: '저장 실패 — 인터넷을 확인하세요', loading: '스크래치를 여는 중…', hist: '저장 기록', histNone: '아직 저장 기록이 없습니다.', closed: '열 수 없는 활동입니다.', fail: '불러오지 못했습니다. 새로고침하세요.', opened: '예전 기록을 열었습니다. 고치면 이것이 지금 작업으로 저장됩니다.', tooBig: '너무 큽니다 — 큰 소리·그림(10MB까지)이나 스프라이트를 줄여 주세요.', reason: { auto: '자동', save: '저장', leave: '나갈 때' }, blocks: n => `블록 ${n}개` },
+  zh: { save: '保存', saved: '已保存', saving: '保存中…', unsaved: '未保存', saveFail: '保存失败 — 请检查网络', loading: '正在打开 Scratch…', hist: '保存记录', histNone: '还没有保存记录。', closed: '无法打开这个活动。', fail: '加载失败。请刷新页面。', opened: '已打开以前的记录。修改后会保存为当前作品。', tooBig: '太大了 — 请减小声音、图片（每个最多 10MB）或角色数量。', reason: { auto: '自动', save: '保存', leave: '离开时' }, blocks: n => `${n} 个积木` },
+  ru: { save: 'Сохранить', saved: 'Сохранено', saving: 'Сохранение…', unsaved: 'Не сохранено', saveFail: 'Ошибка сохранения — проверьте интернет', loading: 'Открываем Scratch…', hist: 'История', histNone: 'Сохранений пока нет.', closed: 'Это задание нельзя открыть.', fail: 'Не удалось загрузить. Обновите страницу.', opened: 'Открыта старая версия. Если её изменить, она сохранится как текущая работа.', tooBig: 'Слишком большой — уменьшите звуки, картинки (до 10 МБ каждый) или число спрайтов.', reason: { auto: 'авто', save: 'сохр.', leave: 'при выходе' }, blocks: n => `блоков: ${n}` },
+  en: { save: 'Save', saved: 'Saved', saving: 'Saving…', unsaved: 'Not saved', saveFail: 'Could not save — check the internet', loading: 'Opening Scratch…', hist: 'Saved versions', histNone: 'No saved versions yet.', closed: 'This activity cannot be opened.', fail: 'Could not load. Please refresh.', opened: 'Opened an older version. If you change it, it is saved as your current work.', tooBig: 'Too big — make sounds or pictures smaller (10 MB each) or use fewer sprites.', reason: { auto: 'auto', save: 'save', leave: 'on leave' }, blocks: n => `${n} blocks` },
 };
 const lang = getLang(T), t = T[lang];
 const LOCALE = { ko: 'ko', zh: 'zh-cn', ru: 'ru', en: 'en' }[lang];
@@ -49,8 +48,6 @@ const $ = s => document.querySelector(s);
 const when = iso => { const d = new Date(iso); const same = d.toDateString() === new Date().toDateString(); return d.toLocaleString(lang === 'zh' ? 'zh-CN' : lang, same ? { hour: '2-digit', minute: '2-digit' } : { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }); };
 const back = `/k/#lesson=${encodeURIComponent(lessonId || '')}`;
 const fail = m => { document.body.innerHTML = `<main class="k-page"><div class="k-callout" style="max-width:560px"><span class="k-callout__label">${esc(m)}</span><a href="${back}">←</a></div></main>`; };
-const b64ToBuf = b64 => { const s = atob(b64), u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u.buffer; };
-const blobToB64 = blob => new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(',')[1] || ''); r.onerror = no; r.readAsDataURL(blob); });
 
 const d = await api('scratch-open', { lessonId, blockId }).catch(() => ({ error: 1 }));
 if (d.error) { fail(d.closed ? t.closed : t.fail); await new Promise(() => {}); }
@@ -65,7 +62,6 @@ document.body.innerHTML = `<header class="k-header"><a class="k-logo" href="/k/"
     <button class="k-ibtn" id="save-btn" aria-label="${esc(t.save)}" data-tip="${esc(t.save)} · Ctrl+S">${icon('save')}</button>
     <div class="hist-wrap"><button class="k-ibtn k-ibtn--end" id="hist-btn" aria-label="${esc(t.hist)}" data-tip="${esc(t.hist)}" aria-haspopup="menu" aria-expanded="false">${icon('history')}</button><div class="k-menu" id="hist" role="menu" hidden></div></div>
     <span class="k-avatar" style="width:auto;min-width:32px;padding:0 10px;border-radius:999px">${esc(stuNo(session))}</span></div></header>
-${d.ready ? '' : `<p class="note" role="status">${esc(t.notReady)}</p>`}
 <div class="stage"><div class="cover" id="cover">${esc(t.loading)}</div><iframe id="ed" title="Scratch" src="/scratch/editor.html?locale=${LOCALE}" allow="microphone; camera"></iframe></div>`;
 
 // ── 편집기 열기 → 내 작업(없으면 시작 파일) 불러오기 ──
@@ -79,11 +75,11 @@ async function loadFrom(extra) {
   loading = true;
   const r = await api('scratch-load', { lessonId, blockId, ...extra });
   if (r.error) throw new Error(r.error);
-  if (r.b64) await S.load(b64ToBuf(r.b64));
+  if (r.json) await S.loadParts(r.json, r.assets);
   setTimeout(() => { loading = false; }, 300); // 불러오면서 생기는 바뀜 알림은 무시
 }
 status(d.work ? `${t.saved} ${when(d.work.updatedAt)}` : '');
-try { if (d.ready && (d.work || d.block.data.starterFileId)) await loadFrom({}); else loading = false; }
+try { if (d.work || d.block.data.starterId) await loadFrom({}); else loading = false; }
 catch (e) { console.warn(e); status(t.fail, true); loading = false; }
 $('#cover').remove();
 window.kStu = { S, get dirty() { return dirty; }, save: r => save(r) }; // 테스트용 손잡이
@@ -91,23 +87,26 @@ window.kStu = { S, get dirty() { return dirty; }, save: r => save(r) }; // 테�
 // ── 저장: 고치면 30초 뒤 자동, [저장]·Ctrl+S, 나갈 때 ──
 function save(reason = 'auto') {
   clearTimeout(saveT);
-  if (!d.ready) return inflight;
   if (!dirty && reason === 'auto') return inflight;
   dirty = false; status(t.saving);
   inflight = inflight.then(async () => {
-    const blob = await S.save(), st = S.stats() || {};
-    const r = await api('scratch-save', { lessonId, blockId, b64: await blobToB64(blob), reason, blocks: st.blocks, sprites: st.sprites });
-    if (r.error) throw new Error(r.error);
+    const p = await S.parts();
+    let r = await api('scratch-save', { lessonId, blockId, json: p.json, reason });
+    if (r.missing) { // 서버에 없는 그림·소리(새로 그린 것·올린 사진·녹음)만 올리고 다시 저장
+      for (const id of r.missing) { const a = await api('scratch-asset', { lessonId, blockId, id, b64: S.asset(id) }); if (a.error) throw new Error(a.error); }
+      r = await api('scratch-save', { lessonId, blockId, json: p.json, reason });
+    }
+    if (r.error || r.missing) throw new Error(r.error || 'missing');
     history = r.history; paintHist();
     status(dirty ? t.unsaved : `${t.saved} ${when(r.updatedAt)}`);
-  }).catch(e => { dirty = true; if (!/logout|relogin/.test(e.message)) status(/15MB/.test(e.message) ? t.tooBig : t.saveFail, true); });
+  }).catch(e => { dirty = true; if (!/logout|relogin/.test(e.message)) status(/너무 큽니다/.test(e.message) ? t.tooBig : t.saveFail, true); });
   return inflight;
 }
 S.onChange(() => { if (loading) return; dirty = true; status(t.unsaved); clearTimeout(saveT); saveT = setTimeout(() => save('auto'), 30000); });
 const onKey = e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); save('save'); } };
 addEventListener('keydown', onKey); frame.contentWindow.addEventListener('keydown', onKey);
 $('#save-btn').addEventListener('click', () => save('save'));
-addEventListener('beforeunload', e => { if (dirty && d.ready) { save('leave'); e.preventDefault(); } });
+addEventListener('beforeunload', e => { if (dirty) { save('leave'); e.preventDefault(); } });
 
 // ── 저장 기록: 눌러서 예전 기록 열기 ──
 function paintHist() {

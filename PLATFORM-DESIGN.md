@@ -87,7 +87,7 @@
 **학생 도구** (학생 화면에 열림)
 | 도구 | 들이는 방식 | 저장 | 비고 |
 |---|---|---|---|
-| 스크래치 | 편집기(scratch-gui 또는 TurboWarp)를 빌드해 사이트에 올림. 기본 스프라이트·소리도 우리 쪽에 둠 | 내 계정(Apps Script → 드라이브, 기록은 Firestore) | **AI 실험실의 AI 코딩(Blockly)도 이것으로 바꾼다** — "우리 모둠 AI" 확장 블록 |
+| 스크래치 | 편집기(scratch-gui 또는 TurboWarp)를 빌드해 사이트에 올림. 기본 스프라이트·소리도 우리 쪽에 둠 | 내 계정(Firestore — project.json + 그림·소리는 같은 파일 한 벌. 처음 계획은 Apps Script → 드라이브였으나 용량이 작아 바꿈, §8.10) | **AI 실험실의 AI 코딩(Blockly)도 이것으로 바꾼다** — "우리 모둠 AI" 확장 블록 |
 | MakeCode | 공식 연결 방식으로 끼움(안 되면 직접 올림) | 내 계정 | 마이크로비트. 크롬 USB로 바로 내려받기 |
 | 파이썬 IDE | **ohexam 코드 문항 방식 그대로**: CodeMirror + 서버 실행(`/api/run-python`, 지금 Wandbox) | 내 계정 | 9~11월 수업에서 검증. 입력은 미리 적는 방식. 실행 서버는 바꿔 끼울 수 있게 |
 | 코랩 링크 | 선생님 드라이브 노트북을 학생 사본으로 엶 | 학생 구글 계정 | **인공지능 프로그래밍**(pandas·머신러닝) |
@@ -132,7 +132,7 @@ Pyodide(브라우저 안 파이썬)·JupyterLite는 쓰지 않는다 — 시험�
 - 학년도 전환은 차시 불러오기로
 
 ### 3.9 직접 시험해 볼 것 (만들기 전에)
-1. 스크래치 편집기를 사이트에 올려 저장·불러오기(Apps Script 한도 포함)
+1. 스크래치 편집기를 사이트에 올려 저장·불러오기 → 완료(§8.10, 저장은 Firestore)
 2. MakeCode 공식 연결 방식으로 프로젝트 주고받기
 3. 교실 PC 크롬에서 마이크로비트 USB 내려받기
 4. 학생 구글 계정으로 코랩 사본 열기
@@ -382,19 +382,19 @@ setuk/{과목ID}_{학생ID}   (선생님만)
 - 수업 흐름 한 번에: `npm run test:kaka-flow` — 화면만 눌러서 과목·단원·차시 만들기 → 문서(글·파이썬 도구) → 세 언어 번역 → 2반에 공개(3반은 닫힘) → 학생이 오늘 차시(한·영)·파이썬 열기·키보드로 코드·입력값·실행·자동 저장 → 선생님 [학생 작업]. `test:kaka-all`에 들어 있다(2026-11-28).
 
 ### 8.10 스크래치 (만들기 6단계, 2026-11-28)
-- 편집기: 공식 `scratch-gui@5.3.0` npm 패키지의 빌드 결과(`dist/scratch-gui.js` UMD)를 `ohinfo/public/scratch/`에 그대로 올렸다(빌드 없음, 약 39MB). `scratch/editor.html?locale=ko|zh-cn|ru|en`이 감싸서 `window.kScratch`(load·save·onChange·stats)를 내놓는다. 스크래치 사이트로 나가는 것(로고·공유·계정)은 숨김.
+- 편집기: 공식 `scratch-gui@5.3.0` npm 패키지의 빌드 결과(`dist/scratch-gui.js` UMD)를 `ohinfo/public/scratch/`에 그대로 올렸다(빌드 없음, 약 39MB). `scratch/editor.html?locale=ko|zh-cn|ru|en`이 감싸서 `window.kScratch`(parts·asset·loadParts·loadSb3·onChange·stats)를 내놓는다. 스크래치 사이트로 나가는 것(로고·공유·계정)은 숨김.
   - 고친 것 둘: 번들 안 fetch-worker 경로(`p="/"`→`""`), 패키지에 빠진 `chunks/fetch-worker.*.js`는 `scratch-storage@4.1.27`에서. 자세한 건 editor.html 머리말.
-  - 부모 창 ArrayBuffer는 iframe에서 `instanceof`를 통과 못 해 JSZip이 못 연다 → editor.html이 자기 창 것으로 복사해서 불러온다.
-  - 라이브러리 그림·소리는 아직 `cdn.assets.scratch.mit.edu`에서 받는다(§8.7 다음).
-- 저장: 파일(.sb3)은 **선생님 구글 드라이브**(Apps Script 웹 앱 `ohinfo/apps-script/scratch-drive.gs`, 실행=선생님), 기록은 Firestore.
-  - 연결: `admin.kakainfo.com/k/settings.html` → 웹 앱 URL 붙여넣고 [연결]. 화면이 비밀값(64자)을 만들어 Apps Script에 한 번 등록하고 시험 저장·불러오기·삭제를 해 본 뒤 `kaka_config/scratch {url, secret, connectedAt}`에 넣는다(관리자만 읽기·쓰기). 서버는 서비스 계정으로 읽는다(`ohinfo/lib/scratch-store.js`, 60초 캐시).
-  - 드라이브 폴더: `kaká 스크래치/1학년 정보/3차시 반복문/2반 03 김하늘/0303 1415 저장.sb3`. Apps Script는 이 폴더 안 파일만 읽고 지운다.
-  - 연결 전에는 학생이 열 수는 있지만 저장은 안 되고, "컴퓨터에 저장하기"로 내려받으라고 안내한다.
-- 선생님 편집기: 도구 블록에서 '스크래치' → **시작 파일 올리기(.sb3)**(드라이브 `시작 파일` 폴더). 없으면 기본 고양이로 시작.
+  - 부모 창과는 글자(JSON·base64)로만 주고받는다 — 다른 창의 ArrayBuffer는 `instanceof`를 통과 못 해 JSZip이 못 연다.
+- 저장: **Firestore**(처음엔 선생님 구글 드라이브 + Apps Script였다가 같은 날 바꿈 — 용량을 재 보니 작아서. 배포·연결 단계가 없어짐).
+  - sb3를 통째로 두지 않고 나눈다: `scratch_projects/{자동ID}` = project.json 글자(블록·설정, 보통 2~50KB, 900KB까지) + 쓰는 그림·소리 이름. `scratch_assets/{md5.확장자}` = 그림·소리(base64, 600KB 조각, 하나 10MB까지).
+  - 그림·소리는 이름이 내용의 MD5라 **같은 파일은 한 벌**(기본 고양이는 모든 학생이 같이 씀). 그래서 저장마다 쌓이는 건 project.json뿐. 기본 프로젝트 42KB 중 project.json은 1.7KB.
+  - 어림: 300명 × 20차시 × (작품 + 기록 5) × 10KB ≈ 360MB — Firestore 무료 1GB 안, 넘어도 GB당 월 $0.18.
+  - 저장 순서: 화면이 project.json만 보냄 → 서버가 그림·소리 목록을 직접 뽑아 없는 것을 `{missing}`으로 → 화면이 그것만 `scratch-asset`으로 올림(서버가 **MD5 확인** — 남의 그림을 같은 이름으로 덮어쓰지 못함) → 다시 저장.
+- 선생님 편집기: 도구 블록에서 '스크래치' → **시작 파일 올리기(.sb3)**. 숨긴 편집기 iframe에 띄워 project.json·그림·소리로 나눈 뒤 같은 형식으로 저장(`ohweb/public/k/scratch-fs.js`), 블록에 `starterId`. 없으면 기본 고양이로 시작.
 - 학생: 차시 화면 스크래치 블록 [열기] → `kakainfo.com/k/scratch.html?lesson=&block=`. 위쪽 막대(활동 이름·저장 상태·저장·저장 기록), 나머지 전체가 편집기. 편집기 언어 = 학생 언어.
   - 저장: 고치고 30초 뒤 자동, [저장]·Ctrl+S, 나갈 때. 학생 계정(서버)에 저장 — 어느 컴퓨터에서든 이어서.
-  - 저장 기록: [저장]마다, 자동은 10분에 한 번만 남는다. 기록에 안 남은 지난 자동 저장 파일은 휴지통으로(드라이브가 안 쌓이게). 기록을 누르면 지금 것을 먼저 저장하고 그 버전을 연다.
-- 서버: `/api/lesson`의 `scratch-open`·`scratch-load`·`scratch-save`. 열 수 있는 차시의 스크래치 블록만, 파일 15MB까지, 남의 기록은 못 받음. 파일 내용은 서버를 지나기만 하고 Firestore에는 파일 ID·크기·블록 수·스프라이트 수만.
-- 선생님 학생 작업(`work.html`): 스크래치 줄은 "블록 N개". 학생을 누르면 드라이브에서 받아 `kakainfo.com/scratch/editor.html`(다른 사이트라 postMessage)에 띄운다. 저장 기록 버튼으로 예전 버전.
-- Apps Script 한도: 동시 실행 30개(넘으면 잠시 실패 → 학생 화면은 "저장 실패" 뒤 다음 자동 저장에서 다시), 하루 실행 시간 90분(무료 계정)/6시간(Workspace). 한 반 30명이 30초마다 자동 저장해도 실제로는 바뀐 사람만 저장한다.
-- 테스트: `npm run test:kaka-scratch`(Apps Script 흉내 서버 + 실제 scratch-gui: 연결 → 시작 파일 → 학생 열기·블록 끌어 넣기·저장·자동 저장·휴지통·다시 열기·저장 기록·영어 → 선생님 학생 작업). `test:kaka-all`에 들어 있다.
+  - 저장 기록: [저장]마다, 자동은 10분에 한 번만 남는다. 기록에 안 남은 지난 자동 저장본은 지운다. 기록을 누르면 지금 것을 먼저 저장하고 그 버전을 연다.
+- 서버: `/api/lesson`의 `scratch-open`·`scratch-load`·`scratch-save`·`scratch-asset`(`ohinfo/lib/scratch-store.js`, MD5는 `ohinfo/public/kaka/md5.js` — Cloudflare는 crypto.subtle MD5, 없으면 JS). 열 수 있는 차시의 스크래치 블록만, 남의 기록은 못 받음. 블록·스프라이트 수는 서버가 project.json에서 센다.
+- 선생님 학생 작업(`work.html`): 스크래치 줄은 "블록 N개". 학생을 누르면 Firestore에서 읽어 `kakainfo.com/scratch/editor.html`(다른 사이트라 postMessage)에 띄운다. 저장 기록 버튼으로 예전 버전. 편집기가 1024px 이상 되게 이때만 페이지를 넓힌다.
+- 규칙: `scratch_projects`·`scratch_assets` 관리자만(학생은 서버 함수로만).
+- 테스트: `npm run test:kaka-scratch`(실제 scratch-gui: MD5 확인·조각·missing → 시작 파일 → 학생 열기·블록 끌어 넣기·새 모양 그리기·저장·자동 저장·지우기·다시 열기·저장 기록·영어 → 선생님 학생 작업). `test:kaka-all`에 들어 있다.

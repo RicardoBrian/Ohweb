@@ -8,13 +8,13 @@
  *   doc   — 차시 하나의 문서. 발표자 메모 블록은 빼고 보낸다.
  *   work-open / work-save / work-version — 차시 안 도구 블록(지금은 파이썬)의 학생 작업.
  *     work/{학생ID_차시ID_블록ID} 에 마지막 코드, work_history 에 저장 이력(선생님이 본다).
- *   scratch-open / scratch-load / scratch-save — 스크래치 도구 블록. 파일(.sb3)은 선생님 구글 드라이브
- *     (lib/scratch-store.js), work·work_history 에는 파일 ID·크기·블록 수만.
+ *   scratch-open / scratch-load / scratch-save / scratch-asset — 스크래치 도구 블록. 작품은 Firestore
+ *     scratch_projects(project.json) + scratch_assets(그림·소리, MD5 이름으로 한 벌만) — lib/scratch-store.js
  * 마스터 계정(isMaster)은 선생님 확인용이라 학교·반과 공개 여부를 따지지 않는다.
  * 설계: PLATFORM-DESIGN.md §8.3, §8.8
  */
 import { withCors, json, isSafeId, normGC, openDb, verifyStudent } from '../../lib/student-api.js';
-import { scratchStore } from '../../lib/scratch-store.js';
+import { inspect, missingAssets, putAsset, loadProject, b64ToBytes, ASSET_RE, MAX_JSON, MAX_ASSET } from '../../lib/scratch-store.js';
 
 const SETUP_ERROR = { error: '수업 화면이 아직 준비되지 않았습니다. 선생님께 알려 주세요.' };
 
@@ -131,10 +131,8 @@ async function actionWork(db, student, studentId, body) {
 }
 
 // ── 학생 작업(스크래치) ──
-const MAX_SB3_B64 = Math.ceil(15 * 1024 * 1024 * 4 / 3); // 파일 15MB 까지
-const SCRATCH_SNAP_MS = 10 * 60 * 1000;                  // 자동 저장은 10분에 한 번만 저장 기록에 남긴다
+const SCRATCH_SNAP_MS = 10 * 60 * 1000; // 자동 저장은 10분에 한 번만 저장 기록에 남긴다
 const REASON_KO = { auto: '자동', save: '저장', leave: '나갈 때' };
-const n0 = (v, max) => Math.max(0, Math.min(max, Math.floor(Number(v) || 0)));
 async function scratchHistory(db, workId) {
   const h = await db.queryEq('work_history', { workId });
   return h.sort((a, b) => String(b.at).localeCompare(String(a.at))).map(x => ({ id: x.id, at: x.at, reason: x.reason, bytes: x.bytes || 0, blocks: x.blocks || 0, sprites: x.sprites || 0 }));
@@ -144,46 +142,54 @@ async function actionScratch(db, student, studentId, body) {
   const t = await openTool(db, student, lessonId, blockId, 'scratch');
   if (!t) return json(CLOSED);
   const workId = `${studentId}_${lessonId}_${blockId}`;
+  if (action === 'scratch-asset') {
+    // 저장하기 전에, 서버에 없는 그림·소리를 하나씩 올린다(MD5 확인)
+    const id = String(body.id || ''), b64 = String(body.b64 || '');
+    if (!ASSET_RE.test(id) || !b64 || b64.length > Math.ceil(MAX_ASSET * 4 / 3) + 4 || !/^[A-Za-z0-9+/]+=*$/.test(b64)) return json({ error: '그림·소리 파일이 올바르지 않거나 너무 큽니다(10MB까지).' }, 400);
+    if ((await missingAssets(db, [id])).length) {
+      try { await putAsset(db, id, b64ToBytes(b64)); } catch (e) { return json({ error: e.message }, 400); }
+    }
+    return json({ ok: true });
+  }
   const w = await db.get(`work/${workId}`);
-  const store = await scratchStore(db);
   if (action === 'scratch-open') {
-    return json({ course: pickCourse(t.course), lesson: pickLesson({ ...t.lesson, no: t.no }), block: t.block, ready: !!store,
+    return json({ course: pickCourse(t.course), lesson: pickLesson({ ...t.lesson, no: t.no }), block: t.block,
       work: w ? { updatedAt: w.updatedAt, bytes: w.bytes || 0, blocks: w.blocks || 0, sprites: w.sprites || 0 } : null,
       history: w ? await scratchHistory(db, workId) : [] });
   }
-  if (!store) return json({ error: '스크래치 저장소(구글 드라이브)가 아직 연결되지 않았습니다. 선생님께 알려 주세요.', setup: true });
   if (action === 'scratch-load') {
-    let fileId = null;
+    let pid = null;
     if (body.versionId) {
       const v = isSafeId(body.versionId) ? await db.get(`work_history/${body.versionId}`) : null;
       if (!v || v.workId !== workId) return json({ error: '저장 기록을 찾을 수 없습니다.' }, 404);
-      fileId = v.fileId;
-    } else fileId = (!body.starter && w?.fileId) || t.block.data?.starterFileId || null;
-    if (!fileId) return json({ empty: true });
-    const d = await store.load(fileId);
-    return json({ b64: d.b64 });
+      pid = v.projectId;
+    } else pid = (!body.starter && w?.projectId) || t.block.data?.starterId || null;
+    const p = pid && isSafeId(pid) ? await loadProject(db, pid) : null;
+    return json(p || { empty: true });
   }
-  // scratch-save
-  const b64 = String(body.b64 || '');
-  if (!b64 || b64.length > MAX_SB3_B64 || !/^[A-Za-z0-9+/]+=*$/.test(b64)) return json({ error: b64.length > MAX_SB3_B64 ? '프로젝트가 너무 큽니다(15MB까지). 큰 소리·그림을 줄여 주세요.' : '저장할 파일이 올바르지 않습니다.' }, 400);
+  // scratch-save: project.json 만 보낸다. 서버에 없는 그림·소리가 있으면 {missing} → 화면이 scratch-asset 으로 올리고 다시 저장.
+  const text = String(body.json || '');
+  if (!text || text.length > MAX_JSON) return json({ error: text ? '프로젝트가 너무 큽니다. 스프라이트·블록을 줄여 주세요.' : '저장할 내용이 없습니다.' }, 400);
+  let project; try { project = JSON.parse(text); } catch { return json({ error: '저장할 내용이 올바르지 않습니다.' }, 400); }
+  const info = inspect(project);
+  if (!info.assets.every(id => ASSET_RE.test(id)) || info.assets.length > 1000) return json({ error: '그림·소리 목록이 올바르지 않습니다.' }, 400);
+  const missing = await missingAssets(db, info.assets);
+  if (missing.length) return json({ missing });
   const reason = REASON_KO[body.reason] ? body.reason : 'auto';
-  const now = new Date(), at = now.toISOString();
+  const at = new Date().toISOString();
   const hist = w ? await scratchHistory(db, workId) : [];
-  const due = reason === 'save' || !hist.length || now - Date.parse(hist[0].at) >= SCRATCH_SNAP_MS;
-  const kst = now.toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' }).slice(5, 16).replace(/[-:]/g, '').replace(' ', ' ');
-  const cls = normGC(student.class), num = String(Number(student.number) || 0).padStart(2, '0');
-  const folders = [`${normGC(t.course.grade)}학년 ${t.course.name || ''}`, `${t.no || ''}차시 ${t.lesson.name || ''}`, `${cls}반 ${num} ${student.name || studentId}`];
-  const saved = await store.save(folders, `${kst} ${REASON_KO[reason]}`, b64);
-  const blocks = n0(body.blocks, 100000), sprites = n0(body.sprites, 1000), bytes = n0(saved.bytes, 1e9);
+  const due = reason === 'save' || !hist.length || Date.now() - Date.parse(hist[0].at) >= SCRATCH_SNAP_MS;
+  const { blocks, sprites } = info, bytes = text.length;
+  const projectId = await db.add('scratch_projects', { json: text, assets: info.assets.join(','), bytes, blocks, sprites, workId, createdAt: at });
   let history = hist;
   if (due) {
-    const id = await db.add('work_history', { workId, studentId, lessonId, blockId, tool: 'scratch', fileId: saved.fileId, at, reason, bytes, blocks, sprites });
+    const id = await db.add('work_history', { workId, studentId, lessonId, blockId, tool: 'scratch', projectId, at, reason, bytes, blocks, sprites });
     history = [{ id, at, reason, bytes, blocks, sprites }, ...hist];
   }
-  // 저장 기록에 안 남은 지난 자동 저장 파일은 휴지통으로(드라이브가 자동 저장 파일로 쌓이지 않게)
-  if (w?.fileId && !w.fileInHistory && w.fileId !== saved.fileId) await store.trash(w.fileId);
-  await db.set(`work/${workId}`, { studentId, schoolName: student.schoolName || '', grade: normGC(student.grade), class: cls,
-    number: Number(student.number) || 0, courseId: t.course.id, lessonId, blockId, tool: 'scratch', fileId: saved.fileId, fileInHistory: due,
+  // 저장 기록에 안 남은 지난 자동 저장본은 지운다(쌓이지 않게)
+  if (w?.projectId && !w.projectInHistory && w.projectId !== projectId) await db.del(`scratch_projects/${w.projectId}`).catch(e => console.error('scratch del:', e.message));
+  await db.set(`work/${workId}`, { studentId, schoolName: student.schoolName || '', grade: normGC(student.grade), class: normGC(student.class),
+    number: Number(student.number) || 0, courseId: t.course.id, lessonId, blockId, tool: 'scratch', projectId, projectInHistory: due,
     bytes, blocks, sprites, updatedAt: at, createdAt: w?.createdAt || at, saves: (Number(w?.saves) || 0) + 1 });
   return json({ updatedAt: at, history });
 }
@@ -195,7 +201,7 @@ async function handle(request, env) {
   try { body = await request.json(); } catch { return json({ error: 'invalid JSON body' }, 400); }
   const { action, idToken, studentDocId, lessonId } = body || {};
   if (!idToken || !isSafeId(studentDocId)) return json({ error: '요청 정보가 부족합니다.' }, 400);
-  if (!['today', 'doc', 'work-open', 'work-save', 'work-version', 'scratch-open', 'scratch-load', 'scratch-save'].includes(action)) return json({ error: '알 수 없는 요청입니다.' }, 400);
+  if (!['today', 'doc', 'work-open', 'work-save', 'work-version', 'scratch-open', 'scratch-load', 'scratch-save', 'scratch-asset'].includes(action)) return json({ error: '알 수 없는 요청입니다.' }, 400);
   try { await verifyStudent(idToken, studentDocId, env); } catch (e) { return json({ error: e.message, relogin: true }, 403); }
   try {
     const db = await openDb(env, 'lesson');

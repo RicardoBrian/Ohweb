@@ -85,6 +85,19 @@ function makeDb(projectId, token, emulatorHost) {
       const r = await fetch(`${base}/${path}`, { method: 'PATCH', headers, body: JSON.stringify({ fields: toF(obj) }) });
       if (!r.ok) throw new Error(`Firestore 쓰기 실패(${path}): ${(await r.text()).slice(0, 200)}`);
     },
+    // 여러 문서 한 번에(요청 1번). { 경로: 문서 또는 null }
+    async getMany(paths) {
+      const out = Object.fromEntries(paths.map(p => [p, null]));
+      if (!paths.length) return out;
+      const r = await fetch(`${base}:batchGet`, { method: 'POST', headers, body: JSON.stringify({ documents: paths.map(p => `${root}/${p}`) }) });
+      if (!r.ok) throw new Error(`Firestore 여러 문서 읽기 실패: ${(await r.text()).slice(0, 200)}`);
+      for (const x of await r.json()) if (x.found) out[x.found.name.slice(x.found.name.indexOf('/documents/') + 11)] = fromF(x.found.fields);
+      return out;
+    },
+    async del(path) {
+      const r = await fetch(`${base}/${path}`, { method: 'DELETE', headers });
+      if (!r.ok && r.status !== 404) throw new Error(`Firestore 지우기 실패(${path}): ${(await r.text()).slice(0, 200)}`);
+    },
     // 자동 ID로 새 문서. 만든 ID를 돌려준다.
     async add(collectionId, obj) {
       const r = await fetch(`${base}/${collectionId}`, { method: 'POST', headers, body: JSON.stringify({ fields: toF(obj) }) });
