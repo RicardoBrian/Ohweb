@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>오늘 · kaká</title>
 <link rel="icon" href="https://kakainfo.com/kaka/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="https://kakainfo.com/kaka/kaka.css">
-<link rel="stylesheet" href="k.css">
+<link rel="stylesheet" href="https://kakainfo.com/kaka/kaka.css?v=1128">
+<link rel="stylesheet" href="k.css?v=1128">
 <style>
   .k-lesson { align-items: start; }
   .k-lesson .k-btn { margin-top: 6px; }
@@ -19,7 +19,7 @@
 import {
   $, esc, chip, header, toast, dialog, requireAdmin, translateName, loadCourses, loadLessons, orderLessons, nextFor,
   courseLabel, termLabel, classLabel, nv, db, collection, getDocs, addDoc, doc, updateDoc, serverTimestamp,
-} from './k.js';
+} from './k.js?v=1128';
 
 await requireAdmin();
 let courses = [], lessonsBy = {};

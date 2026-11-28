@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>발표 · kaká</title>
 <link rel="icon" href="https://kakainfo.com/kaka/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="https://kakainfo.com/kaka/kaka.css">
-<link rel="stylesheet" href="k.css">
+<link rel="stylesheet" href="https://kakainfo.com/kaka/kaka.css?v=1128">
+<link rel="stylesheet" href="k.css?v=1128">
 <style>
   html, body { height: 100%; }
   body { overflow: hidden; }
@@ -31,8 +31,8 @@
 <body>
 <main class="stage" aria-busy="true"><span class="sk" style="width:40%;height:40px"></span><span class="sk sk-line" style="width:60%;margin-top:28px"></span><span class="sk sk-line" style="width:52%"></span></main>
 <script type="module">
-import { $, esc, requireAdmin, db, doc, getDoc } from './k.js';
-import { LANGS, fsDecode, localized, renderBlocks, splitSlides, DOC_CSS } from 'https://kakainfo.com/kaka/render.js';
+import { $, esc, requireAdmin, db, doc, getDoc } from './k.js?v=1128';
+import { LANGS, fsDecode, localized, renderBlocks, splitSlides, DOC_CSS } from 'https://kakainfo.com/kaka/render.js?v=1128';
 
 await requireAdmin();
 document.head.insertAdjacentHTML('beforeend', `<style>${DOC_CSS}</style>`);

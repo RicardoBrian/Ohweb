@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>파이썬 · kaká</title>
 <link rel="icon" href="/kaka/favicon.svg" type="image/svg+xml">
-<link rel="stylesheet" href="/kaka/kaka.css">
+<link rel="stylesheet" href="/kaka/kaka.css?v=1128">
 <style>
   .k-header { position: sticky; top: 0; z-index: 10; }
   .back { font: 500 15px/20px var(--font-sans); color: var(--ink-2); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -37,10 +37,10 @@
 <main class="ide" aria-busy="true"><div><span class="sk" style="width:120px;height:14px"></span><span class="sk" style="display:block;width:220px;height:28px;margin:10px 0 18px"></span><span class="sk sk-line" style="width:90%"></span><span class="sk sk-line" style="width:70%"></span></div>
 <div><span class="sk" style="display:block;height:360px;border-radius:8px"></span></div></main>
 <script type="module">
-import { LOGO_SVG } from '/kaka/logo.js';
-import { clean } from '/kaka/render.js';
-import { pyEditor } from '/kaka/vendor/cm-python.js';
-import { session, api, getLang, esc, nameIn, stuNo } from '/k/stu.js';
+import { LOGO_SVG } from '/kaka/logo.js?v=1128';
+import { clean } from '/kaka/render.js?v=1128';
+import { pyEditor } from '/kaka/vendor/cm-python.js?v=1128';
+import { session, api, getLang, esc, nameIn, stuNo } from '/k/stu.js?v=1128';
 
 const T = {
   ko: { run: '실행', save: '저장', saved: '저장됨', saving: '저장 중…', unsaved: '저장 안 됨', saveFail: '저장 실패 — 인터넷을 확인하세요', running: '실행 중…', noOut: '(출력 없음)', outHint: '실행을 누르면 결과가 여기에 나옵니다.', stdin: '입력값 (input()에 들어갈 글)', stdinPh: '한 줄에 하나씩', hist: '저장 기록', histNone: '아직 저장 기록이 없습니다.', now: '지금 코드', viewing: '예전 코드를 보는 중', restore: '이 코드로 되돌리기', backNow: '지금 코드로', closed: '열 수 없는 활동입니다.', fail: '불러오지 못했습니다. 새로고침하세요.', reason: { auto: '자동', save: '저장', run: '실행' }, timeout: '시간이 너무 오래 걸려 멈췄습니다(무한 반복?)', lines: n => `${n}줄` },

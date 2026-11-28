@@ -104,7 +104,7 @@ await ctx.route('**/*', async route => {
   if (g) return route.fulfill({ status: 200, contentType: 'text/javascript', body: readFileSync(path.join(FB, g[1])) });
   const c = u.match(/^https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/codemirror\/5\.65\.16\/.*?([a-z]+\.min\.(js|css))$/);
   if (c && cmFile[c[1]]) return route.fulfill({ status: 200, contentType: c[2] === 'css' ? 'text/css' : 'text/javascript', body: readFileSync(path.join(CM, cmFile[c[1]])) });
-  const k = u.match(/^https:\/\/kakainfo\.com\/kaka\/([a-z-]+\.(css|svg|js))$/);
+  const k = u.match(/^https:\/\/kakainfo\.com\/kaka\/([a-z-]+\.(css|svg|js))(?:\?v=\w+)?$/);
   if (k) return route.fulfill({ status: 200, contentType: type(k[1]), body: readFileSync(path.join(KAKA, k[1])) });
   if (u.endsWith('/api/run-python')) { const b = JSON.parse(route.request().postData()); runs.push(b);
     if (runs.length === 1) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ stdout: '', stderr: 'Error: OCI runtime error: crun: clone: Resource temporarily unavailable' }) });
