@@ -63,7 +63,7 @@ export class Tool {
   static get toolbox() { return { title: '도구', icon: icon('tool') }; }
   static get isReadOnlySupported() { return true; }
   static get enableLineBreaks() { return true; }
-  constructor({ data, block }) { this.block = block; this.data = { tool: data.tool || 'scratch', title: data.title || '', desc: data.desc || '', starter: data.starter || '' }; }
+  constructor({ data, block }) { this.block = block; this.data = { tool: data.tool || 'scratch', title: data.title || '', desc: data.desc || '', starter: data.starter || '', starterId: data.starterId || '', starterName: data.starterName || '' }; }
   render() {
     const w = el('div', 'kb-tool k-tool');
     const head = el('div', 'k-tool__head');
@@ -76,14 +76,45 @@ export class Tool {
     const starter = el('textarea', 'k-textarea kb-tool__starter'); starter.placeholder = '처음 코드(비워도 됨)'; starter.value = this.data.starter; starter.spellcheck = false;
     starter.style.cssText = 'font:400 14px/22px var(--font-mono);min-height:88px';
     starter.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Tab') { e.preventDefault(); starter.setRangeText('    ', starter.selectionStart, starter.selectionEnd, 'end'); this.block?.dispatchChange(); } });
+    // 스크래치: 시작 파일(.sb3)을 올려 두면(Firestore scratch_projects) 학생이 처음 열 때 그것으로 시작한다(없으면 기본 고양이).
+    const sb = el('div', 'row kb-tool__sb3');
+    const file = el('input'); file.type = 'file'; file.accept = '.sb3'; file.hidden = true;
+    const btn = (text, fn) => { const b = el('button', 'k-btn k-btn--sm'); b.type = 'button'; b.textContent = text; b.addEventListener('click', fn); return b; };
+    const paintSb = msg => {
+      sb.replaceChildren();
+      const lab = el('span', 'k-hint'); lab.style.margin = '0';
+      if (msg) lab.textContent = msg;
+      else if (this.data.starterId) lab.textContent = `시작 파일: ${this.data.starterName || '이름 없음'}`;
+      if (this.data.starterId && !msg) sb.append(lab, btn('바꾸기', () => file.click()), btn('빼기', () => { this.data.starterId = this.data.starterName = ''; paintSb(); this.block?.dispatchChange(); }));
+      else sb.append(btn('시작 파일 올리기 (.sb3)', () => file.click()), lab);
+    };
+    file.addEventListener('change', async () => {
+      const f = file.files[0]; file.value = ''; if (!f) return;
+      paintSb('올리는 중…');
+      try {
+        const { unpackSb3, saveProject } = await import('./scratch-fs.js?v=1128');
+        this.data.starterId = await saveProject(await unpackSb3(f)); this.data.starterName = f.name; paintSb(); this.block?.dispatchChange();
+      } catch (e) { paintSb('올리지 못했습니다: ' + e.message); }
+    });
+    paintSb();
     const hint = el('p', 'k-hint'); hint.style.margin = '0';
-    const sync = () => { const py = sel.value === 'python'; starter.hidden = !py; hint.textContent = py ? '학생은 차시 화면에서 [열기] → 코드를 쓰고 실행합니다. 학생 계정에 자동 저장됩니다.' : '이 도구 연결은 다음 단계에서 붙입니다.'; };
+    const sync = () => {
+      const py = sel.value === 'python', sc = sel.value === 'scratch';
+      starter.hidden = !py; sb.hidden = !sc;
+      hint.innerHTML = py ? '학생은 차시 화면에서 [열기] → 코드를 쓰고 실행합니다. 학생 계정에 자동 저장됩니다.'
+        : sc ? '학생은 [열기] → 사이트 안 스크래치에서 만들고, 학생 계정에 자동 저장됩니다.'
+        : '이 도구 연결은 다음 단계에서 붙입니다.';
+    };
     sel.addEventListener('change', sync); sync();
-    w.append(head, title, this.desc, starter, hint);
+    w.append(head, title, this.desc, starter, sb, file, hint);
     Object.assign(this, { sel, title, starter });
     return watch(this, w);
   }
-  save() { const py = this.sel.value === 'python'; return { tool: this.sel.value, title: this.title.value.trim(), desc: this.desc.innerHTML, ...(py ? { starter: this.starter.value } : {}) }; }
+  save() {
+    const py = this.sel.value === 'python', sc = this.sel.value === 'scratch';
+    return { tool: this.sel.value, title: this.title.value.trim(), desc: this.desc.innerHTML, ...(py ? { starter: this.starter.value } : {}),
+      ...(sc && this.data.starterId ? { starterId: this.data.starterId, starterName: this.data.starterName } : {}) };
+  }
 }
 
 export class Timer {
