@@ -1,9 +1,9 @@
 // 차시 문서 편집기(Editor.js)에 얹는 우리 블록: 슬라이드 나눔, 안내 상자, 그림, 도구, 타이머, 발표자 메모.
 // 저장 형식은 Editor.js 블록 {id, type, data}. 그리는 쪽은 render.js.
 import { TOOLS, driveImg } from './render.js';
+import { icon } from './icons.js';
 
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
-const ico = t => `<span style="font:600 11px/1 var(--font-sans)">${t}</span>`;
 // 입력칸 값 변경은 DOM이 안 바뀌어 편집기가 모른다 → 직접 알려야 자동 저장된다.
 const watch = (tool, root) => { const f = () => tool.block?.dispatchChange(); root.addEventListener('input', f); root.addEventListener('change', f); return root; };
 const editable = (cls, html, placeholder) => {
@@ -13,14 +13,14 @@ const editable = (cls, html, placeholder) => {
 };
 
 export class Slide {
-  static get toolbox() { return { title: '슬라이드 나눔', icon: ico('―') }; }
+  static get toolbox() { return { title: '슬라이드 나눔', icon: icon('slide') }; }
   static get isReadOnlySupported() { return true; }
   render() { return el('div', 'kb-slide', '<span>슬라이드 나눔</span>'); }
   save() { return {}; }
 }
 
 export class Callout {
-  static get toolbox() { return { title: '안내 상자', icon: ico('i') }; }
+  static get toolbox() { return { title: '안내 상자', icon: icon('callout') }; }
   static get enableLineBreaks() { return true; }
   static get isReadOnlySupported() { return true; }
   constructor({ data, block }) { this.block = block; this.data = { tone: data.tone || '', text: data.text || '' }; }
@@ -34,7 +34,7 @@ export class Callout {
   paint() { this.wrap.className = 'kb-callout k-callout' + (this.data.tone ? ' k-callout--' + this.data.tone : ''); }
   renderSettings() {
     return [['', '회색'], ['tip', '초록'], ['warn', '겨자']].map(([tone, label]) => ({
-      icon: ico('●'), label, isActive: this.data.tone === tone, closeOnActivate: true, toggle: 'tone',
+      icon: '<span style="display:block;width:10px;height:10px;border-radius:50%;background:currentColor"></span>', label, isActive: this.data.tone === tone, closeOnActivate: true, toggle: 'tone',
       onActivate: () => { this.data.tone = tone; this.paint(); this.block?.dispatchChange(); },
     }));
   }
@@ -42,7 +42,7 @@ export class Callout {
 }
 
 export class Image {
-  static get toolbox() { return { title: '그림', icon: ico('▣') }; }
+  static get toolbox() { return { title: '그림', icon: icon('image') }; }
   static get isReadOnlySupported() { return true; }
   constructor({ data, block }) { this.block = block; this.data = { url: data.url || '', caption: data.caption || '' }; }
   render() {
@@ -60,7 +60,7 @@ export class Image {
 }
 
 export class Tool {
-  static get toolbox() { return { title: '도구', icon: ico('▶') }; }
+  static get toolbox() { return { title: '도구', icon: icon('tool') }; }
   static get isReadOnlySupported() { return true; }
   constructor({ data, block }) { this.block = block; this.data = { tool: data.tool || 'scratch', title: data.title || '', desc: data.desc || '' }; }
   render() {
@@ -80,7 +80,7 @@ export class Tool {
 }
 
 export class Timer {
-  static get toolbox() { return { title: '타이머', icon: ico('⏱') }; }
+  static get toolbox() { return { title: '타이머', icon: icon('timer') }; }
   static get isReadOnlySupported() { return true; }
   constructor({ data, block }) { this.block = block; this.data = { minutes: data.minutes || 5, label: data.label || '' }; }
   render() {
@@ -96,7 +96,7 @@ export class Timer {
 }
 
 export class Note {
-  static get toolbox() { return { title: '발표자 메모', icon: ico('✎') }; }
+  static get toolbox() { return { title: '발표자 메모', icon: icon('note') }; }
   static get enableLineBreaks() { return true; }
   static get isReadOnlySupported() { return true; }
   constructor({ data }) { this.data = { text: data.text || '' }; }
