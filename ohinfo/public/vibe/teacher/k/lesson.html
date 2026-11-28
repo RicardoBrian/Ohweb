@@ -7,6 +7,7 @@
 <title>차시 문서 · kaká</title>
 <link rel="icon" href="https://kakainfo.com/kaka/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://kakainfo.com/kaka/kaka.css">
+<link rel="stylesheet" href="k.css">
 <script src="https://cdn.jsdelivr.net/npm/@editorjs/editorjs@2.31.7/dist/editorjs.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@editorjs/header@2.8.9/dist/header.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@editorjs/list@2.0.9/dist/editorjs-list.umd.js"></script>
@@ -15,10 +16,12 @@
 <script src="https://cdn.jsdelivr.net/npm/@editorjs/inline-code@1.5.2/dist/inline-code.umd.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@editorjs/marker@1.4.0/dist/marker.umd.js"></script>
 <style>
-  .row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
   .k-tabs { max-width: 720px; }
   .bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); margin: 0 0 var(--space-5); }
   .bar .k-tabs { border-bottom: 0; }
+  .palette { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 2px; max-width: 720px; padding: 6px 0; background: var(--bg); border-bottom: 1px solid var(--line); }
+  .palette__label { font: 500 13px/1 var(--font-sans); color: var(--ink-3); margin-right: 6px; }
+  .palette__hint { margin: 6px 0 var(--space-4); max-width: 720px; }
   .save { font: 400 13px/20px var(--font-sans); color: var(--ink-2); margin-left: var(--space-3); }
   .save.is-dirty { color: var(--warn); }
   #editor { padding-left: 60px; margin-left: -60px; }
@@ -35,7 +38,7 @@
 </style>
 </head>
 <body>
-<p class="k-page k-muted">불러오는 중입니다.</p>
+<div class="sk-head" aria-hidden="true"><span class="sk" style="width:92px;height:22px"></span><span class="sk" style="width:96px;height:16px"></span></div><main class="k-page" aria-busy="true" aria-label="불러오는 중"><div class="k-page__head"><span class="sk" style="width:150px;height:14px"></span><span class="sk" style="width:240px;height:30px;margin-top:6px"></span></div><div class="row" style="margin-bottom:28px;gap:20px"><span class="sk" style="width:44px;height:16px"></span><span class="sk" style="width:44px;height:16px"></span><span class="sk" style="width:44px;height:16px"></span></div><div style="max-width:720px"><span class="sk sk-line" style="width:70%;max-width:720px"></span><span class="sk sk-line" style="width:92%;max-width:720px"></span><span class="sk sk-line" style="width:85%;max-width:720px"></span><span class="sk sk-line" style="width:40%;max-width:720px"></span><span class="sk sk-line" style="width:0%;height:0;max-width:720px"></span><span class="sk sk-line" style="width:60%;max-width:720px"></span><span class="sk sk-line" style="width:88%;max-width:720px"></span><span class="sk sk-line" style="width:76%;max-width:720px"></span></div></main>
 <script type="module">
 import { $, esc, chip, header, toast, requireAdmin, loadLessons, orderLessons, courseLabel, db, doc, getDoc, addDoc, updateDoc, collection, serverTimestamp } from './k.js';
 import { LANGS, fsEncode, fsDecode, textsOf, withTexts, needsTr, srcKey, localized, renderBlocks, blockHtml, DOC_CSS } from './render.js';
@@ -56,18 +59,26 @@ const unit = (course.units || []).find(u => u.id === lesson.unitId);
 let cur = { blocks: [], tr: {} };
 if (lesson.docId) { const d = await getDoc(doc(db, 'docs', lesson.docId)); if (d.exists()) cur = { tr: {}, ...fsDecode(d.data()) }; }
 let mode = 'edit', trLang = 'zh', viewLang = 'ko';
+// 블록 넣기 막대: [종류, 이름, 처음 내용]
+const PALETTE = [
+  ['header', '제목', { text: '', level: 2 }], ['paragraph', '글', { text: '' }], ['list', '목록', { style: 'unordered', meta: {}, items: [{ content: '', meta: {}, items: [] }] }],
+  ['callout', '안내 상자', { tone: 'tip', text: '' }], ['image', '그림', {}], ['table', '표', { withHeadings: true, content: [['', ''], ['', '']] }],
+  ['code', '코드', { code: '' }], ['tool', '도구', {}], ['timer', '타이머', { minutes: 5, label: '' }], ['note', '발표자 메모', {}], ['slide', '슬라이드 나눔', {}],
+];
 
 document.title = `${no}차시 ${lesson.name} · kaká`;
 document.body.innerHTML = header('course') + `<main class="k-page">
   <div class="k-page__head"><span class="k-page__eyebrow"><a href="course.html?id=${course.id}" style="color:inherit">${esc(courseLabel(course))}</a>${unit ? ' · ' + esc(unit.name) : ''}</span>
     <h1 class="t-display">${no}차시 ${esc(lesson.name)}</h1></div>
   <div class="bar"><div class="k-tabs" role="tablist">${[['edit', '편집'], ['tr', '번역'], ['view', '미리 보기']].map(([k, n]) => `<button class="k-tab" role="tab" data-mode="${k}" aria-selected="${k === mode}">${n}</button>`).join('')}</div>
-    <button class="k-btn k-btn--sm" id="present">발표</button><span class="save" id="save" aria-live="polite"></span></div>
+    <button class="k-btn k-btn--sm" id="tr-all">세 언어 번역</button><button class="k-btn k-btn--sm" id="present">발표</button><span class="save" id="save" aria-live="polite"></span></div>
+  <div class="palette" id="palette" role="toolbar" aria-label="블록 넣기"><span class="palette__label">넣기</span>${PALETTE.map(([t, n], i) => `<button class="k-btn k-btn--sm k-btn--ghost" data-ins="${i}">${n}</button>`).join('')}</div>
+  <p class="k-hint palette__hint" id="palette-hint">글자를 드래그해서 고르면 굵게·기울임·링크·형광을 고를 수 있습니다. 빈 줄에서 / 를 쳐도 넣을 블록 목록이 열립니다.</p>
   <div id="editor"></div><div id="pane" hidden></div></main>`;
 
 // ── 편집기 ──
 const editor = new EditorJS({
-  holder: 'editor', data: { blocks: cur.blocks || [] }, autofocus: !cur.blocks?.length, placeholder: '여기에 수업 글을 씁니다. 빈 줄에서 + 를 누르면 블록을 넣습니다.',
+  holder: 'editor', data: { blocks: cur.blocks || [] }, autofocus: !cur.blocks?.length, placeholder: '여기에 수업 글을 씁니다.',
   i18n: { messages: { ui: { blockTunes: { toggler: { 'Click to tune': '설정', 'or drag to move': '끌어서 옮기기' } }, toolbar: { toolbox: { Add: '넣기' } }, popover: { Filter: '찾기', 'Nothing found': '없습니다', 'Convert to': '바꾸기' } },
     toolNames: { Text: '글', Heading: '제목', 'Unordered List': '목록', 'Ordered List': '번호 목록', Checklist: '체크 목록', Code: '코드', Table: '표', Marker: '형광', InlineCode: '코드 글자', Bold: '굵게', Italic: '기울임', Link: '링크' },
     tools: { header: { 'Heading 1': '제목 1(새 슬라이드)', 'Heading 2': '제목 2', 'Heading 3': '제목 3' } },
@@ -101,37 +112,50 @@ async function save() {
         lesson.docId = r.id;
         await updateDoc(doc(db, 'course_lessons', lessonId), { docId: r.id, updatedAt: serverTimestamp() });
       } else await updateDoc(doc(db, 'docs', lesson.docId), { blocks: fsEncode(blocks), updatedAt: serverTimestamp() });
-      cur.blocks = blocks;
+      cur.blocks = blocks; paintTrBtn();
       status('저장됨 ' + new Date().toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit' }));
-    } catch (err) { isDirty = true; status('저장하지 못했습니다: ' + err.code, true); }
+    } catch (err) { isDirty = true; status('저장하지 못했습니다: ' + (err.code || err.message), true); }
   })();
   await saving; saving = null;
 }
 
 // ── 번역 ──
 const trOf = lang => (cur.tr[lang] ||= {});
+const pendingOf = lang => cur.blocks.filter(b => needsTr(b) && (!cur.tr[lang]?.[b.id] || cur.tr[lang][b.id].src !== srcKey(b)));
+const TR = [['zh', 'zh-cn'], ['ru', 'ru'], ['en', 'en']];
+function paintTrBtn() {
+  const n = new Set(TR.flatMap(([l]) => pendingOf(l).map(b => b.id))).size;
+  $('#tr-all').textContent = n ? `세 언어 번역 (${n}개)` : '번역 다 됨';
+  $('#tr-all').disabled = !n;
+}
+// 번역 없는 블록·원문이 바뀐 블록만, 중국어·러시아어·영어를 한 번에
 async function translateAll() {
-  const lang = trLang, todo = cur.blocks.filter(b => needsTr(b) && (!cur.tr[lang]?.[b.id] || cur.tr[lang][b.id].src !== srcKey(b)));
-  if (!todo.length) return toast('번역할 블록이 없습니다.');
-  toast(`${todo.length}개 블록을 번역하는 중입니다.`);
-  const texts = todo.flatMap(textsOf);
-  const res = await fetch('/api/translate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texts, targetLang: lang === 'zh' ? 'zh-cn' : lang, sourceLang: 'ko', format: 'html' }) });
-  const d = await res.json().catch(() => ({}));
-  if (!d.translations) return toast('번역하지 못했습니다: ' + (d.error || res.status));
-  const out = d.translations.map(t => t.text), patch = {};
-  for (const b of todo) {
-    const n = textsOf(b).length, v = { src: srcKey(b), data: withTexts(b, out.splice(0, n)) };
-    trOf(lang)[b.id] = v; patch[`tr.${lang}.${b.id}`] = fsEncode(v);
-  }
-  await updateDoc(doc(db, 'docs', lesson.docId), { ...patch, updatedAt: serverTimestamp() });
-  renderPane(); toast('번역 초안을 넣었습니다. 고칠 곳을 고치세요.');
+  const jobs = TR.map(([lang, code]) => ({ lang, code, todo: pendingOf(lang) })).filter(j => j.todo.length);
+  if (!jobs.length) return toast('번역할 블록이 없습니다.');
+  toast('세 언어로 번역하는 중입니다.');
+  const patch = {}, failed = [];
+  await Promise.all(jobs.map(async ({ lang, code, todo }) => {
+    try {
+      const res = await fetch('/api/translate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ texts: todo.flatMap(textsOf), targetLang: code, sourceLang: 'ko', format: 'html' }) });
+      const d = await res.json();
+      if (!d.translations) throw new Error(d.error || res.status);
+      const out = d.translations.map(t => t.text);
+      for (const b of todo) {
+        const v = { src: srcKey(b), data: withTexts(b, out.splice(0, textsOf(b).length)) };
+        trOf(lang)[b.id] = v; patch[`tr.${lang}.${b.id}`] = fsEncode(v);
+      }
+    } catch { failed.push(LANGS.find(l => l[0] === lang)[1]); }
+  }));
+  if (Object.keys(patch).length) await updateDoc(doc(db, 'docs', lesson.docId), { ...patch, updatedAt: serverTimestamp() });
+  paintTrBtn(); renderPane();
+  toast(failed.length ? `${failed.join(', ')} 번역을 하지 못했습니다. 다시 누르세요.` : '세 언어 번역 초안을 넣었습니다. 번역 탭에서 고칠 곳을 고치세요.');
 }
 async function saveTr(id) {
   const b = cur.blocks.find(x => x.id === id), eds = [...document.querySelectorAll(`[data-tr="${id}"]`)];
   const v = { src: srcKey(b), data: withTexts(b, eds.map(e => e.innerHTML.trim())) };
   trOf(trLang)[id] = v;
   await updateDoc(doc(db, 'docs', lesson.docId), { [`tr.${trLang}.${id}`]: fsEncode(v), updatedAt: serverTimestamp() });
-  status('번역 저장됨');
+  status('번역 저장됨'); paintTrBtn();
   eds[0]?.closest('.tr-out')?.querySelector('.k-chip')?.parentElement.remove();
 }
 
@@ -140,8 +164,7 @@ function renderPane(focusId) {
   if (mode === 'tr') {
     const blocks = cur.blocks.filter(needsTr), tr = cur.tr[trLang] || {};
     const left = blocks.filter(b => !tr[b.id] || tr[b.id].src !== srcKey(b)).length;
-    pane.innerHTML = `<div class="row langs" style="margin-bottom:var(--space-3)">${LANGS.slice(1).map(([k, n]) => `<button class="k-btn k-btn--sm" data-trlang="${k}" aria-pressed="${k === trLang}">${n}</button>`).join('')}
-      <button class="k-btn k-btn--sm k-btn--primary" id="tr-all" ${left ? '' : 'disabled'}>번역 초안 만들기${left ? ` (${left}개)` : ''}</button></div>
+    pane.innerHTML = `<div class="row langs" style="margin-bottom:var(--space-3)">${LANGS.slice(1).map(([k, n]) => { const p = pendingOf(k).length; return `<button class="k-btn k-btn--sm" data-trlang="${k}" aria-pressed="${k === trLang}">${n}${p ? ` · ${p}개 남음` : ''}</button>`; }).join('')}</div>
       <p class="k-muted t-small" style="margin:0 0 var(--space-3)">${blocks.length ? `블록 ${blocks.length}개 중 ${blocks.length - left}개 번역됨. 고친 칸은 칸을 벗어날 때 저장됩니다.` : '번역할 글이 없습니다.'}</p>
       ${blocks.map(b => {
         const t = tr[b.id], stale = t && t.src !== srcKey(b), vals = t ? textsOf({ ...b, data: t.data }) : textsOf(b).map(() => '');
@@ -157,12 +180,25 @@ function renderPane(focusId) {
   }
 }
 
+// 지금 줄 다음에 넣는다(지금 줄이 빈 글이면 그 자리를 바꾼다). API로 넣은 블록은 편집기가 바뀜으로 안 세서 직접 저장을 건다.
+async function insertBlock([type, , data]) {
+  const n = editor.blocks.getBlocksCount();
+  let i = editor.blocks.getCurrentBlockIndex();
+  if (i < 0) i = n - 1;
+  const curB = i >= 0 ? editor.blocks.getBlockByIndex(i) : null;
+  const replace = !!curB && curB.name === 'paragraph' && curB.isEmpty;
+  const at = replace ? i : i + 1;
+  editor.blocks.insert(type, structuredClone(data), {}, at, true, replace);
+  editor.caret.setToBlock(at, 'start');
+  dirty(); clearTimeout(saveT); saveT = setTimeout(save, 1500);
+}
+
 async function setMode(m) {
   if (m !== 'edit' && (isDirty || saving)) { clearTimeout(saveT); await save(); }
   if (m !== 'edit' && !lesson.docId) return toast('먼저 글을 쓰세요.');
   mode = m;
   document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-selected', b.dataset.mode === m));
-  $('#editor').hidden = m !== 'edit'; $('#pane').hidden = m === 'edit';
+  $('#editor').hidden = $('#palette').hidden = $('#palette-hint').hidden = m !== 'edit'; $('#pane').hidden = m === 'edit';
   renderPane();
 }
 
@@ -171,14 +207,21 @@ document.addEventListener('click', async e => {
   if (b.dataset.mode) return setMode(b.dataset.mode);
   if (b.dataset.trlang) { trLang = b.dataset.trlang; return renderPane(); }
   if (b.dataset.viewlang) { viewLang = b.dataset.viewlang; return renderPane(); }
-  if (b.id === 'tr-all') { b.disabled = true; try { await translateAll(); } catch (err) { b.disabled = false; toast('번역하지 못했습니다: ' + (err.code || err.message)); } }
+  if (b.id === 'tr-all') {
+    if (isDirty || saving) { clearTimeout(saveT); await save(); }
+    if (!lesson.docId) return toast('먼저 글을 쓰세요.');
+    b.disabled = true; try { await translateAll(); } catch (err) { paintTrBtn(); toast('번역하지 못했습니다: ' + (err.code || err.message)); }
+  }
+  if (b.dataset.ins) return insertBlock(PALETTE[b.dataset.ins]);
   if (b.id === 'present') {
     if (isDirty || saving) { clearTimeout(saveT); await save(); }
     if (!lesson.docId) return toast('먼저 글을 쓰세요.');
     open(`present.html?doc=${lesson.docId}&lang=${mode === 'view' ? viewLang : 'ko'}`, '_blank');
   }
 });
+document.addEventListener('mousedown', e => { if (e.target.closest('#palette button')) e.preventDefault(); });
 document.addEventListener('focusout', e => { const id = e.target.dataset?.tr; if (id) saveTr(id).catch(err => toast('번역을 저장하지 못했습니다: ' + err.code)); });
+paintTrBtn();
 </script>
 </body>
 </html>

@@ -7,6 +7,7 @@
 <title>발표 · kaká</title>
 <link rel="icon" href="https://kakainfo.com/kaka/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://kakainfo.com/kaka/kaka.css">
+<link rel="stylesheet" href="k.css">
 <style>
   html, body { height: 100%; }
   body { overflow: hidden; }
@@ -29,7 +30,7 @@
 </style>
 </head>
 <body>
-<p class="k-page k-muted">불러오는 중입니다.</p>
+<main class="stage" aria-busy="true"><span class="sk" style="width:40%;height:40px"></span><span class="sk sk-line" style="width:60%;margin-top:28px"></span><span class="sk sk-line" style="width:52%"></span></main>
 <script type="module">
 import { $, esc, requireAdmin, db, doc, getDoc } from './k.js';
 import { LANGS, fsDecode, localized, renderBlocks, splitSlides, DOC_CSS } from './render.js';
