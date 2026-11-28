@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>파이썬 · kaká</title>
+<link rel="icon" href="/kaka/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/kaka/kaka.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closebrackets.min.js"></script>
+<style>
+  .k-header { position: sticky; top: 0; z-index: 10; }
+  .back { font: 500 15px/20px var(--font-sans); color: var(--ink-2); text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .back:hover { color: var(--ink); }
+  .save { font: 400 13px/20px var(--font-sans); color: var(--ink-3); white-space: nowrap; }
+  .save.is-err { color: var(--danger); }
+  .ide { display: grid; grid-template-columns: minmax(0, 320px) minmax(0, 1fr); gap: var(--space-6); padding: var(--space-6) var(--space-5) var(--space-7); max-width: 1280px; box-sizing: border-box; }
+  .task h1 { margin: 4px 0 var(--space-3); }
+  .task .k-tool__desc { margin: 0 0 var(--space-5); }
+  .hist { list-style: none; margin: var(--space-2) 0 0; padding: 0; display: grid; gap: 2px; }
+  .hist button { all: unset; box-sizing: border-box; display: flex; gap: var(--space-2); width: 100%; padding: 6px 8px; border-radius: var(--radius-sm); font: 400 14px/20px var(--font-sans); color: var(--ink-2); cursor: pointer; }
+  .hist button:hover, .hist button[aria-current="true"] { background: var(--surface-2); color: var(--ink); }
+  .hist button:focus-visible { outline: 2px solid var(--focus); }
+  .hist .n { color: var(--ink-3); margin-left: auto; }
+  .work { display: grid; gap: var(--space-3); align-content: start; min-width: 0; }
+  .k-code .CodeMirror { height: auto; min-height: 320px; background: var(--code-bg); color: var(--code-ink); font: 400 15px/24px var(--font-mono); }
+  .k-code .CodeMirror-scroll { min-height: 320px; }
+  .k-code .CodeMirror-gutters { background: var(--code-bg); border-right: 0; }
+  .k-code .CodeMirror-linenumber { color: var(--code-muted); }
+  .k-code .CodeMirror-cursor { border-left: 2px solid var(--code-ink); }
+  .k-code .CodeMirror-selected, .k-code .CodeMirror-focused .CodeMirror-selected { background: rgba(255,255,255,.14); }
+  .k-code .cm-keyword { color: var(--code-key); } .k-code .cm-string { color: var(--code-str); } .k-code .cm-comment { color: var(--code-muted); }
+  .k-code .cm-number, .k-code .cm-builtin { color: var(--code-str); } .k-code .cm-def, .k-code .cm-variable, .k-code .cm-variable-2, .k-code .cm-property, .k-code .cm-operator { color: var(--code-ink); }
+  .k-code .k-btn--primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .viewing { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; padding: 8px 14px; background: rgba(255,255,255,.06); font: 400 13px/20px var(--font-sans); color: var(--code-ink); }
+  .out { margin: 0; min-height: 72px; max-height: 360px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
+  .out .err { color: #f2a7a0; }
+  .out .dim { color: var(--code-muted); }
+  details.stdin summary { cursor: pointer; font: 500 14px/20px var(--font-sans); color: var(--ink-2); }
+  details.stdin textarea { margin-top: var(--space-2); font: 400 14px/22px var(--font-mono); max-width: 480px; }
+  @media (max-width: 860px) { .ide { grid-template-columns: 1fr; padding: var(--space-5) var(--space-4) var(--space-7); } .k-header { gap: var(--space-3); padding: 0 var(--space-4); } }
+</style>
+</head>
+<body>
+<div class="sk-head" aria-hidden="true"><span class="sk" style="width:92px;height:22px"></span><span class="sk" style="width:160px;height:16px"></span></div>
+<main class="ide" aria-busy="true"><div><span class="sk" style="width:120px;height:14px"></span><span class="sk" style="display:block;width:220px;height:28px;margin:10px 0 18px"></span><span class="sk sk-line" style="width:90%"></span><span class="sk sk-line" style="width:70%"></span></div>
+<div><span class="sk" style="display:block;height:360px;border-radius:8px"></span></div></main>
+<script type="module">
+import { LOGO_SVG } from '/kaka/logo.js';
+import { clean } from '/kaka/render.js';
+import { session, api, getLang, esc, nameIn, stuNo } from '/k/stu.js';
+
+const T = {
+  ko: { run: '실행', save: '저장', saved: '저장됨', saving: '저장 중…', unsaved: '저장 안 됨', saveFail: '저장 실패 — 인터넷을 확인하세요', running: '실행 중…', noOut: '(출력 없음)', outHint: '실행을 누르면 결과가 여기에 나옵니다.', stdin: '입력값 (input()에 들어갈 글)', stdinPh: '한 줄에 하나씩', hist: '저장 기록', histNone: '아직 저장 기록이 없습니다.', now: '지금 코드', viewing: '예전 코드를 보는 중', restore: '이 코드로 되돌리기', backNow: '지금 코드로', closed: '열 수 없는 활동입니다.', fail: '불러오지 못했습니다. 새로고침하세요.', reason: { auto: '자동', save: '저장', run: '실행' }, timeout: '시간이 너무 오래 걸려 멈췄습니다(무한 반복?)', lines: n => `${n}줄` },
+  zh: { run: '运行', save: '保存', saved: '已保存', saving: '保存中…', unsaved: '未保存', saveFail: '保存失败 — 请检查网络', running: '运行中…', noOut: '(没有输出)', outHint: '点击运行后结果会显示在这里。', stdin: '输入值 (给 input() 的内容)', stdinPh: '每行一个', hist: '保存记录', histNone: '还没有保存记录。', now: '当前代码', viewing: '正在查看以前的代码', restore: '恢复为这个代码', backNow: '回到当前代码', closed: '无法打开这个活动。', fail: '加载失败。请刷新页面。', reason: { auto: '自动', save: '保存', run: '运行' }, timeout: '运行时间太长，已停止(无限循环?)', lines: n => `${n}行` },
+  ru: { run: 'Запустить', save: 'Сохранить', saved: 'Сохранено', saving: 'Сохранение…', unsaved: 'Не сохранено', saveFail: 'Ошибка сохранения — проверьте интернет', running: 'Выполняется…', noOut: '(нет вывода)', outHint: 'Нажмите «Запустить», и результат появится здесь.', stdin: 'Ввод (для input())', stdinPh: 'По одному в строке', hist: 'История', histNone: 'Сохранений пока нет.', now: 'Текущий код', viewing: 'Вы смотрите старый код', restore: 'Вернуть этот код', backNow: 'К текущему коду', closed: 'Это задание нельзя открыть.', fail: 'Не удалось загрузить. Обновите страницу.', reason: { auto: 'авто', save: 'сохр.', run: 'запуск' }, timeout: 'Слишком долго — остановлено (бесконечный цикл?)', lines: n => `${n} стр.` },
+  en: { run: 'Run', save: 'Save', saved: 'Saved', saving: 'Saving…', unsaved: 'Not saved', saveFail: 'Could not save — check the internet', running: 'Running…', noOut: '(no output)', outHint: 'Press Run and the result appears here.', stdin: 'Input (for input())', stdinPh: 'One per line', hist: 'Saved versions', histNone: 'No saved versions yet.', now: 'Current code', viewing: 'Viewing an older version', restore: 'Restore this code', backNow: 'Back to current code', closed: 'This activity cannot be opened.', fail: 'Could not load. Please refresh.', reason: { auto: 'auto', save: 'save', run: 'run' }, timeout: 'Took too long and was stopped (infinite loop?)', lines: n => `${n} lines` },
+};
+const lang = getLang(T), t = T[lang];
+const q = new URLSearchParams(location.search), lessonId = q.get('lesson'), blockId = q.get('block');
+const $ = s => document.querySelector(s);
+const when = iso => { const d = new Date(iso); const same = d.toDateString() === new Date().toDateString(); return d.toLocaleString(lang === 'zh' ? 'zh-CN' : lang, same ? { hour: '2-digit', minute: '2-digit' } : { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }); };
+const back = `/k/#lesson=${encodeURIComponent(lessonId || '')}`;
+const fail = m => { document.body.innerHTML = `<main class="ide" style="display:block"><div class="k-callout" style="max-width:560px"><span class="k-callout__label">${esc(m)}</span><a href="${back}">←</a></div></main>`; };
+
+const d = await api('work-open', { lessonId, blockId }).catch(() => ({ error: 1 }));
+if (d.error) { fail(d.closed ? t.closed : t.fail); await new Promise(() => {}); }
+const bd = { ...d.block.data, ...(lang !== 'ko' ? d.block.tr?.[lang] || {} : {}) };
+const lessonName = `${nameIn(d.lesson, lang)}`;
+document.title = `${bd.title || lessonName} · kaká`;
+document.documentElement.lang = lang;
+
+document.body.innerHTML = `<header class="k-header"><a class="k-logo" href="/k/" aria-label="kaká">${LOGO_SVG}</a>
+  <a class="back" href="${back}">← ${esc(lessonName)}</a>
+  <div class="k-header__end"><span class="save" id="save" aria-live="polite"></span><span class="k-avatar" style="width:auto;min-width:32px;padding:0 10px;border-radius:999px">${esc(stuNo(session))}</span></div></header>
+<main class="ide">
+  <section class="task"><span class="k-page__eyebrow">${esc(nameIn(d.course, lang))}</span>
+    <h1 class="t-title">${esc(bd.title || lessonName)}</h1>
+    ${bd.desc ? `<div class="k-tool__desc">${clean(bd.desc)}</div>` : ''}
+    <span class="k-label">${esc(t.hist)}</span><ul class="hist" id="hist"></ul></section>
+  <section class="work">
+    <div class="k-code"><div class="k-code__bar"><span class="k-code__file">main.py</span><button class="k-btn" id="save-btn">${esc(t.save)}</button><button class="k-btn k-btn--primary" id="run">${esc(t.run)}</button></div>
+      <div id="viewing" class="viewing" hidden></div>
+      <div id="cm"></div>
+      <div class="k-code__out"><pre class="out" id="out"><span class="dim">${esc(t.outHint)}</span></pre></div></div>
+    <details class="stdin"><summary>${esc(t.stdin)}</summary><textarea class="k-textarea" id="stdin" placeholder="${esc(t.stdinPh)}" spellcheck="false"></textarea></details>
+  </section></main>`;
+
+// ── 편집기 ──
+while (!window.CodeMirror?.modes?.python) await new Promise(r => setTimeout(r, 50));
+let current = d.work ? d.work.code : (d.block.data.starter || '');
+const cm = CodeMirror($('#cm'), { value: current, mode: 'python', lineNumbers: true, indentUnit: 4, tabSize: 4, autoCloseBrackets: true, viewportMargin: Infinity,
+  extraKeys: { Tab: c => c.somethingSelected() ? c.indentSelection('add') : c.replaceSelection('    '), 'Shift-Tab': c => c.indentSelection('subtract'),
+    'Ctrl-S': () => save('save'), 'Cmd-S': () => save('save'), 'Ctrl-Enter': () => run(), 'Cmd-Enter': () => run() } });
+window.kCm = cm;
+cm.focus(); cm.setCursor(cm.lineCount(), 0);
+
+// ── 저장: 고치고 2초 쉬면 자동, [저장]·Ctrl+S, 실행할 때 ──
+let history = d.history || [], lastSaved = d.work ? current : null, saveT = null, inflight = Promise.resolve(), viewing = null;
+const status = (s, err) => { $('#save').textContent = s; $('#save').classList.toggle('is-err', !!err); };
+status(d.work ? `${t.saved} ${when(d.work.updatedAt)}` : '');
+function save(reason = 'auto') {
+  clearTimeout(saveT);
+  if (viewing) return inflight;
+  const code = cm.getValue();
+  if (code === lastSaved && reason === 'auto') return inflight;
+  status(t.saving);
+  inflight = inflight.then(() => api('work-save', { lessonId, blockId, code, reason })).then(r => {
+    if (r.error) throw new Error(r.error);
+    lastSaved = code; history = r.history; paintHist();
+    status(cm.getValue() === code ? `${t.saved} ${when(r.updatedAt)}` : t.unsaved);
+  }).catch(e => { if (!/logout|relogin/.test(e.message)) status(t.saveFail, true); });
+  return inflight;
+}
+cm.on('change', () => { if (viewing) return; status(t.unsaved); clearTimeout(saveT); saveT = setTimeout(() => save('auto'), 2000); });
+addEventListener('beforeunload', e => { if (!viewing && cm.getValue() !== (lastSaved ?? current)) { save('auto'); e.preventDefault(); } });
+addEventListener('pagehide', () => { if (!viewing && cm.getValue() !== lastSaved) save('auto'); });
+
+// ── 실행 ──
+async function run() {
+  const btn = $('#run'); if (btn.disabled) return;
+  btn.disabled = true; $('#out').innerHTML = `<span class="dim">${esc(t.running)}</span>`;
+  const code = cm.getValue();
+  if (!viewing) save('run');
+  try {
+    const res = await fetch('/api/run-python', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, stdin: $('#stdin').value }) });
+    const r = await res.json().catch(() => ({ error: 'HTTP ' + res.status }));
+    if (r.error) $('#out').innerHTML = `<span class="err">${esc(r.error)}</span>`;
+    else $('#out').innerHTML = (r.stdout ? esc(r.stdout) : '') + (r.stderr ? `<span class="err">${esc(r.stderr)}</span>` : '') + (r.timedOut ? `<span class="err">${esc(t.timeout)}</span>` : '') || `<span class="dim">${esc(t.noOut)}</span>`;
+  } catch (e) { $('#out').innerHTML = `<span class="err">${esc(t.fail)}</span>`; }
+  btn.disabled = false;
+}
+$('#run').onclick = run;
+$('#save-btn').onclick = () => save('save');
+
+// ── 저장 기록: 눌러서 예전 코드 보기 → 되돌리기 ──
+function paintHist() {
+  $('#hist').innerHTML = (history.length ? '' : `<li class="k-hint">${esc(t.histNone)}</li>`) + history.map((h, i) => `<li><button data-v="${h.id}" aria-current="${viewing?.id === h.id}">${esc(when(h.at))} <span class="k-muted">${esc(t.reason[h.reason] || '')}</span><span class="n">${esc(t.lines(h.lines))}</span></button></li>`).join('');
+}
+paintHist();
+async function view(id) {
+  if (!viewing) { await save('auto'); current = cm.getValue(); }
+  const v = await api('work-version', { lessonId, blockId, versionId: id });
+  if (v.error) return;
+  viewing = { id, code: v.code };
+  cm.setValue(v.code); cm.setOption('readOnly', true);
+  $('#viewing').hidden = false;
+  $('#viewing').innerHTML = `<span>${esc(t.viewing)} · ${esc(when(v.at))}</span><button class="k-btn" id="restore">${esc(t.restore)}</button><button class="k-btn" id="back-now">${esc(t.backNow)}</button>`;
+  paintHist();
+}
+function leaveView(code) {
+  viewing = null; cm.setOption('readOnly', false); $('#viewing').hidden = true;
+  cm.setValue(code); paintHist();
+}
+document.addEventListener('click', e => {
+  const v = e.target.closest('[data-v]'); if (v) return view(v.dataset.v);
+  if (e.target.id === 'back-now') return leaveView(current);
+  if (e.target.id === 'restore') { const c = viewing.code; leaveView(c); save('save'); }
+});
+</script>
+</body>
+</html>

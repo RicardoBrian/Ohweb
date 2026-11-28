@@ -421,5 +421,9 @@ await T('문서: 관리자가 차시 문서 쓰기·읽기', (async () => { awai
 await T('문서: 학생이 차시 문서 읽기', getDoc(doc(A, 'docs/D1')), false);
 await T('문서: 비로그인이 문서 목록', getDocs(collection(anon, 'docs')), false);
 await T('문서: 학생이 문서 고치기', updateDoc(doc(B, 'docs/D1'), { blocks: [] }), false);
+await T('학생 작업: 관리자가 읽기', (async () => { await setDoc(doc(admin, 'work/A_L1_b1'), { studentId: 'A', lessonId: 'L1', code: 'print(1)' }); await getDoc(doc(admin, 'work/A_L1_b1')); })(), true);
+await T('학생 작업: 학생이 직접 읽기(서버 함수로만)', getDoc(doc(A, 'work/A_L1_b1')), false);
+await T('학생 작업: 학생이 직접 쓰기', setDoc(doc(A, 'work/A_L1_b2'), { studentId: 'A', code: 'x' }), false);
+await T('학생 작업: 학생이 저장 기록 쓰기', setDoc(doc(B, 'work_history/H1'), { workId: 'A_L1_b1', code: 'x' }), false);
 console.log(fails ? `\n실패 ${fails}건` : '\n전부 통과'); process.exitCode = fails ? 1 : 0;
 await env.cleanup();
