@@ -21,7 +21,7 @@ if ! diff -q "$TMP/live.rules" "$TMP/main.rules" >/dev/null; then
   echo "❌ 운영 규칙이 main 과 다릅니다(콘솔에서 고쳤나?) — 배포 안 함"; diff "$TMP/main.rules" "$TMP/live.rules" | head -20; exit 1
 fi
 if diff -q "$TMP/live.rules" "$ROOT/ohweb-firestore.rules" >/dev/null; then echo "✅ 바뀐 규칙 없음"; exit 0; fi
-echo "바뀌는 부분:"; diff "$TMP/live.rules" "$ROOT/ohweb-firestore.rules" | sed 's/^/  /' | head -40
+echo "바뀌는 부분:"; { diff "$TMP/live.rules" "$ROOT/ohweb-firestore.rules" || true; } | sed 's/^/  /' | head -40
 [ "${1:-}" = "--check" ] && exit 0
 cp "$ROOT/ohweb-firestore.rules" "$TMP/ohweb-firestore.rules"
 echo '{"firestore":{"rules":"ohweb-firestore.rules"}}' > "$TMP/firebase.json"
