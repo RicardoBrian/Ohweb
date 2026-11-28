@@ -65,15 +65,24 @@ async function openLesson(db, student, lessonId) {
   return { lesson, course, no: all.find(l => l.id === lessonId)?.no };
 }
 
+function boardFor(b, student) {
+  const boards = b.data.boards || {};
+  const mine = boards[normGC(student.class)] || (student.isMaster ? Object.values(boards).find(Boolean) : null);
+  if (!mine?.name) return null;
+  const { boards: _, ...data } = b.data;
+  return { ...b, data: { ...data, board: { name: mine.name, school: mine.school || '', grade: mine.grade || '', group: mine.group || '' } } };
+}
 async function actionDoc(db, student, lessonId) {
   const o = await openLesson(db, student, lessonId);
   if (!o) return json(CLOSED);
   const { lesson, course } = o, me = { no: o.no };
   const d = lesson.docId && isSafeId(lesson.docId) ? await db.get(`docs/${lesson.docId}`) : null;
   // 발표자 메모는 학생에게 보내지 않는다(번역본도)
-  const blocks = (d?.blocks || []).filter(b => b.type !== 'note');
+  // 게시판 블록은 반마다 다른 게시판 → 이 학생 반 것 하나(board)만 보내고, 그 반에 없으면 블록째 뺀다
+  const blocks = (d?.blocks || []).filter(b => b.type !== 'note').map(b => b.type === 'tool' && b.data?.tool === 'board' ? boardFor(b, student) : b).filter(Boolean);
   const keep = new Set(blocks.map(b => b.id));
-  const tr = Object.fromEntries(Object.entries(d?.tr || {}).map(([lang, m]) => [lang, Object.fromEntries(Object.entries(m || {}).filter(([id]) => keep.has(id)))]));
+  const strip = x => { if (x?.data?.boards) { const { boards, ...rest } = x.data; return { ...x, data: rest }; } return x; };
+  const tr = Object.fromEntries(Object.entries(d?.tr || {}).map(([lang, m]) => [lang, Object.fromEntries(Object.entries(m || {}).filter(([id]) => keep.has(id)).map(([id, x]) => [id, strip(x)]))]));
   return json({ course: pickCourse(course), lesson: pickLesson({ ...lesson, id: lessonId, no: me?.no }), doc: { blocks, tr } });
 }
 

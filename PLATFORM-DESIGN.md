@@ -398,3 +398,10 @@ setuk/{과목ID}_{학생ID}   (선생님만)
 - 선생님 학생 작업(`work.html`): 스크래치 줄은 "블록 N개". 학생을 누르면 Firestore에서 읽어 `kakainfo.com/scratch/editor.html`(다른 사이트라 postMessage)에 띄운다. 저장 기록 버튼으로 예전 버전. 편집기가 1024px 이상 되게 이때만 페이지를 넓힌다.
 - 규칙: `scratch_projects`·`scratch_assets` 관리자만(학생은 서버 함수로만).
 - 테스트: `npm run test:kaka-scratch`(실제 scratch-gui: MD5 확인·조각·missing → 시작 파일 → 학생 열기·블록 끌어 넣기·새 모양 그리기·저장·자동 저장·지우기·다시 열기·저장 기록·영어 → 선생님 학생 작업). `test:kaka-all`에 들어 있다.
+
+### 8.11 도구 연결: 게시판 (2026-11-28)
+- 순서: 게시판 → AI 실험실 → 코랩 → 앱 인벤터 실행기 → 확인 문제(MakeCode는 나중). 테스트는 `npm run test:kaka-tools` 하나에 도구마다 늘린다.
+- 편집기: 도구 블록에서 '게시판' → 과목의 **반마다** ohdlet 게시판(`classes`)을 고르거나 비움. 고를 수 있는 것 = 켜진(ON) 게시판 중 같은 학교·학년이고 그 반 것이거나 학년·학교 전체 것. 블록에 `boards: {반: {name, school, grade, group}}`.
+- 서버(`/api/lesson` doc): 학생 반 게시판 하나만 `board`로 보내고 `boards`는 빼며(번역본도), 비운 반에는 블록째 안 보낸다. 마스터 계정은 고른 것 아무거나 하나.
+- 학생: [열기] → `ohdlet.html?board=&school=&grade=&group=`(ohdlet의 openBoardFromUrl)로 우리 반 게시판에 바로 들어간다.
+- 고친 것: 도구 블록에서 `.row`가 `hidden`을 이겨 파이썬·게시판 블록에도 "시작 파일 올리기 (.sb3)"가 보이던 것.
