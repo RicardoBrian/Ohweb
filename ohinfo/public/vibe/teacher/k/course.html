@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <script src="/vibe/shared/demo.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>과목 · kaká</title>
+<link rel="icon" href="https://kakainfo.com/kaka/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://kakainfo.com/kaka/kaka.css">
+<style>
+  .k-tabs { max-width: 640px; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+  .unit { margin-bottom: var(--space-6); max-width: 640px; }
+  .unit__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); margin-bottom: var(--space-2); }
+  .unit__head h2 { margin: 0 var(--space-2) 0 0; }
+  .k-lesson { align-items: start; }
+  .k-lesson__title { appearance: none; border: 0; background: none; padding: 0; color: inherit; cursor: pointer; text-align: start; }
+  .k-lesson__title:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .opens { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); margin-top: 6px; }
+  .opens .k-btn[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent-soft); color: var(--accent-ink); }
+  .move { color: var(--ink-3); min-width: 28px; padding: 0 6px; }
+  .form { display: grid; gap: var(--space-4); max-width: 480px; margin-bottom: var(--space-6); }
+  .k-dialog .chk { display: flex; gap: var(--space-2); align-items: center; color: var(--danger); font: 500 14px/20px var(--font-sans); }
+  @media (max-width: 600px) { .k-header .k-btn--ghost { display: none; } }
+</style>
+</head>
+<body>
+<p class="k-page k-muted">불러오는 중입니다.</p>
+<script type="module">
+import {
+  $, esc, chip, header, toast, dialog, requireAdmin, translateName, loadLessons, orderLessons, newId, nv,
+  courseLabel, termLabel, classLabel, db, collection, doc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, where, serverTimestamp, writeBatch,
+} from './k.js';
+
+await requireAdmin();
+const id = new URLSearchParams(location.search).get('id');
+const TABS = [['lessons', '수업'], ['students', '학생'], ['setup', '설정']];
+let tab = TABS.some(t => t[0] === location.hash.slice(1)) ? location.hash.slice(1) : 'lessons';
+let course, lessons = [], students = null;
+const ref = () => doc(db, 'courses', id);
+
+async function load() {
+  const snap = id && await getDoc(ref());
+  if (!snap || !snap.exists()) {
+    document.body.innerHTML = header('course') + `<main class="k-page"><div class="k-callout k-callout--warn"><span class="k-callout__label">과목을 찾지 못했습니다</span><span><a href="index.html">오늘 화면</a>에서 과목을 고르세요.</span></div></main>`;
+    return;
+  }
+  course = { id, ...snap.data() };
+  course.units ||= []; course.classes ||= [];
+  lessons = orderLessons(course, await loadLessons(id));
+  render();
+}
+
+function render() {
+  const counts = { lessons: lessons.length, students: students ? students.length : '', setup: '' };
+  document.title = `${courseLabel(course)} · kaká`;
+  document.body.innerHTML = header('course') + `<main class="k-page">
+    <div class="k-page__head"><span class="k-page__eyebrow">${esc(termLabel(course))} · ${esc(course.schoolName)}${course.status === 'archived' ? ' · 지난 과목' : ''}</span><h1 class="t-display">${esc(courseLabel(course))}</h1></div>
+    <div class="k-tabs" role="tablist" style="margin-bottom:20px">${TABS.map(([k, n]) => `<button class="k-tab" role="tab" aria-selected="${tab === k}" data-tab="${k}">${n} ${counts[k] !== '' ? `<span class="k-count">${counts[k]}</span>` : ''}</button>`).join('')}</div>
+    <div id="body">${tab === 'lessons' ? vLessons() : tab === 'students' ? vStudents() : vSetup()}</div></main>`;
+  if (tab === 'students' && !students) loadStudents();
+}
+
+// ── 수업 탭: 단원 → 차시, 차시마다 반별 공개 ──
+function vLessons() {
+  const lessonRow = l => `<li><div class="k-lesson"><span class="k-lesson__no">${l.no}차시</span><span>
+    <span class="k-lesson__head"><button class="k-lesson__title" data-edit="${l.id}">${esc(l.name)}</button>${l.docId ? '' : chip('', '문서 없음')}</span>
+    ${l.standards?.length ? `<span class="k-lesson__meta">${l.standards.map(esc).join(', ')}</span>` : ''}
+    <span class="opens" role="group" aria-label="${l.no}차시 공개할 반">${course.classes.map(c => {
+      const on = (l.openTo || []).includes(c);
+      return `<button class="k-btn k-btn--sm" aria-pressed="${on}" data-toggle="${l.id}" data-cls="${esc(c)}">${classLabel(c)} ${on ? '공개' : '닫힘'}</button>`;
+    }).join('')}
+    <button class="k-btn k-btn--sm k-btn--ghost move" data-lmove="${l.id}" data-d="-1" aria-label="위로">↑</button><button class="k-btn k-btn--sm k-btn--ghost move" data-lmove="${l.id}" data-d="1" aria-label="아래로">↓</button></span>
+  </span></div></li>`;
+  const units = course.units.map((u, i) => {
+    const ls = lessons.filter(l => l.unitId === u.id);
+    return `<section class="unit"><div class="unit__head"><h2 class="t-heading">${i + 1}. ${esc(u.name)}</h2>
+      <button class="k-btn k-btn--sm k-btn--ghost" data-urename="${u.id}">이름 바꾸기</button>
+      <button class="k-btn k-btn--sm k-btn--ghost move" data-umove="${u.id}" data-d="-1" aria-label="단원 위로">↑</button><button class="k-btn k-btn--sm k-btn--ghost move" data-umove="${u.id}" data-d="1" aria-label="단원 아래로">↓</button>
+      ${ls.length ? '' : `<button class="k-btn k-btn--sm k-btn--ghost" data-udel="${u.id}">지우기</button>`}</div>
+      ${ls.length ? `<ol class="k-lessons">${ls.map(lessonRow).join('')}</ol>` : '<p class="k-muted t-small" style="margin:0 0 8px">차시가 없습니다.</p>'}
+      <button class="k-btn k-btn--sm" data-ladd="${u.id}">차시 넣기</button></section>`;
+  }).join('');
+  const orphans = lessons.filter(l => !course.units.some(u => u.id === l.unitId));
+  return (course.units.length ? units : `<div class="k-callout" style="margin-bottom:var(--space-5)"><span class="k-callout__label">단원부터 넣으세요</span><span>단원을 만들면 그 안에 차시를 넣을 수 있습니다.</span></div>`)
+    + (orphans.length ? `<section class="unit"><div class="unit__head"><h2 class="t-heading">단원 없음</h2></div><ol class="k-lessons">${orphans.map(lessonRow).join('')}</ol></section>` : '')
+    + `<div class="row"><button class="k-btn" id="unit-add">새 단원</button></div>`;
+}
+
+// ── 학생 탭: 학생 계정(students)에서 이 과목 학교·학년·반 학생 ──
+async function loadStudents() {
+  try {
+    const snap = await getDocs(query(collection(db, 'students'), where('schoolName', '==', course.schoolName)));
+    students = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .filter(s => nv(s.grade) === nv(course.grade) && course.classes.includes(nv(s.class)))
+      .sort((a, b) => nv(a.class).localeCompare(nv(b.class), 'ko', { numeric: true }) || (Number(a.number) - Number(b.number)));
+  } catch (err) { students = []; toast('학생을 불러오지 못했습니다: ' + err.code); }
+  render();
+}
+function vStudents() {
+  if (!students) return '<p class="k-muted">학생을 불러오는 중입니다.</p>';
+  if (!students.length) return `<div class="k-callout"><span class="k-callout__label">학생이 없습니다</span><span>학생 계정의 학교·학년·반이 이 과목과 같은지 설정 탭에서 확인하세요(${esc(course.schoolName)} ${esc(course.grade)}학년 ${course.classes.map(classLabel).join(' ')}).</span></div>`;
+  const by = course.classes.map(c => [c, students.filter(s => nv(s.class) === c)]);
+  return `<p class="k-muted" style="margin:0 0 12px">${by.map(([c, l]) => `${classLabel(c)} ${l.length}명`).join(' · ')}</p>
+    <div style="overflow-x:auto"><table class="k-table"><thead><tr><th>반</th><th class="num">번호</th><th>이름</th><th>계정</th></tr></thead><tbody>
+    ${students.map(s => `<tr><td>${classLabel(s.class)}</td><td class="num">${esc(s.number)}</td><td>${esc(s.name)}</td><td>${s.registered ? '가입함' : chip('warn', '가입 전')}</td></tr>`).join('')}
+    </tbody></table></div>`;
+}
+
+// ── 설정 탭 ──
+function vSetup() {
+  const f = (key, label, value, hint = '', type = 'text') => `<label class="k-field"><span class="k-label">${label}</span><input class="k-input" name="${key}" type="${type}" value="${esc(value)}" autocomplete="off">${hint ? `<span class="k-hint">${hint}</span>` : ''}</label>`;
+  const i = course.i18n || {};
+  return `<form class="form" id="setup">
+    ${f('name', '과목 이름', course.name, `번역: ${[i.zh, i.ru, i.en].filter(Boolean).map(esc).join(' · ') || '없음'}. 이름을 바꾸면 다시 번역합니다.`)}
+    ${f('grade', '학년', course.grade, '학생 계정의 학년과 같게 씁니다.')}
+    ${f('classes', '듣는 반', course.classes.join(', '), '쉼표로 나눕니다. 반을 빼도 그 반의 공개 기록은 남습니다.')}
+    ${f('schoolName', '학교', course.schoolName, '학생 계정의 학교 이름과 같게 씁니다.')}
+    ${f('year', '학년도', course.year, '', 'number')}
+    ${f('semester', '학기', course.semester, '', 'number')}
+    <div class="row"><button class="k-btn k-btn--primary">설정 저장</button></div></form>
+    <section class="k-section"><h2 class="k-section__title">${course.status === 'archived' ? '지난 과목' : '학기가 끝나면'}</h2>
+      <p class="k-muted" style="margin:0">${course.status === 'archived' ? '오늘 화면에 다시 보이게 할 수 있습니다.' : '지난 과목으로 옮기면 오늘 화면에서 빠집니다. 자료는 그대로 남습니다.'}</p>
+      <div class="row"><button class="k-btn" id="archive">${course.status === 'archived' ? '다시 쓰기' : '지난 과목으로 옮기기'}</button>
+      ${lessons.length ? '' : '<button class="k-btn k-btn--danger" id="del-course">과목 지우기</button>'}</div>
+      ${lessons.length ? '<p class="k-muted t-small" style="margin:0">차시가 있는 과목은 지울 수 없습니다.</p>' : ''}</section>`;
+}
+
+const saveCourse = async patch => { await updateDoc(ref(), { ...patch, updatedAt: serverTimestamp() }); Object.assign(course, patch); };
+const sortCls = a => [...new Set(a)].sort((x, y) => x.localeCompare(y, 'ko', { numeric: true }));
+
+document.addEventListener('submit', async e => {
+  if (e.target.id !== 'setup') return;
+  e.preventDefault();
+  const v = Object.fromEntries(new FormData(e.target).entries());
+  if (!v.name.trim()) return toast('과목 이름을 쓰세요.');
+  const patch = { name: v.name.trim(), grade: nv(v.grade), classes: sortCls(v.classes.split(/[,\s]+/).map(nv).filter(Boolean)), schoolName: v.schoolName.trim(), year: Number(v.year) || course.year, semester: Number(v.semester) === 2 ? 2 : 1 };
+  if (patch.name !== course.name || !course.i18n?.en) patch.i18n = await translateName(patch.name);
+  try { await saveCourse(patch); students = null; render(); toast('설정을 저장했습니다.'); } catch (err) { toast('저장하지 못했습니다: ' + err.code); }
+});
+
+document.addEventListener('click', async e => {
+  const b = e.target.closest('button');
+  if (!b || b.closest('.k-dialog')) return;
+  const d = b.dataset;
+  try {
+    if (d.tab) { tab = d.tab; history.replaceState(null, '', '#' + tab); return render(); }
+    if (b.id === 'unit-add') {
+      const v = await dialog({ title: '새 단원', ok: '단원 만들기', fields: [{ key: 'name', label: '단원 이름', placeholder: '알고리즘' }] });
+      if (!v?.name.trim()) return;
+      const name = v.name.trim();
+      await saveCourse({ units: [...course.units, { id: newId(), name, i18n: await translateName(name) }] });
+      return render();
+    }
+    if (d.urename) {
+      const u = course.units.find(x => x.id === d.urename);
+      const v = await dialog({ title: '단원 이름 바꾸기', fields: [{ key: 'name', label: '단원 이름', value: u.name }] });
+      if (!v?.name.trim() || v.name.trim() === u.name) return;
+      const name = v.name.trim();
+      const i18n = await translateName(name);
+      await saveCourse({ units: course.units.map(x => x.id === u.id ? { ...x, name, i18n } : x) });
+      return render();
+    }
+    if (d.umove) {
+      const us = [...course.units], i = us.findIndex(x => x.id === d.umove), j = i + Number(d.d);
+      if (j < 0 || j >= us.length) return;
+      [us[i], us[j]] = [us[j], us[i]];
+      await saveCourse({ units: us }); lessons = orderLessons(course, lessons); return render();
+    }
+    if (d.udel) {
+      const u = course.units.find(x => x.id === d.udel);
+      if (!await dialog({ title: '단원 지우기', body: `"${esc(u.name)}" 단원을 지웁니다. 차시가 없는 단원만 지울 수 있습니다.`, ok: '단원 지우기', danger: true })) return;
+      if (lessons.some(l => l.unitId === u.id)) return toast('차시가 있는 단원은 지울 수 없습니다.');
+      await saveCourse({ units: course.units.filter(x => x.id !== u.id) }); return render();
+    }
+    if (d.ladd) {
+      const v = await dialog({ title: '차시 넣기', ok: '차시 넣기', fields: [
+        { key: 'name', label: '차시 이름', placeholder: '반복문으로 별 그리기' },
+        { key: 'standards', label: '성취기준', placeholder: '9정04-02', hint: '없으면 비워 둡니다. 여러 개는 쉼표로 나눕니다.' }] });
+      if (!v?.name.trim()) return;
+      const name = v.name.trim();
+      const inUnit = lessons.filter(l => l.unitId === d.ladd);
+      const data = { courseId: id, unitId: d.ladd, order: inUnit.length ? Math.max(...inUnit.map(l => l.order)) + 1 : 1, name, i18n: await translateName(name),
+        docId: null, openTo: [], standards: v.standards.split(/[,\s]+/).filter(Boolean), createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
+      const r = await addDoc(collection(db, 'course_lessons'), data);
+      lessons = orderLessons(course, [...lessons, { id: r.id, ...data }]); return render();
+    }
+    if (d.edit) {
+      const l = lessons.find(x => x.id === d.edit);
+      const i = l.i18n || {};
+      const v = await dialog({ title: `${l.no}차시 고치기`, body: `번역: ${[i.zh, i.ru, i.en].filter(Boolean).map(esc).join(' · ') || '없음'}`,
+        fields: [{ key: 'name', label: '차시 이름', value: l.name }, { key: 'standards', label: '성취기준', value: (l.standards || []).join(', '), hint: '여러 개는 쉼표로 나눕니다.' }],
+        extra: `<label class="chk"><input type="checkbox" name="del"> 이 차시를 지웁니다</label>` });
+      if (!v) return;
+      if (v.del) {
+        await deleteDoc(doc(db, 'course_lessons', l.id));
+        lessons = orderLessons(course, lessons.filter(x => x.id !== l.id)); toast(`${l.no}차시를 지웠습니다.`); return render();
+      }
+      const name = v.name.trim() || l.name;
+      const patch = { name, standards: v.standards.split(/[,\s]+/).filter(Boolean) };
+      if (name !== l.name || !l.i18n?.en) patch.i18n = await translateName(name);
+      await updateDoc(doc(db, 'course_lessons', l.id), { ...patch, updatedAt: serverTimestamp() });
+      Object.assign(l, patch); return render();
+    }
+    if (d.toggle) {
+      const l = lessons.find(x => x.id === d.toggle), c = d.cls, on = (l.openTo || []).includes(c);
+      const openTo = on ? l.openTo.filter(x => x !== c) : sortCls([...(l.openTo || []), c]);
+      b.disabled = true;
+      await updateDoc(doc(db, 'course_lessons', l.id), { openTo, updatedAt: serverTimestamp() });
+      l.openTo = openTo; return render();
+    }
+    if (d.lmove) {
+      const l = lessons.find(x => x.id === d.lmove), us = lessons.filter(x => x.unitId === l.unitId);
+      const i = us.indexOf(l), j = i + Number(d.d);
+      if (j < 0 || j >= us.length) return;
+      [us[i], us[j]] = [us[j], us[i]];
+      const batch = writeBatch(db);
+      us.forEach((x, k) => { x.order = k + 1; batch.update(doc(db, 'course_lessons', x.id), { order: k + 1 }); });
+      await batch.commit(); lessons = orderLessons(course, lessons); return render();
+    }
+    if (b.id === 'archive') {
+      await saveCourse({ status: course.status === 'archived' ? 'active' : 'archived' });
+      toast(course.status === 'archived' ? '지난 과목으로 옮겼습니다.' : '다시 쓰는 과목으로 옮겼습니다.'); return render();
+    }
+    if (b.id === 'del-course') {
+      if (!await dialog({ title: '과목 지우기', body: `"${esc(courseLabel(course))}" 과목을 지웁니다. 되돌릴 수 없습니다.`, ok: '과목 지우기', danger: true })) return;
+      await deleteDoc(ref()); location.href = 'index.html';
+    }
+  } catch (err) { b.disabled = false; toast('저장하지 못했습니다: ' + (err.code || err.message)); }
+});
+
+load().catch(err => { document.body.innerHTML = header('course') + `<main class="k-page"><div class="k-callout k-callout--warn"><span class="k-callout__label">불러오지 못했습니다</span><span>${esc(err.code || err.message)}</span></div></main>`; });
+</script>
+</body>
+</html>
