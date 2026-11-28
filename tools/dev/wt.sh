@@ -13,6 +13,6 @@ mkdir -p "$BASE"
 git -C "$MAIN" fetch -q origin main
 git -C "$MAIN" worktree add -q -b "$br" "$d" origin/main
 # 테스트 의존성은 원본 폴더 것을 빌려 쓴다(설치 안 함). 커밋에는 안 들어간다(.gitignore).
-EX="$(git -C "$MAIN" rev-parse --git-common-dir)/info/exclude"; grep -qx "ohweb-rules-test/node_modules" "$EX" 2>/dev/null || echo "ohweb-rules-test/node_modules" >> "$EX"
+EX="$(git -C "$MAIN" rev-parse --path-format=absolute --git-common-dir)/info/exclude"; grep -qx "ohweb-rules-test/node_modules" "$EX" 2>/dev/null || echo "ohweb-rules-test/node_modules" >> "$EX"
 [ -d "$MAIN/ohweb-rules-test/node_modules" ] && ln -s "$MAIN/ohweb-rules-test/node_modules" "$d/ohweb-rules-test/node_modules"
 echo "$d"
