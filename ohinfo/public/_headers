@@ -11,3 +11,8 @@
   Cache-Control: no-cache
 /
   Cache-Control: no-cache
+
+# 새 플랫폼 공통 파일(render.js·logo.js·kaka.css): 선생님 화면(admin.kakainfo.com)이 모듈로 불러온다.
+/kaka/*
+  Access-Control-Allow-Origin: https://admin.kakainfo.com
+  Vary: Origin

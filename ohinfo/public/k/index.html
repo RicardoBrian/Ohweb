@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>kaká</title>
+<link rel="icon" href="/kaka/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/kaka/kaka.css">
+<style>
+  .k-header { position: sticky; top: 0; z-index: 10; }
+  .lang { position: relative; }
+  .lang .k-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 20; }
+  .page { padding: var(--space-6) var(--space-5) var(--space-7); max-width: var(--reading-w); box-sizing: border-box; }
+  .page__head { display: grid; gap: 4px; margin-bottom: var(--space-6); }
+  .pn { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-7); padding-top: var(--space-5); border-top: 1px solid var(--line); }
+  .unit-name { font: 500 14px/20px var(--font-sans); color: var(--ink-2); margin: var(--space-4) 0 var(--space-1); }
+  .course { margin-bottom: var(--space-7); }
+  .k-lesson__title { font-size: 17px; }
+  .k-avatar { width: auto; min-width: 32px; padding: 0 10px; border-radius: 999px; box-sizing: border-box; }
+  a.k-btn { text-decoration: none; }
+  @media (max-width: 600px) { .k-header { gap: var(--space-3); padding: 0 var(--space-4); } .page { padding: var(--space-5) var(--space-4) var(--space-7); } .k-nav a { padding: 8px 6px; } }
+</style>
+</head>
+<body>
+<div class="sk-head" aria-hidden="true"><span class="sk" style="width:92px;height:22px"></span><span class="sk" style="width:120px;height:16px"></span></div>
+<main class="page" aria-busy="true"><div class="page__head"><span class="sk" style="width:180px;height:14px"></span><span class="sk" style="width:260px;height:32px;margin-top:6px"></span></div>
+<span class="sk sk-line" style="width:90%"></span><span class="sk sk-line" style="width:96%"></span><span class="sk sk-line" style="width:70%"></span><span class="sk sk-line" style="width:84%;margin-top:28px"></span><span class="sk sk-line" style="width:60%"></span></main>
+<script type="module">
+import { loadSession, verifyStudentAuth, authReady, clearSession } from '/session.js';
+import { LOGO_SVG } from '/kaka/logo.js';
+import { LANGS, fsDecode, localized, renderBlocks, DOC_CSS } from '/kaka/render.js';
+
+document.head.insertAdjacentHTML('beforeend', `<style>${DOC_CSS}</style>`);
+const LOGIN = '/index.html';
+let session = loadSession();
+if (!session) { location.replace(LOGIN); throw new Error('no session'); }
+
+// 화면 글(네 언어). 짧고 번역하기 쉽게.
+const T = {
+  ko: { today: '오늘 차시', list: '내 과목', no: n => `${n}차시`, none: '아직 열린 차시가 없습니다.', noneSub: '선생님이 차시를 열면 여기에 보입니다.', empty: '선생님이 아직 내용을 넣지 않았습니다.', closed: '열 수 없는 차시입니다.', fail: '불러오지 못했습니다. 새로고침하세요.', prev: '이전 차시', next: '다음 차시', lang: '언어', logout: '로그아웃', now: '지금' },
+  zh: { today: '今天的课', list: '我的科目', no: n => `第${n}课时`, none: '还没有开放的课时。', noneSub: '老师开放课时后会显示在这里。', empty: '老师还没有添加内容。', closed: '无法打开这个课时。', fail: '加载失败。请刷新页面。', prev: '上一课时', next: '下一课时', lang: '语言', logout: '退出', now: '现在' },
+  ru: { today: 'Урок сегодня', list: 'Мои предметы', no: n => `Урок ${n}`, none: 'Открытых уроков пока нет.', noneSub: 'Когда учитель откроет урок, он появится здесь.', empty: 'Учитель ещё не добавил материал.', closed: 'Этот урок нельзя открыть.', fail: 'Не удалось загрузить. Обновите страницу.', prev: 'Предыдущий урок', next: 'Следующий урок', lang: 'Язык', logout: 'Выйти', now: 'Сейчас' },
+  en: { today: "Today's lesson", list: 'My subjects', no: n => `Lesson ${n}`, none: 'No lessons are open yet.', noneSub: 'When your teacher opens a lesson, it appears here.', empty: 'Your teacher has not added content yet.', closed: 'This lesson cannot be opened.', fail: 'Could not load. Please refresh.', prev: 'Previous lesson', next: 'Next lesson', lang: 'Language', logout: 'Log out', now: 'Now' },
+};
+let lang = (() => { try { const l = localStorage.getItem('ohinfo_lang'); return T[l] ? l : 'ko'; } catch { return 'ko'; } })();
+const t = () => T[lang];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const nm = o => (lang !== 'ko' && o?.i18n?.[lang]) || o?.name || '';
+const stuNo = s => s.isMaster ? 'T' : `${s.grade || ''}${String(s.class || '').padStart(2, '0')}${String(s.number || '').padStart(2, '0')}`;
+
+async function api(action, extra = {}) {
+  await authReady();
+  const { auth } = await import('/firebase-config.js');
+  if (!auth.currentUser) { clearSession(); location.replace(LOGIN); throw new Error('logout'); }
+  const res = await fetch('/api/lesson', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action, idToken: await auth.currentUser.getIdToken(), studentDocId: session.id, ...extra }) });
+  const d = await res.json().catch(() => ({ error: 'HTTP ' + res.status }));
+  if (d.relogin) { clearSession(); location.replace(LOGIN); throw new Error('relogin'); }
+  return d;
+}
+
+let today = null, view = null, menuOpen = false;
+const docCache = {};
+
+function header() {
+  const route = location.hash.startsWith('#list') ? 'list' : 'today';
+  return `<header class="k-header"><a class="k-logo" href="#" aria-label="kaká">${LOGO_SVG}</a>
+    <nav class="k-nav"><a href="#" ${route === 'today' ? 'aria-current="page"' : ''}>${esc(t().today)}</a><a href="#list" ${route === 'list' ? 'aria-current="page"' : ''}>${esc(t().list)}</a></nav>
+    <div class="k-header__end"><div class="lang"><button class="k-select" id="lang-btn" aria-haspopup="menu" aria-expanded="${menuOpen}" aria-label="${esc(t().lang)}">${esc(LANGS.find(l => l[0] === lang)[1])}</button>
+      ${menuOpen ? `<div class="k-menu" role="menu">${LANGS.map(([k, n]) => `<button role="menuitemradio" aria-checked="${k === lang}" data-lang="${k}"><span>${n}</span></button>`).join('')}<button role="menuitem" id="logout"><span>${esc(t().logout)}</span></button></div>` : ''}</div>
+    <span class="k-avatar" title="${esc(session.name || '')}">${esc(stuNo(session))}</span></div></header>`;
+}
+const paint = main => { document.body.innerHTML = header() + main; document.documentElement.lang = lang; };
+const msg = (title, sub = '') => `<main class="page"><div class="k-callout"><span class="k-callout__label">${esc(title)}</span>${sub ? `<span>${esc(sub)}</span>` : ''}</div></main>`;
+
+// 공개된 차시를 과목 순서대로 한 줄로
+const flat = () => (today?.courses || []).flatMap(c => c.lessons.map(l => ({ ...l, course: c })));
+
+async function showLesson(id) {
+  if (!id) return paint(msg(t().none, t().noneSub));
+  if (!docCache[id]) {
+    const d = await api('doc', { lessonId: id });
+    if (d.error) return paint(msg(d.closed ? t().closed : t().fail));
+    d.doc = fsDecode(d.doc); docCache[id] = d;
+  }
+  const { course, lesson, doc } = docCache[id];
+  const unit = course.units.find(u => u.id === lesson.unitId);
+  const list = flat(), i = list.findIndex(l => l.id === id), prev = list[i - 1], next = list[i + 1];
+  const body = renderBlocks(localized(doc, lang), { mode: 'read' });
+  paint(`<main class="page"><div class="page__head"><span class="k-page__eyebrow">${esc(nm(course))}${unit ? ' · ' + esc(nm(unit)) : ''}</span>
+    <h1 class="t-display" style="margin:0">${esc(t().no(lesson.no))} ${esc(nm(lesson))}</h1></div>
+    <article class="kd" lang="${lang}">${body || `<div class="k-callout"><span>${esc(t().empty)}</span></div>`}</article>
+    ${prev || next ? `<nav class="pn">${prev ? `<a class="k-btn k-btn--lg" href="#lesson=${prev.id}">${esc(t().prev)}</a>` : ''}${next ? `<a class="k-btn k-btn--lg" href="#lesson=${next.id}">${esc(t().next)}</a>` : ''}</nav>` : ''}</main>`);
+}
+
+function showList() {
+  const cs = today?.courses || [];
+  if (!cs.some(c => c.lessons.length)) return paint(msg(t().none, t().noneSub));
+  paint(`<main class="page"><div class="page__head"><h1 class="t-display" style="margin:0">${esc(t().list)}</h1></div>
+    ${cs.filter(c => c.lessons.length).map(c => `<section class="course"><h2 class="t-title" style="margin:0">${esc(nm(c))}</h2>
+      ${c.units.filter(u => c.lessons.some(l => l.unitId === u.id)).map(u => `<p class="unit-name">${esc(nm(u))}</p>
+        <ol class="k-lessons">${c.lessons.filter(l => l.unitId === u.id).map(l => `<li><a class="k-lesson ${l.id === today.current ? 'k-lesson--today' : ''}" href="#lesson=${l.id}"><span class="k-lesson__no">${esc(t().no(l.no))}</span><span><span class="k-lesson__head"><span class="k-lesson__title">${esc(nm(l))}</span>${l.id === today.current ? `<span class="k-chip k-chip--live">${esc(t().now)}</span>` : ''}</span></span></a></li>`).join('')}</ol>`).join('')}
+    </section>`).join('')}</main>`);
+}
+
+async function route() {
+  try {
+    if (!today) { today = await api('today'); if (today.error) { today = null; return paint(msg(t().fail, '')); } }
+    const h = location.hash;
+    view = h.startsWith('#list') ? 'list' : 'lesson';
+    if (view === 'list') showList();
+    else await showLesson(h.startsWith('#lesson=') ? h.slice(8) : today.current);
+    scrollTo(0, 0);
+  } catch (e) { if (!/logout|relogin/.test(e.message)) paint(msg(t().fail)); }
+}
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('button');
+  if (b?.id === 'lang-btn') { menuOpen = !menuOpen; return rerender(); }
+  if (b?.dataset.lang) { lang = b.dataset.lang; try { localStorage.setItem('ohinfo_lang', lang); } catch {} menuOpen = false; return rerender(); }
+  if (b?.id === 'logout') { clearSession(); import('/firebase-config.js').then(({ auth }) => auth.signOut()).finally(() => location.replace(LOGIN)); return; }
+  if (menuOpen && !e.target.closest('.lang')) { menuOpen = false; rerender(); }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && menuOpen) { menuOpen = false; rerender(); } });
+function rerender() { const y = scrollY; (view === 'list' ? (showList(), Promise.resolve()) : showLesson(location.hash.startsWith('#lesson=') ? location.hash.slice(8) : today?.current)).then(() => scrollTo(0, y)); }
+addEventListener('hashchange', route);
+
+verifyStudentAuth(session, { redirectTo: LOGIN }).then(s => { if (s) session = s; });
+route();
+</script>
+</body>
+</html>

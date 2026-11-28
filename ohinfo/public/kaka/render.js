@@ -1,4 +1,5 @@
-// 차시 문서 그리기 — 미리 보기·발표(지금), 학생 화면(다음 단계)이 같이 쓴다.
+// 차시 문서 그리기 — 선생님 미리 보기·발표(admin.kakainfo.com/k/)와 학생 화면(kakainfo.com/k/)이 같이 쓴다.
+// 선생님 화면은 https://kakainfo.com/kaka/render.js 로 불러온다(_headers 의 CORS 허용).
 // 문서: { blocks: [{id, type, data}], tr: { zh|ru|en: { [blockId]: { src, data } } } }
 export const LANGS = [['ko', '한국어'], ['zh', '中文'], ['ru', 'Русский'], ['en', 'English']];
 export const TOOLS = { scratch: '스크래치', python: '파이썬', quiz: '확인 문제', board: '게시판', colab: '코랩', ailab: 'AI 실험실', appinventor: '앱 인벤터 실행기', makecode: 'MakeCode' };
