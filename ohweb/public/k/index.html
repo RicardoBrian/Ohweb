@@ -6,16 +6,15 @@
 <title>오늘 · kaká</title>
 <link rel="icon" href="https://kakainfo.com/kaka/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="https://kakainfo.com/kaka/kaka.css">
+<link rel="stylesheet" href="k.css">
 <style>
-  .row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
   .k-lesson { align-items: start; }
   .k-lesson .k-btn { margin-top: 6px; }
   details summary { cursor: pointer; color: var(--ink-2); font: 500 14px/22px var(--font-sans); }
-  @media (max-width: 600px) { .k-header .k-btn--ghost { display: none; } }
 </style>
 </head>
 <body>
-<p class="k-page k-muted">불러오는 중입니다.</p>
+<div class="sk-head" aria-hidden="true"><span class="sk" style="width:92px;height:22px"></span><span class="sk" style="width:96px;height:16px"></span></div><main class="k-page" aria-busy="true" aria-label="불러오는 중"><div class="k-page__head"><span class="sk" style="width:150px;height:14px"></span><span class="sk" style="width:240px;height:30px;margin-top:6px"></span></div><div class="sk-list"><div class="sk-item"><span class="sk" style="height:14px;margin-top:4px"></span><div><span class="sk" style="width:55%;height:18px"></span><span class="sk" style="width:35%;height:12px;margin-top:8px"></span></div></div><div class="sk-item"><span class="sk" style="height:14px;margin-top:4px"></span><div><span class="sk" style="width:55%;height:18px"></span><span class="sk" style="width:35%;height:12px;margin-top:8px"></span></div></div><div class="sk-item"><span class="sk" style="height:14px;margin-top:4px"></span><div><span class="sk" style="width:55%;height:18px"></span><span class="sk" style="width:35%;height:12px;margin-top:8px"></span></div></div><div class="sk-item"><span class="sk" style="height:14px;margin-top:4px"></span><div><span class="sk" style="width:55%;height:18px"></span><span class="sk" style="width:35%;height:12px;margin-top:8px"></span></div></div></div></main>
 <script type="module">
 import {
   $, esc, chip, header, toast, dialog, requireAdmin, translateName, loadCourses, loadLessons, orderLessons, nextFor,

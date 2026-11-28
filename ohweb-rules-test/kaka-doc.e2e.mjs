@@ -75,6 +75,10 @@ try {
   await page.goto('http://localhost:8099/k/lesson.html?id=L1');
   await page.waitForFunction(() => window.kEditor && document.querySelector('.ce-paragraph'), null, { timeout: 20000 });
   ok('편집기가 열린다(빈 차시)', (await page.textContent('h1')).includes('1차시 반복문'));
+  ok('로고 커서가 계속 깜빡인다', await page.evaluate(() => getComputedStyle(document.querySelector('.k-logo .k-cursor')).animationIterationCount === 'infinite'));
+  const raw = await (await fetch('http://localhost:8099/k/lesson.html')).text();
+  ok('불러오는 동안 스켈레톤', raw.includes('class="sk ') && !raw.includes('불러오는 중입니다'));
+  ok('블록 넣기 막대가 보인다(11가지)', await page.locator('#palette [data-ins]').count() === 11 && await page.isVisible('#palette'));
 
   await page.click('.ce-paragraph');
   await page.keyboard.type('반복은 같은 일을 여러 번 하는 것입니다.');
@@ -102,12 +106,15 @@ try {
   ok('블록 8개(표 포함)가 저장된다', !!d, d ? '' : JSON.stringify((await docsAll())[0].blocks.map(b => b.type)));
   if (SHOT) await page.screenshot({ path: SHOT + '/doc-edit.png', fullPage: true });
 
+  ok('세 언어 번역 단추에 남은 블록 수', (await page.textContent('#tr-all')) === '세 언어 번역 (7개)', await page.textContent('#tr-all'));
+  await page.click('#tr-all');
+  d = await until(async () => { const x = (await docsAll())[0]; return ['zh', 'ru', 'en'].every(l => Object.keys(x.tr?.[l] || {}).length === 7) && x; });
+  ok('세 언어 번역 한 번에: 언어마다 글 있는 블록 7개(메모·슬라이드 제외)', !!d, JSON.stringify(Object.fromEntries(Object.entries((await docsAll())[0].tr || {}).map(([k, v]) => [k, Object.keys(v).length]))));
+  ok('번역은 서식을 지키는 html 형식, 세 언어', trCalls.length === 3 && trCalls.every(c => c.format === 'html') && trCalls.map(c => c.targetLang).sort().join() === 'en,ru,zh-cn');
+  await page.waitForFunction(() => document.querySelector('#tr-all').textContent === '번역 다 됨');
+  ok('번역이 끝나면 단추가 "번역 다 됨"', true);
   await page.click('[data-mode="tr"]');
   await page.click('[data-trlang="en"]');
-  await page.click('#tr-all');
-  d = await until(async () => { const x = (await docsAll())[0]; return Object.keys(x.tr?.en || {}).length === 7 && x; });
-  ok('번역 초안: 글 있는 블록 7개(메모·슬라이드 제외)', !!d, JSON.stringify(Object.keys((await docsAll())[0].tr?.en || {})));
-  ok('번역은 서식을 지키는 html 형식으로 보낸다', trCalls.at(-1)?.format === 'html' && trCalls.at(-1).targetLang === 'en');
   const callout = d && d.blocks.find(b => b.type === 'callout');
   ok('안내 상자 번역에 굵게가 남는다', callout && d.tr.en[callout.id].data.text === '[en] <b>힌트</b>: 72도' && d.tr.en[callout.id].data.tone === 'tip');
   const tbl = d && d.blocks.find(b => b.type === 'table');
@@ -127,14 +134,21 @@ try {
   await page.keyboard.press('End');
   await page.keyboard.type(' 컴퓨터는 지치지 않습니다.');
   await saved();
+  ok('원문을 바꾸면 번역 단추가 다시 켜진다', (await page.textContent('#tr-all')) === '세 언어 번역 (1개)', await page.textContent('#tr-all'));
   await page.click('[data-mode="tr"]');
   ok('원문을 바꾸면 "원문이 바뀜"이 뜬다', await page.locator('text=원문이 바뀜').count() === 1);
 
+  await page.click('[data-mode="edit"]');
+  await page.click('.ce-paragraph >> nth=0');
+  await page.click('#palette button:has-text("안내 상자")');
+  await page.keyboard.type('막대로 넣은 안내');
+  const inserted = await until(async () => { const x = (await docsAll())[0]; const i = x.blocks.findIndex(b => b.type === 'callout' && b.data.text.includes('막대로')); return i === 1 ? x : null; }, 10000);
+  ok('막대로 블록 넣기: 지금 줄 바로 다음에 들어가고 저장된다', !!inserted, JSON.stringify((await docsAll())[0].blocks.map(b => b.type)));
   await page.click('[data-mode="view"]');
   await page.click('[data-viewlang="en"]');
   const art = await page.textContent('article');
   ok('미리 보기(영어): 고친 번역·번역 글', art.includes('Repetition') && art.includes('[en] 별 그리기'), art.slice(0, 200));
-  ok('미리 보기: 바뀐 원문은 표시, 메모·타이머는 안 보임', await page.locator('article .kd-mark').count() === 1 && !art.includes('오각형') && !art.includes('혼자 해 보기'));
+  ok('미리 보기: 바뀐 원문·새 블록은 표시, 메모·타이머는 안 보임', await page.locator('article .kd-mark').count() === 2 && !art.includes('오각형') && !art.includes('혼자 해 보기'));
   if (SHOT) await page.screenshot({ path: SHOT + '/doc-view.png', fullPage: true });
 
   await page.goto(`http://localhost:8099/k/present.html?doc=${d.id}&lang=ko`);
