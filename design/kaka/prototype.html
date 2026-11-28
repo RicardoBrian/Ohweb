@@ -1,0 +1,670 @@
+<title>kaká 시제품</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;600&display=swap">
+<style>
+/* 배치: 맨 위 시제품 안내 띠 → 실제 화면(머리글 + 왼쪽 정렬 좁은 열). 색·글자·부품은 kaká 디자인 시스템 그대로 */
+:root { --bg:#f4f4f0;--surface:#fbfbf8;--surface-2:#ebebe5;--line:#d9d9d0;--line-strong:#868a83;--ink:#1c1e1d;--ink-2:#565a57;--ink-3:#646865;--accent:#2f6a4f;--accent-hover:#255a42;--on-accent:#ffffff;--accent-soft:#e2ede6;--accent-ink:#24563f;--warn:#7c5a0c;--warn-soft:#f5ecd3;--danger:#a13d2a;--danger-soft:#f7e3de;--focus:var(--accent);--code-bg:#1c1e1d;--code-ink:#e9eae5;--code-muted:#8d918c;--code-key:#8fcaa9;--code-str:#e0b44a;--shadow-pop:0 1px 2px rgba(20,24,22,0.06), 0 8px 24px rgba(20,24,22,0.12); --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:24px;--space-6:32px;--space-7:48px;--radius-sm:4px;--radius-md:6px;--radius-lg:10px;--radius-full:999px;--control-sm:28px;--control:36px;--control-lg:44px;--header-h:56px;--content-w:1120px;--reading-w:720px;--font-sans:"IBM Plex Sans KR", "IBM Plex Sans", "Noto Sans SC", system-ui, sans-serif;--font-mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#121413;--surface:#1a1c1b;--surface-2:#232625;--line:#2e3230;--line-strong:#6a6f6b;--ink:#e9eae5;--ink-2:#a9ada8;--ink-3:#8d918c;--accent:#6fb08d;--accent-hover:#86c3a2;--on-accent:#0f1a14;--accent-soft:#1d2d25;--accent-ink:#8fcaa9;--warn:#e0b44a;--warn-soft:#2e2614;--danger:#e58a76;--danger-soft:#33201b;--focus:var(--accent);--code-bg:#0c0e0d;--code-ink:#e9eae5;--code-muted:#8d918c;--code-key:#8fcaa9;--code-str:#e0b44a;--shadow-pop:0 8px 24px rgba(0,0,0,0.55); color-scheme: dark } }
+:root[data-theme="dark"] { --bg:#121413;--surface:#1a1c1b;--surface-2:#232625;--line:#2e3230;--line-strong:#6a6f6b;--ink:#e9eae5;--ink-2:#a9ada8;--ink-3:#8d918c;--accent:#6fb08d;--accent-hover:#86c3a2;--on-accent:#0f1a14;--accent-soft:#1d2d25;--accent-ink:#8fcaa9;--warn:#e0b44a;--warn-soft:#2e2614;--danger:#e58a76;--danger-soft:#33201b;--focus:var(--accent);--code-bg:#0c0e0d;--code-ink:#e9eae5;--code-muted:#8d918c;--code-key:#8fcaa9;--code-str:#e0b44a;--shadow-pop:0 8px 24px rgba(0,0,0,0.55); color-scheme: dark }
+
+
+/* kaká 부품 스타일. 값은 모두 tokens.css 의 변수에서 온다. 접두사 k- */
+
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 15px/24px var(--font-sans); -webkit-font-smoothing: antialiased; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.k-mono { font-family: var(--font-mono); }
+.k-num { font-variant-numeric: tabular-nums; }
+.k-muted { color: var(--ink-2); }
+
+/* 로고: 테마에 맞는 파일 하나만 보인다 */
+.k-logo { display: inline-flex; align-items: center; }
+.k-logo svg { height: 22px; width: auto; display: block; }
+.lg-g { fill: var(--ink-3); } .lg-i { fill: var(--ink); } .lg-a { fill: var(--accent); }
+
+/* 버튼 */
+.k-btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); height: var(--control); padding: 0 var(--space-4);
+  border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--surface); color: var(--ink);
+  font: 500 14px/1 var(--font-sans); white-space: nowrap; cursor: pointer; transition: background-color .12s ease-out, border-color .12s ease-out; }
+.k-btn:hover { background: var(--surface-2); }
+.k-btn--primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.k-btn--primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.k-btn--ghost { background: transparent; border-color: transparent; color: var(--ink-2); }
+.k-btn--ghost:hover { background: var(--surface-2); color: var(--ink); }
+.k-btn--danger { color: var(--danger); border-color: var(--danger); background: var(--surface); }
+.k-btn--danger:hover { background: var(--danger-soft); }
+.k-btn--sm { height: var(--control-sm); padding: 0 var(--space-3); font-size: 13px; }
+.k-btn--lg { height: var(--control-lg); padding: 0 20px; font-size: 16px; }
+.k-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+/* 머리글 */
+.k-header { height: var(--header-h); display: flex; align-items: center; gap: var(--space-5); padding: 0 var(--space-5);
+  background: var(--surface); border-bottom: 1px solid var(--line); }
+.k-nav { display: flex; gap: var(--space-1); }
+.k-nav a { color: var(--ink-2); text-decoration: none; font: 500 14px/1 var(--font-sans); padding: 8px 10px; border-radius: var(--radius-sm); }
+.k-nav a:hover { color: var(--ink); background: var(--surface-2); }
+.k-nav a[aria-current="page"] { color: var(--ink); background: var(--surface-2); }
+.k-header__end { margin-left: auto; display: flex; align-items: center; gap: var(--space-2); }
+.k-avatar { width: 28px; height: 28px; border-radius: var(--radius-full); background: var(--surface-2); color: var(--ink-2);
+  display: grid; place-items: center; font: 500 12px/1 var(--font-sans); font-variant-numeric: tabular-nums; }
+.k-select { display: inline-flex; align-items: center; gap: 6px; height: var(--control-sm); padding: 0 10px; border: 1px solid var(--line);
+  border-radius: var(--radius-md); background: var(--surface); color: var(--ink); font: 500 13px/1 var(--font-sans); cursor: pointer; }
+.k-select::after { content: ""; width: 6px; height: 6px; border-right: 1.5px solid var(--ink-2); border-bottom: 1.5px solid var(--ink-2); transform: translateY(-2px) rotate(45deg); margin-left: 2px; }
+
+/* 탭 */
+.k-tabs { display: flex; gap: var(--space-1); border-bottom: 1px solid var(--line); }
+.k-tab { appearance: none; border: 0; background: none; padding: 10px 12px; margin-bottom: -1px; border-bottom: 2px solid transparent;
+  color: var(--ink-2); font: 500 14px/1 var(--font-sans); cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.k-tab:hover { color: var(--ink); }
+.k-tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+.k-tab .k-count { font: 500 12px/1 var(--font-sans); font-variant-numeric: tabular-nums; color: var(--ink-3); }
+
+/* 입력 */
+.k-field { display: grid; gap: 6px; }
+.k-label { font: 500 13px/18px var(--font-sans); color: var(--ink); }
+.k-input, .k-textarea { width: 100%; box-sizing: border-box; height: var(--control); padding: 0 var(--space-3); border: 1px solid var(--line-strong);
+  border-radius: var(--radius-md); background: var(--surface); color: var(--ink); font: 400 15px/24px var(--font-sans); }
+.k-textarea { height: auto; min-height: 96px; padding: 8px var(--space-3); resize: vertical; }
+.k-input::placeholder, .k-textarea::placeholder { color: var(--ink-3); }
+.k-input:focus, .k-textarea:focus { outline: 2px solid var(--focus); outline-offset: 0; border-color: var(--accent); }
+.k-hint { font: 400 13px/20px var(--font-sans); color: var(--ink-2); }
+.k-field.is-error .k-input, .k-field.is-error .k-textarea { border-color: var(--danger); }
+.k-field.is-error .k-hint { color: var(--danger); }
+
+/* 답 고르기 */
+.k-choice { display: flex; align-items: center; gap: var(--space-3); min-height: var(--control-lg); padding: 10px 14px; box-sizing: border-box;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--surface); cursor: pointer; font: 400 16px/24px var(--font-sans); }
+.k-choice:hover { background: var(--surface-2); }
+.k-choice input { position: absolute; opacity: 0; pointer-events: none; }
+.k-choice__key { flex: none; width: 24px; height: 24px; border-radius: var(--radius-sm); border: 1px solid var(--line-strong); display: grid; place-items: center;
+  font: 500 13px/1 var(--font-sans); color: var(--ink-2); }
+.k-choice:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-ink); }
+.k-choice:has(input:checked) .k-choice__key { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.k-choice:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* 상태 칩: 항상 글자를 함께 쓴다 */
+.k-chip { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: var(--radius-sm);
+  background: var(--surface-2); color: var(--ink-2); font: 500 12px/1 var(--font-sans); white-space: nowrap; }
+.k-chip--done { background: var(--accent-soft); color: var(--accent-ink); }
+.k-chip--warn { background: var(--warn-soft); color: var(--warn); }
+.k-chip--danger { background: var(--danger-soft); color: var(--danger); }
+.k-chip--live { background: var(--accent); color: var(--on-accent); }
+
+/* 꼬리표: 파일 확장자·도구 */
+.k-tag { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: var(--radius-sm); border: 1px solid var(--line); background: transparent;
+  color: var(--ink-2); font: 400 12px/1 var(--font-sans); white-space: nowrap; }
+
+/* 표 */
+.k-table { width: auto; border-collapse: collapse; font: 400 14px/20px var(--font-sans); }
+.k-table th { text-align: start; font: 500 12px/16px var(--font-sans); color: var(--ink-2); padding: 8px var(--space-3); border-bottom: 1px solid var(--line); white-space: nowrap; }
+.k-table td { padding: 10px var(--space-3); border-bottom: 1px solid var(--line); vertical-align: middle; }
+.k-table tbody tr:hover { background: var(--surface-2); }
+.k-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.k-table .id { font-variant-numeric: tabular-nums; color: var(--ink-2); }
+
+/* 차시 목록: 상자 없이 줄과 여백만 */
+.k-lessons { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-2); max-width: 640px; }
+.k-lesson { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: var(--space-3); padding: 10px 0; color: var(--ink); text-decoration: none; }
+.k-lesson__no { font: 500 13px/22px var(--font-sans); color: var(--ink-3); white-space: nowrap; }
+.k-lesson__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.k-lesson__title { font: 600 16px/22px var(--font-sans); }
+.k-lesson:hover .k-lesson__title { text-decoration: underline; text-underline-offset: 3px; }
+.k-lesson__meta { font: 400 13px/20px var(--font-sans); color: var(--ink-2); margin-top: 2px; }
+.k-lesson--today .k-lesson__no { color: var(--accent-ink); font-weight: 600; }
+.k-lesson--done .k-lesson__title { color: var(--ink-2); font-weight: 500; }
+
+/* 도구 카드: 상자 하나, 안쪽 띠 없음, 내용 너비 */
+.k-tool { display: grid; gap: var(--space-3); max-width: 480px; padding: var(--space-4) var(--space-5) var(--space-5); box-sizing: border-box;
+  border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--surface); }
+.k-tool__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.k-tool__name { font: 600 16px/22px var(--font-sans); }
+.k-tool__desc { font: 400 14px/22px var(--font-sans); color: var(--ink-2); margin: 0; }
+.k-tool__foot { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-1); }
+.k-checks { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; font: 400 14px/20px var(--font-sans); }
+.k-checks li { display: flex; gap: 10px; align-items: baseline; }
+.k-checks li { align-items: center; }
+.k-checks li::before { content: ""; flex: none; width: 14px; height: 14px; box-sizing: border-box; border: 1.5px solid var(--line-strong); border-radius: var(--radius-full); }
+.k-checks li.is-pass::before { border: 0; background: var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 14'%3E%3Cpath d='M4 7.2l2 2L10 5' fill='none' stroke='white' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 14px no-repeat; }
+.k-checks li.is-pass { color: var(--ink); }
+.k-checks li:not(.is-pass) { color: var(--ink-2); }
+
+/* 진행 막대 */
+.k-progress { display: grid; gap: 6px; max-width: 360px; }
+.k-progress__top { display: flex; gap: var(--space-2); align-items: baseline; font: 500 13px/18px var(--font-sans); }
+.k-progress__val { font: 500 13px/1 var(--font-sans); font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.k-progress__track { display: flex; height: 6px; border-radius: var(--radius-full); background: var(--surface-2); overflow: hidden; }
+.k-progress__fill { background: var(--accent); }
+.k-progress__fill--warn { background: var(--warn); }
+.k-legend { display: flex; flex-wrap: wrap; gap: 12px; font: 400 12px/16px var(--font-sans); color: var(--ink-2); }
+.k-legend span { display: inline-flex; gap: 5px; align-items: center; }
+.k-legend i { width: 8px; height: 8px; border-radius: 1px; display: block; }
+
+/* 자리판 */
+.k-seats { display: grid; grid-template-columns: repeat(var(--cols, 6), minmax(0, 1fr)); gap: var(--space-2); }
+.k-seats__desk { grid-column: 1 / -1; justify-self: center; padding: 4px 18px; border: 1px dashed var(--line-strong); border-radius: var(--radius-sm);
+  font: 500 12px/16px var(--font-sans); color: var(--ink-2); margin-bottom: var(--space-2); }
+.k-seat { appearance: none; text-align: left; display: grid; gap: 2px; padding: 8px 10px; min-height: 56px; box-sizing: border-box;
+  border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); color: var(--ink); cursor: pointer; font: inherit; }
+.k-seat:hover { border-color: var(--line-strong); }
+.k-seat__no { font: 500 11px/14px var(--font-sans); font-variant-numeric: tabular-nums; color: var(--ink-3); }
+.k-seat__name { font: 500 14px/18px var(--font-sans); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.k-seat__note { font: 500 11px/14px var(--font-sans); }
+.k-seat.is-done { background: var(--accent-soft); border-color: transparent; }
+.k-seat.is-done .k-seat__note { color: var(--accent-ink); }
+.k-seat.is-help { background: var(--warn-soft); border-color: var(--warn); }
+.k-seat.is-help .k-seat__note { color: var(--warn); }
+.k-seat.is-absent { background: transparent; border-style: dashed; }
+.k-seat.is-absent .k-seat__name { color: var(--ink-3); }
+.k-seat.is-noted { box-shadow: inset 0 0 0 2px var(--ink); }
+.k-seat.is-empty { visibility: hidden; }
+
+/* 대화창 */
+.k-dialog { width: min(440px, 100%); box-sizing: border-box; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-pop); padding: var(--space-5); display: grid; gap: var(--space-4); }
+.k-dialog__title { font: 600 19px/28px var(--font-sans); margin: 0; }
+.k-dialog__body { color: var(--ink-2); margin: 0; }
+.k-dialog__actions { display: flex; justify-content: flex-end; gap: var(--space-2); }
+
+/* 알림 */
+.k-toast { display: inline-flex; align-items: center; gap: var(--space-3); padding: 10px 14px; border-radius: var(--radius-md);
+  background: var(--ink); color: var(--bg); box-shadow: var(--shadow-pop); font: 500 14px/20px var(--font-sans); }
+.k-toast__time { font: 400 12px/1 var(--font-sans); font-variant-numeric: tabular-nums; opacity: .7; }
+.k-toast .k-btn--ghost { color: inherit; height: 24px; padding: 0 6px; }
+.k-toast .k-btn--ghost:hover { background: transparent; text-decoration: underline; }
+
+/* 안내 상자 */
+.k-callout { display: grid; gap: 4px; width: fit-content; max-width: min(100%, 560px); box-sizing: border-box; padding: 12px var(--space-4); border-radius: var(--radius-md); background: var(--surface-2); color: var(--ink); }
+.k-callout__label { font: 600 14px/20px var(--font-sans); color: var(--ink); }
+.k-callout--tip { background: var(--accent-soft); } .k-callout--tip .k-callout__label { color: var(--accent-ink); }
+.k-callout--warn { background: var(--warn-soft); } .k-callout--warn .k-callout__label { color: var(--warn); }
+
+/* 코드 */
+.k-code { border-radius: var(--radius-md); background: var(--code-bg); color: var(--code-ink); overflow: hidden; }
+.k-code__bar { display: flex; align-items: center; gap: var(--space-2); padding: 8px 8px 8px 14px; border-bottom: 1px solid rgba(255,255,255,.08); }
+.k-code__file { font: 500 12px/1 var(--font-mono); color: var(--code-muted); margin-right: auto; }
+.k-code pre { margin: 0; padding: 12px 14px; overflow-x: auto; font: 400 14px/22px var(--font-mono); counter-reset: ln; }
+.k-code .ln { display: block; }
+.k-code .ln::before { counter-increment: ln; content: counter(ln); display: inline-block; width: 2ch; margin-right: 14px; text-align: right; color: var(--code-muted); }
+.k-code .kw { color: var(--code-key); } .k-code .str { color: var(--code-str); } .k-code .com { color: var(--code-muted); }
+.k-code__out { border-top: 1px solid rgba(255,255,255,.08); padding: 10px 14px; font: 400 13px/20px var(--font-mono); color: var(--code-ink); }
+.k-code .k-btn { height: 26px; padding: 0 10px; font-size: 12px; background: transparent; color: var(--code-ink); border-color: rgba(255,255,255,.22); }
+.k-code .k-btn:hover { background: rgba(255,255,255,.08); }
+
+/* 언어 고르기 */
+.k-menu { display: grid; min-width: 200px; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-md); box-shadow: var(--shadow-pop); }
+.k-menu button { appearance: none; border: 0; background: none; text-align: start; display: flex; justify-content: space-between; gap: 16px; padding: 8px 10px;
+  border-radius: var(--radius-sm); color: var(--ink); font: 400 14px/20px var(--font-sans); cursor: pointer; }
+.k-menu button:hover { background: var(--surface-2); }
+.k-menu button[aria-checked="true"] { background: var(--accent-soft); color: var(--accent-ink); font-weight: 500; }
+.k-menu .code { font: 400 12px/20px var(--font-sans); color: var(--ink-3); }
+
+/* 화면 뼈대: 본문은 왼쪽 정렬된 좁은 열, 오른쪽은 비워 둔다 */
+.k-page { padding: var(--space-6) var(--space-5) var(--space-7); max-width: var(--content-w); box-sizing: border-box; }
+.k-page__head { display: grid; gap: 4px; margin-bottom: var(--space-6); }
+.k-page__eyebrow { font: 500 13px/18px var(--font-sans); color: var(--ink-2); }
+.k-section { display: grid; gap: var(--space-3); margin-bottom: var(--space-6); max-width: 640px; }
+.k-section__title { font: 600 15px/22px var(--font-sans); margin: 0; color: var(--ink); }
+.k-cols { display: flex; flex-wrap: wrap; gap: var(--space-7); align-items: flex-start; }
+.k-cols > * { flex: 0 1 auto; min-width: 0; }
+
+/* 시제품 전용: 맨 위 안내 띠와 화면별 배치 */
+body { padding-left: max(0px, env(safe-area-inset-left, 0px)); padding-right: max(0px, env(safe-area-inset-right, 0px)); }
+a { color: var(--accent-ink); }
+.proto { padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: var(--surface-2); color: var(--ink-2); font: 400 13px/20px var(--font-sans); display: grid; gap: 4px; }
+.proto__flows { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: baseline; }
+.proto__flows b { color: var(--ink); font-weight: 600; margin-right: 4px; }
+.proto__flows a { color: var(--ink-2); text-decoration: none; }
+.proto__flows a[aria-current="page"] { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.proto__hint { color: var(--ink); }
+.k-header { padding-left: max(24px, env(safe-area-inset-left, 0px)); padding-right: max(24px, env(safe-area-inset-right, 0px)); gap: 16px; }
+.k-page { padding-left: max(24px, env(safe-area-inset-left, 0px)); padding-right: max(24px, env(safe-area-inset-right, 0px)); }
+.k-page h1 { margin: 0; text-wrap: balance; }
+.k-lesson__meta { display: block; }
+.k-btn { text-decoration: none; }
+.k-btn.is-on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent-ink); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.small { font-size: 13px; line-height: 20px; }
+.plain { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.linkish { appearance: none; background: none; border: 0; padding: 0; color: var(--accent-ink); font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.langs { display: flex; gap: 4px; flex-wrap: wrap; }
+.t-display { font: 600 28px/36px var(--font-sans); letter-spacing: -0.01em; }
+.t-title { font: 600 21px/30px var(--font-sans); }
+.t-heading { font: 600 17px/26px var(--font-sans); }
+.t-label { font: 500 14px/20px var(--font-sans); }
+.t-reading, .t-reading-sm { font: 400 18px/30px var(--font-sans); margin: 0; }
+.reading { max-width: var(--reading-w); display: grid; gap: 20px; }
+
+/* 차시 편집 */
+.editor { width: 640px; max-width: 100%; display: grid; }
+.blk { position: relative; padding: 6px 0; }
+.blk [contenteditable] { outline: none; border-radius: var(--radius-sm); }
+.blk [contenteditable]:focus { box-shadow: 0 0 0 2px var(--focus); }
+.blk-del { position: absolute; top: 6px; right: -4px; opacity: 0; }
+.blk:hover .blk-del, .blk-del:focus-visible { opacity: 1; }
+.slide-cut { display: flex; align-items: center; gap: 10px; color: var(--ink-3); font-size: 12px; }
+.slide-cut::before, .slide-cut::after { content: ""; flex: 1; border-top: 1px dashed var(--line-strong); }
+.ins { min-height: 28px; display: flex; align-items: center; }
+.ins-btn { appearance: none; border: 0; background: none; color: var(--ink-3); font: 500 13px/20px var(--font-sans); padding: 2px 6px; border-radius: var(--radius-sm); cursor: pointer; opacity: .55; }
+.ins-btn:hover, .ins-btn:focus-visible { opacity: 1; color: var(--accent-ink); background: var(--accent-soft); }
+.ins-menu { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0; }
+.side { width: 300px; }
+
+/* 학생 화면: 가짜 스크래치 */
+.overlay { position: fixed; inset: 0; background: rgba(10, 12, 11, .45); display: grid; place-items: center; z-index: 20;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.ov-box { width: min(560px, 100%); box-sizing: border-box; background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-pop); padding: 20px; display: grid; gap: 14px; }
+.stage { height: 180px; border-radius: var(--radius-md); background: var(--bg); display: grid; place-items: center; }
+
+/* 채점 */
+.elems { display: grid; gap: 14px; }
+.elem { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.elem > div:first-child { width: 200px; }
+.seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--radius-md); overflow: hidden; }
+.seg button { appearance: none; border: 0; border-left: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 0 12px; height: 34px;
+  font: 500 14px/1 var(--font-sans); cursor: pointer; display: inline-flex; gap: 4px; align-items: center; font-variant-numeric: tabular-nums; }
+.seg button:first-child { border-left: 0; }
+.seg button.is-on { background: var(--accent); color: var(--on-accent); }
+.seg small { font-size: 10px; opacity: .8; }
+.pick { gap: 2px; max-height: 520px; overflow-y: auto; }
+.pick button { appearance: none; border: 0; background: none; width: 100%; text-align: start; display: flex; justify-content: space-between; gap: 8px; align-items: center;
+  padding: 6px 8px; border-radius: var(--radius-sm); color: var(--ink); font: 400 14px/20px var(--font-sans); cursor: pointer; font-variant-numeric: tabular-nums; }
+.pick button:hover { background: var(--surface-2); }
+.pick button.is-on { background: var(--surface-2); font-weight: 600; }
+
+/* 폰 */
+.phone-wrap { display: grid; justify-items: center; gap: 12px; padding-block: 24px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.phone { position: relative; width: min(390px, 100%); height: 720px; max-height: 80vh; box-sizing: border-box; border: 1px solid var(--line-strong); border-radius: 28px; background: var(--bg); overflow: hidden; display: flex; flex-direction: column; }
+.phone-top { display: flex; gap: 8px; align-items: flex-start; justify-content: space-between; padding: 18px 16px 12px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.phone-body { padding: 12px; overflow-y: auto; flex: 1; display: grid; gap: 10px; align-content: start; }
+.k-seats.compact { gap: 6px; }
+.k-seats.compact .k-seat { min-height: 52px; padding: 6px; }
+.k-seats.compact .k-seat__name { font-size: 13px; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-top: 1px solid var(--line); box-shadow: var(--shadow-pop);
+  padding: 16px; display: grid; gap: 10px; border-radius: 16px 16px 0 0; }
+
+/* 세특 */
+.ev li label { display: block; font-size: 14px; line-height: 22px; }
+.checks2 { font-size: 14px; }
+.over { color: var(--danger); }
+#toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); z-index: 30; }
+@media (max-width: 640px) { .k-header { flex-wrap: wrap; height: auto; padding-block: 10px; } .k-nav { order: 3; width: 100%; overflow-x: auto; } .elem > div:first-child { width: 100%; } }
+
+</style>
+<template id="logo-src"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -780 3770 930" role="img" aria-label="kaká 처음으로"><g class="lg-g"><path transform="translate(0 0) scale(1 -1)" d="M85 118 416 301V309L85 491V598L515 357V253L85 12Z"/></g><g class="lg-i"><path transform="translate(780 0) scale(1 -1)" d="M88 740H197V293H202L283 376L428 516H557L348 313L580 0H449L269 251L197 184V0H88Z"/><path transform="translate(1380 0) scale(1 -1)" d="M492 0Q445 0 421.5 24.0Q398 48 393 87H388Q373 40 333.5 14.0Q294 -12 233 -12Q154 -12 107.0 29.5Q60 71 60 144Q60 219 115.5 258.5Q171 298 286 298H385V338Q385 443 274 443Q224 443 193.0 423.5Q162 404 141 372L76 425Q98 467 150.0 497.5Q202 528 284 528Q382 528 438.0 481.0Q494 434 494 345V86H559V0ZM264 68Q317 68 351.0 92.0Q385 116 385 154V229H288Q170 229 170 158V138Q170 103 195.0 85.5Q220 68 264 68Z"/><path transform="translate(1980 0) scale(1 -1)" d="M88 740H197V293H202L283 376L428 516H557L348 313L580 0H449L269 251L197 184V0H88Z"/></g><g class="lg-a"><path transform="translate(2580 0) scale(1 -1)" d="M492 0Q445 0 421.5 24.0Q398 48 393 87H388Q373 40 333.5 14.0Q294 -12 233 -12Q154 -12 107.0 29.5Q60 71 60 144Q60 219 115.5 258.5Q171 298 286 298H385V338Q385 443 274 443Q224 443 193.0 423.5Q162 404 141 372L76 425Q98 467 150.0 497.5Q202 528 284 528Q382 528 438.0 481.0Q494 434 494 345V86H559V0ZM264 68Q317 68 351.0 92.0Q385 116 385 154V229H288Q170 229 170 158V138Q170 103 195.0 85.5Q220 68 264 68ZM299 579 232 611 323 791 417 745Z"/></g><rect class="lg-a" x="3230" y="-740" width="500" height="850"/></svg></template>
+<div class="proto" role="note"><div class="proto__flows" id="flows-wrap"><b>시제품 · 가짜 자료</b><span id="flows" class="proto__flows"></span></div><div class="proto__hint" id="hint"></div></div>
+<div id="app"></div>
+<div id="toast" hidden></div>
+<script>
+// kaká 시제품: 가짜 자료로 다섯 가지 동선을 눌러 본다. 실제 사이트와 연결되지 않는다.
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// ---------- 가짜 자료 ----------
+const NAMES = ['알리나', '다니엘', '티무르', '서윤', '나디아', '루슬란', '마리아', '지안', '아잠', '빅토리아', '하준', '카밀라', '소피아', '막심',
+  '리나', '왕하오', '예린', '아르템', '다리아', '장웨이', '민준', '엘리나', '사샤', '유나', '이고르', '리리', '도윤'];
+const STU = NAMES.map((name, i) => ({ i, name, id: '103' + String(i + 1).padStart(2, '0') }));
+const ME = 7; // 학생 화면에서 로그인한 학생: 10308 지안
+const seat = {};
+STU.forEach(s => { seat[s.i] = 'work'; });
+[0, 3, 5, 6, 9, 11, 12, 13, 14, 15, 16, 18, 20, 21, 23, 24].forEach(i => seat[i] = 'done');
+[2, 4, 10].forEach(i => seat[i] = 'help');
+seat[19] = 'absent';
+const help = [2, 10, 4];
+
+const ELEMS = [
+  { key: 'var', name: '변수 활용', pts: [10, 8, 6], rule: '변수 2개 이상 상 · 1개 중 · 없음 하' },
+  { key: 'flow', name: '반복·조건 구조', pts: [10, 8, 6], rule: '반복과 조건 모두 상 · 하나 중 · 없음 하' },
+  { key: 'obj', name: '오브젝트 구성', pts: [5, 4, 3], rule: '스프라이트 3개 이상 상 · 2개 중 · 1개 하' },
+];
+const LV = ['상', '중', '하'];
+const BASE = ELEMS.reduce((a, e) => a + e.pts[2], 0); // 미제출 기본점수 15
+const FULL = ELEMS.reduce((a, e) => a + e.pts[0], 0); // 만점 25
+const auto = STU.map(s => {
+  const missing = s.i === 2 || s.i === 19;
+  const v = (s.i * 7) % 4, f = (s.i * 5) % 3, o = 1 + (s.i * 3) % 4;
+  return {
+    missing,
+    text: { var: `변수 ${v}개`, flow: f === 2 ? '반복·조건 모두 씀' : f === 1 ? '반복만 씀' : '반복·조건 없음', obj: `스프라이트 ${o}개` },
+    sug: { var: v >= 2 ? 0 : v === 1 ? 1 : 2, flow: 2 - f, obj: o >= 3 ? 0 : o === 2 ? 1 : 2 },
+  };
+});
+const graded = {}; // i -> {var:0..2,...}
+[0, 1, 3, 5, 6, 8, 9].forEach(i => graded[i] = { ...auto[i].sug });
+const score = i => auto[i].missing ? BASE : ELEMS.reduce((a, e) => a + e.pts[(graded[i] || auto[i].sug)[e.key]], 0);
+
+const TAGS = ['스스로 해결', '친구를 도움', '끝까지 고침', '좋은 질문', '설명을 잘함', '집중이 흐트러짐'];
+const obs = [
+  { i: 3, at: '11.14', tags: ['좋은 질문'], text: '반복 횟수를 바꾸면 모양이 어떻게 바뀌는지 먼저 물어봄' },
+  { i: 3, at: '11.21', tags: ['친구를 도움'], text: '옆자리 학생에게 반복 블록 위치를 설명해 줌' },
+  { i: 3, at: '11.28', tags: ['끝까지 고침'], text: '별 각도가 틀린 이유를 144도로 스스로 찾아 고침' },
+  { i: 0, at: '11.21', tags: ['스스로 해결'], text: '오류가 나자 블록을 하나씩 떼어 보며 원인을 찾음' },
+];
+const setuk = {}; // i -> {text, status}
+setuk[4] = { status: '확정', text: '반복 구조를 이해하고 별 그리기 프로그램을 완성함. 변수를 활용해 점수를 세는 게임을 설계함.' };
+setuk[0] = { status: '초안', text: '' };
+const BANNED = ['대회', '수상', '자격증', '토익', '1등', '최고'];
+
+const LESSONS = [
+  { no: 1, title: '알고리즘이란', meta: '11.7 (금) · 게시판', state: 'done' },
+  { no: 2, title: '스크래치 시작하기', meta: '11.21 (금) · 스크래치', state: 'done' },
+  { no: 3, title: '반복문으로 별 그리기', meta: '오늘 3교시 · 3반 · 스크래치, 확인 문제', state: 'today' },
+  { no: 4, title: '조건문과 감지 블록', meta: '12.5 (금) 예정 · 스크래치, 게시판', state: '' },
+  { no: 5, title: '변수로 점수 세기', meta: '12.12 (금) 예정 · 스크래치', state: '' },
+  { no: 6, title: '수행평가: 나만의 게임 만들기', meta: '12.19 (금) 예정 · 스크래치', state: '' },
+];
+let blocks = [
+  { t: 'h', text: '반복문으로 별 그리기' },
+  { t: 'p', text: '오늘은 반복 블록으로 별을 그립니다. 지난 시간에 만든 파일을 이어서 씁니다.' },
+  { t: 'slide' },
+  { t: 'callout', kind: 'tip', label: '도움말', text: '반복 횟수를 5로 바꾸면 오각형이 됩니다.' },
+  { t: 'tool', tool: '스크래치', name: '별 그리기' },
+  { t: 'tool', tool: '확인 문제', name: '반복문 확인 3문항' },
+];
+const INSERT = [['p', '글'], ['callout', '안내 상자'], ['slide', '슬라이드 나누기'], ['스크래치', '스크래치'], ['파이썬', '파이썬'], ['확인 문제', '확인 문제'],
+  ['AI 실험실', 'AI 실험실'], ['게시판', '게시판'], ['앱 인벤터', '앱 인벤터 확인'], ['코랩', '코랩 링크']];
+let insertAt = -1;
+const classes = { 1: true, 2: true, 3: true, 4: false, 5: false };
+
+const L = {
+  ko: { title: '반복문으로 별 그리기', p: '오늘은 반복 블록으로 별을 그립니다. 지난 시간에 만든 파일을 이어서 씁니다.', tipL: '도움말', tip: '반복 횟수를 5로 바꾸면 오각형이 됩니다.',
+    desc: '반복 블록을 써서 별을 그리고 제출하세요. 제출하면 아래 항목을 자동으로 확인합니다.', open: '스크래치 열기', submit: '제출하기', help: '도움 요청', helped: '선생님이 곧 옵니다',
+    todo: '아직 제출 안 함', done: '제출함', c: ['반복 블록을 1개 이상 썼다', '스프라이트가 2개 이상이다', '변수를 만들어 썼다'], name: '별 그리기', tool: '스크래치', nav: ['오늘 차시', '내 과목', '기록장'] },
+  zh: { title: '用循环画星星', p: '今天我们用重复积木画星星。继续使用上节课做的文件。', tipL: '提示', tip: '把重复次数改成 5，就能画出五边形。',
+    desc: '用重复积木画一颗星星，然后提交。提交后会自动检查下面的项目。', open: '打开 Scratch', submit: '提交', help: '请求帮助', helped: '老师马上就来',
+    todo: '还没有提交', done: '已提交', c: ['用了至少 1 个重复积木', '有 2 个以上的角色', '创建并使用了变量'], name: '画星星', tool: 'Scratch', nav: ['今天的课', '我的科目', '记录本'] },
+  ru: { title: 'Рисуем звезду с помощью цикла', p: 'Сегодня рисуем звезду с помощью блока повторения. Продолжаем работать в файле с прошлого урока.', tipL: 'Подсказка', tip: 'Если поменять число повторений на 5, получится пятиугольник.',
+    desc: 'Нарисуйте звезду с помощью блока повторения и отправьте работу. После отправки пункты ниже проверяются автоматически.', open: 'Открыть Scratch', submit: 'Отправить', help: 'Нужна помощь', helped: 'Учитель скоро подойдёт',
+    todo: 'Ещё не отправлено', done: 'Отправлено', c: ['Использован хотя бы 1 блок повторения', 'Есть 2 или больше спрайтов', 'Создана и использована переменная'], name: 'Звезда', tool: 'Scratch', nav: ['Урок сегодня', 'Мои предметы', 'Дневник'] },
+  en: { title: 'Drawing a star with loops', p: 'Today we draw a star with the repeat block. Keep working in the file from last lesson.', tipL: 'Tip', tip: 'Change the repeat count to 5 to draw a pentagon.',
+    desc: 'Use the repeat block to draw a star, then submit. After you submit, the items below are checked automatically.', open: 'Open Scratch', submit: 'Submit', help: 'Ask for help', helped: 'Your teacher is coming',
+    todo: 'Not submitted', done: 'Submitted', c: ['Used at least 1 repeat block', 'Has 2 or more sprites', 'Made and used a variable'], name: 'Star', tool: 'Scratch', nav: ["Today's lesson", 'My subjects', 'Notebook'] },
+};
+const LANGS = [['ko', '한국어', ''], ['zh', '中文', '중국어'], ['ru', 'Русский', '러시아어'], ['en', 'English', '영어']];
+let lang = 'ru';
+const mine = { checks: [true, false, false], submitted: false, asked: false, editor: false };
+
+const ui = { tab: 'lessons', live: null, grade: 0, gradeFilter: false, phoneSel: null, phoneTags: [], phoneQueue: 0, setukSel: 3, drafting: false, timer: 0, timerId: null };
+
+// ---------- 공통 ----------
+const LOGO = document.getElementById('logo-src').innerHTML;
+function header(kind) {
+  const nav = kind === 'student'
+    ? L[lang].nav.map((n, k) => `<a href="#student" ${k === 0 ? 'aria-current="page"' : ''}>${esc(n)}</a>`).join('')
+    : [['today', '오늘'], ['course', '과목'], ['library', '자료실'], ['tools', '도구']].map(([h, n]) =>
+      `<a href="#${h}" ${route === h || (h === 'course' && ['lesson', 'grade', 'setuk'].includes(route)) || (h === 'today' && route === 'live') ? 'aria-current="page"' : ''}>${n}</a>`).join('');
+  const end = kind === 'student'
+    ? `<div class="langs" role="group" aria-label="언어">${LANGS.map(([c, n]) => `<button class="k-btn k-btn--sm ${c === lang ? 'is-on' : ''}" data-act="lang" data-v="${c}" id="lang-${c}">${n}</button>`).join('')}</div><span class="k-avatar">${STU[ME].id}</span>`
+    : `<span class="k-avatar" aria-label="오범석">오</span>`;
+  return `<header class="k-header"><a class="k-logo" href="#today">${LOGO}</a><nav class="k-nav">${nav}</nav><div class="k-header__end">${end}</div></header>`;
+}
+function toast(msg) {
+  const t = $('#toast'); t.innerHTML = `<div class="k-toast" role="status">${esc(msg)}</div>`; t.hidden = false;
+  clearTimeout(toast.t); toast.t = setTimeout(() => { t.hidden = true; }, 2600);
+}
+const chip = (cls, text) => `<span class="k-chip ${cls ? 'k-chip--' + cls : ''}">${esc(text)}</span>`;
+const bytes = s => [...s].reduce((a, c) => a + (c === '\n' ? 2 : /[ㄱ-ㆎ가-힣]/.test(c) ? 3 : 1), 0);
+const counts = () => {
+  const v = Object.values(seat);
+  return { done: v.filter(x => x === 'done').length, help: v.filter(x => x === 'help').length, absent: v.filter(x => x === 'absent').length };
+};
+
+// ---------- 화면들 ----------
+const HINTS = {
+  today: '오늘 화면입니다. [수업 시작]을 누르면 수업 진행 화면으로 갑니다.',
+  course: '과목 화면입니다. 탭을 바꿔 보고, 차시를 눌러 다음 차시를 준비해 보세요.',
+  lesson: '차시 문서 편집입니다. 블록 사이의 [+ 넣기]로 도구를 끼우고, 오른쪽에서 공개할 반을 고르세요.',
+  live: '수업 진행 화면입니다. 자리를 누르면 그 학생의 진행이 보입니다. 학생 화면에서 제출하거나 도움을 요청하면 여기 반영됩니다.',
+  student: '학생 지안(10308)의 화면입니다. 언어를 바꾸고, 스크래치를 열어 저장한 뒤 제출해 보세요.',
+  grade: '수행평가 채점입니다. 자동 확인 결과로 수준이 미리 골라져 있습니다. 확인하고 [확정하고 다음]을 누르세요.',
+  phone: '폰 관찰 기록입니다. 자리를 누르고 꼬리표를 골라 저장해 보세요.',
+  setuk: '세특 쓰기입니다. 근거를 고르고 [AI 초안 만들기]를 누른 뒤 바이트와 점검 결과를 보세요.',
+  library: '자료실은 이번 시제품에 넣지 않았습니다.', tools: '도구 관리는 이번 시제품에 넣지 않았습니다.',
+};
+const FLOWS = [['course', '다음 차시 준비'], ['live', '수업 진행'], ['student', '학생 화면'], ['grade', '수행평가 채점'], ['phone', '폰 관찰 기록'], ['setuk', '세특 쓰기']];
+
+function vToday() {
+  const c = counts();
+  return header('teacher') + `<main class="k-page">
+  <div class="k-page__head"><span class="k-page__eyebrow">11월 28일 금요일 · 3교시</span><h1 class="t-display">1학년 3반 · 반복문으로 별 그리기</h1>
+  <div class="row"><a class="k-btn k-btn--primary" href="#live">수업 시작</a><a class="k-btn" href="#lesson">차시 문서 보기</a></div></div>
+  <div class="k-cols">
+   <section class="k-section" style="width:340px"><h2 class="k-section__title">지금 3반</h2>${progress(c)}
+    <p class="k-muted small">도움 요청: ${help.map(i => STU[i].name).join(', ') || '없음'}</p></section>
+   <section class="k-section" style="width:420px"><h2 class="k-section__title">오늘 남은 수업</h2><ol class="k-lessons">
+    <li><a class="k-lesson" href="#live"><span class="k-lesson__no">5교시</span><span><span class="k-lesson__head"><span class="k-lesson__title">1학년 5반 · 3차시</span></span><span class="k-lesson__meta">반복문으로 별 그리기</span></span></a></li>
+    <li><a class="k-lesson" href="#grade"><span class="k-lesson__no">6교시</span><span><span class="k-lesson__head"><span class="k-lesson__title">1학년 3반 · 수행평가</span>${chip('warn', `채점 ${27 - Object.keys(graded).length - 2}명 남음`)}</span><span class="k-lesson__meta">나만의 게임 만들기</span></span></a></li></ol></section>
+  </div></main>`;
+}
+function progress(c) {
+  const n = STU.length;
+  return `<div class="k-progress"><div class="k-progress__top"><span>별 그리기 제출</span><span class="k-progress__val">${c.done} / ${n}</span></div>
+  <div class="k-progress__track"><div class="k-progress__fill" style="width:${c.done / n * 100}%"></div><div class="k-progress__fill k-progress__fill--warn" style="width:${c.help / n * 100}%"></div></div>
+  <div class="k-legend"><span><i style="background:var(--accent)"></i>제출 ${c.done}</span><span><i style="background:var(--warn)"></i>도움 요청 ${c.help}</span><span>결석 ${c.absent}</span></div></div>`;
+}
+
+function vCourse() {
+  const tabs = [['lessons', '수업', 6], ['assess', '평가', 2], ['students', '학생', 27], ['setup', '설정', '']];
+  let body = '';
+  if (ui.tab === 'lessons') body = `<div class="row" style="margin-bottom:12px"><button class="k-btn" data-act="toast" data-v="새 차시를 만들었습니다(시제품)">새 차시</button><button class="k-btn k-btn--ghost" data-act="toast" data-v="지난 학기 차시 불러오기는 시제품에 없습니다">지난 차시 불러오기</button></div>
+    <ol class="k-lessons">${LESSONS.map(l => `<li><a class="k-lesson ${l.state ? 'k-lesson--' + l.state : ''}" href="#lesson"><span class="k-lesson__no">${l.no}차시</span><span><span class="k-lesson__head"><span class="k-lesson__title">${esc(l.title)}</span>${l.state === 'done' ? chip('done', '끝남') : l.state === 'today' ? chip('live', '지금 수업') : ''}</span><span class="k-lesson__meta">${esc(l.meta)}</span></span></a></li>`).join('')}</ol>`;
+  if (ui.tab === 'assess') body = `<ol class="k-lessons">
+    <li><a class="k-lesson" href="#grade"><span class="k-lesson__no">수행</span><span><span class="k-lesson__head"><span class="k-lesson__title">나만의 게임 만들기</span>${chip('warn', '채점 중')}</span><span class="k-lesson__meta">만점 ${FULL}점 · 미제출 기본점수 ${BASE}점 · 평가요소 3개 · 스크래치 자동 확인</span></span></a></li>
+    <li><a class="k-lesson" href="#course"><span class="k-lesson__no">수행</span><span><span class="k-lesson__head"><span class="k-lesson__title">AI 모델 만들기</span>${chip('', '예정')}</span><span class="k-lesson__meta">만점 25점 · AI 실험실 정확도 70% / 50% 자동 확인</span></span></a></li></ol>`;
+  if (ui.tab === 'students') body = `<div style="overflow-x:auto"><table class="k-table"><thead><tr><th>학번</th><th>이름</th><th class="num">수행평가</th><th>관찰</th><th>세특</th></tr></thead><tbody>
+    ${STU.slice(0, 10).map(s => `<tr><td class="id">${s.id}</td><td>${s.name}</td><td class="num">${graded[s.i] || auto[s.i].missing ? score(s.i) : '–'}</td><td class="num">${obs.filter(o => o.i === s.i).length}</td><td><a href="#setuk" data-act="setuk-pick" data-v="${s.i}">${setuk[s.i] ? setuk[s.i].status : '쓰기'}</a></td></tr>`).join('')}
+    </tbody></table></div><p class="k-muted small">10명만 보여 줍니다.</p>`;
+  if (ui.tab === 'setup') body = `<div class="k-section"><p style="margin:0">반: 1반 ~ 5반 · 평가계획: 2027-1 1학년 정보 평가계획서(영역 2 · 평가요소 5) · 언어: 한국어, 中文, Русский, English</p></div>`;
+  return header('teacher') + `<main class="k-page"><div class="k-page__head"><span class="k-page__eyebrow">과목</span><h1 class="t-display">1학년 정보</h1></div>
+  <div class="k-tabs" role="tablist" style="margin-bottom:20px">${tabs.map(([k, n, c]) => `<button class="k-tab" role="tab" id="tab-${k}" aria-selected="${ui.tab === k}" data-act="tab" data-v="${k}">${n} ${c !== '' ? `<span class="k-count">${c}</span>` : ''}</button>`).join('')}</div>${body}</main>`;
+}
+
+function vLesson() {
+  const ins = k => `<div class="ins">${insertAt === k
+    ? `<div class="ins-menu">${INSERT.map(([v, n]) => `<button class="k-btn k-btn--sm" data-act="ins" data-v="${v}" data-k="${k}">${n}</button>`).join('')}<button class="k-btn k-btn--sm k-btn--ghost" data-act="ins-close">닫기</button></div>`
+    : `<button class="ins-btn" data-act="ins-open" data-k="${k}">+ 넣기</button>`}</div>`;
+  const blk = (b, k) => {
+    const del = `<button class="blk-del k-btn k-btn--sm k-btn--ghost" data-act="del" data-k="${k}" aria-label="블록 지우기">지우기</button>`;
+    if (b.t === 'h') return `<div class="blk"><h1 class="t-display" contenteditable="true" spellcheck="false">${esc(b.text)}</h1></div>`;
+    if (b.t === 'p') return `<div class="blk"><p class="t-reading-sm" contenteditable="true">${esc(b.text || '여기에 글을 쓰세요.')}</p>${del}</div>`;
+    if (b.t === 'slide') return `<div class="blk"><div class="slide-cut">슬라이드 나눔</div>${del}</div>`;
+    if (b.t === 'callout') return `<div class="blk"><div class="k-callout k-callout--${b.kind || 'tip'}"><span class="k-callout__label">${esc(b.label || '안내')}</span><span contenteditable="true">${esc(b.text || '안내할 내용을 쓰세요.')}</span></div>${del}</div>`;
+    return `<div class="blk"><div class="k-tool"><div class="k-tool__head"><span class="k-tag">${esc(b.tool)}</span><span class="k-tool__name">${esc(b.name || '새 ' + b.tool + ' 활동')}</span></div>
+      <p class="k-tool__desc">${b.tool === '스크래치' ? '자동 확인: 반복 블록 1개 이상 · 스프라이트 2개 이상 · 변수 사용' : b.tool === '확인 문제' ? '객관식 2 · 단답 1 · 점수에 넣지 않음' : '설정은 도구를 눌러 고릅니다.'}</p></div>${del}</div>`;
+  };
+  return header('teacher') + `<main class="k-page"><div class="k-page__head"><span class="k-page__eyebrow"><a href="#course">1학년 정보</a> · 3차시</span></div>
+  <div class="k-cols">
+   <div class="editor">${ins(0)}${blocks.map((b, k) => blk(b, k) + ins(k + 1)).join('')}</div>
+   <aside class="k-section side">
+    <h2 class="k-section__title">공개할 반</h2><div class="row">${Object.keys(classes).map(c => `<button class="k-btn k-btn--sm ${classes[c] ? 'is-on' : ''}" id="cls-${c}" data-act="cls" data-v="${c}">${c}반</button>`).join('')}</div>
+    <p class="k-muted small">로그인한 학생만 봅니다. 고르지 않은 반은 다음 시간에 열 수 있습니다.</p>
+    <h2 class="k-section__title" style="margin-top:12px">번역</h2>
+    <ul class="plain"><li>中文 ${chip('done', '초안 있음')}</li><li>Русский ${chip('warn', '고칠 곳 1')}</li><li>English ${chip('done', '초안 있음')}</li></ul>
+    <p class="k-muted small">한국어를 고치면 바뀐 블록만 번역 초안을 다시 만듭니다.</p>
+    <div class="row" style="margin-top:12px"><button class="k-btn k-btn--primary" data-act="toast" data-v="3차시를 저장했습니다">저장</button><a class="k-btn" href="#student">학생 화면으로 보기</a></div>
+   </aside></div></main>`;
+}
+
+function seatGrid(selected, act, compact) {
+  const note = i => ({ done: '제출함', help: '도움 요청', absent: '결석', work: '하는 중' }[seat[i]]);
+  return `<div class="k-seats ${compact ? 'compact' : ''}" style="--cols:${compact ? 5 : 6}"><div class="k-seats__desk">교탁</div>${STU.map(s => {
+    const n = obs.filter(o => o.i === s.i && o.at === '11.28').length;
+    return `<button class="k-seat ${seat[s.i] === 'work' ? '' : 'is-' + seat[s.i]} ${selected === s.i ? 'is-noted' : ''}" data-act="${act}" data-v="${s.i}" id="seat-${act}-${s.i}"><span class="k-seat__no">${s.id}</span><span class="k-seat__name">${s.name}</span><span class="k-seat__note">${compact && n ? '메모 ' + n : compact ? '' : note(s.i)}</span></button>`;
+  }).join('')}</div>`;
+}
+function vLive() {
+  const c = counts(), sel = ui.live;
+  const m = ui.timer > 0 ? `${Math.floor(ui.timer / 60)}:${String(ui.timer % 60).padStart(2, '0')}` : '';
+  let detail = '<p class="k-muted small">자리를 누르면 그 학생의 진행이 보입니다.</p>';
+  if (sel !== null) {
+    const s = STU[sel], ch = sel === ME ? mine.checks : [seat[sel] === 'done', seat[sel] !== 'absent' && sel % 2 === 0, seat[sel] === 'done' && sel % 3 === 0];
+    detail = `<h3 class="t-heading" style="margin:0">${s.name} <span class="k-muted small">${s.id}</span></h3>
+      ${chip(seat[sel] === 'done' ? 'done' : seat[sel] === 'help' ? 'warn' : '', { done: '제출함', help: '도움 요청', absent: '결석', work: '하는 중' }[seat[sel]])}
+      <ul class="k-checks">${L.ko.c.map((t, k) => `<li class="${ch[k] ? 'is-pass' : ''}">${t}</li>`).join('')}</ul>
+      <div class="k-field"><label class="k-label" for="live-memo">관찰 메모</label><input class="k-input" id="live-memo" placeholder="예: 각도를 스스로 찾아 고침"></div>
+      <div class="row"><button class="k-btn" data-act="live-memo">메모 남기기</button>${seat[sel] === 'help' ? '<button class="k-btn k-btn--ghost" data-act="helped">도와줌</button>' : ''}</div>`;
+  }
+  return header('teacher') + `<main class="k-page"><div class="k-page__head"><span class="k-page__eyebrow">3교시 · 1학년 3반 · 수업 중</span><h1 class="t-display">반복문으로 별 그리기</h1>
+   <div class="row"><button class="k-btn" data-act="toast" data-v="발표 화면을 새 창에 열었습니다(시제품)">발표 화면 열기</button><button class="k-btn" data-act="timer">${m ? '타이머 ' + m : '타이머 5분'}</button><a class="k-btn k-btn--ghost" href="#today">수업 끝내기</a></div></div>
+   <div class="k-cols"><section class="k-section" style="width:600px;max-width:100%"><h2 class="k-section__title">자리</h2>${seatGrid(sel, 'live')}${progress(c)}</section>
+   <section class="k-section" style="width:300px"><h2 class="k-section__title">도움 요청 ${help.length}</h2>
+    <ol class="plain">${help.map(i => `<li><button class="linkish" data-act="live" data-v="${i}">${STU[i].name}</button></li>`).join('') || '<li class="k-muted">없음</li>'}</ol>
+    <h2 class="k-section__title" style="margin-top:16px">선택한 학생</h2>${detail}</section></div></main>`;
+}
+
+function vStudent() {
+  const t = L[lang];
+  const tool = `<div class="k-tool"><div class="k-tool__head"><span class="k-tag">${t.tool}</span><span class="k-tool__name">${t.name}</span>${chip(mine.submitted ? 'done' : 'warn', mine.submitted ? t.done : t.todo)}</div>
+   <p class="k-tool__desc">${t.desc}</p><ul class="k-checks">${t.c.map((x, k) => `<li class="${mine.checks[k] ? 'is-pass' : ''}">${x}</li>`).join('')}</ul>
+   <div class="k-tool__foot"><button class="k-btn k-btn--primary k-btn--lg" data-act="open-editor">${t.open}</button><button class="k-btn k-btn--lg" data-act="submit" ${mine.submitted ? 'disabled' : ''}>${mine.submitted ? t.done : t.submit}</button></div></div>`;
+  const editor = mine.editor ? `<div class="overlay" role="dialog" aria-label="스크래치"><div class="ov-box"><div class="row" style="justify-content:space-between"><b>Scratch</b><span class="k-muted small">시제품: 실제로는 이 자리에 스크래치 편집기가 열립니다</span></div>
+   <div class="stage"><svg viewBox="0 0 100 100" width="120" height="120" aria-hidden="true"><polygon points="50,6 61,38 95,38 67,58 78,92 50,71 22,92 33,58 5,38 39,38" fill="none" stroke="var(--warn)" stroke-width="3"/></svg></div>
+   <div class="row">${['반복 블록 넣기', '스프라이트 추가', '변수 만들기'].map((x, k) => `<button class="k-btn ${mine.checks[k] ? 'is-on' : ''}" data-act="ed" data-v="${k}" id="ed-${k}">${x}</button>`).join('')}</div>
+   <div class="row" style="justify-content:flex-end"><button class="k-btn k-btn--primary" data-act="close-editor">저장하고 닫기</button></div></div></div>` : '';
+  return header('student') + `<main class="k-page reading" lang="${lang}"><h1 class="t-display">${t.title}</h1><p class="t-reading">${t.p}</p>
+   <div class="k-callout k-callout--tip"><span class="k-callout__label">${t.tipL}</span><span>${t.tip}</span></div>${tool}
+   <div class="row" style="margin-top:8px"><button class="k-btn k-btn--ghost" data-act="ask" ${mine.asked ? 'disabled' : ''}>${mine.asked ? t.helped : t.help}</button></div></main>${editor}`;
+}
+
+function vGrade() {
+  const list = STU.filter(s => !ui.gradeFilter || !graded[s.i]);
+  const s = STU[ui.grade], a = auto[ui.grade], g = graded[ui.grade] || a.sug, done = !!graded[ui.grade];
+  const left = Object.keys(graded).length;
+  const main = a.missing ? `<p>제출하지 않았습니다. 미제출은 기본점수 <b>${BASE}점</b>이 들어갑니다.</p><div class="row"><button class="k-btn k-btn--primary" data-act="g-confirm">기본점수 넣고 다음</button></div>`
+    : `<p class="k-muted small" style="margin:0">game.sb3 · 11.25 제출 · <button class="linkish" data-act="toast" data-v="제출 파일을 스크래치로 열었습니다(시제품)">열어 보기</button></p>
+    <div class="elems">${ELEMS.map(e => `<div class="elem"><div><div class="t-label">${e.name}</div><div class="k-muted small">자동 확인: ${a.text[e.key]}</div></div>
+      <div class="seg" role="radiogroup" aria-label="${e.name}">${LV.map((lv, k) => `<button role="radio" aria-checked="${g[e.key] === k}" class="${g[e.key] === k ? 'is-on' : ''}" data-act="lv" data-e="${e.key}" data-v="${k}" id="lv-${e.key}-${k}">${lv} ${e.pts[k]}${a.sug[e.key] === k ? '<small>제안</small>' : ''}</button>`).join('')}</div></div>`).join('')}</div>
+    <div class="row" style="align-items:baseline"><span class="t-title">${ELEMS.reduce((x, e) => x + e.pts[g[e.key]], 0)}점</span><span class="k-muted small">/ ${FULL}점</span></div>
+    <div class="row"><button class="k-btn k-btn--primary" data-act="g-confirm">${done ? '고쳐서 저장하고 다음' : '확정하고 다음'}</button></div>`;
+  return header('teacher') + `<main class="k-page"><div class="k-page__head"><span class="k-page__eyebrow"><a href="#course">1학년 정보</a> · 3반 · 수행평가</span><h1 class="t-display">나만의 게임 만들기</h1>
+   <div class="row"><span class="k-muted small">채점 ${left} / ${STU.length} · 기본점수 ${BASE}점 · 만점 ${FULL}점</span><button class="k-btn k-btn--sm" data-act="g-all">제안대로 남은 학생 모두 확정</button></div></div>
+   <div class="k-cols"><section class="k-section" style="width:220px"><label class="row small"><input type="checkbox" id="g-filter" data-act="g-filter" ${ui.gradeFilter ? 'checked' : ''}> 채점 전만</label>
+    <ol class="plain pick">${list.map(x => `<li><button class="${x.i === ui.grade ? 'is-on' : ''}" data-act="g-pick" data-v="${x.i}"><span>${x.id} ${x.name}</span>${auto[x.i].missing ? chip('warn', '미제출') : graded[x.i] ? chip('done', score(x.i) + '점') : ''}</button></li>`).join('')}</ol></section>
+   <section class="k-section" style="width:520px"><h2 class="t-title" style="margin:0">${s.name} <span class="k-muted small">${s.id}</span></h2>${main}</section></div></main>`;
+}
+
+function vPhone() {
+  const sel = ui.phoneSel;
+  const sheet = sel === null ? '' : `<div class="sheet"><div class="row" style="justify-content:space-between"><b>${STU[sel].name} <span class="k-muted small">${STU[sel].id}</span></b><button class="k-btn k-btn--sm k-btn--ghost" data-act="p-close">닫기</button></div>
+    <div class="row">${TAGS.map(t => `<button class="k-btn k-btn--sm ${ui.phoneTags.includes(t) ? 'is-on' : ''}" data-act="p-tag" data-v="${t}">${t}</button>`).join('')}</div>
+    <textarea class="k-textarea" id="p-memo" rows="2" placeholder="짧게 쓰거나 말로 입력"></textarea>
+    <p class="k-muted small" style="margin:0">자동으로 붙음: 3차시 · [9정04-02] 반복 구조</p>
+    <div class="row"><button class="k-btn" data-act="toast" data-v="말로 입력은 시제품에 없습니다">말로 입력</button><button class="k-btn k-btn--primary" data-act="p-save">저장</button></div></div>`;
+  return `<div class="phone-wrap"><div class="phone"><div class="phone-top"><div><b>3교시 · 1학년 3반</b><div class="k-muted small">3차시 반복문으로 별 그리기</div></div>
+   <span class="k-chip ${ui.phoneQueue ? 'k-chip--warn' : 'k-chip--done'}">${ui.phoneQueue ? '보낼 기록 ' + ui.phoneQueue : '모두 저장됨'}</span></div>
+   <div class="phone-body">${seatGrid(sel, 'p-seat', true)}<p class="k-muted small">오늘 남긴 관찰 ${obs.filter(o => o.at === '11.28').length}개</p></div>${sheet}</div>
+   <p class="k-muted small" style="max-width:360px">폰에서는 머리글 없이 지금 수업 중인 반의 자리판이 바로 열립니다. 정의적 평가 기간에는 맨 위에 안내 띠가 붙습니다.</p></div>`;
+}
+
+function vSetuk() {
+  const i = ui.setukSel, s = STU[i], st = setuk[i] || { status: '없음', text: '' };
+  const ev = obs.filter(o => o.i === i);
+  const sents = st.text.split(/(?<=[.。])\s*/).filter(Boolean);
+  const others = Object.entries(setuk).filter(([k]) => +k !== i).flatMap(([k, v]) => v.text.split(/(?<=[.。])\s*/).filter(Boolean).map(x => [x.trim(), STU[k].id]));
+  const dup = sents.map(x => others.find(([o]) => o === x.trim())).filter(Boolean);
+  const bad = BANNED.filter(w => st.text.includes(w));
+  const b = bytes(st.text);
+  return header('teacher') + `<main class="k-page"><div class="k-page__head"><span class="k-page__eyebrow"><a href="#course">1학년 정보</a> · 3반 · 과목 세부능력 및 특기사항</span><h1 class="t-display">${s.name} <span class="k-muted" style="font-size:18px">${s.id}</span></h1></div>
+  <div class="k-cols"><section class="k-section" style="width:200px"><ol class="plain pick">${STU.slice(0, 12).map(x => `<li><button class="${x.i === i ? 'is-on' : ''}" data-act="setuk-pick" data-v="${x.i}"><span>${x.id} ${x.name}</span>${setuk[x.i] ? chip(setuk[x.i].status === '확정' ? 'done' : '', setuk[x.i].status) : ''}</button></li>`).join('')}</ol></section>
+  <section class="k-section" style="width:560px">
+   <h2 class="k-section__title">근거</h2>
+   <ul class="plain ev">${ev.map((o, k) => `<li><label><input type="checkbox" checked id="ev-${k}"> <span class="k-muted small">${o.at} 관찰</span> ${esc(o.text)} ${o.tags.map(t => `<span class="k-tag">${t}</span>`).join(' ')}</label></li>`).join('')}
+    <li><label><input type="checkbox" checked id="ev-g"> <span class="k-muted small">수행평가</span> 나만의 게임 만들기 ${score(i)} / ${FULL}점</label></li>
+    <li><label><input type="checkbox" checked id="ev-s"> <span class="k-muted small">제출물</span> 별 그리기 · 자동 확인 3개 중 ${seat[i] === 'done' ? 3 : 1}개 통과</label></li></ul>
+   ${ev.length ? '' : '<p class="k-muted small">이 학생은 관찰 기록이 없습니다. 폰 관찰 기록에서 남기면 여기에 모입니다.</p>'}
+   <div class="row"><button class="k-btn" data-act="draft" ${ui.drafting ? 'disabled' : ''}>${ui.drafting ? '초안 만드는 중' : 'AI 초안 만들기'}</button><span class="k-muted small">이름은 보내지 않고 학번과 근거만 보냅니다.</span></div>
+   <div class="k-field"><label class="k-label" for="setuk-text">세특</label><textarea class="k-textarea" id="setuk-text" rows="7" data-act="setuk-input">${esc(st.text)}</textarea>
+    <span class="k-hint"><b class="${b > 1500 ? 'over' : ''}">${b}</b> / 1500 바이트 · 한글 3, 영문·숫자·띄어쓰기 1, 줄바꿈 2</span></div>
+   <ul class="plain checks2"><li>${bad.length ? chip('danger', '고칠 것') + ' 쓸 수 없는 낱말: ' + bad.join(', ') : chip('done', '통과') + ' 쓸 수 없는 낱말 없음'}</li>
+    <li>${dup.length ? chip('warn', '확인') + ' 다른 학생과 같은 문장 ' + dup.length + '개: ' + dup.map(d => d[1]).join(', ') : chip('done', '통과') + ' 다른 학생과 겹치는 문장 없음'}</li>
+    <li>${b > 1500 ? chip('danger', '고칠 것') + ' 1500바이트를 넘습니다' : chip('done', '통과') + ' 분량 안'}</li></ul>
+   <div class="row"><button class="k-btn k-btn--primary" data-act="setuk-final" ${st.text ? '' : 'disabled'}>확정</button><span class="k-muted small">${st.status === '확정' ? '확정했습니다. 고치면 다시 초안이 됩니다.' : ''}</span></div>
+  </section></div></main>`;
+}
+const vEmpty = () => header('teacher') + `<main class="k-page"><p class="k-muted">${HINTS[route]}</p></main>`;
+
+// ---------- 그리기와 이벤트 ----------
+const VIEWS = { today: vToday, course: vCourse, lesson: vLesson, live: vLive, student: vStudent, grade: vGrade, phone: vPhone, setuk: vSetuk, library: vEmpty, tools: vEmpty };
+let route = 'today';
+function render() {
+  route = VIEWS[location.hash.slice(1)] ? location.hash.slice(1) : 'today';
+  $('#flows').innerHTML = FLOWS.map(([h, n]) => `<a href="#${h}" ${route === h ? 'aria-current="page"' : ''}>${n}</a>`).join('');
+  $('#hint').textContent = HINTS[route];
+  $('#app').innerHTML = VIEWS[route]();
+  document.documentElement.lang = route === 'student' ? lang : 'ko';
+}
+const go = h => { if (location.hash === '#' + h) render(); else location.hash = h; };
+window.addEventListener('hashchange', () => { render(); window.scrollTo(0, 0); });
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const a = el.dataset.act, v = el.dataset.v;
+  if (a === 'setuk-input' || a === 'g-filter') return;
+  if (el.tagName === 'A' && a !== 'setuk-pick') return;
+  switch (a) {
+    case 'toast': toast(v); return;
+    case 'tab': ui.tab = v; break;
+    case 'lang': lang = v; break;
+    case 'ins-open': insertAt = +el.dataset.k; break;
+    case 'ins-close': insertAt = -1; break;
+    case 'ins': {
+      const k = +el.dataset.k;
+      const nb = v === 'p' ? { t: 'p', text: '' } : v === 'callout' ? { t: 'callout', kind: '', label: '안내', text: '' } : v === 'slide' ? { t: 'slide' } : { t: 'tool', tool: v };
+      blocks.splice(k, 0, nb); insertAt = -1; toast((INSERT.find(x => x[0] === v) || [, v])[1] + '을(를) 넣었습니다'); break;
+    }
+    case 'del': blocks.splice(+el.dataset.k, 1); break;
+    case 'cls': classes[v] = !classes[v]; break;
+    case 'live': ui.live = +v; if (location.hash !== '#live') { go('live'); return; } break;
+    case 'helped': { const k = help.indexOf(ui.live); if (k >= 0) help.splice(k, 1); seat[ui.live] = 'work'; toast(STU[ui.live].name + ' 도움 요청을 끝냈습니다'); break; }
+    case 'live-memo': { const t = $('#live-memo').value.trim(); if (!t) { toast('메모를 먼저 쓰세요'); return; } obs.push({ i: ui.live, at: '11.28', tags: [], text: t }); toast('관찰 메모를 남겼습니다'); break; }
+    case 'timer':
+      if (ui.timerId) { clearInterval(ui.timerId); ui.timerId = null; ui.timer = 0; break; }
+      ui.timer = 300; ui.timerId = setInterval(() => { ui.timer--; const b = document.querySelector('[data-act="timer"]'); if (ui.timer <= 0) { clearInterval(ui.timerId); ui.timerId = null; toast('5분이 끝났습니다'); } if (b) b.textContent = ui.timer > 0 ? `타이머 ${Math.floor(ui.timer / 60)}:${String(ui.timer % 60).padStart(2, '0')}` : '타이머 5분'; }, 1000); break;
+    case 'open-editor': mine.editor = true; break;
+    case 'close-editor': mine.editor = false; toast(lang === 'ko' ? '저장했습니다' : L[lang].tool + ' ✓'); break;
+    case 'ed': mine.checks[+v] = !mine.checks[+v]; break;
+    case 'submit': mine.submitted = true; seat[ME] = 'done'; { const k = help.indexOf(ME); if (k >= 0) help.splice(k, 1); } toast(L[lang].done); break;
+    case 'ask': mine.asked = true; if (!help.includes(ME)) help.push(ME); if (seat[ME] !== 'done') seat[ME] = 'help'; toast(L[lang].helped); break;
+    case 'lv': { const g = graded[ui.grade] || { ...auto[ui.grade].sug }; g[el.dataset.e] = +v; graded[ui.grade] = g; break; }
+    case 'g-pick': ui.grade = +v; break;
+    case 'g-confirm': {
+      if (!graded[ui.grade]) graded[ui.grade] = { ...auto[ui.grade].sug };
+      toast(`${STU[ui.grade].name} ${score(ui.grade)}점 저장`);
+      const next = STU.find(s => !graded[s.i] && s.i !== ui.grade); if (next) ui.grade = next.i; break;
+    }
+    case 'g-all': { let n = 0; STU.forEach(s => { if (!graded[s.i]) { graded[s.i] = { ...auto[s.i].sug }; n++; } }); toast(`${n}명을 제안대로 확정했습니다`); break; }
+    case 'p-seat': ui.phoneSel = +v; ui.phoneTags = []; break;
+    case 'p-close': ui.phoneSel = null; break;
+    case 'p-tag': ui.phoneTags = ui.phoneTags.includes(v) ? ui.phoneTags.filter(x => x !== v) : [...ui.phoneTags, v]; break;
+    case 'p-save': {
+      const t = $('#p-memo').value.trim();
+      if (!t && !ui.phoneTags.length) { toast('꼬리표를 고르거나 메모를 쓰세요'); return; }
+      obs.push({ i: ui.phoneSel, at: '11.28', tags: ui.phoneTags, text: t || ui.phoneTags.join(', ') });
+      toast(STU[ui.phoneSel].name + ' 관찰을 저장했습니다'); ui.phoneSel = null; ui.phoneQueue = 1;
+      setTimeout(() => { ui.phoneQueue = 0; if (route === 'phone') render(); }, 1800); break;
+    }
+    case 'setuk-pick': ui.setukSel = +v; if (el.tagName === 'A') return; break;
+    case 'draft':
+      ui.drafting = true; render();
+      setTimeout(() => {
+        const i = ui.setukSel, ev = obs.filter(o => o.i === i);
+        const parts = ['반복 구조를 이해하고 별 그리기 프로그램을 완성함.'];
+        ev.forEach(o => parts.push(o.text.replace(/함$|줌$|음$/, m => m) + (/[함줌음]$/.test(o.text) ? '.' : '함.')));
+        parts.push(`변수와 조건을 활용해 직접 규칙을 정한 게임을 만들었으며(수행평가 ${score(i)}점), 오류를 만나면 블록을 나누어 원인을 찾는 습관이 있음.`);
+        setuk[i] = { status: '초안', text: parts.join(' ') }; ui.drafting = false; render(); toast('AI 초안을 넣었습니다. 읽고 고치세요');
+      }, 900); return;
+    case 'setuk-final': setuk[ui.setukSel].status = '확정'; toast('세특을 확정했습니다'); break;
+    default: return;
+  }
+  render();
+});
+document.addEventListener('change', e => { if (e.target.id === 'g-filter') { ui.gradeFilter = e.target.checked; render(); } });
+document.addEventListener('input', e => {
+  if (e.target.id !== 'setuk-text') return;
+  const i = ui.setukSel; setuk[i] = { status: '초안', text: e.target.value };
+  const b = bytes(e.target.value), out = e.target.parentElement.querySelector('.k-hint b');
+  out.textContent = b; out.classList.toggle('over', b > 1500);
+});
+render();
+
+</script>
