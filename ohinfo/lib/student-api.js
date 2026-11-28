@@ -60,6 +60,8 @@ function fromV(v) {
 const fromF = f => Object.fromEntries(Object.entries(f || {}).map(([k, v]) => [k, fromV(v)]));
 const toV = v => typeof v === 'string' ? { stringValue: v } : typeof v === 'boolean' ? { booleanValue: v } : typeof v === 'number' ? (Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v }) : { nullValue: null };
 
+const toF = o => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined).map(([k, v]) => [k, toV(v)]));
+
 function makeDb(projectId, token, emulatorHost) {
   const root = `projects/${projectId}/databases/(default)/documents`;
   const base = emulatorHost ? `http://${emulatorHost}/v1/${root}` : `https://firestore.googleapis.com/v1/${root}`;
@@ -77,6 +79,17 @@ function makeDb(projectId, token, emulatorHost) {
       const r = await fetch(`${base}:runQuery`, { method: 'POST', headers, body: JSON.stringify({ structuredQuery: { from: [{ collectionId }], where } }) });
       if (!r.ok) throw new Error(`Firestore 쿼리 실패(${collectionId}): ${(await r.text()).slice(0, 200)}`);
       return (await r.json()).filter(x => x.document).map(x => ({ id: x.document.name.split('/').pop(), ...fromF(x.document.fields) }));
+    },
+    // 문서 통째로 쓰기(없으면 만든다). 값은 글자·숫자·참거짓만.
+    async set(path, obj) {
+      const r = await fetch(`${base}/${path}`, { method: 'PATCH', headers, body: JSON.stringify({ fields: toF(obj) }) });
+      if (!r.ok) throw new Error(`Firestore 쓰기 실패(${path}): ${(await r.text()).slice(0, 200)}`);
+    },
+    // 자동 ID로 새 문서. 만든 ID를 돌려준다.
+    async add(collectionId, obj) {
+      const r = await fetch(`${base}/${collectionId}`, { method: 'POST', headers, body: JSON.stringify({ fields: toF(obj) }) });
+      if (!r.ok) throw new Error(`Firestore 추가 실패(${collectionId}): ${(await r.text()).slice(0, 200)}`);
+      return (await r.json()).name.split('/').pop();
     },
   };
 }

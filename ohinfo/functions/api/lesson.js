@@ -6,6 +6,8 @@
  * 서비스 계정으로 읽어서 필요한 것만 내려보낸다.
  *   today — 내 과목들과 공개된 차시 목록, 지금 볼 차시(가장 최근에 공개된 것)
  *   doc   — 차시 하나의 문서. 발표자 메모 블록은 빼고 보낸다.
+ *   work-open / work-save / work-version — 차시 안 도구 블록(지금은 파이썬)의 학생 작업.
+ *     work/{학생ID_차시ID_블록ID} 에 마지막 코드, work_history 에 저장 이력(선생님이 본다).
  * 마스터 계정(isMaster)은 선생님 확인용이라 학교·반과 공개 여부를 따지지 않는다.
  * 설계: PLATFORM-DESIGN.md §8.3, §8.8
  */
@@ -48,22 +50,81 @@ async function actionToday(db, student) {
   return json({ courses: out, current });
 }
 
-async function actionDoc(db, student, lessonId) {
-  if (!isSafeId(lessonId)) return json({ error: '요청 정보가 올바르지 않습니다.' }, 400);
+const CLOSED = { error: '열 수 없는 차시입니다.', closed: true };
+// 이 학생이 열 수 있는 차시면 { lesson, course, no }, 아니면 null
+async function openLesson(db, student, lessonId) {
+  if (!isSafeId(lessonId)) return null;
   const lesson = await db.get(`course_lessons/${lessonId}`);
   const course = lesson && isSafeId(lesson.courseId) ? await db.get(`courses/${lesson.courseId}`) : null;
-  if (!lesson || !course || !inCourse({ id: lesson.courseId, ...course }, student) || !isOpen(lesson, student)) {
-    return json({ error: '열 수 없는 차시입니다.', closed: true }, 200);
-  }
-  course.id = lesson.courseId;
+  if (!lesson || !course || !inCourse(course, student) || !isOpen(lesson, student)) return null;
+  course.id = lesson.courseId; lesson.id = lessonId;
   const all = ordered(course, await db.queryEq('course_lessons', { courseId: course.id }));
-  const me = all.find(l => l.id === lessonId);
+  return { lesson, course, no: all.find(l => l.id === lessonId)?.no };
+}
+
+async function actionDoc(db, student, lessonId) {
+  const o = await openLesson(db, student, lessonId);
+  if (!o) return json(CLOSED);
+  const { lesson, course } = o, me = { no: o.no };
   const d = lesson.docId && isSafeId(lesson.docId) ? await db.get(`docs/${lesson.docId}`) : null;
   // 발표자 메모는 학생에게 보내지 않는다(번역본도)
   const blocks = (d?.blocks || []).filter(b => b.type !== 'note');
   const keep = new Set(blocks.map(b => b.id));
   const tr = Object.fromEntries(Object.entries(d?.tr || {}).map(([lang, m]) => [lang, Object.fromEntries(Object.entries(m || {}).filter(([id]) => keep.has(id)))]));
   return json({ course: pickCourse(course), lesson: pickLesson({ ...lesson, id: lessonId, no: me?.no }), doc: { blocks, tr } });
+}
+
+// ── 학생 작업(파이썬) ──
+const MAX_CODE = 20000;
+const SNAP_GAP_MS = 3 * 60 * 1000; // 자동 저장은 3분에 한 번만 이력에 남긴다
+const lines = c => (c ? String(c).split('\n').length : 0);
+async function openTool(db, student, lessonId, blockId) {
+  if (!isSafeId(blockId)) return null;
+  const o = await openLesson(db, student, lessonId);
+  if (!o || !o.lesson.docId || !isSafeId(o.lesson.docId)) return null;
+  const d = await db.get(`docs/${o.lesson.docId}`);
+  const block = (d?.blocks || []).find(b => b.id === blockId && b.type === 'tool' && b.data?.tool === 'python');
+  if (!block) return null;
+  const tr = Object.fromEntries(Object.entries(d.tr || {}).filter(([, m]) => m?.[blockId]).map(([l, m]) => [l, m[blockId].data]));
+  return { ...o, block: { id: block.id, data: block.data, tr } };
+}
+async function historyOf(db, workId) {
+  const h = await db.queryEq('work_history', { workId });
+  return h.sort((a, b) => String(b.at).localeCompare(String(a.at))).map(x => ({ id: x.id, at: x.at, reason: x.reason, lines: lines(x.code) }));
+}
+async function actionWork(db, student, studentId, body) {
+  const { action, lessonId, blockId } = body;
+  const t = await openTool(db, student, lessonId, blockId);
+  if (!t) return json(CLOSED);
+  const workId = `${studentId}_${lessonId}_${blockId}`;
+  if (action === 'work-open') {
+    const w = await db.get(`work/${workId}`);
+    return json({ course: pickCourse(t.course), lesson: pickLesson({ ...t.lesson, no: t.no }), block: t.block,
+      work: w ? { code: w.code, updatedAt: w.updatedAt } : null, history: w ? await historyOf(db, workId) : [] });
+  }
+  if (action === 'work-version') {
+    const v = isSafeId(body.versionId) ? await db.get(`work_history/${body.versionId}`) : null;
+    if (!v || v.workId !== workId) return json({ error: '저장 기록을 찾을 수 없습니다.' }, 404);
+    return json({ code: v.code, at: v.at });
+  }
+  // work-save
+  const code = String(body.code ?? '');
+  if (code.length > MAX_CODE) return json({ error: `코드가 너무 깁니다(${MAX_CODE}자까지).` }, 400);
+  const reason = ['auto', 'save', 'run'].includes(body.reason) ? body.reason : 'auto';
+  const now = new Date().toISOString();
+  const prev = await db.get(`work/${workId}`);
+  await db.set(`work/${workId}`, { studentId, schoolName: student.schoolName || '', grade: normGC(student.grade), class: normGC(student.class),
+    number: Number(student.number) || 0, courseId: t.course.id, lessonId, blockId, tool: 'python', code, updatedAt: now,
+    createdAt: prev?.createdAt || now, saves: (Number(prev?.saves) || 0) + 1, runs: (Number(prev?.runs) || 0) + (reason === 'run' ? 1 : 0) });
+  let history = prev ? await historyOf(db, workId) : [];
+  const last = history[0];
+  const lastCode = last ? (await db.get(`work_history/${last.id}`))?.code : null;
+  const due = !last || reason === 'save' || Date.now() - Date.parse(last.at) >= SNAP_GAP_MS;
+  if (due && code !== lastCode && code.trim()) {
+    const id = await db.add('work_history', { workId, studentId, lessonId, blockId, code, at: now, reason });
+    history = [{ id, at: now, reason, lines: lines(code) }, ...history];
+  }
+  return json({ updatedAt: now, history });
 }
 
 async function handle(request, env) {
@@ -73,14 +134,16 @@ async function handle(request, env) {
   try { body = await request.json(); } catch { return json({ error: 'invalid JSON body' }, 400); }
   const { action, idToken, studentDocId, lessonId } = body || {};
   if (!idToken || !isSafeId(studentDocId)) return json({ error: '요청 정보가 부족합니다.' }, 400);
-  if (!['today', 'doc'].includes(action)) return json({ error: '알 수 없는 요청입니다.' }, 400);
+  if (!['today', 'doc', 'work-open', 'work-save', 'work-version'].includes(action)) return json({ error: '알 수 없는 요청입니다.' }, 400);
   try { await verifyStudent(idToken, studentDocId, env); } catch (e) { return json({ error: e.message, relogin: true }, 403); }
   try {
     const db = await openDb(env, 'lesson');
     if (!db) return json(SETUP_ERROR, 200);
     const student = await db.get(`students/${studentDocId}`);
     if (!student) return json({ error: '학생 정보를 찾을 수 없습니다.' }, 404);
-    return action === 'today' ? await actionToday(db, student) : await actionDoc(db, student, lessonId);
+    if (action === 'today') return await actionToday(db, student);
+    if (action === 'doc') return await actionDoc(db, student, lessonId);
+    return await actionWork(db, student, studentDocId, body);
   } catch (e) {
     console.error('lesson:', action, e);
     return json({ error: '수업 서버 오류가 발생했습니다.', detail: String(e.message || e).slice(0, 300) }, 200);

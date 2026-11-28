@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>학생 작업 · kaká</title>
+<link rel="icon" href="https://kakainfo.com/kaka/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="https://kakainfo.com/kaka/kaka.css">
+<link rel="stylesheet" href="k.css">
+<style>
+  .k-page { max-width: 1240px; }
+  .bar { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; margin-bottom: var(--space-5); }
+  .split { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: var(--space-6); align-items: start; }
+  .who { list-style: none; margin: 0; padding: 0; display: grid; }
+  .who button { all: unset; box-sizing: border-box; display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: var(--space-3); align-items: baseline; width: 100%; padding: 9px 10px; border-radius: var(--radius-md); cursor: pointer; font: 400 15px/22px var(--font-sans); }
+  .who button:hover, .who button[aria-current="true"] { background: var(--surface-2); }
+  .who button:focus-visible { outline: 2px solid var(--focus); }
+  .who .no { color: var(--ink-3); font-variant-numeric: tabular-nums; }
+  .who .meta { font-size: 13px; color: var(--ink-2); white-space: nowrap; }
+  .who .none { color: var(--ink-3); }
+  .who .fresh { color: var(--accent); }
+  .sum { font: 400 14px/20px var(--font-sans); color: var(--ink-2); margin: 0 0 var(--space-3); }
+  .view { position: sticky; top: 76px; display: grid; gap: var(--space-3); min-width: 0; }
+  .view h2 { margin: 0; }
+  .view .k-code pre { max-height: 56vh; overflow: auto; }
+  .out { margin: 0; white-space: pre-wrap; word-break: break-word; max-height: 220px; overflow: auto; }
+  .out .err { color: #f2a7a0; }
+  .hist { display: flex; flex-wrap: wrap; gap: 6px; }
+  .hist .k-btn[aria-pressed="true"] { background: var(--surface-2); border-color: var(--line-strong); }
+  @media (max-width: 900px) { .split { grid-template-columns: 1fr; } .view { position: static; } }
+</style>
+</head>
+<body>
+<div class="sk-head" aria-hidden="true"><span class="sk" style="width:92px;height:22px"></span><span class="sk" style="width:96px;height:16px"></span></div>
+<main class="k-page" aria-busy="true"><div class="k-page__head"><span class="sk" style="width:150px;height:14px"></span><span class="sk" style="width:240px;height:30px;margin-top:6px"></span></div><div class="sk-list"><div class="sk-item"><span class="sk" style="height:16px"></span></div><div class="sk-item"><span class="sk" style="height:16px"></span></div><div class="sk-item"><span class="sk" style="height:16px"></span></div><div class="sk-item"><span class="sk" style="height:16px"></span></div></div></main>
+<script type="module">
+import { $, esc, nv, header, toast, requireAdmin, loadLessons, orderLessons, courseLabel, classLabel, db, doc, getDoc, getDocs, collection, query, where } from './k.js';
+import { onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { fsDecode } from 'https://kakainfo.com/kaka/render.js';
+
+await requireAdmin();
+const lessonId = new URLSearchParams(location.search).get('lesson');
+const lSnap = lessonId && await getDoc(doc(db, 'course_lessons', lessonId));
+const stop = m => { document.body.innerHTML = header('course') + `<main class="k-page"><div class="k-callout k-callout--warn"><span class="k-callout__label">${m}</span></div></main>`; return new Promise(() => {}); };
+if (!lSnap?.exists()) await stop('차시를 찾지 못했습니다');
+const lesson = { id: lessonId, ...lSnap.data() };
+const course = { id: lesson.courseId, ...(await getDoc(doc(db, 'courses', lesson.courseId))).data() };
+const no = orderLessons(course, await loadLessons(course.id)).find(l => l.id === lessonId)?.no;
+const d = lesson.docId ? fsDecode((await getDoc(doc(db, 'docs', lesson.docId))).data() || {}) : {};
+const tools = (d.blocks || []).filter(b => b.type === 'tool' && b.data?.tool === 'python');
+
+// 듣는 반 학생(번호순)
+const stu = (await getDocs(query(collection(db, 'students'), where('schoolName', '==', course.schoolName || ''))))
+  .docs.map(s => ({ id: s.id, ...s.data() }))
+  .filter(s => !s.isMaster && nv(s.grade) === nv(course.grade) && (course.classes || []).includes(nv(s.class)))
+  .sort((a, b) => (Number(nv(a.class)) - Number(nv(b.class))) || (Number(a.number) - Number(b.number)));
+const classes = (course.classes || []).map(nv);
+
+let blockId = tools[0]?.id, cls = 'all', works = {}, sel = null, selVer = null, unsub = null;
+const when = iso => { if (!iso) return ''; const d = new Date(iso), m = Math.round((Date.now() - d) / 60000);
+  return m < 1 ? '방금' : m < 60 ? `${m}분 전` : d.toDateString() === new Date().toDateString() ? d.toLocaleTimeString('ko', { hour: '2-digit', minute: '2-digit' }) : d.toLocaleString('ko', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }); };
+const lines = c => (c ? c.split('\n').length : 0);
+const stuNo = s => `${nv(s.class)}${String(s.number || '').padStart(2, '0')}`;
+const codeHtml = c => `<pre>${String(c || '').split('\n').map(l => `<span class="ln">${esc(l) || ' '}</span>`).join('')}</pre>`;
+
+document.body.innerHTML = header('course') + `<main class="k-page">
+  <div class="k-page__head"><span class="k-page__eyebrow"><a href="course.html?id=${course.id}" style="color:inherit">${esc(courseLabel(course))}</a> · <a href="lesson.html?id=${lessonId}" style="color:inherit">${no}차시 ${esc(lesson.name)}</a></span>
+    <h1 class="t-display">학생 작업</h1></div>
+  <div id="body"></div></main>`;
+if (!tools.length) {
+  $('#body').innerHTML = `<div class="k-callout" style="max-width:560px"><span class="k-callout__label">이 차시에는 파이썬 도구 블록이 없습니다</span><span><a href="lesson.html?id=${lessonId}">차시 문서</a>에서 도구 블록을 넣고 '파이썬'을 고르세요.</span></div>`;
+  await new Promise(() => {});
+}
+
+function paint() {
+  const shown = stu.filter(s => cls === 'all' || nv(s.class) === cls);
+  const extra = Object.values(works).filter(w => !stu.some(s => s.id === w.studentId)); // 마스터 계정 등
+  const done = shown.filter(s => works[s.id]).length;
+  $('#body').innerHTML = `<div class="bar">
+      ${tools.length > 1 ? `<div class="k-tabs" role="tablist">${tools.map(t => `<button class="k-tab" role="tab" data-tool="${t.id}" aria-selected="${t.id === blockId}">${esc(t.data.title || '파이썬')}</button>`).join('')}</div>` : `<span class="k-tag">파이썬</span> <strong>${esc(tools[0].data.title || '')}</strong>`}
+    </div>
+    <div class="bar">${['all', ...classes].map(c => `<button class="k-btn k-btn--sm" data-cls="${c}" aria-pressed="${c === cls}" ${c === cls ? 'style="background:var(--surface-2);border-color:var(--line-strong)"' : ''}>${c === 'all' ? '모든 반' : classLabel(c)}</button>`).join('')}</div>
+    <div class="split"><div>
+      <p class="sum">${shown.length}명 중 ${done}명 저장함</p>
+      <ul class="who">${shown.map(s => row(s.id, stuNo(s), s.name)).join('')}${extra.map(w => row(w.studentId, w.grade ? `${w.class}${String(w.number || '').padStart(2, '0')}` : 'T', '확인용 계정')).join('')}</ul>
+      ${!shown.length ? '<p class="k-hint">이 반 학생이 없습니다.</p>' : ''}
+    </div><div class="view" id="view">${viewHtml()}</div></div>`;
+}
+function row(id, no, name) {
+  const w = works[id], fresh = w && Date.now() - Date.parse(w.updatedAt) < 5 * 60000;
+  return `<li><button data-stu="${esc(id)}" aria-current="${sel === id}"><span class="no">${esc(no)}</span><span>${esc(name || '')}</span>
+    <span class="meta ${w ? (fresh ? 'fresh' : '') : 'none'}">${w ? `${lines(w.code)}줄 · ${when(w.updatedAt)}` : '아직 없음'}</span></button></li>`;
+}
+function viewHtml() {
+  if (!sel) return `<p class="k-hint">왼쪽에서 학생을 고르면 코드가 보입니다. 학생이 저장하면 바로 바뀝니다.</p>`;
+  const w = works[sel], s = stu.find(x => x.id === sel);
+  const title = s ? `${stuNo(s)} ${s.name || ''}` : '확인용 계정';
+  if (!w) return `<h2 class="t-title">${esc(title)}</h2><p class="k-hint">아직 저장한 코드가 없습니다.</p>`;
+  const code = selVer ? selVer.code : w.code;
+  return `<h2 class="t-title">${esc(title)}</h2>
+    <p class="sum" style="margin:0">마지막 저장 ${esc(when(w.updatedAt))} · 저장 ${w.saves || 0}번 · 실행 ${w.runs || 0}번</p>
+    <div class="k-code"><div class="k-code__bar"><span class="k-code__file">${selVer ? '저장 기록 ' + esc(when(selVer.at)) : 'main.py'}</span><button class="k-btn" id="run">실행</button></div>
+      ${codeHtml(code)}<div class="k-code__out" id="out-wrap" hidden><pre class="out" id="out"></pre></div></div>
+    <div><span class="k-label">저장 기록</span><div class="hist" id="hist"><span class="k-hint">불러오는 중…</span></div></div>`;
+}
+let hist = [];
+async function loadHist() {
+  const w = works[sel]; if (!w || !$('#hist')) return;
+  const snap = await getDocs(query(collection(db, 'work_history'), where('workId', '==', w.id)));
+  hist = snap.docs.map(x => ({ id: x.id, ...x.data() })).sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  paintHist();
+}
+const REASON = { auto: '자동', save: '저장', run: '실행' };
+function paintHist() {
+  if (!$('#hist')) return;
+  $('#hist').innerHTML = `<button class="k-btn k-btn--sm" data-ver="" aria-pressed="${!selVer}">지금 코드</button>` + hist.map(h => `<button class="k-btn k-btn--sm" data-ver="${h.id}" aria-pressed="${selVer?.id === h.id}">${esc(when(h.at))} · ${REASON[h.reason] || ''}</button>`).join('');
+}
+function subscribe() {
+  unsub?.();
+  works = {}; paint();
+  unsub = onSnapshot(query(collection(db, 'work'), where('lessonId', '==', lessonId), where('blockId', '==', blockId)), snap => {
+    works = {}; snap.docs.forEach(x => { const w = { id: x.id, ...x.data() }; works[w.studentId] = w; });
+    const y = scrollY; paint(); scrollTo(0, y); if (sel) { if (selVer) paintHist(); loadHist(); }
+  }, e => toast('학생 작업을 불러오지 못했습니다: ' + e.code));
+}
+subscribe();
+
+document.addEventListener('click', async e => {
+  const t = e.target.closest('button'); if (!t) return;
+  if (t.dataset.tool) { blockId = t.dataset.tool; sel = null; selVer = null; return subscribe(); }
+  if (t.dataset.cls) { cls = t.dataset.cls; return paint(); }
+  if (t.dataset.stu) { sel = t.dataset.stu; selVer = null; paint(); return loadHist(); }
+  if ('ver' in t.dataset) { selVer = t.dataset.ver ? hist.find(h => h.id === t.dataset.ver) : null; $('#view').innerHTML = viewHtml(); return paintHist(); }
+  if (t.id === 'run') {
+    const code = selVer ? selVer.code : works[sel]?.code;
+    $('#out-wrap').hidden = false; $('#out').textContent = '실행 중…'; t.disabled = true;
+    try {
+      const r = await (await fetch('https://kakainfo.com/api/run-python', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, stdin: '' }) })).json();
+      $('#out').innerHTML = r.error ? `<span class="err">${esc(r.error)}</span>` : (esc(r.stdout) + (r.stderr ? `<span class="err">${esc(r.stderr)}</span>` : '')) || '(출력 없음)';
+    } catch { $('#out').innerHTML = '<span class="err">실행 서버에 닿지 못했습니다.</span>'; }
+    t.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
