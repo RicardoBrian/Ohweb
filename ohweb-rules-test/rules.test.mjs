@@ -425,9 +425,10 @@ await T('학생 작업: 관리자가 읽기', (async () => { await setDoc(doc(ad
 await T('학생 작업: 학생이 직접 읽기(서버 함수로만)', getDoc(doc(A, 'work/A_L1_b1')), false);
 await T('학생 작업: 학생이 직접 쓰기', setDoc(doc(A, 'work/A_L1_b2'), { studentId: 'A', code: 'x' }), false);
 await T('학생 작업: 학생이 저장 기록 쓰기', setDoc(doc(B, 'work_history/H1'), { workId: 'A_L1_b1', code: 'x' }), false);
-await T('kaká 설정: 관리자가 쓰기·읽기', (async () => { await setDoc(doc(admin, 'kaka_config/scratch'), { url: 'https://x', secret: 's' }); await getDoc(doc(admin, 'kaka_config/scratch')); })(), true);
-await T('kaká 설정: 학생이 비밀값 읽기', getDoc(doc(A, 'kaka_config/scratch')), false);
-await T('kaká 설정: 비로그인이 읽기', getDoc(doc(anon, 'kaka_config/scratch')), false);
-await T('kaká 설정: 이메일 미인증 관리자가 쓰기', setDoc(doc(fakeAdmin, 'kaka_config/scratch'), { url: 'x' }), false);
+await T('스크래치 작품: 관리자가 쓰기·읽기', (async () => { await setDoc(doc(admin, 'scratch_projects/P1'), { json: '{}' }); await getDoc(doc(admin, 'scratch_projects/P1')); })(), true);
+await T('스크래치 그림: 관리자가 쓰기', setDoc(doc(admin, 'scratch_assets/0123456789abcdef0123456789abcdef.svg'), { d: 'AA==' }), true);
+await T('스크래치 작품: 학생이 직접 읽기', getDoc(doc(A, 'scratch_projects/P1')), false);
+await T('스크래치 그림: 학생이 직접 쓰기(남의 그림 덮어쓰기)', setDoc(doc(A, 'scratch_assets/0123456789abcdef0123456789abcdef.svg'), { d: 'BB==' }), false);
+await T('스크래치 작품: 비로그인이 읽기', getDoc(doc(anon, 'scratch_projects/P1')), false);
 console.log(fails ? `\n실패 ${fails}건` : '\n전부 통과'); process.exitCode = fails ? 1 : 0;
 await env.cleanup();

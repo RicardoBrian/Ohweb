@@ -112,7 +112,7 @@ function viewHtml() {
   if (!w) return `<h2 class="t-title">${esc(title)}</h2><p class="k-hint">아직 저장한 ${kind() === 'scratch' ? '작품이' : '코드가'} 없습니다.</p>`;
   if (w.tool === 'scratch') return `<h2 class="t-title">${esc(title)}</h2><p class="sum" style="margin:0" id="vsum"></p>
     <div><span class="k-label">저장 기록</span><div class="hist" id="hist"><span class="k-hint">불러오는 중…</span></div></div>
-    <p class="k-hint" id="sstate" style="margin:0">드라이브에서 불러오는 중…</p>
+    <p class="k-hint" id="sstate" style="margin:0">불러오는 중…</p>
     <div class="sbox"><iframe id="sed" title="학생 스크래치" src="https://kakainfo.com/scratch/editor.html?locale=ko"></iframe></div>`;
   const code = selVer ? selVer.code : w.code;
   return `<h2 class="t-title">${esc(title)}</h2>
@@ -130,27 +130,26 @@ async function loadHist() {
 }
 const REASON = { auto: '자동', save: '저장', run: '실행', leave: '나갈 때' };
 
-// ── 스크래치: 선생님 드라이브에서 파일을 받아 iframe 편집기(kakainfo.com/scratch/editor.html)에 postMessage 로 띄운다 ──
+// ── 스크래치: Firestore 에서 작품을 읽어 iframe 편집기(kakainfo.com/scratch/editor.html)에 postMessage 로 띄운다 ──
 let sedReady = null;
 function paintScratchSum() {
   const w = works[sel]; if (!w || !$('#vsum')) return;
   $('#vsum').textContent = `마지막 저장 ${when(w.updatedAt)} · 저장 ${w.saves || 0}번 · 블록 ${w.blocks || 0}개 · 스프라이트 ${w.sprites || 0}개`;
 }
-function showScratch() {
+async function showScratch() {
   paintScratchSum();
-  sedReady = new Promise(ok => { const f = e => { if (e.data?.type === 'kaka-scratch-ready' && e.source === $('#sed')?.contentWindow) { removeEventListener('message', f); ok(); } }; addEventListener('message', f); });
+  const { editorReady } = await import('./scratch-fs.js?v=1128');
+  sedReady = editorReady($('#sed'));
   loadScratch();
 }
 async function loadScratch() {
-  const w = works[sel], fileId = selVer ? selVer.fileId : w?.fileId;
-  if (!fileId || !$('#sstate')) return;
-  $('#sstate').textContent = '드라이브에서 불러오는 중…';
+  const w = works[sel], pid = selVer ? selVer.projectId : w?.projectId;
+  if (!pid || !$('#sstate')) return;
+  $('#sstate').textContent = '불러오는 중…';
   try {
-    const { gas } = await import('./scratch-drive.js?v=1128');
-    const [{ b64 }] = await Promise.all([gas('load', { fileId }), sedReady]);
-    const done = new Promise((ok, no) => { const f = e => { if (e.data?.type === 'kaka-scratch-loaded') { removeEventListener('message', f); e.data.ok ? ok() : no(new Error(e.data.error)); } }; addEventListener('message', f); });
-    $('#sed').contentWindow.postMessage({ type: 'kaka-scratch-load', b64 }, 'https://kakainfo.com');
-    await done;
+    const { loadProject, ask } = await import('./scratch-fs.js?v=1128');
+    const [p] = await Promise.all([loadProject(pid), sedReady]);
+    await ask($('#sed'), { type: 'kaka-scratch-load', json: p.json, assets: p.assets }, 'kaka-scratch-loaded');
     $('#sstate').textContent = selVer ? `저장 기록 ${when(selVer.at)} · 블록 ${selVer.blocks || 0}개를 보는 중 (여기서 고친 것은 저장되지 않습니다)` : '지금 작품 (여기서 고친 것은 저장되지 않습니다)';
   } catch (e) { $('#sstate').textContent = '불러오지 못했습니다: ' + e.message; }
 }
